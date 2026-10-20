@@ -1,26 +1,139 @@
 @import "tailwindcss";
 
+/*
+  DESIGN SYSTEM DO DMANDA
+  Este é o ÚNICO arquivo onde existem valores de cor.
+  No resto do código, usar sempre o nome (bg-fundo, text-texto, bg-destaque...).
+  Veja tudo junto em http://localhost:7100/tokens
+*/
+
+/* ---------- 1. Paleta: valores por tema ---------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* fundo */
+  --c-fundo: #eefbf8;
+  --c-brilho-a: #b8f3e8;
+  --c-brilho-b: #fff6c9;
+  /* superfície (cards, menus, campos) */
+  --c-superficie: #ffffff;
+  --c-borda: #cfe4df;
+  /* texto */
+  --c-texto: #0c1f1c;
+  --c-texto-suave: #4f6662;
+  /* destaque (verde-água) */
+  --c-destaque: #19c9a9;
+  --c-destaque-forte: #0b7a67;
+  --c-sobre-destaque: #062b25;
+  /* perigo (atrasado e crítico) */
+  --c-perigo: #d92d30;
+  --c-perigo-suave: #fde7e7;
+  --c-sobre-perigo: #ffffff;
+}
+
+html[data-tema="escuro"] {
+  color-scheme: dark;
+
+  --c-fundo: #060c0c;
+  --c-brilho-a: #0b4f4a;
+  --c-brilho-b: #0b2b63;
+  --c-superficie: #101c1c;
+  --c-borda: #223634;
+  --c-texto: #e8f5f2;
+  --c-texto-suave: #9db3af;
+  --c-destaque: #19c9a9;
+  --c-destaque-forte: #3ddbbe;
+  --c-sobre-destaque: #062b25;
+  --c-perigo: #ff6b6b;
+  --c-perigo-suave: #3b1a1c;
+  --c-sobre-perigo: #2a0606;
+}
+
+/* ---------- 2. Nomes usados no código (viram classes do Tailwind) ---------- */
+
+/* Remove as cores padrão do Tailwind: bg-red-500 e parecidos deixam de existir. */
+@theme {
+  --color-*: initial;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-fundo: var(--c-fundo);
+  --color-brilho-a: var(--c-brilho-a);
+  --color-brilho-b: var(--c-brilho-b);
+  --color-superficie: var(--c-superficie);
+  --color-borda: var(--c-borda);
+  --color-texto: var(--c-texto);
+  --color-texto-suave: var(--c-texto-suave);
+  --color-destaque: var(--c-destaque);
+  --color-destaque-forte: var(--c-destaque-forte);
+  --color-sobre-destaque: var(--c-sobre-destaque);
+  --color-perigo: var(--c-perigo);
+  --color-perigo-suave: var(--c-perigo-suave);
+  --color-sobre-perigo: var(--c-sobre-perigo);
+
+  /* Fontes */
+  --font-sans: var(--fonte-texto), Georgia, serif;
+  --font-mono: var(--fonte-detalhe), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  /* Escala de espaços (padding, margin, gap, largura): p-grande, gap-normal... */
+  --spacing-mini: 4px;
+  --spacing-pequeno: 8px;
+  --spacing-medio: 12px;
+  --spacing-normal: 16px;
+  --spacing-grande: 24px;
+  --spacing-enorme: 32px;
+  --spacing-gigante: 48px;
+  --spacing-maximo: 64px;
+
+  /* Cantos: rounded-card, rounded-pilula... */
+  --radius-pequeno: 8px;
+  --radius-medio: 12px;
+  --radius-card: 24px;
+  --radius-pilula: 9999px;
+
+  /* Tamanhos de texto */
+  --text-titulo: 2.25rem;
+  --text-titulo--line-height: 1.15;
+  --text-subtitulo: 1.25rem;
+  --text-subtitulo--line-height: 1.3;
+  --text-corpo: 1rem;
+  --text-corpo--line-height: 1.5;
+  --text-detalhe: 0.8125rem;
+  --text-detalhe--line-height: 1.4;
+
+  /* Sombra suave dos cards (usa a cor do texto, então acompanha o tema) */
+  --shadow-card: 0 8px 32px color-mix(in srgb, var(--c-texto) 10%, transparent);
 }
+
+/* ---------- 3. Base ---------- */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--c-fundo);
+  background-image:
+    radial-gradient(60rem 40rem at 8% -5%, var(--c-brilho-a), transparent 65%),
+    radial-gradient(55rem 40rem at 100% 105%, var(--c-brilho-b), transparent 65%);
+  background-attachment: fixed;
+  color: var(--c-texto);
+  font-family: var(--font-sans);
+  font-size: var(--text-corpo);
+  line-height: 1.5;
+}
+
+h1,
+h2 {
+  font-weight: 700;
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-destaque-forte);
+  outline-offset: 2px;
+}
+
+/* Botão de tema: mostra um rótulo em cada tema, sem precisar de estado */
+html[data-tema="escuro"] .so-no-claro,
+html:not([data-tema="escuro"]) .so-no-escuro {
+  display: none;
 }

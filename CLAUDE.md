@@ -34,6 +34,18 @@ Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `
 - O que o usuário digita é guardado automaticamente.
 - Não pagar nada além das assinaturas Claude Pro e ChatGPT Plus. Sem instaladores que peçam administrador (o computador não dá essa permissão).
 
+## Design system
+
+Fica em `src/app/globals.css` e pode ser visto em http://localhost:7100/tokens (com botão para trocar entre tema claro e escuro). Foi criado a partir dos prints da pasta `imagens/prints`.
+
+- Cores por função, cada uma com versão clara e escura: fundo, superficie, texto, destaque (verde-água #19C9A9) e perigo. Derivadas: borda, texto-suave, destaque-forte, sobre-destaque, perigo-suave, sobre-perigo, brilho-a e brilho-b.
+- **Nenhuma cor solta no código.** Usar sempre o nome (`bg-superficie`, `text-texto`, `bg-destaque`, `text-perigo`). Valores de cor só existem no globals.css. Conferir com `npm run verificar:cores`.
+- Fontes: Averia Serif Livre para títulos (negrito), subtítulos e textos; IBM Plex Mono Regular (`font-mono`) só para detalhes, como números de processo e datas.
+- Cantos: cards com 24 px (`rounded-card`), campos `rounded-medio`, botões e etiquetas `rounded-pilula`.
+- Espaços: usar a escala nomeada (mini 4, pequeno 8, medio 12, normal 16, grande 24, enorme 32, gigante 48, maximo 64), como `p-grande` e `gap-normal`.
+- Vermelho (`perigo`) só para atrasado ou crítico.
+- Todo componente novo deve funcionar nos dois temas.
+
 ## Regras aprendidas com as correções
 
 Sempre que o usuário corrigir algo, acrescentar aqui a regra nova, em uma linha, logo após a correção.

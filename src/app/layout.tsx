@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Averia_Serif_Libre, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fonteTexto = Averia_Serif_Libre({
+  variable: "--fonte-texto",
   subsets: ["latin"],
+  weight: ["400", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fonteDetalhe = IBM_Plex_Mono({
+  variable: "--fonte-detalhe",
   subsets: ["latin"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -17,12 +19,20 @@ export const metadata: Metadata = {
   description: "Demandas do Secretário de Administração",
 };
 
+// Define o tema (claro ou escuro) antes da página aparecer, para não piscar.
+// Usa a escolha guardada ou, na primeira vez, a do sistema do usuário.
+const scriptTema = `(function(){try{var t=localStorage.getItem("dmanda-tema");if(t!=="claro"&&t!=="escuro"){t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro"}document.documentElement.dataset.tema=t}catch(e){document.documentElement.dataset.tema="claro"}})()`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      lang="pt-BR"
+      className={`${fonteTexto.variable} ${fonteDetalhe.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: scriptTema }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
