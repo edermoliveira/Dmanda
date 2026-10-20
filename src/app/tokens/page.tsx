@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { CalendarClock, CalendarDays, TriangleAlert } from "lucide-react";
 import { BotaoTema } from "@/components/BotaoTema";
+import { Icone } from "@/components/Icone";
+import { NavPaginas } from "@/components/NavPaginas";
 import { ValorCor } from "@/components/ValorCor";
 
 export const metadata: Metadata = { title: "Tokens | Dmanda" };
@@ -89,6 +92,7 @@ export default function Tokens() {
         </div>
         <BotaoTema />
       </header>
+      <NavPaginas />
 
       <Secao titulo="Cores (mudam com o tema)">
         <div className="grid gap-grande sm:grid-cols-2">
@@ -166,21 +170,21 @@ export default function Tokens() {
       <Secao titulo="Exemplo: como fica na tela do dia">
         <div className="grid gap-normal sm:grid-cols-3">
           <div className={`${cartao} flex items-center gap-normal`}>
-            <span className="grid size-gigante place-items-center rounded-pilula bg-perigo font-bold text-sobre-perigo">!</span>
+            <span className="grid size-gigante place-items-center rounded-pilula bg-perigo font-bold text-sobre-perigo"><Icone icone={TriangleAlert} /></span>
             <div>
               <div className="text-titulo font-bold leading-none">1</div>
               <div className="text-texto-suave">Atrasadas</div>
             </div>
           </div>
           <div className={`${cartao} flex items-center gap-normal`}>
-            <span className="grid size-gigante place-items-center rounded-pilula bg-destaque font-bold text-sobre-destaque">H</span>
+            <span className="grid size-gigante place-items-center rounded-pilula bg-destaque font-bold text-sobre-destaque"><Icone icone={CalendarClock} /></span>
             <div>
               <div className="text-titulo font-bold leading-none">2</div>
               <div className="text-texto-suave">Para hoje</div>
             </div>
           </div>
           <div className={`${cartao} flex items-center gap-normal`}>
-            <span className="grid size-gigante place-items-center rounded-pilula bg-texto font-bold text-fundo">7</span>
+            <span className="grid size-gigante place-items-center rounded-pilula bg-texto font-bold text-fundo"><Icone icone={CalendarDays} /></span>
             <div>
               <div className="text-titulo font-bold leading-none">2</div>
               <div className="text-texto-suave">Próximos 7 dias</div>

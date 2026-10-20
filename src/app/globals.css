@@ -87,6 +87,9 @@ html[data-tema="escuro"] {
   --spacing-enorme: 32px;
   --spacing-gigante: 48px;
   --spacing-maximo: 64px;
+  /* Tamanho único dos ícones (Lucide) e alvo mínimo de toque */
+  --spacing-icone: 20px;
+  --spacing-toque: 44px;
 
   /* Cantos: rounded-card, rounded-pilula... */
   --radius-pequeno: 8px;
@@ -127,7 +130,8 @@ h2 {
   font-weight: 700;
 }
 
-:focus-visible {
+:focus-visible,
+[data-foco="true"] {
   outline: 2px solid var(--c-destaque-forte);
   outline-offset: 2px;
 }

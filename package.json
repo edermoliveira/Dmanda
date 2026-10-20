@@ -7,9 +7,12 @@
     "build": "next build",
     "start": "next start -p 7100",
     "lint": "eslint",
-    "verificar:cores": "node scripts/verificar-cores.mjs"
+    "verificar:cores": "node scripts/verificar-cores.mjs",
+    "gerar:logo": "node scripts/gerar-logo.mjs",
+    "capturar": "node scripts/capturar.mjs"
   },
   "dependencies": {
+    "lucide-react": "^1.60.0",
     "next": "16.4.2",
     "react": "19.3.0",
     "react-dom": "19.3.0"

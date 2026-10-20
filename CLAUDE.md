@@ -46,6 +46,19 @@ Fica em `src/app/globals.css` e pode ser visto em http://localhost:7100/tokens (
 - Vermelho (`perigo`) só para atrasado ou crítico.
 - Todo componente novo deve funcionar nos dois temas.
 
+## Peças e marca
+
+- Peças em `src/components`: Botao, Campo, Janela, Menu, Avatar e Etiqueta. Ver todas em http://localhost:7100/pecas. Usar sempre essas peças, sem refazer botão ou campo na mão.
+- Toda peça tem cinco estados: normal, foco, desativado, carregando e erro. Peça nova só entra com os cinco, e é mostrada em /pecas.
+- Ícones: só Lucide, sempre pelo componente `Icone` (20 px, token `size-icone`). Nada de emoji nem outra biblioteca.
+- Alvo de toque mínimo de 44 px (`min-h-toque`). Erro aparece junto do campo. Carregando usa `aria-busy`.
+- Logo: um D com três colunas. Gerado por `npm run gerar:logo` (lê as cores do globals.css e escreve `public/marca`, `src/app/icon.svg` e `src/components/logo-dados.ts`). Não editar esses arquivos à mão. Uso e arquivos em /marca.
+- Prints das páginas: `npm run capturar` (precisa do sistema ligado) salva em `imagens/aprovacao`.
+
+## Pendências
+
+Ler `PENDENCIAS.md` no início de cada sessão. Ali está o que aguarda aprovação do usuário.
+
 ## Regras aprendidas com as correções
 
 Sempre que o usuário corrigir algo, acrescentar aqui a regra nova, em uma linha, logo após a correção.
