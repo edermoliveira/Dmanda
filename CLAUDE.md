@@ -38,4 +38,4 @@ Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `
 
 Sempre que o usuário corrigir algo, acrescentar aqui a regra nova, em uma linha, logo após a correção.
 
-(nenhuma ainda)
+- Quando o usuário tiver que fazer algo fora do Claude Code (comando no PowerShell, ação no site do GitHub, outro programa), avisar sempre e destacar em negrito, dizendo onde fazer e o que fazer.
