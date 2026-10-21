@@ -13,6 +13,10 @@ Arquivo lido no início de cada sessão. Fica no repositório para valer em qual
 - Se o usuário pedir ajustes, fazer, tirar os prints de novo (`npm run capturar`) e anotar a regra nova no `CLAUDE.md`.
 - Depois da aprovação, apagar esta pendência e seguir para as telas da Fatia 1 (cadastro rápido e tela do dia), conforme `FUNCIONALIDADES.md`.
 
+**Mudanças grandes de design** (anunciadas pelo usuário em 21/10/2026, ainda não detalhadas)
+
+- O usuário vai trazer alterações consideráveis no design, em um segundo momento. Não começar as telas da Fatia 1 antes de ouvir essas mudanças.
+
 ## Como continuar em outro computador
 
 1. Baixar o projeto: `git clone https://github.com/edermoliveira/Dmanda.git` (ou `git pull`, se já existir).

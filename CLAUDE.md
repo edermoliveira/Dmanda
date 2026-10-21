@@ -59,6 +59,10 @@ Fica em `src/app/globals.css` e pode ser visto em http://localhost:7100/tokens (
 
 Ler `PENDENCIAS.md` no início de cada sessão. Ali está o que aguarda aprovação do usuário.
 
+## Andamento do projeto
+
+**Terminar toda resposta neste projeto com a linha: "Andamento do projeto: X%".** O cálculo e a data da última revisão ficam em `ANDAMENTO.md`. Reavaliar o percentual a cada avanço real (commit de funcionalidade, aprovação ou mudança de escopo) e atualizar o arquivo.
+
 ## Regras aprendidas com as correções
 
 Sempre que o usuário corrigir algo, acrescentar aqui a regra nova, em uma linha, logo após a correção.
