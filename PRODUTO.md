@@ -1,32 +1,48 @@
-# PRODUTO – Dmanda
+# PRODUTO: Dmanda
+
+Atualizado em 21/10/2026 com as decisões de `DECISOES.md`.
 
 ## O problema
-O Secretário de Administração recebe demandas por vários canais e hoje não registra nada fixo. Por isso esquece o que é importante mas não urgente, perde de vista o que mandou para outro setor (PGM, DP, Gabinete) e só vê um prazo quando alguém cobra. Com TDAH, uma lista simples não ajuda: ele escolhe pelo que é interessante, e não pelo que vence primeiro.
+O Secretário de Administração recebe demandas por vários canais e hoje não registra nada fixo. Por isso esquece o que é importante mas não urgente, perde de vista o que mandou para outro setor (PGM, DP, Gabinete) e só vê um prazo quando alguém cobra. Com TDAH, uma lista simples não ajuda: ele escolhe pelo que é interessante, e não pelo que vence primeiro. Ainda sente desgaste pessoal por achar que "nunca dá conta".
 
 ## Para quem é
-Para **uma pessoa só**: o Secretário, no trabalho e na organização pessoal. Existe um único papel, o **admin** (o próprio Secretário), que cria quadros e demandas, move os cards e conclui. Não há equipe.
+Para **uma pessoa só**: o Secretário, no trabalho e na organização pessoal. Existe um único papel, o **admin** (o próprio Secretário). Não há equipe, convite nem comentário. Há um **Perfil** pessoal e privado.
 
-## As 5 funções essenciais
-1. **Tela do dia:** mostra atrasadas, para hoje e próximos 7 dias, em poucos números e numa só olhada. É a primeira tela, e o uso começa nela, de manhã.
-2. **Demandas (cards):** cadastro rápido com só **número, prazo, assunto e origem** (e, se quiser, o tipo de documento: processo, memorando, ofício, reunião ou pedido pessoal). Dentro de cada demanda ficam as tarefas (os passos até ela sair da Secretaria).
-3. **Prazos:** prazo legal (TCE, Câmara, MP, Judiciário) separado do prazo próprio (30 dias quando não há prazo). Calendário com todos os prazos e uma área "sem prazo" para dar data depressa.
-4. **Quadro e colunas:** cinco etapas (Entrada, Triada, Fazendo, Aguardando retorno, Finalizado). Em "Aguardando retorno" aparecem o setor e o tempo parado.
-5. **Busca por número:** achar a demanda pelo número do processo ou memorando.
+## O que o sistema tem (sete áreas)
+1. **Início:** quantitativos, demandas em atraso, alertas, "foco do dia" (até 3 demandas), mensagem motivacional e bem-humorada (uma por dia), clima da cidade e acesso rápido ao humor.
+2. **Entradas:** notas rápidas em post-its pastel (rascunhos, anotações, registros). Uma nota pode virar demanda, abrindo o cadastro já preenchido.
+3. **Demandas:** o coração do sistema. Cards de dois lados (frente com o essencial, verso com detalhes), nas visões Cards, Quadro, Tabela e Lista. Cinco etapas: Cadastro, Vista, Fazendo, Aguardando retorno, Finalizado. Tarefas dentro de cada demanda, com porcentagem pronta.
+4. **Agenda:** semana e mês. Demandas aparecem no vencimento (amarelo) e compromissos na grade de horários (azul). Sincroniza do Dmanda para o Google Calendar.
+5. **Documentos:** modelos e arquivos ligados ao Google Drive (estrutura pronta na primeira versão).
+6. **IA:** "estagiária" que responde em português, resume o dia e executa ações (com desfazer; excluir só com confirmação).
+7. **Configurações:** 10 paletas (claro e escuro), 5 fontes, tamanhos em tempo real, conta Google, IA, Perfil e outras.
 
-## Depois (fora da primeira versão)
-- Gerar documentos (memorando, portaria etc.) a partir de modelo .docx com cabeçalho, marca d'água e rodapé.
-- Rascunho solto para anotar demandas em reunião.
-- Relatórios.
-- Integrações (e-mail, WhatsApp).
-- Aplicativo para iPhone (iOS).
+Mais: **Arquivo** (página à parte), **Perfil** (avatar no topo), **botão "+"** flutuante (nova entrada, demanda, tarefa, evento, documento, chat) e **busca global** (lupa no canto superior direito).
+
+## Regras de negócio que continuam
+- Cadastro rápido com **número, prazo, assunto e origem**, e tipo de documento opcional (processo, memorando, ofício, reunião, pedido pessoal; ampliável).
+- Prazo **legal** (TCE, Câmara, MP, Judiciário) prevalece sobre o **próprio**. Sem prazo, o sistema põe 30 dias automáticos, editáveis.
+- Em **Aguardando retorno** aparecem o setor e os dias parado.
+- Todo campo é editável e o sistema se ajusta à mudança.
+- Remover uma demanda: **arquivar** (vai para o Arquivo) ou **excluir definitivamente** (segunda confirmação). Arquivar é sempre manual.
+- O que está sendo digitado é guardado sozinho.
+
+## Humor, energia e produtividade (Perfil)
+Registro leve de humor e energia (balões discretos, cerca de 4 por dia, correção até 5 dias depois) e produtividade calculada pelas demandas finalizadas. Sem metas, sem cobrança, sem classificar dia como bom ou ruim. É uma ferramenta de autoconhecimento, não um tratamento. Dado de humor é privado e nunca vai para a IA sem permissão.
 
 ## Onde vai morar
-Primeiro **no computador** do Secretário. Depois, **na internet**. Desde a primeira versão, as telas funcionam no computador e no celular. Para usar no celular de verdade, o sistema precisa estar na internet.
+Desenvolvido local e publicado na **Vercel com login Google** assim que existir a versão mínima de Demandas. Instalável no iPhone e iPad como **PWA**. O app nativo da App Store fica para depois.
+
+## Depois (fora das primeiras versões)
+- Gerar documentos (memorando, portaria etc.) a partir de modelo .docx com cabeçalho, marca d'água e rodapé.
+- Relatórios.
+- Integrações com e-mail e WhatsApp, e calendário da Apple.
+- App nativo para iPhone e iPad (conta Apple Developer, IA paga, referências de apps).
+- Entrada por voz e foto, uso offline completo.
 
 ## Cuidados que valem para tudo
-- Poucos campos e poucas cores por tela. Cor forte só para o que é atrasado ou crítico.
+- Poucos campos e poucas cores por tela. Cor forte só para o que é atrasado ou crítico. (Exceções combinadas: post-its pastel em Entradas e cores de demanda e evento na Agenda.)
 - Cadastro rápido nunca pode virar formulário grande, senão vira outra planilha abandonada.
-- O que está sendo digitado é guardado sozinho: atualizar ou fechar a página sem querer não pode perder nada.
-- Os tipos de documento podem ser ampliados por você a qualquer momento.
-- Todo campo de uma demanda pode ser editado, e o sistema se ajusta à mudança (por exemplo, trocar processo por memorando ou mudar o prazo).
-- Ao remover uma demanda, você escolhe entre **arquivar** (vai para o botão "Arquivo") e **excluir definitivamente**. Só a exclusão apaga de verdade, e ela pede uma segunda confirmação. Arquivar é sempre manual, e todo card tem um botão para isso, esteja ou não finalizado.
+- Funcionar bem no celular, no iPad e no computador, com mobile primeiro.
+- Texto sobre vidro precisa ser legível. Cards de demanda mais sólidos.
+- Nada de mensagem de cobrança, culpa ou alerta negativo sobre o próprio usuário.

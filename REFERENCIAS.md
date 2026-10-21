@@ -1,7 +1,9 @@
-# REFERENCIAS – O que os prints mostram e o que aproveitar
+# REFERENCIAS: O que os prints mostram e o que aproveitar
 
 Base de comparação: as dores e os fatos do `PESQUISA.md`.
 Pasta analisada: `imagens/` (10 prints). Só foi usado o que aparece nos prints.
+
+> Nota de 21/10/2026: os prints continuam valendo como referência de **organização das informações** (o que aparece no card, tela inicial com contadores, lista, calendário, busca por número). O **visual** mudou: o novo estilo é Apple com vidro, com cards de dois lados, 7 menus e 4 visões de Demandas. Ver `DECISOES.md`.
 
 ## Aviso importante sobre os prints
 

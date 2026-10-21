@@ -10,7 +10,7 @@ Critério: o Dmanda é um painel pessoal, de um único usuário, que precisa ser
 
 | Item | Onde | Decisão | Motivo |
 |---|---|---|---|
-| claude-code-setup (plugin) | projeto Dmanda | **Desativar (pendente, o usuário faz)** | Serve para recomendar automações uma vez. Já cumpriu o papel. A edição automática foi bloqueada pelo Claude Code, então o usuário desativa com `/plugin`. |
+| claude-code-setup (plugin) | projeto Dmanda | **Desativado** (feito pelo usuário em 21/10/2026, conferido) | Serve para recomendar automações uma vez. Já cumpriu o papel. |
 | ui-ux-pro-max (plugin, 7 skills) | projeto Dmanda | **Manter por enquanto, remover depois** | Traz bases de paletas, pares de fontes e regras de UX úteis agora, na refação do design system. Mas suas skills de banner, slides, marca e logo por IA não servem. Remover quando o design system estiver pronto. |
 | context7 (MCP) | usuário | **Manter** | Documentação atual de bibliotecas. Essencial, porque o Next.js deste projeto tem mudanças de versão. |
 | frontend-design (plugin) | outro projeto (ADMINISTRACAO-PAINEL) | Não mexi | Não é do Dmanda. |
@@ -118,6 +118,21 @@ São 20 skills. Avaliação de cada uma para o Dmanda:
 
 ---
 
+## 3b. Skills de design e gosto (taste-skill e ui-skills.com)
+
+Avaliadas em 21/10/2026, a pedido do usuário, para ajudar a decidir ícones e a direção visual.
+
+- **taste-skill** (`design-taste-frontend`, v2.1, MIT, Leonxlnx): faz o agente escolher uma direção de arte, construir, testar no navegador em três larguras e se criticar sozinho. Tem fluxo próprio para painéis e apps (painéis discretos, números alinhados, navegação que recolhe no celular). Requisitos: Node 22+ e Chrome ou Edge, sem chave de API.
+  - Custos: "centenas de milhares de tokens" por construção, e roda scripts locais.
+  - **Veredito: instalar só `design-taste-frontend`, na hora do protótipo, depois de ler os scripts.** Não instalar agora.
+- **ui-skills.com** (diretório de skills de terceiros):
+  - **Úteis:** `critique` (nota de UX e correções) e `delight` (detalhes de interação), ambas de pbakaus, como revisão. `emil-design-eng` (polimento de animação) como opção.
+  - **Descartadas:** `bolder` e `overdrive` (empurram para mais efeito e menos clareza), `brutalist`, `minimalist`, `scandinavian`, `stitch`, `chalk-logic`, `regards-art-direction` (para sites públicos, exige MCP) e as skills de "humanizar" texto.
+  - Licença não informada na página para a maioria. Conferir no GitHub antes de instalar.
+- **Ícones (decisão adiada para o protótipo):** o usuário quer ícones criativos, nem simples demais nem feios. Comparar Lucide com tratamento (pastilha de vidro, traço mais grosso, cor de destaque), Iconoir e um estilo duotone, julgando com `design-taste-frontend` e `critique`.
+
+---
+
 ## 4. Vidro líquido e a estética Apple
 
 - O efeito de "liquid glass" da Apple é nativo no iOS. Na web ele se imita com `backdrop-filter: blur()`, translucidez, bordas finas claras e sombra suave. Funciona bem no Safari e no Chrome, mas **tem custo de desempenho** quando há muitas camadas sobrepostas, principalmente em celulares mais antigos.
@@ -140,12 +155,8 @@ São 20 skills. Avaliação de cada uma para o Dmanda:
 
 - Evidência: a desregulação emocional é uma característica frequente e importante no TDAH, e há revisões que tratam a regulação emocional como alvo de intervenção digital. **Não encontrei ensaios controlados** que provem que registrar o humor todo dia melhora o quadro. Então proponho como **ferramenta de autoconhecimento**, nunca como tratamento, e sem prometer resultado.
 - O que os produtos existentes têm em comum (e que reduz esforço): poucas perguntas por dia, registro em um toque, ver tendência, e recompensa simples por manter a rotina.
-- Proposta para o Dmanda (todas opcionais e desativáveis):
-  1. **Check-in de 5 segundos**: 1 toque para humor (5 rostos) e 1 toque para energia (baixa, média, alta). Pode ser feito 2 vezes ao dia (manhã e fim do expediente). Opcional: uma palavra de gatilho ("reunião", "cobrança").
-  2. **Linha do tempo semanal** que cruza humor e energia com o número de demandas concluídas e atrasadas. Serve para perceber padrões como "toda terça cai". Sem nota, sem julgamento.
-  3. **Sequência gentil**: contar dias de registro, sem punir a falha. Quem falha volta do ponto onde parou, sem zerar.
-  4. **Foco do dia**: o sistema sugere até 3 demandas para o dia (por prazo legal primeiro), para combater a escolha "pelo que é interessante" descrita no PRODUTO.md.
-  5. **Alerta de sobrecarga**: se humor baixo e muitas atrasadas, mensagem acolhedora na Home, sem alarme vermelho.
+- **Versão aprovada** (o usuário substituiu a minha proposta inicial por uma especificação própria, ver `DECISOES.md`, seção 9): humor e energia manuais, produtividade calculada pelas demandas finalizadas, balões a cada 3 horas, correção até 5 dias, painel interativo no Perfil, sem metas, sem sequência de dias, sem alerta de sobrecarga e sem exportar resumo.
+- Mantido da pesquisa: o "foco do dia" (até 3 demandas sugeridas) combate a escolha "pelo que é interessante".
 - Aviso a manter na tela: não substitui acompanhamento profissional.
 - Privacidade: dado de humor é dado de saúde, e o sistema deve guardá-lo só no seu banco, nunca enviá-lo à IA sem permissão explícita.
 
@@ -169,8 +180,9 @@ São 20 skills. Avaliação de cada uma para o Dmanda:
 ## 9. IA como estagiária
 
 - Dois níveis: (1) responde e resume com os seus dados; (2) **executa ações** (marcar tarefa, arquivar, criar evento). O nível 2 é bem mais delicado: pode apagar ou alterar demanda por mal-entendido.
-- Proposta: toda ação da IA mostra "vou fazer isto, confirma?" e tem **desfazer**. Exclusão definitiva fica **fora** do alcance da IA.
-- Custo: a API da Anthropic ou da OpenAI é **paga por uso**, separada das assinaturas Claude Pro e ChatGPT Plus. Isso colide com a regra de custo. Alternativa: IA local (Ollama), que exige computador forte e instalação. Pergunta no questionário. Também: dados de processos públicos municipais ainda podem ter dados pessoais (LGPD), então decidir o que a IA pode ler.
+- **Decidido:** a IA executa ações e **toda ação pode ser desfeita**. Só para excluir ela pergunta e executa se o usuário confirmar.
+- Custo: a API da Anthropic ou da OpenAI é **paga por uso**, separada das assinaturas. Opções gratuitas pesquisadas em 21/10/2026: **Gemini** (camada gratuita em vários modelos, mas no plano gratuito o Google usa os dados para melhorar produtos, e os limites por minuto e dia não foram confirmados), **Groq** (camada gratuita com limites modestos) e **Ollama local** (privado e gratuito, mas não alcança o celular com o sistema na Vercel).
+- Estratégia: o Dmanda não treina modelo. A "estagiária" é código nosso (buscar, executar, desfazer, consolidar por contas no banco) com um modelo trocável só para entender o pedido e redigir. Tudo fica pronto para integração, e o gratuito é testado na hora da IA, com filtro que oculta números e nomes antes de enviar.
 
 ---
 

@@ -1,5 +1,7 @@
 # Questionário de alinhamento (refação do design system e novo escopo)
 
+> **Status (21/10/2026): respondido no chat.** As respostas e os padrões adotados estão em `DECISOES.md`, que é a fonte mais recente. Este arquivo fica como histórico das perguntas. Itens marcados [padrão] em `DECISOES.md` valem a recomendação (R) até o usuário pedir mudança.
+
 Data: 21/10/2026. Marque a opção ou escreva a sua. A opção marcada com **(R)** é a que eu recomendo. Cada pergunta cita o arquivo `.md` com o qual o novo plano colide.
 
 Decisões já tomadas por você e **não** perguntadas aqui: os 7 menus (Início, Entradas, Demandas, Agenda, Documentos, IA, Configurações), o botão "+" flutuante, o botão de busca fixo, 10 paletas com modo noturno, 5 fontes, tamanhos ajustáveis em tempo real, cards com dois lados, estilo Apple com vidro, mensagem do dia, clima, humor e produtividade.

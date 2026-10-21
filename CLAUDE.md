@@ -2,9 +2,11 @@
 
 # Dmanda
 
-Sistema pessoal de demandas em quadros, feito para o Secretário de Administração da Prefeitura de Taquara/RS. O objetivo é não esquecer demandas, acompanhar o que está em outro setor e ver prazos (legal e próprio) com poucos campos. Há um único usuário, o admin, que é o próprio Secretário. Não existe equipe, perfil, convite nem comentário.
+Painel pessoal do Secretário de Administração da Prefeitura de Taquara/RS, com sete áreas: Início, Entradas, Demandas, Agenda, Documentos, IA e Configurações (mais Arquivo, Perfil, busca global e botão "+"). O objetivo é não esquecer demandas, acompanhar o que está em outro setor e ver prazos (legal e próprio) com poucos campos. Há um único usuário, o admin, que é o próprio Secretário. Não existe equipe, convite nem comentário. Existe um Perfil pessoal e privado (humor, energia e produtividade).
 
-Primeiro roda no computador, depois na internet. As telas funcionam no computador e no celular.
+Desenvolvido no computador e publicado na Vercel (com login Google) a partir da versão mínima de Demandas. Funciona no celular, iPad e computador (mobile primeiro), instalável como PWA. O app nativo da App Store é uma etapa futura.
+
+**Em 21/10/2026 o escopo foi ampliado e o design system será refeito do zero.** A fonte mais recente das decisões é `DECISOES.md`.
 
 ## Como rodar
 
@@ -19,10 +21,15 @@ Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `
 
 ## Documentos do projeto
 
+- DECISOES.md: **fonte mais recente.** Respostas do usuário ao questionário. Se algo divergir, vale este arquivo.
 - PESQUISA.md: as dores do usuário.
-- REFERENCIAS.md: prints de referência (todos de uma só ferramenta).
-- PRODUTO.md: as 5 funções essenciais e os cuidados gerais.
-- FUNCIONALIDADES.md: mapa por tela, jornada de uma demanda, fatias e decisões. Seguir a ordem das fatias.
+- REFERENCIAS.md: prints de referência (todos de uma só ferramenta). Valem para a organização das informações, não para o visual.
+- PRODUTO.md: o que o sistema tem (sete áreas) e os cuidados gerais.
+- FUNCIONALIDADES.md: mapa por tela, jornada de uma demanda e etapas de construção. Seguir a ordem das etapas.
+- ANALISE-FERRAMENTAS.md: avaliação de skills, plugins, MCPs e sites de componentes (o que entra e o que sai).
+- QUESTIONARIO.md: perguntas de alinhamento (já respondidas, ver DECISOES.md).
+- ANDAMENTO.md: cálculo do percentual de andamento.
+- PENDENCIAS.md: o que aguarda o usuário.
 
 ## Regras
 
@@ -30,11 +37,16 @@ Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `
 - Sem travessão (nem "—" nem "–") em nenhum texto. Usar vírgula, ponto, dois-pontos ou parênteses.
 - Fazer um commit a cada avanço, com mensagem em português.
 - Nunca colocar senha, chave, token ou dado real em arquivo que vá para o Git. Valores reais ficam só no `.env.local`.
-- Cadastro rápido com poucos campos (número, prazo, assunto, origem). Poucas cores por tela, cor forte só para atrasado ou crítico.
+- Cadastro rápido com poucos campos (número, prazo, assunto, origem). Poucas cores por tela, cor forte só para atrasado ou crítico. Exceções combinadas: post-its pastel em Entradas e cores de demanda (amarelo) e evento (azul) na Agenda.
 - O que o usuário digita é guardado automaticamente.
-- Não pagar nada além das assinaturas Claude Pro e ChatGPT Plus. Sem instaladores que peçam administrador (o computador não dá essa permissão).
+- Não pagar nada além das assinaturas Claude Pro e ChatGPT Plus. Sem instaladores que peçam administrador (o computador não dá essa permissão). Ficam para o app nativo e foram aprovados para depois: conta Apple Developer, IA paga e Mobbin Pro.
+- Nunca usar mensagem de cobrança, culpa ou alerta negativo dirigido ao usuário (vale principalmente em humor, energia e produtividade).
+- Decisões que dependem do usuário são perguntadas no chat (uma rodada curta por vez) e gravadas em `DECISOES.md`.
+- Instalar skills, plugins e MCPs só na hora em que forem usados, depois de ler o que eles escrevem. Avaliação em `ANALISE-FERRAMENTAS.md`.
 
 ## Design system
+
+**Será refeito do zero** (decidido em 21/10/2026). Novo estilo: Apple com vidro (barras, menu, botão flutuante, janelas e campos; cards de demanda mais sólidos), 10 paletas com claro e escuro, 5 pares de fontes e tamanhos ajustáveis em tempo real. O protótipo terá 3 direções para o usuário escolher. Até lá, o que está abaixo descreve o design **atual** e continua valendo para o código existente. As regras que seguem valendo no novo: nenhuma cor solta no código, espaços e cantos por nome, alvo de toque de 44 px, funcionar nos dois temas, cinco estados por peça, vermelho só para atrasado ou crítico.
 
 Fica em `src/app/globals.css` e pode ser visto em http://localhost:7100/tokens (com botão para trocar entre tema claro e escuro). Foi criado a partir dos prints da pasta `imagens/prints`.
 

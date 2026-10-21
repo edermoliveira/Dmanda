@@ -1,6 +1,6 @@
 # Andamento do Dmanda
 
-Última revisão: 21/10/2026. **Total: 6%.**
+Última revisão: 21/10/2026. **Total: 9%.**
 
 Em 21/10/2026 o escopo cresceu muito (Entradas, Agenda com Google, Documentos, IA, Configurações, humor, clima, PWA) e o design system será refeito do zero. Por isso o percentual caiu de 24% para 6%: o cálculo agora considera o plano novo, ainda pendente de aprovação (ver `QUESTIONARIO.md`). O número volta a subir conforme as etapas forem entregues.
 
@@ -8,8 +8,8 @@ Cada etapa tem um peso (soma 100) e um percentual feito. O total é a soma dos p
 
 | Etapa | Peso | Feito | Pontos | Situação |
 |---|---|---|---|---|
-| Planejamento e pesquisa de ferramentas | 8 | 70% | 5,6 | Análise de ferramentas e questionário prontos. Falta reescrever PRODUTO e FUNCIONALIDADES |
-| Design system novo (refação) e protótipos | 12 | 5% | 0,6 | O design antigo será descartado em boa parte |
+| Planejamento e pesquisa de ferramentas | 8 | 100% | 8,0 | Documentos revisados e decisões gravadas em 21/10/2026 |
+| Design system novo (refação) e protótipos | 12 | 5% | 0,6 | O design antigo será descartado em boa parte. Próximo passo: protótipo de 3 direções |
 | Estrutura: menus, banco de dados, login, publicação | 12 | 0% | 0 | Não iniciada |
 | Demandas (cards, cadastro, prazos, tarefas, arquivo) | 18 | 0% | 0 | Não iniciada |
 | Início (indicadores, alertas, mensagem do dia, clima) | 7 | 0% | 0 | Não iniciada |
@@ -22,4 +22,4 @@ Cada etapa tem um peso (soma 100) e um percentual feito. O total é a soma dos p
 | IA estagiária | 4 | 0% | 0 | Não iniciada |
 | Documentos | 2 | 0% | 0 | Não iniciada |
 
-Soma dos pontos: 6,2, arredondado para 6%.
+Soma dos pontos: 8,6, arredondado para 9%. (Era 6% antes de a revisão dos documentos ser concluída.)

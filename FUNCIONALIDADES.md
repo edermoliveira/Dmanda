@@ -1,177 +1,148 @@
-# FUNCIONALIDADES – Mapa do Dmanda
+# FUNCIONALIDADES: Mapa do Dmanda
 
-Base: `PRODUTO.md`, `PESQUISA.md` e `REFERENCIAS.md`. Só o mapa, sem código.
+Atualizado em 21/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e `DECISOES.md` (esta é a fonte mais recente). Só o mapa, sem código.
 
-**Quem usa:** o **admin**, que é você, o único usuário. Todas as funções abaixo são do admin. Não existe equipe, e por isso não há perfis, convites, atribuição a pessoas nem comentários.
+**Quem usa:** o **admin**, que é o Secretário, o único usuário. Não existe equipe, convite nem comentário.
 
-**Onde usa:** todas as telas funcionam no **computador e no celular** (a tela se adapta ao tamanho). O aplicativo para iPhone (iOS) fica para o futuro.
+**Onde usa:** celular, iPad e computador (a tela se adapta; mobile primeiro). Instalável como PWA. O app nativo fica para o futuro.
 
-**Regra para todas as telas:** o que você está digitando é **guardado automaticamente**. Se atualizar a página ou fechar sem querer, nada se perde.
+**Regra para todas as telas:** o que está sendo digitado é **guardado automaticamente**. Nenhuma mensagem de cobrança ou culpa dirigida ao usuário.
+
+**Navegação:** computador e iPad horizontal: menu lateral completo ou recolhido (só ícones), busca no topo. Celular e iPad vertical: barra inferior de vidro com Início, Demandas, "+" (centro), Agenda e Mais. Botão de busca (lupa) fixo no canto superior direito. Avatar no topo abre o Perfil.
 
 ---
 
 ## 1. Funções por tela
 
-### Tela do dia (primeira tela)
-- Ver quantas demandas estão atrasadas, para hoje e nos próximos 7 dias.
-- Ver a lista "minhas demandas" separada em atrasadas, hoje e próximos dias.
-- Ver as demandas em "Aguardando retorno", com o setor e há quantos dias estão paradas.
-- Abrir uma demanda a partir da lista.
-- Marcar uma demanda como concluída.
-- Cadastrar demanda nova (cadastro rápido).
+### Início
+- Mensagem motivacional e bem-humorada do dia (uma por dia, 365 guardadas, editáveis).
+- Quantitativos: atrasadas, para hoje, próximos 7 dias, aguardando retorno e entradas sem tratar.
+- Alertas ao abrir: atrasadas (vermelho), vencendo hoje, compromissos de hoje, aguardando retorno parado há mais de 7 dias (ajustável).
+- "Foco do dia": até 3 demandas sugeridas (prazo legal primeiro, depois próprio, depois mais tempo parada). O usuário pode trocar.
+- Widget de clima da cidade (configurável).
+- Acesso rápido para registrar humor e energia.
+- Abrir uma demanda a partir da lista. Marcar como concluída.
 
-### Quadro
-- Criar quadro.
-- Renomear e arquivar quadro.
-- Criar, renomear e reordenar colunas. O quadro padrão vem com 5: **Entrada, Triada, Fazendo, Aguardando retorno, Finalizado** (ver seção 3).
-- Criar card (cadastro rápido, em qualquer coluna).
-- Mover card entre colunas.
-- Ver a contagem de cards por coluna.
-- Filtrar o quadro (por prazo, por origem, só atrasadas).
+### Entradas
+- Notas em post-its pastel (até 6 tons), em cards, com tags `#` e fixar no topo.
+- Criar nota rápida.
+- **Virar demanda:** abre o cadastro preenchido (1ª linha vira assunto, o resto vira observação). A nota sai de Entradas ao salvar. Se cancelar, a nota fica. A demanda guarda o vínculo.
+- Arquivar nota (manual). Buscar dentro das entradas.
 
-### Card aberto
-- Editar número, assunto e origem.
-- Escolher o **tipo de documento** com um clique (processo, memorando, ofício, reunião ou pedido pessoal). É opcional.
-- Criar um tipo novo na hora, sem sair do card, quando surgir um documento que não se encaixa.
-- Definir o prazo e dizer se é **legal** ou **próprio**.
-- Registrar a data de chegada na Secretaria.
-- Ver há quantos dias a demanda está parada.
-- Criar, marcar e ordenar tarefas (passos).
-- Mover para "Aguardando retorno" e dizer de qual setor (DP, PGM, Gabinete etc.).
-- Marcar o retorno do outro setor (a demanda volta para "Fazendo").
-- Concluir a demanda (quando sai da Secretaria).
-- Reativar uma demanda que voltou à Secretaria.
-- Editar **qualquer campo** a qualquer momento (número, assunto, origem, tipo, prazo, tipo de prazo, data de chegada, coluna, tarefas). O sistema ajusta o que depende dele (ver "Edição" abaixo).
-- Arquivar a demanda direto, com um botão presente em todos os cards, em qualquer coluna.
-- Remover a demanda: o sistema pergunta se quero **arquivar** ou **excluir definitivamente**. A exclusão definitiva pede uma segunda confirmação.
+### Demandas
+- Visões: **Cards, Quadro, Tabela e Lista**. Na Lista e nos cards, expandir para ver e marcar as tarefas.
+- Cinco etapas: **Cadastro, Vista, Fazendo, Aguardando retorno, Finalizado**.
+- Cadastro rápido (número, prazo, assunto, origem, tipo opcional) em qualquer etapa.
+- Mover card entre etapas. Botão **"Já vi"** leva de Cadastro para Vista (com ou sem tarefas).
+- Quando todas as tarefas forem concluídas, o card sugere "Finalizar?". Sem tarefas, há o botão Concluir.
+- Contagem de cards por etapa. Filtros (prazo, origem, só atrasadas, legal, próprio, sem prazo).
+- Atalho "Arquivo" ao final da tela.
 
-### Lista
-- Ver todas as demandas em linhas, **ordenadas por prazo**.
-- Agrupar por coluna.
-- Marcar como concluída direto na linha.
-- Filtrar por prazo legal, prazo próprio ou sem prazo.
+### Card (dois lados)
+- **Frente:** número do processo/memorando, assunto e origem, prazo com selo legal ou próprio (atraso em vermelho), próxima tarefa (nunca a concluída) e porcentagem pronta.
+- **Verso:** lista de tarefas com marcar, data de chegada, dias parado, tipo de documento, setor e dias em Aguardando retorno, e ações (Já vi, Concluir, Arquivar, Mover, Editar).
+- Giro: passar o mouse no computador. Botão de girar no celular e no iPad. Toque no corpo do card abre a demanda completa.
+- Sem tarefas: mostra "Sem próxima tarefa" com atalho. Porcentagem só aparece quando há tarefas.
 
-### Calendário
-- Ver os prazos de todos os quadros no mês.
-- Arrastar uma demanda para outro dia (muda o prazo).
-- Ver a área "sem prazo".
-- Dar prazo a uma demanda sem prazo.
-- Distinguir prazo legal, prazo próprio, vencido e concluído.
+### Demanda aberta
+- Editar **qualquer campo** (número, assunto, origem, tipo, prazo, tipo de prazo, data de chegada, etapa, tarefas). O sistema ajusta o que depende dele.
+- Tipo de documento com um clique, opcional. Criar tipo novo na hora.
+- Prazo legal ou próprio. Sem prazo, 30 dias automáticos (editáveis).
+- Tarefas: criar, marcar, ordenar.
+- Aguardando retorno: dizer o setor (ou "Prefeita"), marcar o retorno (volta para Fazendo).
+- Concluir, reativar uma demanda que voltou (reabre a antiga, com histórico e tarefas).
+- Anexar documentos (links do Drive).
+- Arquivar (botão em todo card) ou remover: perguntar "arquivar" ou "excluir definitivamente" (segunda confirmação).
 
-### Busca
-- Buscar por número, assunto ou origem em todos os quadros.
+### Arquivo (página separada)
+- Demandas arquivadas, concluídas ou não. Não aparecem em Início, Agenda, Lista nem contam como atrasadas.
+- Buscar, abrir para consulta, desarquivar, excluir definitivamente (segunda confirmação).
 
-### Edição (vale para todos os campos)
-- Qualquer campo pode ser corrigido, e o sistema **entende a mudança e age de acordo**. Exemplos:
-  - Troquei o tipo de "processo" para "memorando": o card passa a ser tratado e filtrado como memorando.
-  - Mudei o prazo: o card muda de lugar no calendário e de grupo na tela do dia (por exemplo, de "próximos 7 dias" para "atrasadas").
-  - Troquei o prazo de próprio para legal (ou o contrário): a marca de prazo muda e o filtro de prazos legais passa a incluí-lo ou deixá-lo de fora.
-  - Corrigi o número: a busca e a lista passam a achá-lo pelo número novo.
-  - Mudei a data de chegada: os dias parados são recalculados.
-  - Mudei a coluna: os dias em "Aguardando retorno" e o grupo na tela do dia se ajustam.
-- Editar o prazo de uma demanda sem prazo tira o prazo automático de 30 dias.
+### Agenda
+- Visão **semanal** (domingo a sábado, fins de semana esmaecidos) e **mensal**. No celular, também lista "Hoje".
+- Demandas: cards **amarelos** só no dia do vencimento (parte inferior do dia na semana). Vencidas permanecem na data original em vermelho. Tarefas concluídas ocultas, reexibíveis por filtro.
+- Eventos: cards **azuis** (com horário) e **cinza-azulado** (dia inteiro, como feriados).
+- Mês: indicador da quantidade de demandas, destaque dos dias mais cheios com sugestão de antecipar ou redistribuir, tilt leve ao passar o mouse.
+- Criar evento pelo "+" dentro do dia (janela em passos). Navegar por datas, filtrar por categoria, abrir detalhes.
+- Notificação para evento, compromisso e lembrete (nunca para prazo de demanda).
+- Sincroniza do Dmanda para o Google Calendar. Apple Calendar no futuro.
+- Cadastro de feriados e pontos facultativos.
 
-### Arquivo
-- Botão **"Arquivo"** ao final dos cards (ao final do quadro), que abre um lugar separado.
-- Ali ficam as demandas arquivadas, **concluídas ou não**.
-- As arquivadas **não aparecem** na tela do dia, no calendário nem na lista, e nunca contam como atrasadas.
-- Buscar dentro do Arquivo.
-- Abrir uma demanda arquivada para consulta.
-- Desarquivar (devolver ao quadro).
-- Excluir definitivamente a partir do Arquivo.
+### Documentos
+- Primeira versão: estrutura e tela vazia, tabela pronta. Depois: modelos e arquivos ligados ao Google Drive, subir ou criar documento.
 
-### Tipos de documento
-- Ver a lista de tipos.
-- Adicionar um tipo novo.
-- Renomear um tipo.
-- Ocultar ou apagar um tipo que não uso mais (as demandas antigas mantêm o tipo que tinham).
+### IA
+- Chat em português que age como estagiária: resume o dia, lista pendências, documentos e compromissos, consolida dados (por exemplo, meses com mais demandas).
+- Executa ações: marcar tarefa como cumprida, arquivar, incluir tarefa, marcar reunião. **Toda ação pode ser desfeita.** Excluir: pergunta e só executa com confirmação.
+- Lê demandas, tarefas, agenda e entradas. Nunca lê humor sem permissão.
+- Provedor trocável (prioridade: gratuito). Primeira versão pode ter a tela pronta, ainda sem IA conectada.
 
-### Rascunhos (guardar o que está sendo digitado)
-- Guardar automaticamente um cadastro ou uma edição que ainda não foi salva.
-- Ao reabrir o sistema, voltar ao ponto em que parei e mostrar o que ficou pendente.
-- Descartar um rascunho que não quero mais.
+### Configurações
+- Cores: 10 paletas (cada uma com claro e escuro), escolha aleatória, tema seguindo o aparelho.
+- Fontes: 5 pares.
+- Tamanhos: ícones, fontes, cards e botões, em barras com visualização em tempo real, com limites e "restaurar padrão".
+- Fundo: gradiente estático ou animado.
+- Conta Google (Calendar e Drive), IA (provedor, chave), cidade do clima, dias do prazo automático, alerta de parado há X dias, balões de humor, reduzir movimento, som.
+- Perfil (avatar com foto ou 5 ilustrações).
+- Exportar e importar todos os dados. Editar as 365 mensagens.
+- Tipos de documento (adicionar, renomear, ocultar). Feriados.
+
+### Perfil (avatar no topo)
+- Registro de **humor** (emojis), **energia** e **produtividade** (demandas finalizadas no dia, calculada).
+- Balões discretos a cada 3 horas de trabalho desde o login (cerca de 4 por dia, incluindo o primeiro do dia). Só o último registro de cada indicador fica no dia.
+- Correção até 5 dias depois. Janela antes do Início para completar pendências (ignora fins de semana e feriados, só o que falta, rápida, opcional). Dias sem registro ficam "Sem registro".
+- Painel: resumo do dia, gráfico interativo (semana e mês) com resumo ao passar o mouse, histórico visual compacto e os três indicadores juntos. Frase sempre neutra e acolhedora.
+- Privado, sem metas nem cobrança. Aviso de que não substitui acompanhamento profissional.
+
+### Busca global (lupa)
+- Procura em tudo: demandas (número, assunto, origem), tarefas, entradas, documentos, eventos.
+
+### Botão "+" (flutuante)
+- Nova entrada, nova demanda, nova tarefa (dentro de uma demanda), novo evento, novo documento, novo chat. Entrada é a primeira opção.
+
+### Rascunhos
+- Guardar automaticamente cadastro ou edição ainda não salvo, retomar ao reabrir e descartar.
 
 ---
 
 ## 2. A jornada de uma demanda
 
-1. **Chega.** Um processo, memorando, ofício ou pedido chega por papel, e-mail, WhatsApp ou reunião.
-2. **Cadastro rápido (Entrada).** Você registra só número, prazo, assunto e origem, de manhã ou na hora, e pode marcar o tipo de documento. Se não há prazo, o sistema põe **30 dias automáticos** a partir da chegada, e você pode mudar.
-3. **Prazo.** Marca-se se é prazo legal (TCE, Câmara, MP, Judiciário) ou próprio. O prazo legal prevalece.
-4. **Triada.** Você dá uma olhada mais detalhada, classifica e define as tarefas (por exemplo: pedir informações ao DP, analisar, enviar ao Gabinete). Ainda não começou a trabalhar nela.
-5. **Fazendo.** Quando você começa a trabalhar nela, vai para "Fazendo". Na tela do dia ela aparece em atrasadas, hoje ou próximos 7 dias.
-6. **Aguardando retorno.** Se ela fica com você esperando informação externa, vai para "Aguardando retorno", com o nome do setor, e começa a contar os dias parada.
-7. **Retorno.** Quando a resposta volta, você marca o retorno e a demanda volta para "Fazendo".
-8. **Análise e decisão.** Você analisa e elabora o documento (fora do sistema, na primeira versão).
-9. **Finalizado.** A análise está concluída: arquivamento, encaminhamento a outro setor ou outro andamento. A demanda **sai da Secretaria** e vai para "Finalizado".
-10. **Reativação.** Se o processo voltar, a demanda antiga é reaberta, com o histórico e as tarefas anteriores.
+1. **Chega.** Processo, memorando, ofício ou pedido por papel, e-mail, WhatsApp ou reunião. Pode começar como uma **entrada** (nota rápida) e virar demanda.
+2. **Cadastro.** Registra-se número, prazo, assunto e origem, e o tipo de documento se quiser. Sem prazo, 30 dias automáticos. Prazo legal prevalece.
+3. **Vista.** Você olhou, entendeu o que precisa ser feito e tocou em **"Já vi"**. Pode cadastrar tarefas (ou não, se for um passo só).
+4. **Fazendo.** Está em trabalho com você.
+5. **Aguardando retorno.** Enviou a outro setor externo à Secretaria, ou aguarda análise ou decisão da Prefeita. Mostra o setor e os dias parado.
+6. **Retorno.** Quando a resposta volta, você marca o retorno e a demanda volta para Fazendo.
+7. **Finalizado.** O card sugere "Finalizar?" quando as tarefas acabam. A demanda sai da Secretaria.
+8. **Reativação.** Se o processo voltar, a demanda antiga é reaberta com histórico e tarefas.
+9. **Arquivo.** Arquivar é sempre manual.
 
 ---
 
-## 3. Fatias, da mais importante para a menos importante
+## 3. Etapas de construção (substituem as antigas "fatias")
 
-**Fatia 1 – Registrar e ver o dia (dores 1 e 3)**
-- Cadastro rápido (4 campos) e tipo de documento opcional.
-- Prazo com tipo (legal / próprio) e 30 dias automáticos, editáveis.
-- Tela de cadastro que limpa os campos a cada demanda, para a carga inicial em sequência.
-- Guardar automaticamente o que está sendo digitado (rascunhos).
-- Funcionar no computador e no celular.
-- Editar qualquer campo de uma demanda, com o sistema ajustando o que depende dele.
-- Tela do dia: atrasadas, hoje, próximos 7 dias.
-- Concluir demanda.
-- Carga inicial de tudo o que você tem hoje, cadastrando em sequência.
+1. **Design system novo e protótipo:** 3 direções de estilo, escolha, paletas, fontes, peças, navegação.
+2. **Base técnica:** banco de dados, login Google, publicação na Vercel.
+3. **Versão mínima de Demandas + Início:** cadastro rápido, cards de dois lados, etapas, tarefas, prazos, concluir, quantitativos e alertas. Permite iniciar a carga inicial.
+4. **Demandas completas:** visões Quadro, Tabela e Lista, Arquivo, edição de qualquer campo, reativar, tipos de documento, rascunhos.
+5. **Entradas** e virar demanda.
+6. **Agenda local** (semana, mês, feriados, notificações).
+7. **Configurações** (paletas, fontes, tamanhos, fundo).
+8. **Busca global e botão "+".**
+9. **Perfil: humor, energia, produtividade, clima e mensagem do dia.**
+10. **Google Calendar e Drive.**
+11. **IA estagiária.**
+12. **Documentos.**
 
-**Fatia 2 – Etapas e espera (dor 2)**
-- Quadro com as 5 colunas e mover card.
-- "Aguardando retorno", com nome do setor e dias parados.
-- Marcar retorno.
-
-**Fatia 3 – Passos dentro da demanda**
-- Tarefas com progresso dentro do card.
-- Reativar demanda que voltou.
-- Registrar a data de chegada na Secretaria.
-- Adicionar, renomear e ocultar tipos de documento.
-- Remover demanda: perguntar "arquivar ou excluir definitivamente".
-- Arquivo (botão ao final dos cards), com busca, desarquivar e exclusão definitiva.
-
-**Fatia 4 – Outras formas de ver**
-- Lista ordenada por prazo.
-- Calendário com todos os prazos e área "sem prazo".
-- Arrastar para mudar o prazo.
-
-**Fatia 5 – Achar rápido**
-- Busca por número, assunto e origem.
-- Filtros (atrasadas, legais, por origem).
-
-**Depois (conforme `PRODUTO.md`)**
-- Rascunho de reunião.
-- Gerar documento a partir de modelo .docx.
-- Relatórios.
-- Integrações (e-mail, WhatsApp).
-- Aplicativo para iPhone (iOS).
+(Versão mínima de Demandas na etapa 3 já vai para a internet.)
 
 ---
 
 ## 4. Decisões já tomadas
-
-**Colunas do quadro padrão**
-1. **Entrada:** recém-cadastrada.
-2. **Triada:** olhada com mais detalhe e classificada, ainda sem trabalho feito.
-3. **Fazendo:** em trabalho agora.
-4. **Aguardando retorno:** fica com você, esperando informação externa. Mostra o setor e os dias parados.
-5. **Finalizado:** análise concluída (arquivamento, encaminhamento ou outro andamento).
-
-**Outras decisões**
-- Aguardando outro setor é uma **coluna**, e não uma marca no card.
-- Sem prazo, entram **30 dias automáticos**, editáveis.
-- Carga inicial: digitar um por um, rápido, numa tela que se limpa a cada demanda.
-- Categoria = **tipo de documento** (processo, memorando, ofício, reunião ou pedido pessoal), de um clique e opcional. "O que precisa ser feito" fica nas tarefas e no assunto, e não é categoria.
-
-- Remover uma demanda: o sistema pergunta se quer **arquivar** ou **excluir definitivamente**. Só a segunda opção apaga de verdade, como se nunca tivesse dado entrada. Arquivar manda para o **Arquivo**.
-
-- Arquivar é **sempre manual**: nada vai para o Arquivo sozinho, nem as demandas em "Finalizado".
-- **Todo card** tem um botão "Arquivar", em qualquer coluna, finalizado ou não.
-- A exclusão definitiva pede uma **segunda confirmação**, por não ter volta.
+Estão em `DECISOES.md`. Resumo das regras de negócio: Aguardando retorno é uma **coluna**. Sem prazo, 30 dias automáticos editáveis. Categoria é o **tipo de documento**, opcional. Arquivar é sempre manual e todo card tem esse botão. Excluir definitivamente pede segunda confirmação.
 
 ## 5. Pontos ainda em aberto
-- Detalhes de aparência e de nomes de botões ficam para a etapa das telas.
+- Escolha final de ícones, fontes e direção de estilo (feita no protótipo).
+- Limites do plano gratuito do Postgres (Neon ou Supabase) e da IA gratuita.
+- Se o logo (D de três colunas) continua.
+- Nomes e textos exatos de botões, ficam para a etapa das telas.

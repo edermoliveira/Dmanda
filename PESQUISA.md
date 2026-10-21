@@ -1,9 +1,11 @@
-# PESQUISA – Como as demandas chegam e andam hoje
+# PESQUISA: Como as demandas chegam e andam hoje
 
 Data da conversa: 19/10/2026
 Quem respondeu: Secretário de Administração da Prefeitura de Taquara/RS (advogado, com TDAH).
 
 > Este documento só descreve o problema. Não tem telas nem funções. Isso vem depois.
+>
+> Nota de 21/10/2026: este texto é o retrato de 19/10 e foi mantido como estava. Alguns termos mudaram no sistema: a demanda "suspensa" é hoje a etapa **Aguardando retorno**, e as etapas são Cadastro, Vista, Fazendo, Aguardando retorno e Finalizado. A captura rápida "como rascunho" da seção 3 virou o menu **Entradas**. O desgaste pessoal da seção 4 é um dos motivos do **Perfil** (humor, energia e produtividade, sem cobrança). Ver `DECISOES.md`.
 
 ---
 
@@ -89,21 +91,21 @@ Outros fatos importantes:
 
 ## 5. As 3 dores principais, com exemplo real
 
-### Dor 1 – Esquecer o que é importante, mas não é urgente na hora
+### Dor 1: Esquecer o que é importante, mas não é urgente na hora
 Demandas normais são cobertas por demandas urgentes e saem da memória.
 
 **Exemplo real:** a servidora bibliotecária, com diagnóstico de autismo e TDAH, abriu um processo pedindo para reduzir a jornada presencial de 40h para 20h e fazer as outras 20h de forma remota. O processo chegou à Secretaria e foi esquecido por causa de outras urgências. Ele só lembrou quando ela ligou **chorando**, contando que as dificuldades estavam piorando enquanto esperava. O caso ainda não foi resolvido.
 
 **Por que pesa:** tem efeito direto sobre uma pessoa, não só sobre o processo.
 
-### Dor 2 – Demandas que saem para outro setor desaparecem do radar
+### Dor 2: Demandas que saem para outro setor desaparecem do radar
 Ele manda para a PGM, o DP ou o Gabinete e perde o fio. Só lembra se alguém cobra.
 
 **Exemplo real:** um processo pedindo análise jurídica sobre regulamentar o pagamento de multas de trânsito cometidas por servidores com veículos oficiais ficou **3 meses na PGM**. Ele só lembrou nesta semana e foi cobrar o responsável.
 
 **Por que pesa:** o tempo corre sem ninguém olhar, e o retorno chega sem aviso, como qualquer demanda nova.
 
-### Dor 3 – Prazos que se perdem porque o aviso não fica registrado
+### Dor 3: Prazos que se perdem porque o aviso não fica registrado
 Ele recebe o aviso (ligação, conversa, pedido) mas não tem onde guardá-lo. A data chega e ele faz tudo em cima da hora.
 
 **Exemplo real:** um mês antes do vencimento do contrato do sistema de gestão municipal (inexigibilidade), o presidente da empresa ligou pedindo andamento na renovação. Ele entendeu que era urgente, mas esqueceu. Na última semana correu para fechar a documentação (ETP, TR, contrato). O contrato venceu em **14/10** e a prefeitura ficou **sem cobertura contratual até 16/10**.
