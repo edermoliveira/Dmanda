@@ -43,6 +43,6 @@ Desenvolvido local e publicado na **Vercel com login Google** assim que existir 
 ## Cuidados que valem para tudo
 - Poucos campos e poucas cores por tela. Cor forte só para o que é atrasado ou crítico. (Exceções combinadas: post-its pastel em Entradas e cores de demanda e evento na Agenda.)
 - Cadastro rápido nunca pode virar formulário grande, senão vira outra planilha abandonada.
-- Funcionar bem no celular, no iPad e no computador, com mobile primeiro.
+- Funcionar bem no celular, no iPad e no computador, com computador primeiro.
 - Texto sobre vidro precisa ser legível. Cards de demanda mais sólidos.
 - Nada de mensagem de cobrança, culpa ou alerta negativo sobre o próprio usuário.

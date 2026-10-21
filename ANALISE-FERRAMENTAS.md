@@ -96,7 +96,7 @@ São 20 skills. Avaliação de cada uma para o Dmanda:
 |---|---|
 | **23rd.dev shader-gradient** | Gradiente WebGL que segue o tema e reage ao ponteiro. Aceita até 4 cores (encaixa nas paletas das Configurações). Instala por shadcn. **Risco:** WebGL gasta bateria e pode falhar em aparelhos fracos. **Veredito: usar como fundo opcional**, com versão estática em CSS como padrão do celular, e respeitando "reduzir movimento". Peso e licença não confirmados. |
 | **Pryzm** | Só galeria de inspiração e ferramenta própria, com itens Pro. Sem código baixável. | **Só inspiração**, sem integrar. |
-| **Cuelume** (sons) | 14 sons, 9 kB, MIT, sintetizados em tempo real. | **Útil, pequeno e opcional**: som ao concluir uma demanda, desligado por padrão, com chave nas Configurações. Ajuda no reforço positivo, que importa no TDAH. |
+| **Cuelume** (sons) | 14 sons, 9 kB, MIT. | **Descartado:** o usuário decidiu não ter nenhum som no sistema. |
 
 ### Ícones, fontes e cores
 | Site | Veredito |
@@ -188,7 +188,7 @@ Avaliadas em 21/10/2026, a pedido do usuário, para ajudar a decidir ícones e a
 
 ## 10. Resumo: o que entra, o que sai
 
-**Entra (quando for a hora):** shadcn (base), BoardUI gratuitos (inspiração e peças), Playwright MCP, Open-Meteo, Cuelume (opcional), Magic UI (3 itens), Gauge UI (1 uso), shader-gradient 23rd (fundo opcional), Coolors e FontPair (para escolher), grill-with-docs, tdd e diagnosing-bugs (Matt Pocock), Trail-code (após a Fatia 1).
+**Entra (quando for a hora):** shadcn (base), BoardUI gratuitos (inspiração e peças), Playwright MCP, Open-Meteo, Magic UI (3 itens), Gauge UI (1 uso), shader-gradient 23rd (fundo opcional), Coolors e FontPair (para escolher), grill-with-docs, tdd e diagnosing-bugs (Matt Pocock), Trail-code (após a Fatia 1).
 
 **Fica fora:** Claude-mem, ECC, aitmpl completo, quase todas as skills de Matt Pocock, Fancy Components, CanvasUI, Pryzm (só inspiração), Free Faces (só inspiração), Hugeicons, Memos (copiar a ideia), Mobbin (a menos que já assine), Calendar e AI Chat Pro do BoardUI.
 

@@ -4,12 +4,13 @@ Arquivo lido no início de cada sessão. Fica no repositório para valer em qual
 
 ## Aguardando o usuário
 
-1. **Conferir os padrões adotados** em `DECISOES.md` (itens marcados [padrão]). Valem as recomendações do questionário até ele pedir mudança. O usuário disse que vai revisar **antes** de começarmos o protótipo, então não começar o protótipo sem o aval dele.
-2. **Aprovar a revisão dos documentos** feita em 21/10/2026 (`PRODUTO.md`, `FUNCIONALIDADES.md`, `CLAUDE.md`, `README.md`, `ANALISE-FERRAMENTAS.md`) antes de começar o protótipo.
+1. **Criar o banco de 500 frases** motivacionais e bem-humoradas para a mensagem do dia (o sistema só fornece o lugar para cadastrar). Não bloqueia nada: pode ser feito a qualquer momento antes do Início ficar pronto.
 
-## Próximo passo do Claude (depois da aprovação acima)
+Os itens [aprovado] de `DECISOES.md` foram revisados em 21/10/2026. **O protótipo está liberado.**
 
-- Fazer o **protótipo de 3 direções de estilo** (Início, card de dois lados, menu lateral, barra inferior, botão "+" e busca, claro e escuro, celular e computador). Antes: instalar `design-taste-frontend` (taste-skill) depois de ler os scripts, e a base shadcn. Usar `critique` e `delight` como revisão. O usuário escolhe a direção, o par de fontes padrão e o estilo de ícones.
+## Próximo passo do Claude
+
+- Fazer o **protótipo de 3 direções de estilo** (Início, card de dois lados, menu lateral, barra inferior, botão "+" e busca, claro e escuro, computador primeiro e depois iPad e celular). Antes: instalar `design-taste-frontend` (taste-skill) depois de ler os scripts, e a base shadcn. Usar `critique` e `delight` como revisão. O usuário escolhe a direção, o par de fontes padrão e o estilo de ícones.
 - Peças e marca atuais (de 20/10/2026) ficam **substituídas** pela refação. Os prints em `imagens/aprovacao` não precisam mais de aprovação.
 
 ## Pontos em aberto técnicos (não dependem do usuário)

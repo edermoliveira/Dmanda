@@ -4,18 +4,18 @@ Atualizado em 21/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 
 **Quem usa:** o **admin**, que é o Secretário, o único usuário. Não existe equipe, convite nem comentário.
 
-**Onde usa:** celular, iPad e computador (a tela se adapta; mobile primeiro). Instalável como PWA. O app nativo fica para o futuro.
+**Onde usa:** celular, iPad e computador (a tela se adapta pela largura; computador primeiro). Instalável como PWA. O app nativo fica para o futuro.
 
 **Regra para todas as telas:** o que está sendo digitado é **guardado automaticamente**. Nenhuma mensagem de cobrança ou culpa dirigida ao usuário.
 
-**Navegação:** computador e iPad horizontal: menu lateral completo ou recolhido (só ícones), busca no topo. Celular e iPad vertical: barra inferior de vidro com Início, Demandas, "+" (centro), Agenda e Mais. Botão de busca (lupa) fixo no canto superior direito. Avatar no topo abre o Perfil.
+**Navegação (pela largura da tela, não só pela orientação):** largura estreita (celular, iPad vertical ou em tela dividida): barra inferior de vidro com Início, Demandas, "+" (centro), Agenda e Mais. Largura média: menu lateral recolhido (só ícones). Largura larga (computador, iPad horizontal): menu lateral completo, busca no topo. O "+" cadastra anotação, demanda ou evento em um toque. Botão de busca (lupa) fixo no canto superior direito. Avatar no topo abre o Perfil.
 
 ---
 
 ## 1. Funções por tela
 
 ### Início
-- Mensagem motivacional e bem-humorada do dia (uma por dia, 365 guardadas, editáveis).
+- Mensagem motivacional e bem-humorada do dia (uma por dia, sorteada de um banco de 500 frases do usuário, sem repetir até esgotar).
 - Quantitativos: atrasadas, para hoje, próximos 7 dias, aguardando retorno e entradas sem tratar.
 - Alertas ao abrir: atrasadas (vermelho), vencendo hoje, compromissos de hoje, aguardando retorno parado há mais de 7 dias (ajustável).
 - "Foco do dia": até 3 demandas sugeridas (prazo legal primeiro, depois próprio, depois mais tempo parada). O usuário pode trocar.
@@ -30,7 +30,7 @@ Atualizado em 21/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Arquivar nota (manual). Buscar dentro das entradas.
 
 ### Demandas
-- Visões: **Cards, Quadro, Tabela e Lista**. Na Lista e nos cards, expandir para ver e marcar as tarefas.
+- Visões, cada uma com função própria: **Cards** (leitura visual), **Quadro** (mover entre etapas), **Tabela** (análise detalhada, colunas ordenáveis e filtros) e **Lista** (consulta rápida, linhas expansíveis para ver e marcar tarefas).
 - Cinco etapas: **Cadastro, Vista, Fazendo, Aguardando retorno, Finalizado**.
 - Cadastro rápido (número, prazo, assunto, origem, tipo opcional) em qualquer etapa.
 - Mover card entre etapas. Botão **"Já vi"** leva de Cadastro para Vista (com ou sem tarefas).
@@ -49,8 +49,8 @@ Atualizado em 21/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Tipo de documento com um clique, opcional. Criar tipo novo na hora.
 - Prazo legal ou próprio. Sem prazo, 30 dias automáticos (editáveis).
 - Tarefas: criar, marcar, ordenar.
-- Aguardando retorno: dizer o setor (ou "Prefeita"), marcar o retorno (volta para Fazendo).
-- Concluir, reativar uma demanda que voltou (reabre a antiga, com histórico e tarefas).
+- Aguardando retorno: dizer o setor (ou "Prefeita"), registrar uma **data de acompanhamento** (cobrar, reiterar o pedido ou conferir; avisa no Início e aparece na Agenda), marcar o retorno (volta para Fazendo).
+- Concluir. **Reabrir** uma demanda finalizada ou arquivada: preserva o histórico e as tarefas cumpridas, permite novas tarefas sem perder as anteriores e volta para a etapa escolhida (padrão: Fazendo).
 - Anexar documentos (links do Drive).
 - Arquivar (botão em todo card) ou remover: perguntar "arquivar" ou "excluir definitivamente" (segunda confirmação).
 
@@ -64,8 +64,10 @@ Atualizado em 21/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Eventos: cards **azuis** (com horário) e **cinza-azulado** (dia inteiro, como feriados).
 - Mês: indicador da quantidade de demandas, destaque dos dias mais cheios com sugestão de antecipar ou redistribuir, tilt leve ao passar o mouse.
 - Criar evento pelo "+" dentro do dia (janela em passos). Navegar por datas, filtrar por categoria, abrir detalhes.
+- Dias úteis com destaque discreto.
+- Alerta de **eventos concomitantes** (só eventos).
 - Notificação para evento, compromisso e lembrete (nunca para prazo de demanda).
-- Sincroniza do Dmanda para o Google Calendar. Apple Calendar no futuro.
+- Sincroniza do Dmanda para o Google Calendar, **sem duplicar eventos**. Apple Calendar no futuro.
 - Cadastro de feriados e pontos facultativos.
 
 ### Documentos
@@ -82,17 +84,17 @@ Atualizado em 21/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Fontes: 5 pares.
 - Tamanhos: ícones, fontes, cards e botões, em barras com visualização em tempo real, com limites e "restaurar padrão".
 - Fundo: gradiente estático ou animado.
-- Conta Google (Calendar e Drive), IA (provedor, chave), cidade do clima, dias do prazo automático, alerta de parado há X dias, balões de humor, reduzir movimento, som.
+- Conta Google (Calendar e Drive), IA (provedor, chave), cidade do clima, dias do prazo automático, alerta de parado há X dias, balões de humor, reduzir movimento.
 - Perfil (avatar com foto ou 5 ilustrações).
-- Exportar e importar todos os dados. Editar as 365 mensagens.
+- Exportar e importar todos os dados. Cadastrar e editar o banco de 500 mensagens.
 - Tipos de documento (adicionar, renomear, ocultar). Feriados.
 
 ### Perfil (avatar no topo)
 - Registro de **humor** (emojis), **energia** e **produtividade** (demandas finalizadas no dia, calculada).
 - Balões discretos a cada 3 horas de trabalho desde o login (cerca de 4 por dia, incluindo o primeiro do dia). Só o último registro de cada indicador fica no dia.
 - Correção até 5 dias depois. Janela antes do Início para completar pendências (ignora fins de semana e feriados, só o que falta, rápida, opcional). Dias sem registro ficam "Sem registro".
-- Painel: resumo do dia, gráfico interativo (semana e mês) com resumo ao passar o mouse, histórico visual compacto e os três indicadores juntos. Frase sempre neutra e acolhedora.
-- Privado, sem metas nem cobrança. Aviso de que não substitui acompanhamento profissional.
+- Painel: resumo do dia, gráfico interativo (semana e mês) com resumo ao passar o mouse, histórico visual compacto e os três indicadores juntos. Frase sempre neutra e acolhedora. Gráficos podem ser coloridos, animados e elegantes, desde que as cores não classifiquem a produtividade como boa ou ruim.
+- Humor e energia privados. Sem metas nem cobrança. Aviso de que não substitui acompanhamento profissional.
 
 ### Busca global (lupa)
 - Procura em tudo: demandas (número, assunto, origem), tarefas, entradas, documentos, eventos.
