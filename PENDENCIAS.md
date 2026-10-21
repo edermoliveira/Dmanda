@@ -4,6 +4,12 @@ Arquivo lido no início de cada sessão. Fica no repositório para valer em qual
 
 ## Aguardando aprovação do usuário
 
+**Questionário de alinhamento** (21/10/2026): o usuário vai refazer o design system do zero e ampliou o escopo. Ler `QUESTIONARIO.md` (perguntas com recomendação) e `ANALISE-FERRAMENTAS.md` (o que entra, o que sai). Esperar as respostas, depois reescrever PRODUTO.md, FUNCIONALIDADES.md e CLAUDE.md, e só então fazer o protótipo. Não instalar nenhuma ferramenta antes disso.
+
+**Ação do usuário:** no Claude Code, `/plugin`, aba "Installed", desativar `claude-code-setup` (a edição automática foi bloqueada).
+
+A pendência abaixo (aprovar peças e marca) fica **substituída** pela refação: as peças e a marca atuais serão refeitas.
+
 **Peças base e marca** (criadas em 20/10/2026, ainda não aprovadas)
 
 - Prints para aprovar, na pasta `imagens/aprovacao/`:

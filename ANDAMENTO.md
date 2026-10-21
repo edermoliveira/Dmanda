@@ -1,20 +1,25 @@
 # Andamento do Dmanda
 
-Última revisão: 21/10/2026. **Total: 24%.**
+Última revisão: 21/10/2026. **Total: 6%.**
+
+Em 21/10/2026 o escopo cresceu muito (Entradas, Agenda com Google, Documentos, IA, Configurações, humor, clima, PWA) e o design system será refeito do zero. Por isso o percentual caiu de 24% para 6%: o cálculo agora considera o plano novo, ainda pendente de aprovação (ver `QUESTIONARIO.md`). O número volta a subir conforme as etapas forem entregues.
 
 Cada etapa tem um peso (soma 100) e um percentual feito. O total é a soma dos pontos.
 
 | Etapa | Peso | Feito | Pontos | Situação |
 |---|---|---|---|---|
-| Planejamento (pesquisa, produto, funcionalidades, regras) | 10 | 100% | 10,0 | Pronto |
-| Design system, peças (6), logo e páginas /tokens, /pecas, /marca | 15 | 95% | 14,3 | Falta a aprovação do usuário. Mudanças grandes de design anunciadas para depois |
-| Fatia 1: cadastro rápido, tela do dia, rascunhos, edição | 25 | 0% | 0 | Não iniciada |
-| Fatia 2: quadro, 5 colunas, aguardando retorno | 12 | 0% | 0 | Não iniciada |
-| Fatia 3: tarefas, reativar, tipos, arquivo | 13 | 0% | 0 | Não iniciada |
-| Fatia 4: lista e calendário | 10 | 0% | 0 | Não iniciada |
-| Fatia 5: busca e filtros | 5 | 0% | 0 | Não iniciada |
-| Guardar dados de verdade, login do admin e publicar na internet | 10 | 0% | 0 | Não iniciada. Ainda não existe banco de dados nem tela de entrada |
+| Planejamento e pesquisa de ferramentas | 8 | 70% | 5,6 | Análise de ferramentas e questionário prontos. Falta reescrever PRODUTO e FUNCIONALIDADES |
+| Design system novo (refação) e protótipos | 12 | 5% | 0,6 | O design antigo será descartado em boa parte |
+| Estrutura: menus, banco de dados, login, publicação | 12 | 0% | 0 | Não iniciada |
+| Demandas (cards, cadastro, prazos, tarefas, arquivo) | 18 | 0% | 0 | Não iniciada |
+| Início (indicadores, alertas, mensagem do dia, clima) | 7 | 0% | 0 | Não iniciada |
+| Entradas (post-its, virar demanda) | 6 | 0% | 0 | Não iniciada |
+| Agenda (visões, eventos, notificações) | 9 | 0% | 0 | Não iniciada |
+| Busca global e botão "+" | 5 | 0% | 0 | Não iniciada |
+| Configurações (paletas, fontes, tamanhos) | 8 | 0% | 0 | Não iniciada |
+| Humor e produtividade | 4 | 0% | 0 | Não iniciada |
+| Google Calendar e Drive | 5 | 0% | 0 | Não iniciada |
+| IA estagiária | 4 | 0% | 0 | Não iniciada |
+| Documentos | 2 | 0% | 0 | Não iniciada |
 
-## Observação
-
-A redefinição de design prevista pode reduzir o percentual da etapa de design (peças e telas refeitas). Reavaliar quando o usuário trouxer as mudanças.
+Soma dos pontos: 6,2, arredondado para 6%.
