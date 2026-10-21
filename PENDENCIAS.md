@@ -4,7 +4,7 @@ Arquivo lido no início de cada sessão. Fica no repositório para valer em qual
 
 ## Aguardando o usuário
 
-1. **Conferir os padrões adotados** em `DECISOES.md` (itens marcados [padrão]). Valem as recomendações do questionário até ele pedir mudança. Vale uma leitura rápida.
+1. **Conferir os padrões adotados** em `DECISOES.md` (itens marcados [padrão]). Valem as recomendações do questionário até ele pedir mudança. O usuário disse que vai revisar **antes** de começarmos o protótipo, então não começar o protótipo sem o aval dele.
 2. **Aprovar a revisão dos documentos** feita em 21/10/2026 (`PRODUTO.md`, `FUNCIONALIDADES.md`, `CLAUDE.md`, `README.md`, `ANALISE-FERRAMENTAS.md`) antes de começar o protótipo.
 
 ## Próximo passo do Claude (depois da aprovação acima)

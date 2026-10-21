@@ -81,6 +81,11 @@ Legenda: **[definido]** o usuário decidiu. **[padrão]** o usuário não respon
 - [definido] Protótipo: **3 direções de estilo** numa página única, cada uma com Início, um card (frente e verso), menu lateral, barra inferior, "+" e busca, claro e escuro, celular e computador.
 - [padrão] Mantidas as regras: cor forte só para atrasado ou crítico (igual em todas as paletas), nenhuma cor solta no código, alvo de toque de 44 px. Sons: só ao concluir uma demanda, desligado por padrão. Prints de `imagens/prints` valem para a organização das informações, o visual segue o estilo Apple. Peças refeitas sobre a base shadcn, mantendo os nomes e os 5 estados; logo a redefinir no protótipo.
 
+- [definido] **Logo:** redefinido no protótipo. Cada uma das 3 direções traz uma proposta de logo, incluindo o D de três colunas atual como opção.
+- [definido] **Lista x Tabela:** Lista = linhas expansíveis com tarefas (para trabalhar). Tabela = colunas ordenáveis (número, assunto, origem, prazo, etapa, %) com filtros (visão macro).
+- [definido] **Google:** o usuário aceita reconectar a conta a cada 7 dias no começo (modo de teste), até o aplicativo ser publicado no Google Cloud.
+- [definido] **Protótipo em espera:** o usuário vai revisar os itens [padrão] deste arquivo antes de começarmos.
+
 ## 11. Configurações
 - [definido] Cores (10 paletas, cada uma com claro e escuro, mais escolha aleatória), fontes (5), tamanhos (ícones, fontes, cards, botões, em barras com visualização em tempo real), conta Google, IA, Perfil e o que for pertinente.
 - [padrão] Botão "Surpreenda-me" (e opção de trocar a paleta por dia), tema claro/escuro seguindo o aparelho, limites que impedem tamanho ilegível ou botão abaixo de 44 px, botão "restaurar padrão". Também: cidade do clima, dias do prazo automático, alerta de parado há X dias, horário dos balões, reduzir movimento, som, **exportar e importar todos os dados** (cópia de segurança), editar as 365 mensagens.
