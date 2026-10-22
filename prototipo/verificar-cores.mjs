@@ -2,7 +2,7 @@
 // Branco = #FCFCFC, preto = #0A0A0A. Uso: node verificar-cores.mjs (dentro da pasta prototipo).
 import { readFileSync } from 'node:fs';
 
-const arquivos = ['estilo.css', 'tema.css', 'v3.css', 'v4.css', 'app.js', 'extra.js'];
+const arquivos = ['estilo.css', 'tema.css', 'v3.css', 'v4.css', 'catalyst.css', 'app.js', 'extra.js'];
 const regras = [
   [/#fff(?![0-9a-f])/i, '#FFF ou #FFFFFF'],
   [/#ffffff(?![0-9a-f])/i, '#FFFFFF'],

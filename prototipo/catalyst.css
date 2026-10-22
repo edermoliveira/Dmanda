@@ -1,0 +1,86 @@
+/* =====================================================================
+   Tema D: Catalyst (22/10/2026). Baseado no kit "iOS and iPadOS 27" (Figma, Apple):
+   fundo cinza agrupado do sistema, superfícies sólidas sem vidro, separadores finos,
+   barra lateral reta com seleção em azul, controles compactos (28 e 34 px) e
+   controle segmentado com cápsula branca. Azul de sistema, vermelho só para atraso ou crítico.
+   Nunca usar branco nem preto absolutos: branco = #FCFCFC, preto = #0A0A0A.
+   Só vale para .app[data-dir="d"]; Aurora, Papel e Grafite não são tocados.
+   ===================================================================== */
+
+.app[data-dir="d"] {
+  --font: "Inter", -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; --font-h: var(--font); --font-n: var(--font);
+  --r-card: 12px; --r-field: 10px; --r-btn: 8px; --sw: 1.75; --pad: 16px; --blur: 20px;
+}
+.app[data-dir="d"][data-tema="claro"] {
+  --bgbase: #F2F2F7; --bg1: #F2F2F7; --bg2: #F2F2F7; --bg3: #F2F2F7;
+  --card: #FCFCFC; --card-brd: rgba(60,60,67,.12); --panel: #F7F7FA; --glass: rgba(246,246,248,.82); --glass-brd: rgba(60,60,67,.18);
+  --text: #0A0A0A; --text2: #5F5F66; --brd: rgba(60,60,67,.2); --track: rgba(118,118,128,.12);
+  --acc: #0071E3; --acc-ink: #FCFCFC; --acc-soft: rgba(0,113,227,.12); --acc-text: #0062C4; --foco: #0071E3;
+  --perigo: #D70015; --perigo-soft: rgba(215,0,21,.1); --on-perigo: #FCFCFC;
+  --shadow: none; --solido: rgba(254,254,254,.98);
+  --btn-bg: rgba(118,118,128,.12); --btn-brd: transparent; --btn-hi: rgba(118,118,128,.18); --btn-hov: rgba(118,118,128,.2);
+}
+.app[data-dir="d"][data-tema="escuro"] {
+  --bgbase: #0A0A0A; --bg1: #0A0A0A; --bg2: #0A0A0A; --bg3: #0A0A0A;
+  --card: #1C1C1E; --card-brd: rgba(84,84,88,.5); --panel: #141416; --glass: rgba(28,28,30,.82); --glass-brd: rgba(84,84,88,.5);
+  --text: #FCFCFC; --text2: #A1A1A8; --brd: rgba(84,84,88,.6); --track: rgba(118,118,128,.24);
+  --acc: #3D9BFF; --acc-ink: #04152B; --acc-soft: rgba(61,155,255,.18); --acc-text: #6DB3FF; --foco: #6DB3FF;
+  --perigo: #FF6961; --perigo-soft: rgba(255,105,97,.16); --on-perigo: #2B0705;
+  --shadow: none; --solido: rgba(28,28,30,.98);
+  --btn-bg: rgba(118,118,128,.24); --btn-brd: transparent; --btn-hi: rgba(118,118,128,.32); --btn-hov: rgba(118,118,128,.36);
+}
+/* a escolha de paleta muda só o destaque: o fundo do Catalyst continua cinza de sistema */
+.app[data-dir="d"] .bg { display: none; }
+.app[data-dir="d"][data-tema="claro"] { --bgbase: #F2F2F7 !important; }
+.app[data-dir="d"][data-tema="escuro"] { --bgbase: #0A0A0A !important; }
+
+/* ---------- superfícies sólidas, sem vidro e sem sombra ---------- */
+.app[data-dir="d"] :is(.painel, .stat, .alerta-l, .filtro, .perfil-b, .menuplus, .bar, .busca-box, .modal, .balao, .etapas-tabs button, .sw, .tema-c, .pend, .linha, .tabela-w, .ag-col, .ag-cel, .bolha.ia, .toast, .face, .mini-card, .coluna, .grupo, .emo) {
+  background: var(--card); border: 1px solid var(--card-brd); box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.app[data-dir="d"] :is(.painel, .stat, .face, .mini-card, .coluna, .grupo, .modal, .balao, .menuplus) { border-radius: var(--r-card); }
+.app[data-dir="d"] .coluna, .app[data-dir="d"] .grupo { background: var(--panel); }
+.app[data-dir="d"] .chat-f input { background: var(--card); border: 1px solid var(--card-brd); box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ---------- barra lateral e barra do topo: retas, coladas nas bordas, com linha fina ---------- */
+.app[data-dir="d"] .side, .app[data-dir="d"] .top {
+  background: var(--glass); margin: 0; border-radius: 0; box-shadow: none;
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.6); backdrop-filter: blur(var(--blur)) saturate(1.6);
+}
+.app[data-dir="d"] .side { border: 0; border-right: 1px solid var(--glass-brd); }
+.app[data-dir="d"] .top { border: 0; border-bottom: 1px solid var(--glass-brd); padding: 8px 20px; }
+.app[data-dir="d"] .navi { min-height: 44px; }
+.app[data-dir="d"] .navi .ico { width: 30px; height: 30px; border-radius: 7px; background: transparent; color: var(--acc-text); }
+.app[data-dir="d"] .navi:hover .ico { background: var(--acc-soft); }
+.app[data-dir="d"] .navi[aria-current="page"] .ico { background: var(--acc); color: var(--acc-ink); }
+
+/* ---------- botões compactos: cinza de sistema, o principal em azul, sem borda nem relevo ---------- */
+.app[data-dir="d"] :is(.btn, .btn.gl, .icbtn, .seg) { background: var(--btn-bg); border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: var(--r-btn); }
+.app[data-dir="d"] :is(.btn, .btn.gl, .icbtn):hover { background: var(--btn-hov); }
+.app[data-dir="d"] :is(.btn.pri, .btn.escuro, .modal .btn.pri) { background: var(--acc); color: var(--acc-ink); box-shadow: none; }
+.app[data-dir="d"] :is(.btn.pri, .btn.escuro, .modal .btn.pri):hover { background: var(--acc); filter: brightness(1.08); }
+.app[data-dir="d"] .fab, .app[data-dir="d"] .bar .mais-c { background: var(--acc); color: var(--acc-ink); box-shadow: 0 2px 8px rgba(10,10,10,.22); border-radius: 14px; }
+.app[data-dir="d"] .btn[aria-pressed="true"], .app[data-dir="d"] .icbtn[aria-pressed="true"] { background: var(--acc-soft); color: var(--acc-text); box-shadow: inset 0 0 0 1.5px var(--acc); }
+
+/* ---------- controle segmentado: trilho cinza, cápsula branca no item ativo ---------- */
+.app[data-dir="d"] .tabs { background: var(--track); border: 0; box-shadow: none; border-radius: 9px; padding: 2px; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.app[data-dir="d"] .tabs button { border-radius: 7px; background: transparent; box-shadow: none; }
+.app[data-dir="d"] .tabs button[aria-pressed="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(10,10,10,.18); }
+
+/* ---------- campos e listas: linha fina entre itens ---------- */
+.app[data-dir="d"] .modal .fld :is(input, select, textarea), .app[data-dir="d"] .modal .add-t input { background: var(--card); border: 1px solid var(--brd); border-radius: var(--r-field); }
+.app[data-dir="d"][data-tema="escuro"] .modal .fld :is(input, select, textarea), .app[data-dir="d"][data-tema="escuro"] .modal .add-t input { background: #141416; }
+.app[data-dir="d"] .stats { gap: 0; border: 1px solid var(--card-brd); border-radius: var(--r-card); background: var(--card); overflow: hidden; }
+.app[data-dir="d"] .stat { border: 0; border-right: 1px solid var(--card-brd); border-radius: 0; background: transparent; }
+.app[data-dir="d"] .stat:last-child { border-right: 0; }
+.app[data-dir="d"] .stat[aria-pressed="true"] { background: var(--acc-soft); }
+.app[data-dir="d"] .stat .n { font-weight: 600; }
+.app[data-dir="d"] .tabela-w, .app[data-dir="d"] .linha { border-radius: var(--r-card); }
+.app[data-dir="d"] h1, .app[data-dir="d"] h2 { font-weight: 700; letter-spacing: -.01em; }
+.app[data-dir="d"] .frase { font-weight: 600; }
+.app[data-dir="d"] .busca-ov, .app[data-dir="d"] .modal-ov { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
+@container tela (max-width: 1099px) {
+  .app[data-dir="d"] .stats .stat:last-child { grid-column: span 2; }
+}

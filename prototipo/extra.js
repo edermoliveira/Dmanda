@@ -7,7 +7,7 @@ window.DM_EXTRA = function (DM) {
   function F(n, g) { return '"' + n + '", ' + g; }
   var FT = [['Sora', F('Sora', 'sans-serif')], ['Plus Jakarta Sans', F('Plus Jakarta Sans', 'sans-serif')], ['DM Serif Display', F('DM Serif Display', 'Georgia, serif')],
     ['Fraunces', F('Fraunces', 'Georgia, serif')], ['Manrope', F('Manrope', 'sans-serif')], ['Space Grotesk', F('Space Grotesk', 'sans-serif')],
-    ['Playfair Display', F('Playfair Display', 'Georgia, serif')], ['Outfit', F('Outfit', 'sans-serif')]];
+    ['Playfair Display', F('Playfair Display', 'Georgia, serif')], ['Outfit', F('Outfit', 'sans-serif')], ['Inter', F('Inter', '-apple-system, "SF Pro Text", "Segoe UI", sans-serif')]];
   var FS = [['Inter', F('Inter', 'system-ui, sans-serif')], ['DM Sans', F('DM Sans', 'system-ui, sans-serif')], ['Plus Jakarta Sans', F('Plus Jakarta Sans', 'system-ui, sans-serif')],
     ['Manrope', F('Manrope', 'system-ui, sans-serif')], ['Source Sans 3', F('Source Sans 3', 'system-ui, sans-serif')], ['Nunito Sans', F('Nunito Sans', 'system-ui, sans-serif')]];
   var FM = [['IBM Plex Mono', F('IBM Plex Mono', 'ui-monospace, monospace')], ['JetBrains Mono', F('JetBrains Mono', 'ui-monospace, monospace')], ['DM Mono', F('DM Mono', 'ui-monospace, monospace')],
@@ -15,9 +15,9 @@ window.DM_EXTRA = function (DM) {
   var CONJUNTOS = [['Manrope, Inter e IBM Plex Mono', 4, 0, 0], ['Sora, Inter e IBM Plex Mono', 0, 0, 0], ['Jakarta e JetBrains Mono', 1, 2, 1], ['DM Serif, DM Sans e DM Mono', 2, 1, 2], ['Fraunces, Inter e DM Mono', 3, 0, 2], ['Manrope, Inter e JetBrains Mono', 4, 0, 1]];
 
   // ---------- temas definitivos: cada um guarda suas próprias escolhas ----------
-  var TEMAS = [['a', 'Aurora', 'Vidro estilo Apple, gradiente suave'], ['b', 'Papel', 'Calmo, tom de papel e títulos serifados'], ['c', 'Grafite', 'Denso, bordas finas e foco em leitura']];
+  var TEMAS = [['a', 'Aurora', 'Vidro estilo Apple, gradiente suave'], ['b', 'Papel', 'Calmo, tom de papel e títulos serifados'], ['c', 'Grafite', 'Denso, bordas finas e foco em leitura'], ['d', 'Catalyst', 'Estilo Apple Mac e iPad: cinza de sistema, azul, listas com linhas finas']];
   var KEYS = ['pal', 'fT', 'fS', 'fM', 'iconeEstilo', 'lib', 'fs', 'ico', 'cardh', 'anim'];
-  var PADRAO = { a: { fT: 4, fS: 0, fM: 0, iconeEstilo: 'pastilha' }, b: { fT: 3, fS: 0, fM: 0, iconeEstilo: 'pastilha' }, c: { fT: 4, fS: 0, fM: 0, iconeEstilo: 'duotone' } };
+  var PADRAO = { a: { fT: 4, fS: 0, fM: 0, iconeEstilo: 'pastilha' }, b: { fT: 3, fS: 0, fM: 0, iconeEstilo: 'pastilha' }, c: { fT: 4, fS: 0, fM: 0, iconeEstilo: 'duotone' }, d: { fT: 8, fS: 0, fM: 0, iconeEstilo: 'fino' } };
   function base(dir) { return Object.assign({ pal: null, fT: 0, fS: 0, fM: 0, iconeEstilo: '', lib: 'iconoir', fs: 16, ico: 20, cardh: 340, anim: false }, PADRAO[dir]); }
   function snap() { var o = {}; KEYS.forEach(function (k) { o[k] = E[k]; }); return o; }
   E.salvo = {}; E.perfilV = 'semana'; E.cidade = 'Taquara/RS'; E.sugestaoPrazo = 30; E.bH = null; E.bE = null; E.alertaParado = 7; E.baloes = 3; E.reduzir = false; E.modal = null; E.rascunho = {}; E.energia = 2; E.col = true; E.balaoAb = false; E.balaoVisto = false;
