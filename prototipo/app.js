@@ -1,6 +1,6 @@
 // Protótipo do Dmanda: dados fictícios, sem rede, sem gravar nada. Hoje no protótipo: quarta-feira, 21/10/2026.
 (function () {
-  var estado = { dir: 'a', tema: 'claro', dev: 'desktop', tela: 'inicio', virado: {}, plus: false, humor: 3, vis: 'cards', ord: 'prazo', ordDir: 1, aberto: {}, ag: 'semana', pal: null, fonte: 0, fs: 15, ico: 20, cardh: 340, anim: false, iconeEstilo: '', chat: [] };
+  var estado = { dir: 'a', tema: 'claro', dev: 'desktop', tela: 'inicio', virado: {}, plus: false, humor: 3, vis: 'cards', ord: 'prazo', ordDir: 1, aberto: {}, ag: 'semana', pal: null, fonte: 0, fs: 15, ico: 20, cardh: 340, anim: false, iconeEstilo: '', chat: [], lib: 'iconoir', q: '', soAtras: false, grupos: {}, etapaSel: 'Cadastro' };
 
   var NOTAS = {
     a: 'Aurora (a escolhida): estilo Apple com vidro em menu, barra superior, janelas e botão flutuante. Gradiente suave, cards sólidos, cantos de 24 px, logo D de três colunas. Fontes, paleta, ícones e tamanhos podem ser testados em Configurações. Todas as áreas do menu abrem.',
@@ -37,51 +37,11 @@
   ];
   var MAIS = [['plus-anot', 'Anotação', 'sticky-note', 1], ['plus-dem', 'Demanda', 'square-kanban', 1], ['plus-ev', 'Evento', 'calendar', 1], ['plus-tar', 'Tarefa', 'check', 0], ['plus-doc', 'Documento', 'file-text', 0], ['plus-chat', 'Chat com a IA', 'message-circle', 0]];
 
-  function ic(n, extra) { return '<svg class="ic ' + (extra || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (window.ICONES[n] || '') + '</svg>'; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
   function pct(d) { if (!d.tarefas.length) return null; return Math.round(d.tarefas.filter(function (t) { return t.f; }).length / d.tarefas.length * 100); }
-
-  // ---------- card de dois lados ----------
-  function cardHTML(d) {
-    var p = pct(d), pend = d.tarefas.filter(function (t) { return !t.f; }), fin = d.etapa === 'Finalizado';
-    var atras = d.atraso > 0 && !fin;
-    var meio;
-    if (!d.tarefas.length) {
-      meio = fin ? '' : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span><button data-act="add" data-id="' + d.id + '">+ Adicionar tarefa</button></div>';
-    } else if (pend.length) {
-      meio = '<div class="proxima">' + ic('arrow-right') + '<span>Próxima: ' + esc(pend[0].t) + '</span></div>';
-    } else if (!fin) {
-      meio = '<div class="fin"><span>Todas as tarefas concluídas</span><button data-act="finalizar" data-id="' + d.id + '">Finalizar demanda?</button></div>';
-    } else { meio = ''; }
-    var barra = '<div class="prog"><div class="barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + (p === null ? 0 : p) + '" aria-label="Progresso das tarefas"><i style="width:' + (p === null ? 0 : p) + '%"></i></div><b>' + (p === null ? '—' : p + '%') + '</b></div>';
-    var etapaChip = fin ? '<span class="chip">Finalizada</span>' : '<span class="chip neutro">' + esc(d.etapa) + (d.etapa === 'Aguardando retorno' ? ' · ' + d.diasAg + ' d' : '') + '</span>';
-    var frente = '<div class="face front">' +
-      '<div class="cab"><span class="num">' + esc(d.tipo) + ' ' + esc(d.num) + '</span>' + etapaChip +
-      '<button class="girar" data-act="girar" data-id="' + d.id + '" aria-label="Girar o card para ver o verso">' + ic('rotate-cw') + '</button></div>' +
-      '<div class="assunto" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</div>' +
-      '<div class="origem">' + ic('building-2') + esc(d.origem) + '</div>' +
-      '<div class="prazo' + (atras ? ' atrasada' : '') + '">' + ic(atras ? 'clock' : 'calendar-check') +
-      '<span class="chip ' + (atras ? 'perigo' : (d.prazoTipo === 'Legal' ? '' : 'neutro')) + '">' + d.prazoTipo + '</span>' +
-      '<span class="data-p">' + d.prazo + (atras ? ' · atrasada há ' + d.atraso + ' dias' : '') + '</span></div>' +
-      meio + barra + '</div>';
-    var tarefas = d.tarefas.length ? '<ul class="tarefas">' + d.tarefas.map(function (t, i) {
-      return '<li><label><input type="checkbox" data-act="tarefa" data-id="' + d.id + '" data-i="' + i + '"' + (t.f ? ' checked' : '') + '><span class="' + (t.f ? 'feita' : '') + '">' + esc(t.t) + '</span></label></li>';
-    }).join('') + '</ul>' : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span><button data-act="add" data-id="' + d.id + '">+ Adicionar tarefa</button></div>';
-    var meta = '<div class="meta"><div>Chegou em<b>' + d.chegou + '</b></div><div>Dias parada<b>' + d.parado + '</b></div><div>Tipo<b>' + esc(d.tipo) + '</b></div>' +
-      (d.setor ? '<div>Setor<b>' + esc(d.setor) + ' · ' + d.diasAg + ' dias</b></div><div>Acompanhar em<b>' + d.acompanhar + '</b></div>' : '') + '</div>';
-    var acoes = '<div class="acoes">' +
-      (d.etapa === 'Cadastro' ? '<button class="btn pri mini" data-act="javi" data-id="' + d.id + '">' + ic('eye') + 'Já vi</button>' : '') +
-      (fin ? '<button class="btn mini" data-act="reabrir" data-id="' + d.id + '">Reabrir</button>' : '<button class="btn pri mini" data-act="concluir" data-id="' + d.id + '">' + ic('check') + 'Concluir</button>') +
-      '<button class="btn mini so-icone" data-act="msg" data-m="Arquivar" aria-label="Arquivar" title="Arquivar">' + ic('archive') + '</button>' +
-      '<button class="btn mini so-icone" data-act="msg" data-m="Mover de etapa" aria-label="Mover de etapa" title="Mover de etapa">' + ic('arrow-right') + '</button>' +
-      '<button class="btn mini so-icone" data-act="msg" data-m="Editar" aria-label="Editar" title="Editar">' + ic('pencil') + '</button></div>';
-    var verso = '<div class="face back"><div class="cab"><span class="num">' + esc(d.tipo) + ' ' + esc(d.num) + '</span>' +
-      '<button class="girar" data-act="girar" data-id="' + d.id + '" aria-label="Voltar para a frente do card">' + ic('rotate-cw') + '</button></div>' + tarefas + meta + acoes + '</div>';
-    return '<article class="dcard' + (atras ? ' atrasada' : '') + (estado.virado[d.id] ? ' virado' : '') + '" data-id="' + d.id + '"><div class="faces">' + frente + verso + '</div></article>';
-  }
 
   // ---------- telas ----------
   function stat(n, r, icone, alerta) {
@@ -93,7 +53,7 @@
       '<section class="painel"><div class="data">quarta-feira, 21 de outubro</div><p class="frase">Um passo de cada vez já é caminhar. Hoje, o primeiro é pequeno.</p></section>' +
       '<section class="painel clima"><div>' + ic('cloud-sun', 'duo') + '</div><div><b>24°</b><div class="data">Taquara/RS, parcialmente nublado</div></div></section></div>' +
       '<div class="humor" role="group" aria-label="Como você está agora"><span>Como você está agora?</span>' +
-      emojis.map(function (e, i) { return '<button class="emo" data-act="humor" data-i="' + i + '" aria-pressed="' + (estado.humor === i) + '" aria-label="' + rot[i] + '">' + e + '</button>'; }).join('') +
+      emojis.map(function (e, i) { return '<button class="emo" data-act="humor" data-i="' + i + '" aria-pressed="' + (estado.humor === i) + '" aria-label="' + rot[i] + '"><img class="emo-img" src="emojis/humor-' + (i + 1) + '.png" alt="" data-e="' + e + '"></button>'; }).join('') +
       '<button class="btn mini" data-act="msg" data-m="Registrar energia">' + ic('battery-medium') + 'Energia</button></div>' +
       '<div class="stats">' + stat(1, 'Atrasadas', 'clock', true) + stat(1, 'Para hoje', 'target') + stat(3, 'Próximos 7 dias', 'calendar') + stat(1, 'Aguardando retorno', 'hourglass') + stat(4, 'Entradas sem tratar', 'inbox') + '</div>' +
       '<section class="sec"><h3>Alertas</h3><div class="alertas">' +
@@ -127,8 +87,95 @@
   }
   function iconeEstilo() { return estado.iconeEstilo || (estado.dir === 'c' ? 'duotone' : 'pastilha'); }
 
-  // ---------- visões de Demandas ----------
   var ETAPAS = ['Cadastro', 'Vista', 'Fazendo', 'Aguardando retorno', 'Finalizado'];
+  // ---------- ícones: Iconoir (padrão) ou Lucide; no Iconoir o item ativo usa a versão sólida ----------
+  function ic(n, extra) {
+    var ex = extra || '', sol = / sol|^sol/.test(' ' + ex), corpo;
+    if (estado.lib === 'iconoir') corpo = (sol && window.ICONOIR_SOLIDO[n]) || window.ICONOIR[n] || window.ICONES[n];
+    else corpo = window.ICONES[n] || window.ICONOIR[n];
+    return '<svg class="ic ' + ex.replace(/\bsol\b/, '').trim() + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (corpo || '') + '</svg>';
+  }
+
+  // ---------- peças compartilhadas dos cards ----------
+  var TIPO_COR = { Processo: 262, Memorando: 212, 'Ofício': 28, Portaria: 150 };
+  var ETAPA_COR = { Cadastro: 48, Vista: 205, Fazendo: 262, 'Aguardando retorno': 330, Finalizado: 150 };
+  var MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  function dataCurta(p) { var m = p.split('/'); return +m[0] + ' ' + MESES[+m[1] - 1]; }
+  function atrasada(d) { return d.atraso > 0 && d.etapa !== 'Finalizado'; }
+  function hue(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }
+  function chipTipo(d) { return '<span class="tag" style="--h:' + (TIPO_COR[d.tipo] || 212) + '">' + esc(d.tipo) + '</span>'; }
+  function chipPrazo(d) { var at = atrasada(d); return '<span class="pz' + (at ? ' venc' : '') + '">' + ic('calendar') + dataCurta(d.prazo) + (at ? ' · ' + d.atraso + ' d' : '') + '</span>'; }
+  function chipSelo(d) { return '<span class="selo' + (d.prazoTipo === 'Legal' ? ' legal' : '') + '">' + ic('flag') + d.prazoTipo + '</span>'; }
+  function origemP(d) { return '<span class="origem-p"><i class="pt" style="--h:' + hue(d.origem) + '"></i>' + esc(d.origem) + '</span>'; }
+  function contagem(d) { var f = d.tarefas.filter(function (t) { return t.f; }).length; return d.tarefas.length ? f + '/' + d.tarefas.length : ''; }
+  function barraProg(d) {
+    var p = pct(d);
+    return '<div class="prog"><div class="barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + (p === null ? 0 : p) + '" aria-label="Progresso das tarefas"><i style="width:' + (p === null ? 0 : p) + '%"></i></div><b class="mono">' + (p === null ? '—' : contagem(d) + ' · ' + p + '%') + '</b></div>';
+  }
+  function filtradas() {
+    var q = estado.q.trim().toLowerCase();
+    return DEMANDAS.filter(function (d) {
+      if (estado.soAtras && !atrasada(d)) return false;
+      return !q || (d.tipo + ' ' + d.num + ' ' + d.assunto + ' ' + d.origem).toLowerCase().indexOf(q) > -1;
+    });
+  }
+
+  // ---------- card de dois lados ----------
+  function cardHTML(d) {
+    var pend = d.tarefas.filter(function (t) { return !t.f; }), fin = d.etapa === 'Finalizado', at = atrasada(d), meio;
+    if (!d.tarefas.length) {
+      meio = fin ? '' : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span><button data-act="add" data-id="' + d.id + '">+ Adicionar tarefa</button></div>';
+    } else if (pend.length) {
+      meio = '<div class="proxima">' + ic('arrow-right') + '<span>Próxima: ' + esc(pend[0].t) + '</span></div>';
+    } else if (!fin) {
+      meio = '<div class="fin"><span>Todas as tarefas concluídas</span><button data-act="finalizar" data-id="' + d.id + '">Finalizar demanda?</button></div>';
+    } else { meio = ''; }
+    var etapaChip = fin ? '<span class="chip">Finalizada</span>' : '<span class="chip neutro">' + esc(d.etapa) + (d.etapa === 'Aguardando retorno' ? ' · ' + esc(d.setor) + ' ' + d.diasAg + ' d' : '') + '</span>';
+    var frente = '<div class="face front"><div class="cab">' + origemP(d) +
+      '<button class="girar" data-act="girar" data-id="' + d.id + '" aria-label="Girar o card para ver o verso">' + ic('rotate-cw') + '</button></div>' +
+      '<div class="tags">' + chipTipo(d) + '<span class="num mono">' + esc(d.num) + '</span>' + etapaChip + '</div>' +
+      '<div class="assunto" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</div>' +
+      '<div class="chips">' + chipPrazo(d) + chipSelo(d) + '</div>' + meio + barraProg(d) + '</div>';
+    var tarefas = d.tarefas.length ? '<ul class="tarefas">' + d.tarefas.map(function (t, i) {
+      return '<li><label><input type="checkbox" data-act="tarefa" data-id="' + d.id + '" data-i="' + i + '"' + (t.f ? ' checked' : '') + '><span class="' + (t.f ? 'feita' : '') + '">' + esc(t.t) + '</span></label></li>';
+    }).join('') + '</ul>' : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span><button data-act="add" data-id="' + d.id + '">+ Adicionar tarefa</button></div>';
+    var meta = '<div class="meta"><div>Chegou em<b>' + d.chegou + '</b></div><div>Dias parada<b>' + d.parado + '</b></div><div>Tipo<b>' + esc(d.tipo) + '</b></div>' +
+      (d.setor ? '<div>Setor<b>' + esc(d.setor) + ' · ' + d.diasAg + ' dias</b></div><div>Acompanhar em<b>' + d.acompanhar + '</b></div>' : '') + '</div>';
+    var acoes = '<div class="acoes">' +
+      (d.etapa === 'Cadastro' ? '<button class="btn pri mini" data-act="javi" data-id="' + d.id + '">' + ic('eye') + 'Já vi</button>' : '') +
+      (fin ? '<button class="btn mini" data-act="reabrir" data-id="' + d.id + '">Reabrir</button>' : '<button class="btn pri mini" data-act="concluir" data-id="' + d.id + '">' + ic('check') + 'Concluir</button>') +
+      '<button class="btn mini so-icone" data-act="msg" data-m="Arquivar" aria-label="Arquivar" title="Arquivar">' + ic('archive') + '</button>' +
+      '<button class="btn mini so-icone" data-act="msg" data-m="Mover de etapa" aria-label="Mover de etapa" title="Mover de etapa">' + ic('arrow-right') + '</button>' +
+      '<button class="btn mini so-icone" data-act="msg" data-m="Editar" aria-label="Editar" title="Editar">' + ic('pencil') + '</button></div>';
+    var verso = '<div class="face back"><div class="cab"><span class="num mono">' + esc(d.tipo) + ' ' + esc(d.num) + '</span>' +
+      '<button class="girar" data-act="girar" data-id="' + d.id + '" aria-label="Voltar para a frente do card">' + ic('rotate-cw') + '</button></div>' + tarefas + meta + acoes + '</div>';
+    return '<article class="dcard' + (at ? ' atrasada' : '') + (estado.virado[d.id] ? ' virado' : '') + '" data-id="' + d.id + '"><div class="faces">' + frente + verso + '</div></article>';
+  }
+
+  // ---------- visões de Demandas ----------
+  function mini(d) {
+    var fin = d.etapa === 'Finalizado', pend = d.tarefas.filter(function (t) { return !t.f; });
+    return '<article class="mini-card' + (atrasada(d) ? ' atrasada' : '') + (fin ? ' feita' : '') + '"><div class="m-top">' + origemP(d) +
+      '<button class="mais" data-act="msg" data-m="Mais ações" aria-label="Mais ações">' + ic('ellipsis') + '</button></div>' +
+      '<div class="tags">' + chipTipo(d) + '<span class="num mono">' + esc(d.num) + '</span></div>' +
+      '<div class="m-tit"><button class="circ' + (fin ? ' ok' : '') + '" data-act="' + (fin ? 'reabrir' : 'concluir') + '" data-id="' + d.id + '" aria-label="' + (fin ? 'Reabrir demanda' : 'Marcar como finalizada') + '">' + (fin ? ic('check') : '') + '</button>' +
+      '<span class="assunto" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</span></div>' +
+      (pend.length && !fin ? '<div class="proxima-s">Próxima: ' + esc(pend[0].t) + '</div>' : '') +
+      '<div class="chips">' + chipPrazo(d) + chipSelo(d) + (d.setor ? '<span class="chip neutro">' + esc(d.setor) + ' · ' + d.diasAg + ' d</span>' : '') + '</div>' + barraProg(d) + '</article>';
+  }
+  function quadro() {
+    var lista = filtradas();
+    return '<div class="etapas-tabs" role="tablist">' + ETAPAS.map(function (et) {
+      var n = lista.filter(function (d) { return d.etapa === et; }).length;
+      return '<button role="tab" data-act="etapa" data-e="' + et + '" aria-pressed="' + (estado.etapaSel === et) + '" style="--et:' + ETAPA_COR[et] + '"><i class="dot"></i>' + et + ' <span class="cnt">' + n + '</span></button>';
+    }).join('') + '</div><div class="quadro">' + ETAPAS.map(function (et) {
+      var l = lista.filter(function (d) { return d.etapa === et; });
+      return '<section class="coluna' + (estado.etapaSel === et ? ' sel' : '') + '" aria-label="' + et + '" style="--et:' + ETAPA_COR[et] + '"><header><i class="dot"></i><h4>' + et + '</h4><span class="cnt">' + l.length + '</span><span class="esp"></span>' +
+        '<button class="icbtn-s" data-act="msg" data-m="Nova demanda em ' + et + '" aria-label="Nova demanda em ' + et + '">' + ic('plus') + '</button><button class="icbtn-s" data-act="msg" data-m="Opções da coluna" aria-label="Opções da coluna">' + ic('ellipsis') + '</button></header>' +
+        (l.map(mini).join('') || '<div class="vazio-c">Nenhuma demanda</div>') +
+        '<button class="nova" data-act="msg" data-m="Nova demanda em ' + et + '">' + ic('plus') + 'Nova demanda</button></section>';
+    }).join('') + '</div>';
+  }
   function ordenadas() {
     var k = estado.ord, dir = estado.ordDir;
     function chave(d) {
@@ -139,47 +186,46 @@
       if (k === 'pct') return pct(d) === null ? -1 : pct(d);
       var m = d.prazo.split('/'); return +m[1] * 100 + +m[0];
     }
-    return DEMANDAS.slice().sort(function (a, b) { var x = chave(a), y = chave(b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
-  }
-  function mini(d) {
-    var p = pct(d), at = d.atraso > 0 && d.etapa !== 'Finalizado';
-    return '<article class="mini-card' + (at ? ' atrasada' : '') + '"><div class="num mono">' + esc(d.tipo) + ' ' + esc(d.num) + '</div><div class="assunto" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</div>' +
-      '<div class="origem">' + ic('building-2') + esc(d.origem) + '</div><div class="prazo' + (at ? ' atrasada' : '') + '"><span class="chip ' + (at ? 'perigo' : 'neutro') + '">' + d.prazoTipo + '</span><span class="mono">' + d.prazo + (at ? ' · atrasada' : '') + '</span></div>' +
-      '<div class="prog"><div class="barra"><i style="width:' + (p || 0) + '%"></i></div><b class="mono">' + (p === null ? '—' : p + '%') + '</b></div></article>';
-  }
-  function quadro() {
-    return '<div class="quadro">' + ETAPAS.map(function (et) {
-      var l = DEMANDAS.filter(function (d) { return d.etapa === et; });
-      return '<section class="coluna" aria-label="' + et + '"><h4>' + et + ' <span class="chip neutro">' + l.length + '</span></h4>' + (l.map(mini).join('') || '<div class="vazio-c">Nenhum card</div>') + '</section>';
-    }).join('') + '</div>';
+    return filtradas().sort(function (a, b) { var x = chave(a), y = chave(b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
   }
   function tabela() {
-    var cols = [['num', 'Número'], ['assunto', 'Assunto'], ['origem', 'Origem'], ['prazo', 'Prazo'], ['etapa', 'Etapa'], ['pct', '%']];
+    var cols = [['num', 'Número'], ['assunto', 'Assunto'], ['origem', 'Origem'], ['prazo', 'Prazo'], ['etapa', 'Etapa'], ['pct', 'Andamento']];
     return '<div class="tabela-w"><table class="tabela"><thead><tr>' + cols.map(function (c) {
       var at = estado.ord === c[0];
       return '<th scope="col" aria-sort="' + (at ? (estado.ordDir > 0 ? 'ascending' : 'descending') : 'none') + '"><button data-act="ordenar" data-k="' + c[0] + '">' + c[1] + (at ? ic(estado.ordDir > 0 ? 'arrow-up' : 'arrow-down') : '') + '</button></th>';
     }).join('') + '</tr></thead><tbody>' + ordenadas().map(function (d) {
-      var p = pct(d), at = d.atraso > 0 && d.etapa !== 'Finalizado';
-      return '<tr class="' + (at ? 'atrasada' : '') + '"><td class="mono">' + esc(d.num) + '</td><td>' + esc(d.assunto) + '</td><td>' + esc(d.origem) + '</td><td class="mono">' + d.prazo + ' <span class="chip ' + (at ? 'perigo' : 'neutro') + '">' + d.prazoTipo + '</span></td><td>' + esc(d.etapa) + '</td><td class="mono">' + (p === null ? '—' : p + '%') + '</td></tr>';
+      return '<tr class="' + (atrasada(d) ? 'atrasada' : '') + '"><td class="mono">' + chipTipo(d) + ' ' + esc(d.num) + '</td><td><b>' + esc(d.assunto) + '</b></td><td>' + origemP(d) + '</td><td>' + chipPrazo(d) + ' ' + chipSelo(d) + '</td><td><span class="et-p" style="--et:' + ETAPA_COR[d.etapa] + '"><i class="dot"></i>' + esc(d.etapa) + '</span></td><td style="min-width:150px">' + barraProg(d) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
   }
   function lista() {
-    return '<div class="lista">' + DEMANDAS.map(function (d) {
-      var p = pct(d), at = d.atraso > 0 && d.etapa !== 'Finalizado', ab = estado.aberto[d.id];
-      var tar = d.tarefas.length ? '<ul class="tarefas">' + d.tarefas.map(function (t, i) { return '<li><label><input type="checkbox" data-act="tarefa" data-id="' + d.id + '" data-i="' + i + '"' + (t.f ? ' checked' : '') + '><span class="' + (t.f ? 'feita' : '') + '">' + esc(t.t) + '</span></label></li>'; }).join('') + '</ul>'
-        : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span><button data-act="add" data-id="' + d.id + '">+ Adicionar tarefa</button></div>';
-      return '<div class="linha' + (at ? ' atrasada' : '') + '"><button class="linha-c" data-act="abrirlinha" data-id="' + d.id + '" aria-expanded="' + !!ab + '">' + ic('chevron-right', ab ? 'gira' : '') +
-        '<span class="mono num">' + esc(d.num) + '</span><span class="ass">' + esc(d.assunto) + '</span><span class="chip ' + (at ? 'perigo' : 'neutro') + '">' + d.prazo + '</span><b class="mono">' + (p === null ? '—' : p + '%') + '</b></button>' +
-        (ab ? '<div class="linha-d">' + tar + '</div>' : '') + '</div>';
+    var l = filtradas();
+    return '<div class="lista">' + ETAPAS.map(function (et) {
+      var itens = l.filter(function (d) { return d.etapa === et; }), fechado = estado.grupos[et];
+      return '<section class="grupo" style="--et:' + ETAPA_COR[et] + '"><button class="grupo-h" data-act="grupo" data-e="' + et + '" aria-expanded="' + !fechado + '">' + ic('chevron-down', fechado ? 'fechado' : '') + '<i class="dot"></i><b>' + et + '</b><span class="cnt">' + itens.length + '</span></button>' +
+        (fechado ? '' : (itens.map(function (d) {
+          var ab = estado.aberto[d.id], fin = d.etapa === 'Finalizado';
+          var tar = d.tarefas.length ? '<ul class="tarefas">' + d.tarefas.map(function (t, i) { return '<li><label><input type="checkbox" data-act="tarefa" data-id="' + d.id + '" data-i="' + i + '"' + (t.f ? ' checked' : '') + '><span class="' + (t.f ? 'feita' : '') + '">' + esc(t.t) + '</span></label></li>'; }).join('') + '</ul>'
+            : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span><button data-act="add" data-id="' + d.id + '">+ Adicionar tarefa</button></div>';
+          return '<div class="linha' + (atrasada(d) ? ' atrasada' : '') + (fin ? ' feita' : '') + '"><div class="linha-c"><button class="circ' + (fin ? ' ok' : '') + '" data-act="' + (fin ? 'reabrir' : 'concluir') + '" data-id="' + d.id + '" aria-label="' + (fin ? 'Reabrir demanda' : 'Marcar como finalizada') + '">' + (fin ? ic('check') : '') + '</button>' +
+            '<button class="linha-m" data-act="abrirlinha" data-id="' + d.id + '" aria-expanded="' + !!ab + '"><span class="mono num">#' + esc(d.num) + '</span><span class="ass">' + esc(d.assunto) + '</span>' + origemP(d) + chipTipo(d) + '</button>' +
+            '<span class="dir">' + chipSelo(d) + chipPrazo(d) + '<b class="mono pc">' + (pct(d) === null ? '—' : pct(d) + '%') + '</b></span></div>' + (ab ? '<div class="linha-d">' + tar + '</div>' : '') + '</div>';
+        }).join('') || '<div class="vazio-c">Nenhuma demanda</div>')) + '</section>';
     }).join('') + '</div>';
   }
+  function vista() {
+    var l = filtradas();
+    if (!l.length) return '<div class="vazio">' + ic('search', 'grande') + '<h3>Nenhuma demanda encontrada</h3><p>Ajuste o filtro para ver mais.</p></div>';
+    return estado.vis === 'cards' ? '<div class="cards">' + l.map(cardHTML).join('') + '</div>' : estado.vis === 'quadro' ? quadro() : estado.vis === 'tabela' ? tabela() : lista();
+  }
   function demandas() {
-    var V = [['cards', 'Cards', 'layout-grid'], ['quadro', 'Quadro', 'square-kanban'], ['tabela', 'Tabela', 'table'], ['lista', 'Lista', 'list']];
-    return '<div class="filtros"><div class="vis" role="group" aria-label="Visão">' + V.map(function (v) {
-      return '<button data-act="vis" data-v="' + v[0] + '" aria-pressed="' + (estado.vis === v[0]) + '">' + ic(v[2]) + v[1] + '</button>';
-    }).join('') + '</div><span class="chip perigo">1 atrasada</span><span class="chip neutro">Legal</span><span class="chip neutro">Próprio</span>' +
-      '<button class="btn mini" data-nav="arquivo">' + ic('archive') + 'Arquivo</button></div>' +
-      (estado.vis === 'cards' ? '<div class="cards">' + DEMANDAS.map(cardHTML).join('') + '</div>' : estado.vis === 'quadro' ? quadro() : estado.vis === 'tabela' ? tabela() : lista());
+    var V = [['cards', 'Cards', 'view-grid'], ['quadro', 'Quadro', 'columns'], ['tabela', 'Tabela', 'table'], ['lista', 'Lista', 'list']];
+    var nAt = DEMANDAS.filter(atrasada).length;
+    return '<div class="toolbar"><div class="tabs" role="group" aria-label="Visão">' + V.map(function (v) {
+      return '<button data-act="vis" data-v="' + v[0] + '" aria-pressed="' + (estado.vis === v[0]) + '" aria-label="' + v[1] + '">' + ic(v[2] === 'view-grid' ? 'layout-grid' : v[2]) + '<span class="tx">' + v[1] + '</span></button>';
+    }).join('') + '</div><label class="filtro">' + ic('search') + '<input id="fq" placeholder="Filtrar demandas ( / )" value="' + esc(estado.q) + '" aria-label="Filtrar demandas" autocomplete="off"></label>' +
+      '<button class="btn gl" data-act="atras" aria-pressed="' + estado.soAtras + '" aria-label="Só atrasadas">' + ic('clock') + '<span class="tx">Só atrasadas' + (nAt ? ' ' + nAt : '') + '</span></button>' +
+      '<button class="btn gl" data-act="msg" data-m="Filtros: prazo, origem, tipo" aria-label="Filtros">' + ic('filter') + '<span class="tx">Filtros</span></button>' +
+      '<button class="btn escuro" data-act="msg" data-m="Nova demanda" aria-label="Nova demanda">' + ic('plus') + '<span class="tx">Nova demanda</span></button></div><div id="vista">' + vista() + '</div>';
   }
 
   // ---------- Entradas ----------
@@ -255,7 +301,9 @@
       '<section class="painel"><h3>Fontes</h3><div class="fontes">' + FONTES.map(function (f, i) {
         return '<button class="fonte" data-act="fonte" data-i="' + i + '" aria-pressed="' + (estado.fonte === i) + '"><span style="font-family:' + f[2] + ';font-size:20px;font-weight:700">' + f[0] + '</span><span style="font-family:' + f[1] + ';font-size:13px">Resposta ao Ofício 311/2026, ação, atenção e coração</span></button>';
       }).join('') + '</div></section>' +
-      '<section class="painel"><h3>Ícones</h3><div class="acoes">' + [['pastilha', 'Lucide em pastilha'], ['fino', 'Lucide fino'], ['duotone', 'Lucide duotone']].map(function (x) {
+      '<section class="painel"><h3>Ícones</h3><div class="acoes">' + [['iconoir', 'Iconoir'], ['lucide', 'Lucide']].map(function (x) {
+        return '<button class="btn mini" data-act="lib" data-v="' + x[0] + '" aria-pressed="' + (estado.lib === x[0]) + '">' + x[1] + '</button>';
+      }).join('') + '</div><div class="acoes">' + [['pastilha', 'Lucide em pastilha'], ['fino', 'Lucide fino'], ['duotone', 'Lucide duotone']].map(function (x) {
         return '<button class="btn mini" data-act="ico" data-v="' + x[0] + '" aria-pressed="' + (iconeEstilo() === x[0]) + '">' + x[1] + '</button>';
       }).join('') + '</div><div class="amostra-ic">' + ['house', 'inbox', 'square-kanban', 'calendar', 'file-text', 'sparkles', 'settings', 'clock', 'hourglass'].map(function (n) { return '<span class="ico">' + ic(n, 'duo') + '</span>'; }).join('') + '</div></section>' +
       '<section class="painel"><h3>Tamanhos</h3>' + [['fs', 'Texto', 13, 20, estado.fs], ['ico', 'Ícones', 16, 28, estado.ico], ['cardh', 'Altura dos cards', 300, 420, estado.cardh]].map(function (r) {
@@ -267,28 +315,37 @@
   var TELAS_FN = { inicio: inicio, entradas: entradas, demandas: demandas, agenda: agenda, documentos: documentos, ia: ia, config: config, perfil: perfil, arquivo: arquivo, mais: mais };
 
   // ---------- montagem do app ----------
+  var SUBS = { inicio: 'Seu dia em um só lugar.', entradas: 'Anotações rápidas que podem virar demandas.', agenda: 'Prazos de demanda e compromissos, juntos.', documentos: 'Modelos e arquivos ligados às demandas.', ia: 'Sua estagiária: pergunta, executa e desfaz.', config: 'Cores, fontes, ícones e tamanhos, com visualização na hora.', perfil: 'Só seu e privado.', arquivo: 'Demandas arquivadas.', mais: 'Outras áreas do Dmanda.' };
   function montar() {
     var f = $('#frame');
-    var nav = NAV.map(function (n) { return '<button class="navi" data-nav="' + n[0] + '"' + (n[0] === estado.tela ? ' aria-current="page"' : '') + '><span class="ico">' + ic(n[2], 'duo') + '</span><span class="tx">' + n[1] + '</span></button>'; }).join('');
+    var nav = NAV.map(function (n) { var at = n[0] === estado.tela; return '<button class="navi" data-nav="' + n[0] + '"' + (at ? ' aria-current="page"' : '') + ' title="' + n[1] + '"><span class="ico">' + ic(n[2], 'duo' + (at ? ' sol' : '')) + '</span><span class="tx">' + n[1] + '</span></button>'; }).join('');
+    var emMais = ['mais', 'entradas', 'documentos', 'ia', 'config', 'arquivo'].indexOf(estado.tela) > -1;
     var bar = [['inicio', 'Início', 'house'], ['demandas', 'Demandas', 'square-kanban']].map(function (n) {
-      return '<button class="bi" data-nav="' + n[0] + '"' + (n[0] === estado.tela ? ' aria-current="page"' : '') + '>' + ic(n[2], 'duo') + n[1] + '</button>';
+      var at = n[0] === estado.tela;
+      return '<button class="bi" data-nav="' + n[0] + '"' + (at ? ' aria-current="page"' : '') + '>' + ic(n[2], 'duo' + (at ? ' sol' : '')) + n[1] + '</button>';
     }).join('') +
       '<button class="mais-c" data-act="plus" aria-label="Criar novo" aria-expanded="' + estado.plus + '">' + ic('plus') + '</button>' +
-      '<button class="bi" data-nav="agenda"' + (estado.tela === 'agenda' ? ' aria-current="page"' : '') + '>' + ic('calendar', 'duo') + 'Agenda</button><button class="bi" data-nav="mais"' + (['mais', 'entradas', 'documentos', 'ia', 'config', 'arquivo'].indexOf(estado.tela) > -1 ? ' aria-current="page"' : '') + '>' + ic('ellipsis') + 'Mais</button>';
+      '<button class="bi" data-nav="agenda"' + (estado.tela === 'agenda' ? ' aria-current="page"' : '') + '>' + ic('calendar', 'duo' + (estado.tela === 'agenda' ? ' sol' : '')) + 'Agenda</button>' +
+      '<button class="bi" data-nav="mais"' + (emMais ? ' aria-current="page"' : '') + '>' + ic('ellipsis') + 'Mais</button>';
     var menu = MAIS.map(function (m, i) { return (i === 3 ? '<hr>' : '') + '<button class="' + (m[3] ? 'rapido' : '') + '" data-act="msg" data-m="Novo: ' + m[1] + '">' + ic(m[2]) + m[1] + '</button>'; }).join('');
-    f.innerHTML = '<div class="app" data-dir="' + estado.dir + '" data-tema="' + estado.tema + '" data-ico="' + iconeEstilo() + '" data-anim="' + estado.anim + '" style="' + estiloApp() + '" data-dev="' + (estado.dev === 'desktop' || estado.dev === 'media' || estado.dev === 'tablet-h' ? 'desktop' : 'toque') + '">' +
+    var sub = estado.tela === 'demandas' ? DEMANDAS.length + ' demandas, ' + DEMANDAS.filter(atrasada).length + ' atrasada. Do cadastro à conclusão.' : (SUBS[estado.tela] || '');
+    var corpo = (TELAS_FN[estado.tela] || inicio)();
+    f.innerHTML = '<div class="app" data-dir="' + estado.dir + '" data-tema="' + estado.tema + '" data-ico="' + iconeEstilo() + '" data-anim="' + estado.anim + '" data-dev="' + (estado.dev === 'desktop' || estado.dev === 'media' || estado.dev === 'tablet-h' ? 'desktop' : 'toque') + '">' +
       '<div class="bg"></div>' +
       '<aside class="side" aria-label="Menu"><div class="logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' + nav + '<div class="esp"></div><div class="rodape">Taquara/RS</div></aside>' +
-      '<header class="top"><h2>' + (TITULOS[estado.tela] || '') + '</h2>' +
-      '<button class="icbtn buscabtn" data-act="busca" aria-label="Buscar em tudo">' + ic('search') + '<span class="tx">Buscar em tudo</span><kbd>/</kbd></button>' +
+      '<header class="top"><div class="top-logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' +
+      '<button class="icbtn buscabtn" data-act="busca" aria-label="Buscar em tudo">' + ic('search') + '<span class="tx">Buscar demanda, entrada, evento ou documento</span><kbd>Ctrl K</kbd></button>' +
+      '<button class="icbtn sino" data-act="msg" data-m="Avisos de compromissos" aria-label="Avisos, 2 novos">' + ic('bell') + '<span class="badge">2</span></button>' +
       '<button class="icbtn" data-act="tema" aria-label="Alternar tema claro e escuro">' + ic(estado.tema === 'claro' ? 'moon' : 'sun') + '</button>' +
-      '<button class="avatar" data-nav="perfil" aria-label="Abrir o Perfil">S</button></header>' +
-      '<main class="main" id="main">' + (TELAS_FN[estado.tela] || inicio)() + '</main>' +
+      '<button class="perfil-b" data-nav="perfil" aria-label="Abrir o Perfil"><span class="avatar">S</span><span class="tx">Secretário</span></button></header>' +
+      '<main class="main" id="main"><div class="pagehead"><h1>' + (TITULOS[estado.tela] || '') + '</h1><p>' + sub + '</p></div>' + corpo + '</main>' +
       '<nav class="bar glass" aria-label="Navegação">' + bar + '</nav>' +
       '<button class="fab" data-act="plus" aria-label="Criar novo" aria-expanded="' + estado.plus + '">' + ic('plus') + '</button>' +
       '<div class="menuplus glass' + (estado.plus ? ' aberto' : '') + '" role="menu" aria-label="Criar">' + menu + '</div>' +
       '<div class="busca-ov" id="ov"><div class="busca-box glass" role="dialog" aria-label="Busca"><input id="q" placeholder="Buscar demanda, entrada, evento ou documento" autocomplete="off"><div id="res"></div></div></div>' +
       '<div class="toast" id="toast" role="status"></div></div>';
+    // estilo (paleta, fonte, tamanhos) aplicado por DOM: o valor tem aspas e não pode ir dentro do atributo em texto
+    $('.app').setAttribute('style', estiloApp());
     $('#nota-dir').textContent = NOTAS[estado.dir];
   }
 
@@ -332,6 +389,10 @@
     else if (a === 'add') { d.tarefas.push({ t: 'Nova tarefa', f: false }); trocar({}); toast('Tarefa adicionada'); }
     else if (a === 'abrir') toast('Abriria a demanda completa');
     else if (a === 'vis') trocar({ vis: b.dataset.v });
+    else if (a === 'etapa') trocar({ etapaSel: b.dataset.e });
+    else if (a === 'grupo') { estado.grupos[b.dataset.e] = !estado.grupos[b.dataset.e]; trocar({}); }
+    else if (a === 'atras') trocar({ soAtras: !estado.soAtras });
+    else if (a === 'lib') trocar({ lib: b.dataset.v });
     else if (a === 'ordenar') trocar({ ordDir: estado.ord === b.dataset.k ? -estado.ordDir : 1, ord: b.dataset.k });
     else if (a === 'abrirlinha') { estado.aberto[id] = !estado.aberto[id]; trocar({}); }
     else if (a === 'ag') trocar({ ag: b.dataset.v });
@@ -340,13 +401,14 @@
     else if (a === 'fonte') trocar({ fonte: +b.dataset.i });
     else if (a === 'ico') trocar({ iconeEstilo: b.dataset.v });
     else if (a === 'anim') trocar({ anim: !estado.anim });
-    else if (a === 'restaurar') trocar({ pal: null, fonte: 0, fs: 15, ico: 20, cardh: 340, anim: false, iconeEstilo: '' });
+    else if (a === 'restaurar') trocar({ pal: null, fonte: 0, fs: 15, ico: 20, cardh: 340, anim: false, iconeEstilo: '', lib: 'iconoir' });
     else if (a === 'msg') { toast(b.dataset.m); if (estado.plus) trocar({ plus: false }); }
     if (a !== 'plus' && a !== 'msg' && estado.plus && !b.closest('.menuplus')) { estado.plus = false; var mp = $('.menuplus'); if (mp) mp.classList.remove('aberto'); }
   });
   document.addEventListener('click', function (e) { if (e.target.id === 'ov') fecharBusca(); });
   document.addEventListener('input', function (e) {
     if (e.target.id === 'q') buscar();
+    else if (e.target.id === 'fq') { estado.q = e.target.value; var v = $('#vista'); if (v) v.innerHTML = vista(); }
     else if (e.target.dataset && e.target.dataset.cfg) {
       var k = e.target.dataset.cfg; estado[k] = +e.target.value;
       var app = $('.app'); if (app) app.setAttribute('style', estiloApp());
@@ -361,7 +423,8 @@
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { fecharBusca(); if (estado.plus) trocar({ plus: false }); }
-    else if (e.key === '/' && e.target.tagName !== 'INPUT') { e.preventDefault(); abrirBusca(); }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); abrirBusca(); }
+    else if (e.key === '/' && e.target.tagName !== 'INPUT') { e.preventDefault(); var fq = $('#fq'); if (fq) fq.focus(); else abrirBusca(); }
     else if ((e.key === 'Enter') && e.target.dataset && e.target.dataset.act === 'abrir') toast('Abriria a demanda completa');
   });
 
@@ -370,6 +433,11 @@
   new URLSearchParams(location.hash.slice(1)).forEach(function (v, k) { if (k in estado && k !== 'virado') estado[k] = (typeof estado[k] === 'number' || k === 'pal') && v !== '' && !isNaN(v) ? +v : v; });
   if (!TELAS[estado.dev]) estado.dev = 'desktop';
   new URLSearchParams(location.hash.slice(1)).forEach(function (v, k) { if (k === 'virar') v.split(',').forEach(function (i) { estado.virado[i] = true; }); });
+  document.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t.classList && t.classList.contains('emo-img')) t.replaceWith(document.createTextNode(t.dataset.e));
+  }, true);
+
   var f0 = $('#frame'); f0.style.setProperty('--w', TELAS[estado.dev][0] + 'px'); f0.style.setProperty('--h', TELAS[estado.dev][1] + 'px');
   $$('.ctl .seg').forEach(function (x) { var k = x.dataset.dir ? 'dir' : x.dataset.tema ? 'tema' : x.dataset.dev ? 'dev' : 'tela'; x.setAttribute('aria-pressed', x.dataset[k] === estado[k]); });
   estado.plus = estado.plus === 'true' || estado.plus === true;
