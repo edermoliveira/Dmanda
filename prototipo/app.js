@@ -6,7 +6,7 @@
     a: 'Aurora: vidro estilo Apple em quase tudo, gradiente suave, cantos grandes. Tema definitivo do Dmanda.',
     b: 'Papel: calmo, tom de papel, títulos serifados, vidro discreto. Tema definitivo do Dmanda.',
     c: 'Grafite: denso, bordas finas, ícones duotone, leitura rápida. Tema definitivo do Dmanda.',
-    d: 'Catalyst: estilo Apple para Mac e iPad, baseado no kit oficial do Figma. Cinza de sistema, azul, superfícies sólidas, listas com linhas finas e controles compactos.'
+    d: 'Catalyst: estilo nativo Apple (iOS e iPadOS 27) a partir do kit oficial do Figma. Liquid Glass nas barras, menus, folhas e botões, abas em cápsula, cards sólidos sobre cinza de sistema e movimento com mola.'
   };
 
   var LOGOS_ORIG = {

@@ -1,86 +1,266 @@
 /* =====================================================================
-   Tema D: Catalyst (22/10/2026). Baseado no kit "iOS and iPadOS 27" (Figma, Apple):
-   fundo cinza agrupado do sistema, superfícies sólidas sem vidro, separadores finos,
-   barra lateral reta com seleção em azul, controles compactos (28 e 34 px) e
-   controle segmentado com cápsula branca. Azul de sistema, vermelho só para atraso ou crítico.
-   Nunca usar branco nem preto absolutos: branco = #FCFCFC, preto = #0A0A0A.
+   Tema D: Catalyst (22/10/2026). Estilo nativo Apple (iOS e iPadOS 27) a partir do kit do Figma:
+   Liquid Glass nas barras, menus, folhas e botões (blur, saturação, brilho de borda e lente),
+   cinza agrupado do sistema por baixo, cards sólidos, azul de sistema e movimento com mola.
+   Vermelho só para atraso ou crítico. Branco = #FCFCFC, preto = #0A0A0A (nunca absolutos).
    Só vale para .app[data-dir="d"]; Aurora, Papel e Grafite não são tocados.
+   O movimento é feito por catalyst.js (observa a troca de tela e anima entrada, saída e seleção).
    ===================================================================== */
 
 .app[data-dir="d"] {
   --font: "Inter", -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; --font-h: var(--font); --font-n: var(--font);
-  --r-card: 12px; --r-field: 10px; --r-btn: 8px; --sw: 1.75; --pad: 16px; --blur: 20px;
+  --r-card: 22px; --r-field: 14px; --r-btn: 999px; --sw: 1.75; --pad: 16px; --blur: 24px;
+  --mola: cubic-bezier(.32, 1.25, .5, 1); --suave: cubic-bezier(.22, 1, .36, 1); --rapido: cubic-bezier(.4, 0, .2, 1);
+  --verde: #248A3D; --verde-vivo: #30D158;
 }
 .app[data-dir="d"][data-tema="claro"] {
   --bgbase: #F2F2F7; --bg1: #F2F2F7; --bg2: #F2F2F7; --bg3: #F2F2F7;
-  --card: #FCFCFC; --card-brd: rgba(60,60,67,.12); --panel: #F7F7FA; --glass: rgba(246,246,248,.82); --glass-brd: rgba(60,60,67,.18);
-  --text: #0A0A0A; --text2: #5F5F66; --brd: rgba(60,60,67,.2); --track: rgba(118,118,128,.12);
+  --card: #FCFCFC; --card-brd: rgba(60,60,67,.1); --panel: #F7F7FA; --glass: rgba(246,246,248,.7); --glass-brd: rgba(60,60,67,.14);
+  --text: #0A0A0A; --text2: #5F5F66; --brd: rgba(60,60,67,.2); --track: rgba(118,118,128,.14);
   --acc: #0071E3; --acc-ink: #FCFCFC; --acc-soft: rgba(0,113,227,.12); --acc-text: #0062C4; --foco: #0071E3;
-  --perigo: #D70015; --perigo-soft: rgba(215,0,21,.1); --on-perigo: #FCFCFC;
+  --perigo: #C4001A; --perigo-soft: rgba(196,0,26,.09); --on-perigo: #FCFCFC;
   --shadow: none; --solido: rgba(254,254,254,.98);
-  --btn-bg: rgba(118,118,128,.12); --btn-brd: transparent; --btn-hi: rgba(118,118,128,.18); --btn-hov: rgba(118,118,128,.2);
+  --btn-bg: rgba(118,118,128,.14); --btn-hov: rgba(118,118,128,.22); --sel: rgba(118,118,128,.18);
+  /* Liquid Glass */
+  --lq-fill: rgba(252,252,252,.46); --lq-fill-forte: rgba(250,250,252,.94);
+  --lq-edge: rgba(252,252,252,.95); --lq-edge2: rgba(252,252,252,.45); --lq-rim: rgba(10,10,10,.07);
+  --lq-glow: rgba(252,252,252,.55); --lq-sh: 0 10px 34px rgba(10,10,10,.12), 0 1px 3px rgba(10,10,10,.08);
 }
 .app[data-dir="d"][data-tema="escuro"] {
   --bgbase: #0A0A0A; --bg1: #0A0A0A; --bg2: #0A0A0A; --bg3: #0A0A0A;
-  --card: #1C1C1E; --card-brd: rgba(84,84,88,.5); --panel: #141416; --glass: rgba(28,28,30,.82); --glass-brd: rgba(84,84,88,.5);
-  --text: #FCFCFC; --text2: #A1A1A8; --brd: rgba(84,84,88,.6); --track: rgba(118,118,128,.24);
-  --acc: #3D9BFF; --acc-ink: #04152B; --acc-soft: rgba(61,155,255,.18); --acc-text: #6DB3FF; --foco: #6DB3FF;
+  --card: #1C1C1E; --card-brd: rgba(84,84,88,.45); --panel: #141416; --glass: rgba(28,28,30,.7); --glass-brd: rgba(84,84,88,.5);
+  --text: #FCFCFC; --text2: #A1A1A8; --brd: rgba(84,84,88,.6); --track: rgba(118,118,128,.26);
+  --acc: #3D9BFF; --acc-ink: #04152B; --acc-soft: rgba(61,155,255,.2); --acc-text: #6DB3FF; --foco: #6DB3FF;
   --perigo: #FF6961; --perigo-soft: rgba(255,105,97,.16); --on-perigo: #2B0705;
   --shadow: none; --solido: rgba(28,28,30,.98);
-  --btn-bg: rgba(118,118,128,.24); --btn-brd: transparent; --btn-hi: rgba(118,118,128,.32); --btn-hov: rgba(118,118,128,.36);
+  --btn-bg: rgba(118,118,128,.26); --btn-hov: rgba(118,118,128,.36); --sel: rgba(118,118,128,.3);
+  --lq-fill: rgba(70,70,76,.4); --lq-fill-forte: rgba(40,40,44,.95);
+  --lq-edge: rgba(252,252,252,.32); --lq-edge2: rgba(252,252,252,.1); --lq-rim: rgba(252,252,252,.06);
+  --lq-glow: rgba(252,252,252,.12); --lq-sh: 0 12px 38px rgba(10,10,10,.55), 0 1px 3px rgba(10,10,10,.4);
 }
-/* a escolha de paleta muda só o destaque: o fundo do Catalyst continua cinza de sistema */
+.app[data-dir="d"][data-tema="escuro"] { --z-amar-bg: hsl(46 85% 26%); --z-lar-bg: hsl(26 80% 30%); --z-verm-bg: hsl(4 70% 32%); }
+.app[data-dir="d"] .tag { background: hsl(var(--h) 62% 31%); }
+.app[data-dir="d"][data-tema="escuro"] .tag { background: hsl(var(--h) 52% 32%); }
 .app[data-dir="d"] .bg { display: none; }
 .app[data-dir="d"][data-tema="claro"] { --bgbase: #F2F2F7 !important; }
 .app[data-dir="d"][data-tema="escuro"] { --bgbase: #0A0A0A !important; }
 
-/* ---------- superfícies sólidas, sem vidro e sem sombra ---------- */
-.app[data-dir="d"] :is(.painel, .stat, .alerta-l, .filtro, .perfil-b, .menuplus, .bar, .busca-box, .modal, .balao, .etapas-tabs button, .sw, .tema-c, .pend, .linha, .tabela-w, .ag-col, .ag-cel, .bolha.ia, .toast, .face, .mini-card, .coluna, .grupo, .emo) {
-  background: var(--card); border: 1px solid var(--card-brd); box-shadow: none;
+/* ---------- Liquid Glass: receita única (borda de luz, brilho interno, sombra suave) ---------- */
+.app[data-dir="d"] :is(.side, .top .buscabtn, .top .icbtn, .top .perfil-b, .bar, .menuplus, .busca-box, .toast, .balao, .modal, .dr, .tabs, .btn.gl) {
+  background: var(--lq-fill);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.9) brightness(1.04); backdrop-filter: blur(var(--blur)) saturate(1.9) brightness(1.04);
+  border: 0;
+  box-shadow: inset 1.5px 1.5px 1px -1px var(--lq-edge), inset -1px -1px 1px -1px var(--lq-edge2), inset 0 0 0 1px var(--lq-rim), inset 0 0 22px -8px var(--lq-glow), var(--lq-sh);
+}
+.app[data-dir="d"][data-tema] :is(.menuplus, .busca-box, .modal, .dr, .balao) { background: var(--lq-fill-forte); -webkit-backdrop-filter: blur(34px) saturate(2) brightness(1.04); backdrop-filter: blur(34px) saturate(2) brightness(1.04); }
+.app[data-dir="d"][data-tema] .toast { background: var(--lq-fill-forte); color: var(--text); border-radius: 999px; padding: 12px 20px; font-weight: 600; }
+
+/* ---------- superfícies de conteúdo: sólidas, sem vidro (como nos apps nativos) ---------- */
+.app[data-dir="d"] :is(.painel, .stat, .alerta-l, .filtro, .etapas-tabs button, .sw, .tema-c, .pend, .linha, .tabela-w, .ag-col, .ag-cel, .bolha.ia, .face, .mini-card, .coluna, .grupo, .emo) {
+  background: var(--card); border: 0; box-shadow: 0 0 0 1px var(--card-brd), 0 1px 2px rgba(10,10,10,.04);
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
-.app[data-dir="d"] :is(.painel, .stat, .face, .mini-card, .coluna, .grupo, .modal, .balao, .menuplus) { border-radius: var(--r-card); }
+.app[data-dir="d"] :is(.painel, .stat, .face, .mini-card, .coluna, .grupo, .tabela-w, .linha) { border-radius: var(--r-card); }
 .app[data-dir="d"] .coluna, .app[data-dir="d"] .grupo { background: var(--panel); }
-.app[data-dir="d"] .chat-f input { background: var(--card); border: 1px solid var(--card-brd); box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.app[data-dir="d"] .chat-f input { background: var(--card); border: 0; box-shadow: 0 0 0 1px var(--brd); border-radius: 999px; -webkit-backdrop-filter: none; backdrop-filter: none; }
 
-/* ---------- barra lateral e barra do topo: retas, coladas nas bordas, com linha fina ---------- */
-.app[data-dir="d"] .side, .app[data-dir="d"] .top {
-  background: var(--glass); margin: 0; border-radius: 0; box-shadow: none;
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.6); backdrop-filter: blur(var(--blur)) saturate(1.6);
-}
-.app[data-dir="d"] .side { border: 0; border-right: 1px solid var(--glass-brd); }
-.app[data-dir="d"] .top { border: 0; border-bottom: 1px solid var(--glass-brd); padding: 8px 20px; }
-.app[data-dir="d"] .navi { min-height: 44px; }
-.app[data-dir="d"] .navi .ico { width: 30px; height: 30px; border-radius: 7px; background: transparent; color: var(--acc-text); }
-.app[data-dir="d"] .navi:hover .ico { background: var(--acc-soft); }
-.app[data-dir="d"] .navi[aria-current="page"] .ico { background: var(--acc); color: var(--acc-ink); }
+/* ---------- estrutura: barras flutuantes e conteúdo passando por baixo ---------- */
+.app[data-dir="d"] .side { grid-area: auto; grid-row: 1 / -1; grid-column: 1; margin: 10px; border-radius: 34px; z-index: 8; }
+.app[data-dir="d"] .main { grid-area: auto; grid-row: 1 / -1; grid-column: 2; padding-top: 84px; scroll-padding-top: 84px; }
+.app[data-dir="d"] .top { grid-area: auto; grid-row: 1; grid-column: 2; align-self: start; margin: 10px 12px 0 0; padding: 0; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0; z-index: 7; pointer-events: none; gap: 10px; }
+.app[data-dir="d"] .top > * { pointer-events: auto; }
+/* borda de rolagem: o conteúdo desfoca e some sob os botões flutuantes */
+.app[data-dir="d"] .top::before { content: ""; position: absolute; left: -14px; right: -12px; top: -10px; height: 92px; z-index: -1; pointer-events: none;
+  background: linear-gradient(to bottom, var(--bgbase) 12%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(to bottom, #0A0A0A 45%, transparent); mask-image: linear-gradient(to bottom, #0A0A0A 45%, transparent); }
+.app[data-dir="d"] .buscabtn { border-radius: 999px; min-height: 48px; padding: 0 18px; }
+.app[data-dir="d"] .top .icbtn:not(.buscabtn) { width: 48px; height: 48px; padding: 0; border-radius: 50%; display: grid; place-items: center; position: relative; }
+.app[data-dir="d"] .perfil-b { border-radius: 999px; min-height: 48px; padding: 0 16px 0 6px; gap: 10px; font-weight: 600; }
+.app[data-dir="d"] .avatar { background: var(--acc); color: var(--acc-ink); }
+.app[data-dir="d"] .badge { background: var(--perigo); color: var(--on-perigo); }
+.app[data-dir="d"] .logo { padding-inline: 4px; }
 
-/* ---------- botões compactos: cinza de sistema, o principal em azul, sem borda nem relevo ---------- */
-.app[data-dir="d"] :is(.btn, .btn.gl, .icbtn, .seg) { background: var(--btn-bg); border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: var(--r-btn); }
-.app[data-dir="d"] :is(.btn, .btn.gl, .icbtn):hover { background: var(--btn-hov); }
-.app[data-dir="d"] :is(.btn.pri, .btn.escuro, .modal .btn.pri) { background: var(--acc); color: var(--acc-ink); box-shadow: none; }
+/* ---------- barra lateral (iPad): seleção em cápsula cinza e ícone azul, a cápsula desliza ---------- */
+.app[data-dir="d"] .navi { min-height: 46px; border-radius: 999px; transition: background .2s var(--rapido), transform .35s var(--mola); position: relative; z-index: 1; }
+.app[data-dir="d"] .navi .ico { width: 30px; height: 30px; border-radius: 50%; background: transparent !important; color: var(--acc-text); }
+.app[data-dir="d"] .navi:hover { background: var(--btn-bg); }
+.app[data-dir="d"] .navi[aria-current="page"] { background: transparent; }
+.app[data-dir="d"] .navi[aria-current="page"] .ico { color: var(--acc-text); }
+.app[data-dir="d"] .navi:active { transform: scale(.94); }
+.app[data-dir="d"] .side .thumb, .app[data-dir="d"] .bar .thumb { position: absolute; z-index: 0; border-radius: 999px; background: var(--sel); box-shadow: inset 0 1px 0 var(--lq-edge2); pointer-events: none; }
+
+.app[data-dir="d"] .main .navi.grande { border-radius: var(--r-card); box-shadow: 0 0 0 1px var(--card-brd); min-height: 60px; }
+.app[data-dir="d"] .main .navi.grande .ico { background: var(--acc-soft) !important; }
+
+/* ---------- botões (Bordered, Prominent e Glass do kit): cápsulas, sem borda, com mola ao toque ---------- */
+.app[data-dir="d"] :is(.btn, .icbtn-s, .cor-b) { transition: transform .35s var(--mola), background .2s var(--rapido), filter .2s var(--rapido), box-shadow .25s var(--rapido); }
+.app[data-dir="d"] .btn { background: var(--btn-bg); border: 0; box-shadow: none; border-radius: 999px; min-height: 44px; padding: 0 20px; font-weight: 600; color: var(--acc-text); }
+.app[data-dir="d"] .btn:hover { background: var(--btn-hov); }
+.app[data-dir="d"] .btn:active, .app[data-dir="d"] .icbtn:active, .app[data-dir="d"] .perfil-b:active, .app[data-dir="d"] .fab:active, .app[data-dir="d"] .bar .mais-c:active { transform: scale(.95); }
+.app[data-dir="d"] :is(.btn.pri, .btn.escuro, .modal .btn.pri) { background: var(--acc); color: var(--acc-ink); box-shadow: inset 0 1px 0 rgba(252,252,252,.35), 0 4px 14px color-mix(in srgb, var(--acc) 35%, transparent); }
 .app[data-dir="d"] :is(.btn.pri, .btn.escuro, .modal .btn.pri):hover { background: var(--acc); filter: brightness(1.08); }
-.app[data-dir="d"] .fab, .app[data-dir="d"] .bar .mais-c { background: var(--acc); color: var(--acc-ink); box-shadow: 0 2px 8px rgba(10,10,10,.22); border-radius: 14px; }
-.app[data-dir="d"] .btn[aria-pressed="true"], .app[data-dir="d"] .icbtn[aria-pressed="true"] { background: var(--acc-soft); color: var(--acc-text); box-shadow: inset 0 0 0 1.5px var(--acc); }
+.app[data-dir="d"] .btn.gl { color: var(--text); }
+.app[data-dir="d"] .btn[aria-pressed="true"] { background: var(--acc-soft); color: var(--acc-text); box-shadow: inset 0 0 0 1.5px var(--acc); }
+.app[data-dir="d"] .btn:disabled { opacity: .4; }
+.app[data-dir="d"] :is(.icbtn, .perfil-b, .buscabtn) { transition: transform .35s var(--mola), filter .2s var(--rapido); }
+.app[data-dir="d"] :is(.icbtn, .perfil-b):hover { filter: brightness(1.05); }
+.app[data-dir="d"] .fab, .app[data-dir="d"] .bar .mais-c { background: var(--acc); color: var(--acc-ink); border: 0; border-radius: 50%; transition: transform .45s var(--mola);
+  box-shadow: inset 1.5px 1.5px 1px -1px rgba(252,252,252,.7), inset 0 0 20px -6px rgba(252,252,252,.35), 0 8px 24px color-mix(in srgb, var(--acc) 40%, transparent), 0 2px 6px rgba(10,10,10,.18); }
+.app[data-dir="d"] .fab { right: 24px; bottom: 24px; }
+.app[data-dir="d"] .fab[aria-expanded="true"], .app[data-dir="d"] .bar .mais-c[aria-expanded="true"] { transform: rotate(135deg); }
+.app[data-dir="d"] .icbtn-s { border-radius: 50%; width: 36px; height: 36px; min-height: 36px; background: var(--btn-bg); border: 0; display: grid; place-items: center; }
+.app[data-dir="d"] .icbtn-s:hover { background: var(--btn-hov); }
 
-/* ---------- controle segmentado: trilho cinza, cápsula branca no item ativo ---------- */
-.app[data-dir="d"] .tabs { background: var(--track); border: 0; box-shadow: none; border-radius: 9px; padding: 2px; -webkit-backdrop-filter: none; backdrop-filter: none; }
-.app[data-dir="d"] .tabs button { border-radius: 7px; background: transparent; box-shadow: none; }
-.app[data-dir="d"] .tabs button[aria-pressed="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(10,10,10,.18); }
+/* ---------- controle segmentado (kit: trilho cinza, cápsula branca que desliza) ---------- */
+.app[data-dir="d"] .tabs { position: relative; background: var(--track); padding: 3px; border-radius: 999px; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1px var(--lq-rim); }
+.app[data-dir="d"] .tabs button { position: relative; z-index: 1; border-radius: 999px; background: transparent !important; box-shadow: none !important; min-height: 40px; transition: color .2s var(--rapido), transform .35s var(--mola); }
+.app[data-dir="d"] .tabs button[aria-pressed="true"] { color: var(--text); font-weight: 700; }
+.app[data-dir="d"] .tabs button:active { transform: scale(.94); }
+.app[data-dir="d"] .tabs .thumb { position: absolute; z-index: 0; border-radius: 999px; background: var(--card); box-shadow: 0 1px 4px rgba(10,10,10,.2), inset 0 1px 0 var(--lq-edge2); pointer-events: none; }
+.app[data-dir="d"][data-tema="escuro"] .tabs .thumb { background: #5A5A60; }
 
-/* ---------- campos e listas: linha fina entre itens ---------- */
-.app[data-dir="d"] .modal .fld :is(input, select, textarea), .app[data-dir="d"] .modal .add-t input { background: var(--card); border: 1px solid var(--brd); border-radius: var(--r-field); }
-.app[data-dir="d"][data-tema="escuro"] .modal .fld :is(input, select, textarea), .app[data-dir="d"][data-tema="escuro"] .modal .add-t input { background: #141416; }
-.app[data-dir="d"] .stats { gap: 0; border: 1px solid var(--card-brd); border-radius: var(--r-card); background: var(--card); overflow: hidden; }
-.app[data-dir="d"] .stat { border: 0; border-right: 1px solid var(--card-brd); border-radius: 0; background: transparent; }
+/* ---------- barra de abas flutuante (celular): cápsula de vidro, aba atual em cápsula cinza ---------- */
+.app[data-dir="d"] .bar { left: 14px; right: 14px; bottom: 14px; border-radius: 999px; padding: 6px; }
+.app[data-dir="d"] .bar .bi { border-radius: 999px; min-height: 54px; position: relative; z-index: 1; color: var(--text2); background: transparent !important; transition: color .2s var(--rapido), transform .35s var(--mola); }
+.app[data-dir="d"] .bar .bi[aria-current="page"] { color: var(--acc-text); }
+.app[data-dir="d"] .bar .bi:active { transform: scale(.92); }
+.app[data-dir="d"] .bar .mais-c { width: 54px; height: 54px; margin-top: 0; }
+
+/* ---------- menus e popovers (kit Menus): vidro, cantos grandes, linhas de 44 px ---------- */
+.app[data-dir="d"] .menuplus { border-radius: 26px; padding: 8px; width: 280px; bottom: 96px; right: 24px; transform-origin: bottom right; }
+.app[data-dir="d"] .menuplus button { border-radius: 16px; min-height: 46px; padding: 0 14px; transition: background .15s var(--rapido), transform .3s var(--mola); }
+.app[data-dir="d"] .menuplus button:hover { background: var(--sel); }
+.app[data-dir="d"] .menuplus button:active { transform: scale(.97); }
+.app[data-dir="d"] .menuplus hr { border-top: 1px solid var(--brd); margin: 6px 14px; }
+.app[data-dir="d"] .busca-box { border-radius: 30px; padding: 14px; }
+.app[data-dir="d"] .busca-box input { border: 0; background: var(--btn-bg); border-radius: 999px; padding: 0 20px; }
+.app[data-dir="d"] .busca-ov, .app[data-dir="d"] .modal-ov, .app[data-dir="d"] .dr-ov { background: rgba(10,10,10,.28); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.app[data-dir="d"][data-tema="escuro"] :is(.busca-ov, .modal-ov, .dr-ov) { background: rgba(10,10,10,.5); }
+
+/* ---------- folhas (kit Sheets): cantos de 34 px, alça no topo, fechar redondo à esquerda ---------- */
+.app[data-dir="d"] .modal { border-radius: 34px; padding: 26px 24px 22px; position: relative; }
+.app[data-dir="d"] .modal::before { content: ""; position: absolute; top: 8px; left: 50%; width: 38px; height: 5px; margin-left: -19px; border-radius: 3px; background: var(--track); }
+.app[data-dir="d"] .m-h { display: flex; align-items: center; flex-direction: row-reverse; justify-content: flex-end; gap: 12px; }
+.app[data-dir="d"] .m-h h3 { flex: 1; text-align: center; font-size: 17px; font-weight: 700; margin-right: 36px; }
+.app[data-dir="d"] .m-f { gap: 10px; }
+.app[data-dir="d"] .modal .fld :is(input, select, textarea), .app[data-dir="d"] .modal .add-t input { background: var(--btn-bg); border: 0; border-radius: var(--r-field); transition: box-shadow .2s var(--rapido), background .2s var(--rapido); }
+.app[data-dir="d"] .modal .fld :is(input, select, textarea):focus { background: var(--card); box-shadow: 0 0 0 2px var(--acc); outline: 0; }
+.app[data-dir="d"] .modal .opcoes button { border-radius: 999px; border: 0; background: var(--btn-bg); }
+.app[data-dir="d"] .modal .opcoes button[aria-pressed="true"] { background: var(--acc); color: var(--acc-ink); }
+.app[data-dir="d"] .modal { overflow-x: hidden; }
+.app[data-dir="d"] .modal :is(.m-cols, .dois, .fld) > * , .app[data-dir="d"] .modal .m-cols { min-width: 0; }
+.app[data-dir="d"] .modal .add-t { flex-wrap: wrap; }
+.app[data-dir="d"] .modal .add-t input { flex: 1 1 140px; min-width: 0; }
+.app[data-dir="d"] .modal .btn.mini { padding: 0 14px; min-height: 40px; }
+.app[data-dir="d"] button.chip { min-height: 40px; padding: 0 14px; }
+.app[data-dir="d"] .dr { border-radius: 34px 0 0 34px; margin: 10px 0 10px 10px; height: auto; }
+
+/* ---------- itens selecionáveis: contorno azul de sistema no escolhido ---------- */
+.app[data-dir="d"] :is(.tema-c, .sw, .emo, .etapas-tabs button) { border-radius: 20px; transition: box-shadow .25s var(--rapido), transform .35s var(--mola); }
+.app[data-dir="d"] :is(.tema-c, .sw, .emo, .etapas-tabs button):active { transform: scale(.96); }
+.app[data-dir="d"] :is(.tema-c, .sw, .emo, .etapas-tabs button, .filtro)[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--acc), 0 6px 18px color-mix(in srgb, var(--acc) 25%, transparent); }
+.app[data-dir="d"] .tema-c[aria-pressed="true"] b { color: var(--acc-text); }
+
+/* ---------- caixas de marcar: círculo do iOS (24 px visíveis, 44 px de toque, sem mexer no layout) ---------- */
+.app[data-dir="d"] input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; box-sizing: content-box; width: 24px; height: 24px; margin: -10px; padding: 10px; border: 0; border-radius: 50%; cursor: pointer;
+  background-clip: content-box; background-color: transparent; background-image: radial-gradient(circle closest-side, var(--card) calc(100% - 2px), var(--text2) calc(100% - 2px)); background-repeat: no-repeat;
+  transition: transform .35s var(--mola), background-color .2s var(--rapido); }
+.app[data-dir="d"] input[type="checkbox"]:checked { background-color: var(--acc); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FCFCFC' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 12.5l4 4 7-8.5'/%3E%3C/svg%3E"); background-size: 100%; }
+.app[data-dir="d"][data-tema="escuro"] input[type="checkbox"]:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2304152B' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 12.5l4 4 7-8.5'/%3E%3C/svg%3E"); }
+.app[data-dir="d"] input[type="checkbox"]:active { transform: scale(.82); }
+
+/* ---------- cards e listas: tipografia de título grande, linhas finas ---------- */
+.app[data-dir="d"] .pagehead h1 { font-size: 34px; font-weight: 800; letter-spacing: -.02em; }
+.app[data-dir="d"] .frase-dia { font-size: 26px; font-weight: 700; letter-spacing: -.015em; }
+.app[data-dir="d"] .stats { gap: 0; border-radius: var(--r-card); background: var(--card); overflow: hidden; box-shadow: 0 0 0 1px var(--card-brd); }
+.app[data-dir="d"] .stat { box-shadow: none; border-radius: 0; background: transparent; border-right: 1px solid var(--card-brd); transition: background .2s var(--rapido), transform .35s var(--mola); }
 .app[data-dir="d"] .stat:last-child { border-right: 0; }
 .app[data-dir="d"] .stat[aria-pressed="true"] { background: var(--acc-soft); }
-.app[data-dir="d"] .stat .n { font-weight: 600; }
-.app[data-dir="d"] .tabela-w, .app[data-dir="d"] .linha { border-radius: var(--r-card); }
-.app[data-dir="d"] h1, .app[data-dir="d"] h2 { font-weight: 700; letter-spacing: -.01em; }
-.app[data-dir="d"] .frase { font-weight: 600; }
-.app[data-dir="d"] .busca-ov, .app[data-dir="d"] .modal-ov { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.app[data-dir="d"] .stat:active { transform: scale(.98); }
+.app[data-dir="d"] .stat .n { font-weight: 700; }
+.app[data-dir="d"] :is(.face, .mini-card) { transition: transform .4s var(--mola), box-shadow .3s var(--rapido); }
+.app[data-dir="d"] .mini-card:hover, .app[data-dir="d"] .face:hover { box-shadow: 0 0 0 1px var(--card-brd), 0 10px 28px rgba(10,10,10,.1); }
+.app[data-dir="d"] .mini-card:active { transform: scale(.985); }
+.app[data-dir="d"] .chip, .app[data-dir="d"] .selo, .app[data-dir="d"] .pz { border-radius: 999px; }
+.app[data-dir="d"] :focus-visible { outline: 3px solid color-mix(in srgb, var(--acc) 55%, transparent); outline-offset: 2px; }
+.app[data-dir="d"] .filtro { border-radius: 999px; }
+.app[data-dir="d"] .alerta-l { border-radius: 22px; }
+.app[data-dir="d"] .stats .stat .n, .app[data-dir="d"] .frase { letter-spacing: -.01em; }
 
+/* ---------- movimento (catalyst.js marca o .app com data-t-*; só anima na mudança) ---------- */
+@keyframes cat-pagina { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes cat-cartao { from { opacity: 0; transform: translateY(22px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes cat-folha { from { opacity: 0; transform: translateY(46px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes cat-folha-sai { to { opacity: 0; transform: translateY(30px) scale(.96); } }
+@keyframes cat-fundo { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cat-fundo-sai { to { opacity: 0; } }
+@keyframes cat-menu { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: none; } }
+@keyframes cat-menu-m { from { opacity: 0; transform: translateX(50%) scale(.55); } to { opacity: 1; transform: translateX(50%); } }
+@keyframes cat-menu-sai { to { opacity: 0; transform: scale(.6); } }
+@keyframes cat-gaveta { from { transform: translateX(105%); } to { transform: none; } }
+@keyframes cat-gaveta-sai { to { transform: translateX(105%); } }
+@keyframes cat-balao { from { opacity: 0; transform: translateY(-14px) scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes cat-toast { from { opacity: 0; transform: translateX(-50%) translateY(26px) scale(.85); } to { opacity: 1; transform: translateX(-50%); } }
+.app[data-dir="d"][data-t-tela] .main > * { animation: cat-pagina .5s var(--suave) both; }
+.app[data-dir="d"][data-t-tela] .main > *:nth-child(2) { animation-delay: .04s; }
+.app[data-dir="d"][data-t-tela] .main > *:nth-child(3) { animation-delay: .08s; }
+.app[data-dir="d"][data-t-tela] .main > *:nth-child(n+4) { animation-delay: .12s; }
+.app[data-dir="d"][data-t-tela] :is(.cards, .stats, .postits, .lista-a) > * { animation: cat-cartao .55s var(--mola) both; }
+.app[data-dir="d"][data-t-tela] :is(.cards, .stats, .postits, .lista-a) > *:nth-child(2) { animation-delay: .04s; }
+.app[data-dir="d"][data-t-tela] :is(.cards, .stats, .postits, .lista-a) > *:nth-child(3) { animation-delay: .08s; }
+.app[data-dir="d"][data-t-tela] :is(.cards, .stats, .postits, .lista-a) > *:nth-child(4) { animation-delay: .12s; }
+.app[data-dir="d"][data-t-tela] :is(.cards, .stats, .postits, .lista-a) > *:nth-child(n+5) { animation-delay: .16s; }
+.app[data-dir="d"][data-t-modal] .modal-ov { animation: cat-fundo .25s var(--rapido) both; }
+.app[data-dir="d"][data-t-modal] .modal { animation: cat-folha .5s var(--mola) both; }
+.app[data-dir="d"][data-t-busca] .busca-ov { animation: cat-fundo .22s var(--rapido) both; }
+.app[data-dir="d"][data-t-busca] .busca-box { animation: cat-folha .45s var(--mola) both; }
+.app[data-dir="d"][data-t-plus] .menuplus { animation: cat-menu .42s var(--mola) backwards; }
+.app[data-dir="d"][data-t-perfil] .dr-ov { animation: cat-fundo .25s var(--rapido) both; }
+.app[data-dir="d"][data-t-perfil] .dr { animation: cat-gaveta .5s var(--suave) both; }
+.app[data-dir="d"][data-t-balao] .balao { animation: cat-balao .5s var(--mola) both; }
+.app[data-dir="d"] .toast.on { animation: cat-toast .45s var(--mola) both; }
+/* clones de saída (catalyst.js) */
+.app[data-dir="d"] .saindo { pointer-events: none; }
+.app[data-dir="d"] .modal-ov.saindo { animation: cat-fundo-sai .22s var(--rapido) forwards; }
+.app[data-dir="d"] .modal-ov.saindo .modal { animation: cat-folha-sai .22s var(--rapido) forwards; }
+.app[data-dir="d"] .busca-ov.saindo { animation: cat-fundo-sai .2s var(--rapido) forwards; }
+.app[data-dir="d"] .dr-ov.saindo { animation: cat-fundo-sai .25s var(--rapido) forwards; }
+.app[data-dir="d"] .dr-ov.saindo .dr { animation: cat-gaveta-sai .28s var(--rapido) forwards; }
+.app[data-dir="d"] .menuplus.saindo { display: block; animation: cat-menu-sai .2s var(--rapido) forwards; }
+.app[data-dir="d"] .balao.saindo { animation: cat-fundo-sai .18s var(--rapido) forwards; }
+@media (prefers-reduced-motion: reduce) { .app[data-dir="d"] *, .app[data-dir="d"] *::before { animation-duration: .01s !important; transition-duration: .01s !important; animation-delay: 0s !important; } }
+.app[data-dir="d"][data-reduzir="true"] *, .app[data-dir="d"][data-reduzir="true"] *::before { animation-duration: .01s !important; transition-duration: .01s !important; animation-delay: 0s !important; }
+
+/* ---------- larguras menores ---------- */
 @container tela (max-width: 1099px) {
   .app[data-dir="d"] .stats .stat:last-child { grid-column: span 2; }
+}
+@container tela (max-width: 899px) {
+  .app[data-dir="d"] { --col: 0px; }
+  .app[data-dir="d"] .side { display: none; }
+  .app[data-dir="d"] .main { grid-row: 1 / -1; grid-column: 1; padding: 78px 16px 120px; scroll-padding-top: 78px; }
+  .app[data-dir="d"] .top { grid-column: 1; margin: 8px 12px 0; border: 0; }
+  .app[data-dir="d"] .top::before { left: -12px; right: -12px; }
+  .app[data-dir="d"] .top-logo { display: flex; background: var(--lq-fill); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.9); backdrop-filter: blur(var(--blur)) saturate(1.9); border-radius: 999px; padding: 6px 14px 6px 8px; min-height: 48px; box-shadow: inset 1.5px 1.5px 1px -1px var(--lq-edge), inset 0 0 0 1px var(--lq-rim), var(--lq-sh); }
+  .app[data-dir="d"] .menuplus { right: 50%; transform: translateX(50%); transform-origin: bottom center; bottom: 92px; }
+  .app[data-dir="d"][data-t-plus] .menuplus { animation-name: cat-menu-m; }
+  .app[data-dir="d"] .modal-ov { align-items: end; padding: 0; }
+  .app[data-dir="d"] .modal { width: 100%; max-height: 92%; border-radius: 34px 34px 0 0; }
+  .app[data-dir="d"] .modal .m-cols { grid-template-columns: minmax(0, 1fr); }
+  .app[data-dir="d"] .dr { width: min(420px, 94%); }
+}
+@container tela (max-width: 520px) {
+  .app[data-dir="d"] { --blur: 18px; }
+  /* barra de ferramentas de Demandas: abas na largura toda, depois filtro e três botões redondos */
+  .app[data-dir="d"] .toolbar { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center; }
+  .app[data-dir="d"] .toolbar .tabs { grid-column: 1 / -1; grid-row: 1; display: flex; }
+  .app[data-dir="d"] .toolbar > .btn { grid-row: 2; }
+  .app[data-dir="d"] .toolbar > .btn:nth-of-type(1) { grid-column: 2; }
+  .app[data-dir="d"] .toolbar > .btn:nth-of-type(2) { grid-column: 3; }
+  .app[data-dir="d"] .toolbar > .btn:nth-of-type(3) { grid-column: 4; }
+  .app[data-dir="d"] .toolbar .tabs button { flex: 1; justify-content: center; }
+  .app[data-dir="d"] .toolbar .filtro { grid-column: 1; grid-row: 2; min-width: 0; }
+  .app[data-dir="d"] .toolbar .btn { width: 46px; height: 46px; padding: 0; justify-content: center; }
+  .app[data-dir="d"] .main { padding-inline: 14px; }
+  .app[data-dir="d"] .pagehead h1 { font-size: 30px; }
 }

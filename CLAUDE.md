@@ -48,7 +48,7 @@ Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `
 
 **Três temas definitivos** (decidido em 22/10/2026): **Aurora** (vidro estilo Apple), **Papel** (calmo, tom de papel) e **Grafite** (denso, bordas finas), mais o **Catalyst** (estilo Apple Mac e iPad, a partir do kit oficial do Figma, adicionado em 22/10/2026 como quarto tema experimental no protótipo, `prototipo/catalyst.css`), cada um com modo claro e escuro. O logo da Aurora vale para todos. Dentro de cada tema o usuário escolhe cores (10 paletas), ícones, tamanhos e fontes, e cada tema guarda as suas escolhas.
 
-O protótipo navegável está em `prototipo/` (HTML, CSS e JS puros, dados fictícios, isolado do `src/`). Abrir por um servidor local, por exemplo `python -m http.server 7200` dentro da pasta `prototipo`, e acessar http://127.0.0.1:7200. Hashes úteis na URL: `#dir=a|b|c&tema=claro|escuro&tela=demandas&vis=quadro&dev=phone&balao=nao`.
+O protótipo navegável está em `prototipo/` (HTML, CSS e JS puros, dados fictícios, isolado do `src/`). Abrir por um servidor local, por exemplo `python -m http.server 7200` dentro da pasta `prototipo`, e acessar http://127.0.0.1:7200. Hashes úteis na URL: `#dir=a|b|c|d&tema=claro|escuro&tela=demandas&vis=quadro&dev=phone&balao=nao`.
 
 - **Vidro líquido** em quase todo o desenho (barras, menu, painéis, indicadores, botões, abas). Cards de demanda mais sólidos. **Caixas de preenchimento (janelas, busca, balões) quase opacas**: brancas no claro e escuras no escuro, com campos de alto contraste.
 - **Fontes em três papéis:** principal para títulos, secundária para subtítulos e textos, mono para detalhes pontuais (números de processo, datas, contadores).

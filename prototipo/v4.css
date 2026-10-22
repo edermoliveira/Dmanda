@@ -126,3 +126,9 @@
 @keyframes sac { 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
 .data.rec { color: var(--acc-text); font-weight: 600; margin: 0 0 8px; }
 .dr .painel > h3 { margin-bottom: 10px; }
+
+/* Tela "Mais": os itens grandes não herdam o menu recolhido (largura de 52 px) nas telas estreitas */
+@container tela (max-width: 1099px) {
+  .main .navi.grande { width: 100%; justify-content: flex-start; padding: 4px 14px 4px 8px; }
+  .main .navi.grande span.tx { display: inline; }
+}
