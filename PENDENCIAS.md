@@ -33,3 +33,9 @@ Arquivo lido no início de cada sessão. Fica no repositório para valer em qual
 4. O `.env.local` não vai para o GitHub. Hoje o sistema ainda não precisa dele. Quando precisar, copiar o `.env.example` e preencher.
 5. Plugins, skills e MCPs **não** vêm pelo Git (exceto as três skills do Superpowers em `.claude/skills/`). Instalar de novo no outro computador, se quiser: `taste-skill` (marketplace `Leonxlnx/taste-skill`), `ui-ux-pro-max` (marketplace `nextlevelbuilder/ui-ux-pro-max-skill`) e o plugin `context7`. O `.claude/settings.json` do projeto já marca o `ui-ux-pro-max` como ativo, mas ele só funciona depois de instalado.
 6. A memória do Claude é local de cada computador: ela foi recriada aqui a partir destes documentos.
+
+## Rodada 2 (22/10/2026)
+
+- **Aprovar o protótipo atualizado** (http://127.0.0.1:7200).
+- **Catalyst (Figma):** o Claude Code ainda não tem o Figma conectado. Para criar o tema a partir do kit oficial da Apple, o usuário precisa: (1) abrir o arquivo da comunidade e clicar em "Open in Figma" para copiá-lo para a própria conta; (2) rodar `claude mcp add --transport http figma https://mcp.figma.com/mcp` e autenticar em `/mcp`; (3) enviar o link do arquivo copiado. O plano gratuito do Figma pode limitar as chamadas.
+- **Ilustrações de energia:** salvar em `prototipo/emojis/` como `energia-1.png` a `energia-5.png` (quadrados, fundo transparente, 128 a 512 px).

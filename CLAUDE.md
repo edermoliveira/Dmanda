@@ -82,3 +82,7 @@ Sempre que o usuário corrigir algo, acrescentar aqui a regra nova, em uma linha
 - Janelas e caixas de preenchimento (cadastro, busca, balões) devem ser quase opacas: claras no modo claro e escuras no modo escuro. Vidro transparente demais deixa o campo pouco visível.
 - Telas novas precisam ser testadas no navegador de verdade (clicar nos botões, trocar tema e largura), não só conferidas em captura de imagem. Ao testar o protótipo, servir por http (o Playwright bloqueia `file://`).
 - Ao instalar plugins, skills ou MCPs a pedido do usuário, avisar o que ficou instalado e onde (usuário ou projeto), e que o outro computador precisa repetir a instalação.
+- Cards e post-its nunca têm barra de rolagem: se não couber, mostrar só o título e deixar o título preencher o espaço até onde couber.
+- Texto digitado nunca se perde: clicar fora de uma janela com texto não fecha, Esc e X guardam rascunho, só Cancelar descarta.
+- Tom dos textos: simpático e direto, sem bajulação, com tom de alerta quando necessário.
+- Botões no estilo Apple: chatos, levemente arredondados, sem borda nem relevo. Sem prazo, nada é mostrado (nem "Chegou há N d").

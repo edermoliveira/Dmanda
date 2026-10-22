@@ -4,3 +4,9 @@ window.ICONOIR_SOLIDO = {"inbox":"<path fill-rule=\"evenodd\" clip-rule=\"evenod
 
 // ícone extra: alfinete (PIN) das notas
 window.ICONOIR.pin = "<path d=\"M9 3h6l-1 6 3 3.5V14H7v-1.5L10 9z\"/><path d=\"M12 14v7\"/>";
+
+// ícones extras: reunião, compromisso, feriado, aviso, perfil
+window.ICONOIR.users = "<circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.5 5.5\"/><path d=\"M16 4.8a3.5 3.5 0 0 1 0 6.4\"/><path d=\"M18 14.8c2 .6 3.2 2.3 3.5 5.2\"/>";
+window.ICONOIR['map-pin'] = "<path d=\"M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z\"/><circle cx=\"12\" cy=\"9.5\" r=\"2.5\"/>";
+window.ICONOIR.party = "<path d=\"M4 20l4.5-12 7.5 7.5z\"/><path d=\"M14 5v.01\"/><path d=\"M19 9v.01\"/><path d=\"M17 3l.5 2\"/><path d=\"M20 14l-2 .5\"/>";
+window.ICONOIR.alert = "<path d=\"M12 3.5l9.5 16.5h-19z\"/><path d=\"M12 10v4.5\"/><path d=\"M12 17.5v.01\"/>";

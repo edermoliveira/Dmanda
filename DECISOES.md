@@ -140,3 +140,18 @@ Respostas do usuário após testar o protótipo. **Aplicadas no protótipo em 22
 9. **Design system:** usar as sugestões como ponto de partida, sem rigidez: Manrope (títulos 37px/700, menus e botões 14px/600), Inter (texto 16px/400, subtítulos 19px/700), IBM Plex Mono (datas, horários, IDs, 12px/400), múltiplos de 4 px, padding 24 px, raio 14 px. Não impor interface monocromática, não aplicar R=G=B à marca, não forçar ação e foco a preto ou branco, não usar mono em parágrafos, não comunicar estado só por cor. Contraste mínimo 4,5:1 (3:1 para texto grande), foco visível, teclado, movimento reduzido.
 10. **Rolagem e celular:** nova barra de rolagem alinhada ao design system (pesquisar inspirações). No celular, o Quadro de Demandas tem nome da etapa que some ao tocar (texto claro sobre fundo claro): corrigir. Liquid glass da Apple, não Aero.
 11. **Agenda:** ajustes de design ficam para depois.
+
+## Avaliação do protótipo, rodada 2 (22/10/2026)
+
+Aplicado no protótipo (`prototipo/v4.css`, `app.js`, `extra.js`):
+
+- **Início:** sem o título "Início", a frase do dia ocupa o lugar do subtítulo. Compromissos em cards por tipo (Reunião azul, Compromisso violeta, Feriado e ponto facultativo verde tracejado). Faixa de aviso de emergência, que só existe quando há aviso (exemplo: 8 dias sem abrir, sugere revisar todas as demandas; limite configurável no Perfil).
+- **Cards (todas as telas):** sem barra de rolagem. Sem espaço, some primeiro o secundário e o título preenche o que sobrar. Sem caixa de marcar a demanda: o card mostra a próxima tarefa com caixa e, sem tarefas pendentes, o botão "Concluir demanda" em largura total. Mover para Finalizado ou concluir marca todas as tarefas. Contraste reforçado nos cards coloridos.
+- **Prazo:** sem prazo não aparece nada. Neutro até 6 dias, amarelo com 5 e 4, laranja com 3 e 2, vermelho com 1 e no dia, e vencido com o card todo em vermelho pastel e o selo "Prazo vencido" em vermelho vivo.
+- **Menu lateral:** recolhido por padrão (só ícones), abre ao passar o mouse ou por "Mostrar menu". Configurações desceu para o fim do menu.
+- **Perfil:** gaveta à direita com o resto desfocado, edição rápida (nome, cargo, órgão, expediente, cidade, aviso de retorno, balão).
+- **Rascunho:** clicar fora de uma janela com texto não salvo não fecha. Esc e X fecham e guardam o rascunho (reabrir recupera). Cancelar descarta.
+- **Botões:** estilo Apple, chatos e levemente arredondados (raio 12), sem borda nem relevo.
+- **Textos:** simpáticos e diretos, sem bajulação, com tom de alerta quando necessário.
+
+Pendente de decisão do usuário: o tema **Catalyst** (quarto tema, a partir do kit iOS e iPadOS 27 da Apple no Figma). Exige conectar o Figma ao Claude Code (ver PENDENCIAS.md). Energia: PNGs em `prototipo/emojis/energia-1.png` a `energia-5.png`.

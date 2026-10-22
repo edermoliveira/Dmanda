@@ -10,5 +10,13 @@ Coloque aqui seus PNGs com estes nomes exatos. Se um arquivo não existir, o pro
 | humor-4.png | Bem |
 | humor-5.png | Muito bem |
 
+| Arquivo | Energia |
+|---|---|
+| energia-1.png | Muito baixa |
+| energia-2.png | Baixa |
+| energia-3.png | Média |
+| energia-4.png | Alta |
+| energia-5.png | Muito alta |
+
 Recomendado: quadrados, fundo transparente, 128 por 128 px ou maior (até 512 por 512 px).
 Atualize a página do protótipo (F5) para ver.
