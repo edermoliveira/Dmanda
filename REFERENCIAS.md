@@ -25,21 +25,21 @@ Os exemplos dentro dos prints são de uma agência de redes sociais (clientes, p
 | `IMG_4002.jpeg` | Tela inicial ("Bom dia, Felipe"), com uma **busca global** aberta por cima: "Buscar por título, texto ou número (#12)". Ao fundo, borrados: 4 contadores, "Minhas demandas", "Quadros favoritos" e "Movimento da equipe". |
 | `IMG_4003.jpeg` | **Detalhe de uma demanda** (#7). À esquerda: descrição, checklist com barra de 50% e botão "Esconder feitos", anexos (até 25 MB). À direita: botão "Marcar como concluída", cliente, pessoas, etiquetas, prioridade, início, prazo, repetir, estimativa, capa, cronômetro de trabalho e "Criada por … há 16 h". |
 | `IMG_4004.jpeg` | Tela **Agenda**: prazos de **todos os quadros** num só calendário. Alternância "Minhas / Da equipe" e filtro "Todos os quadros". Texto: "Arraste uma demanda para outro dia para mudar o prazo." |
-| `IMG_4005.jpeg` | Versão de **celular** da tela inicial: "Bom dia, Felipe – Você tem 4 demandas pedindo atenção hoje", quatro contadores (2 atrasadas, 2 para hoje, 2 próximos 7 dias, 1 concluída na semana) e a lista "Minhas demandas" separada em Atrasadas e Hoje. |
+| `IMG_4005.jpeg` | Versão de **celular** da tela inicial: "Bom dia, Felipe. Você tem 4 demandas pedindo atenção hoje", quatro contadores (2 atrasadas, 2 para hoje, 2 próximos 7 dias, 1 concluída na semana) e a lista "Minhas demandas" separada em Atrasadas e Hoje. |
 | `IMG_4006.jpeg` | O quadro durante o **arrastar de um cartão** de "Ideias" para "Briefing". Na coluna de origem fica uma sombra esmaecida do cartão. |
 
 ---
 
 ## 2. O que a ferramenta resolve bem (frente às dores da pesquisa)
 
-**Dor 1 – Esquecer o que é importante, mas não urgente**
+**Dor 1: Esquecer o que é importante, mas não urgente**
 - A tela inicial (4002 e 4005) mostra, logo de manhã e em uma frase, **quantas demandas pedem atenção hoje**. Ela separa em **Atrasadas / Para hoje / Próximos 7 dias / Concluídas na semana**. Isso encaixa com o hábito dele de abrir o sistema no início do dia.
 - Em "Minhas demandas", as atrasadas aparecem **primeiro e em vermelho**, e não numa lista só. Isso responde à dificuldade de "escolher pelo que é interessante" e não pelo que é urgente.
 
-**Dor 2 – Demandas que saem para outro setor somem do radar**
+**Dor 2: Demandas que saem para outro setor somem do radar**
 - Os prints **não mostram nada diretamente ligado a isso**. A única ajuda indireta é que toda demanda continua na lista e no calendário enquanto não é concluída (4003, "Marcar como concluída").
 
-**Dor 3 – O aviso de um prazo não fica registrado**
+**Dor 3: O aviso de um prazo não fica registrado**
 - O prazo é um campo fixo de cada demanda e aparece no cartão, na lista, no calendário e na agenda. Prazo e urgência ficam sempre visíveis.
 - A **Agenda** (4004) junta os prazos de todos os quadros num lugar só. Ela ajuda quem hoje "procura na mesa".
 - A coluna **"Sem prazo"** (4001) deixa claro o que ainda não tem data e permite dar uma data arrastando. Isso casa com a ideia dele de fixar um prazo próprio quando o pedido não tem.

@@ -20,7 +20,7 @@ h3, h4 { font-weight: 700; }
 .app[data-dir="c"][data-tema="escuro"] { --lg-top: hsl(0 0% 100% / .10); --lg-bot: hsl(0 0% 100% / .035); }
 
 .app .painel, .app .stat, .app .alerta-l, .app .tabs, .app .filtro, .app .btn.gl, .app .icbtn, .app .perfil-b, .app .menuplus, .app .bar, .app .busca-box, .app .modal, .app .balao,
-.app .etapas-tabs button, .app .sw, .app .fonte, .app .tema-c, .app .pend, .app .chat-f input, .app .linha, .app .tabela-w, .app .ag-col, .app .ag-cel, .app .bolha.ia, .app .toast {
+.app .etapas-tabs button, .app .sw, .app .tema-c, .app .pend, .app .chat-f input, .app .linha, .app .tabela-w, .app .ag-col, .app .ag-cel, .app .bolha.ia, .app .toast {
   background: radial-gradient(130% 80% at 12% 0%, var(--lg-hi), transparent 55%), linear-gradient(150deg, var(--lg-top), var(--lg-bot));
   border: 1px solid var(--lg-edge2);
   box-shadow: inset 0 1px 0 var(--lg-edge), inset 0 -1px 0 var(--lg-edge2), 0 10px 30px var(--lg-sh);
@@ -164,3 +164,18 @@ h3, h4 { font-weight: 700; }
 .app .modal .btn { background: var(--solido); border-color: var(--solido-brd); }
 .app .modal .btn.pri { background: var(--acc); border-color: transparent; }
 .app .modal .btn.perigo { background: var(--perigo); border-color: transparent; }
+
+/* correções da varredura automática */
+.icbtn-s, .mais { flex: none; min-width: 44px; }
+.lista, .grupo, .linha, .linha-c, .linha-m, .coluna, .mini-card, .painel, .cfg > section { min-width: 0; }
+.linha-m .ass { min-width: 0; }
+.tip { white-space: normal; width: max-content; max-width: 190px; text-align: center; }
+.gcol:first-child .tip { left: 0; transform: none; text-align: left; }
+.gcol:last-child .tip { left: auto; right: 0; transform: none; text-align: right; }
+.hist { max-width: 100%; }
+@container tela (max-width: 899px) {
+  .app[data-dir] .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app[data-dir="c"] .stats .stat:last-child { grid-column: span 2; }
+  .hist { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .ind3, .ind3 > * { min-width: 0; }
+}

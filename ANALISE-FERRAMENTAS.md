@@ -2,6 +2,25 @@
 
 Data: 21/10/2026. Base: pesquisa nas páginas oficiais de cada item. Quando a página não informava algo (licença, preço), está escrito "não confirmado". Nada foi instalado nem removido (a única limpeza proposta, do item 1, depende de um comando seu).
 
+## Atualização de 22/10/2026 (o que mudou desde esta análise)
+
+Instalado no ambiente do usuário (computador de casa), a pedido dele, depois de ler os scripts de cada um:
+
+| Item | Situação | Observação |
+|---|---|---|
+| taste-skill (`design-taste-frontend`) | Instalada (marketplace `Leonxlnx/taste-skill`) | Usada só para direção visual e conferência no navegador (`inspect.mjs`). Várias regras dela ("sem gradiente", "sem sombra", "no máximo duas fontes") **divergem das decisões do usuário** (vidro líquido, gradientes, três fontes, ícones em pastilha). Valem as decisões do usuário. |
+| ui-ux-pro-max | Instalado (marketplace `nextlevelbuilder/ui-ux-pro-max-skill`) | Principal referência técnica de interface (paletas, fontes, regras de UX). Avaliar a remoção quando o design system real estiver pronto. |
+| context7 | Instalado **pelo plugin oficial** (endpoint HTTP) | A entrada local duplicada (`npx`) foi removida. |
+| playwright | Plugin instalado pelo usuário | Usado para testar o protótipo no navegador (precisa de servidor http, bloqueia `file://`). |
+| code-review e code-simplifier | Plugins instalados pelo usuário | Fora do plano original. |
+| frontend-design | Instalado e **desinstalado** | Cobria o mesmo que a taste-skill, sem dados nem verificação. |
+| Superpowers | Plugin **desinstalado**; três skills copiadas para `.claude/skills/` | `test-driven-development`, `systematic-debugging` e `verification-before-completion` (MIT, licença junto). |
+| Iconoir | **Adotado como biblioteca padrão de ícones** (MIT, v7.12.1) | O usuário não gostou do Lucide. O Lucide continua disponível para comparar. Hugeicons segue descartado (licença não confirmada). |
+
+Continuam valendo: shadcn como base de comportamento (na construção real), Open-Meteo, Trail-code depois da versão mínima de Demandas, e as exclusões de Claude-mem, ECC, aitmpl completo e Mobbin. Onde o texto abaixo disser "Lucide" ou "remover o ui-ux-pro-max agora", vale esta atualização.
+
+---
+
 Critério: o Dmanda é um painel pessoal, de um único usuário, que precisa ser rápido, claro e agradável para quem tem TDAH. Efeito bonito só entra se ajudar a ler, decidir ou se sentir bem usando, e se não deixar o sistema pesado no celular.
 
 ---

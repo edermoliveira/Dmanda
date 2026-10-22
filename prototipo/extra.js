@@ -138,7 +138,7 @@ window.DM_EXTRA = function (DM) {
   function abrir(m) { m.v = m.v || {}; m.foco = true; DM.trocar({ modal: m, plus: false }); }
   function fechar() { DM.trocar({ modal: null }); }
   function campo(rot, nome, tipo, v, extra) { return '<div class="fld"><label for="m-' + nome + '">' + rot + '</label><input id="m-' + nome + '" data-v="' + nome + '" type="' + (tipo || 'text') + '" value="' + esc(v || '') + '" ' + (extra || '') + ' autocomplete="off"></div>'; }
-  function cab(t) { return '<header class="m-h"><h3>' + t + '</h3><button class="icbtn-s" data-act="fechar-modal" aria-label="Fechar">' + ic('x') + '</button></header>'; }
+  function cab(t) { return '<header class="m-h"><h3 id="m-tit">' + t + '</h3><button class="icbtn-s" data-act="fechar-modal" aria-label="Fechar">' + ic('x') + '</button></header>'; }
   function opcoes(k, lista, atual) { return '<div class="opcoes" role="group">' + lista.map(function (o) { return '<button type="button" data-act="m-set" data-k="' + k + '" data-val="' + o + '" aria-pressed="' + (atual === o) + '">' + o + '</button>'; }).join('') + '</div>'; }
 
   function mNovaDem(m) {
@@ -199,7 +199,7 @@ window.DM_EXTRA = function (DM) {
     if (E.balaoAb && E.tela === 'inicio') out += balao();
     if (m) {
       var corpo = m.t === 'dem' ? mNovaDem(m) : m.t === 'nota' ? mNota(m) : m.t === 'ev' ? mEvento(m) : m.t === 'tar' ? mTarefa(m) : m.t === 'demanda' ? mDemanda(m) : mDias();
-      out += '<div class="modal-ov" data-act="fechar-ov"><div class="modal lg' + (m.t === 'demanda' ? ' larga' : '') + '" role="dialog" aria-modal="true">' + corpo + '</div></div>';
+      out += '<div class="modal-ov" data-act="fechar-ov"><div class="modal lg' + (m.t === 'demanda' ? ' larga' : '') + '" role="dialog" aria-modal="true" aria-labelledby="m-tit">' + corpo + '</div></div>';
     }
     return out;
   };
@@ -207,6 +207,8 @@ window.DM_EXTRA = function (DM) {
   // ---------- ações ----------
   var A = DM.acoes;
   A['tema-dir'] = function (b) { DM.trocar({ dir: b.dataset.v }); };
+  A.surpreenda = function () { var c = CONJUNTOS[Math.floor(Math.random() * CONJUNTOS.length)]; DM.trocar({ pal: Math.floor(Math.random() * DM.PALETAS.length), fT: c[1], fS: c[2], fM: c[3] }); };
+  A.restaurar = function () { DM.trocar(base(E.dir)); };
   A.conjunto = function (b) { var c = CONJUNTOS[+b.dataset.i]; DM.trocar({ fT: c[1], fS: c[2], fM: c[3] }); };
   A.energia = function (b) { DM.trocar({ energia: +b.dataset.i }); };
   A['humor-b'] = function (b) { DM.trocar({ humor: +b.dataset.i, balaoAb: false }); DM.toast('Humor registrado'); };
@@ -285,6 +287,15 @@ window.DM_EXTRA = function (DM) {
     else if (t.dataset.pref && t.tagName === 'SELECT') E[t.dataset.pref] = +t.value;
     else if (t.dataset.d === 'etapa' && E.modal) { DEM.filter(function (x) { return x.id === E.modal.id; })[0].etapa = t.value; DM.trocar({}); }
     else if (t.dataset.v === 'dem' && E.modal) E.modal.v.dem = t.value;
+  });
+  // mantém o Tab dentro da janela aberta
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Tab' || !E.modal) return;
+    var f = $$('.modal button, .modal input, .modal select, .modal textarea').filter(function (x) { return !x.disabled && x.offsetParent !== null; });
+    if (!f.length) return;
+    var p = f[0], u = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === p) { e.preventDefault(); u.focus(); }
+    else if (!e.shiftKey && document.activeElement === u) { e.preventDefault(); p.focus(); }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && E.modal) { e.stopImmediatePropagation(); fechar(); } }, true);
   // ---------- Quadro: arrastar o card para outra etapa; atalho N para nova anotação ----------

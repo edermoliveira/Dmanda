@@ -6,7 +6,7 @@ Painel pessoal do Secretário de Administração da Prefeitura de Taquara/RS, co
 
 Desenvolvido no computador e publicado na Vercel (com login Google) a partir da versão mínima de Demandas. Funciona no celular, iPad e computador (computador primeiro), instalável como PWA. O app nativo da App Store é uma etapa futura.
 
-**Em 21/10/2026 o escopo foi ampliado e o design system será refeito do zero.** A fonte mais recente das decisões é `DECISOES.md`.
+**Em 21/10/2026 o escopo foi ampliado e o design system está sendo refeito do zero.** Em 22/10/2026 os temas Aurora, Papel e Grafite foram definidos (protótipo em `prototipo/`). A fonte mais recente das decisões é `DECISOES.md`.
 
 ## Como rodar
 
@@ -46,26 +46,24 @@ Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `
 
 ## Design system
 
-**Será refeito do zero** (decidido em 21/10/2026). Novo estilo: Apple com vidro (barras, menu, botão flutuante, janelas e campos; cards de demanda mais sólidos), 10 paletas com claro e escuro, 5 pares de fontes e tamanhos ajustáveis em tempo real. O protótipo terá 3 direções para o usuário escolher. Até lá, o que está abaixo descreve o design **atual** e continua valendo para o código existente. As regras que seguem valendo no novo: nenhuma cor solta no código, espaços e cantos por nome, alvo de toque de 44 px, funcionar nos dois temas, cinco estados por peça, vermelho só para atrasado ou crítico.
+**Três temas definitivos** (decidido em 22/10/2026): **Aurora** (vidro estilo Apple), **Papel** (calmo, tom de papel) e **Grafite** (denso, bordas finas), cada um com modo claro e escuro. O logo da Aurora vale para todos. Dentro de cada tema o usuário escolhe cores (10 paletas), ícones, tamanhos e fontes, e cada tema guarda as suas escolhas.
 
-Fica em `src/app/globals.css` e pode ser visto em http://localhost:7100/tokens (com botão para trocar entre tema claro e escuro). Foi criado a partir dos prints da pasta `imagens/prints`.
+O protótipo navegável está em `prototipo/` (HTML, CSS e JS puros, dados fictícios, isolado do `src/`). Abrir por um servidor local, por exemplo `python -m http.server 7200` dentro da pasta `prototipo`, e acessar http://127.0.0.1:7200. Hashes úteis na URL: `#dir=a|b|c&tema=claro|escuro&tela=demandas&vis=quadro&dev=phone&balao=nao`.
 
-- Cores por função, cada uma com versão clara e escura: fundo, superficie, texto, destaque (verde-água #19C9A9) e perigo. Derivadas: borda, texto-suave, destaque-forte, sobre-destaque, perigo-suave, sobre-perigo, brilho-a e brilho-b.
-- **Nenhuma cor solta no código.** Usar sempre o nome (`bg-superficie`, `text-texto`, `bg-destaque`, `text-perigo`). Valores de cor só existem no globals.css. Conferir com `npm run verificar:cores`.
-- Fontes: Averia Serif Livre para títulos (negrito), subtítulos e textos; IBM Plex Mono Regular (`font-mono`) só para detalhes, como números de processo e datas.
-- Cantos: cards com 24 px (`rounded-card`), campos `rounded-medio`, botões e etiquetas `rounded-pilula`.
-- Espaços: usar a escala nomeada (mini 4, pequeno 8, medio 12, normal 16, grande 24, enorme 32, gigante 48, maximo 64), como `p-grande` e `gap-normal`.
-- Vermelho (`perigo`) só para atrasado ou crítico.
-- Todo componente novo deve funcionar nos dois temas.
+- **Vidro líquido** em quase todo o desenho (barras, menu, painéis, indicadores, botões, abas). Cards de demanda mais sólidos. **Caixas de preenchimento (janelas, busca, balões) quase opacas**: brancas no claro e escuras no escuro, com campos de alto contraste.
+- **Fontes em três papéis:** principal para títulos, secundária para subtítulos e textos, mono para detalhes pontuais (números de processo, datas, contadores).
+- **Ícones:** Iconoir (padrão, MIT) ou Lucide, em pastilha, fino ou duotone, sempre por uma única função ou componente de ícone. Nada de emoji nos controles. Os emojis de humor são os PNGs do usuário em `prototipo/emojis/` (ver o `LEIA-ME.md` da pasta).
+- **Regras mantidas:** nenhuma cor solta no código (valores só nos arquivos de tokens), espaços e cantos por nome, alvo de toque de 44 px, funcionar nos dois modos, cinco estados por peça (normal, foco, desativado, carregando, erro), vermelho só para atrasado ou crítico.
+- **Exceções à regra do travessão:** o traço "—" aparece na interface como símbolo de "sem progresso" (decisão do usuário), e valem fora da regra o `AGENTS.md` (gerado pelo Next.js) e as skills de terceiros copiadas em `.claude/skills/`.
 
-## Peças e marca
+### Design antigo (código atual em `src/`)
 
-- Peças em `src/components`: Botao, Campo, Janela, Menu, Avatar e Etiqueta. Ver todas em http://localhost:7100/pecas. Usar sempre essas peças, sem refazer botão ou campo na mão.
-- Toda peça tem cinco estados: normal, foco, desativado, carregando e erro. Peça nova só entra com os cinco, e é mostrada em /pecas.
-- Ícones: só Lucide, sempre pelo componente `Icone` (20 px, token `size-icone`). Nada de emoji nem outra biblioteca.
-- Alvo de toque mínimo de 44 px (`min-h-toque`). Erro aparece junto do campo. Carregando usa `aria-busy`.
-- Logo: um D com três colunas. Gerado por `npm run gerar:logo` (lê as cores do globals.css e escreve `public/marca`, `src/app/icon.svg` e `src/components/logo-dados.ts`). Não editar esses arquivos à mão. Uso e arquivos em /marca.
-- Prints das páginas: `npm run capturar` (precisa do sistema ligado) salva em `imagens/aprovacao`.
+O que está em `src/` ainda é o design de 20/10/2026 (verde-água, Averia Serif Livre, Lucide, peças Botao, Campo, Janela, Menu, Avatar e Etiqueta, páginas /pecas, /tokens e /marca). Compila, passa no lint e na checagem de cores, e será **substituído** quando a construção real começar, sobre os três temas. Até lá, vale para ele:
+
+- Tokens em `src/app/globals.css` (único lugar com valores de cor), vistos em http://localhost:7100/tokens. Conferir com `npm run verificar:cores`.
+- Usar sempre o nome (`bg-superficie`, `text-texto`, `bg-destaque`, `text-perigo`), cantos `rounded-card`, `rounded-medio`, `rounded-pilula` e espaços da escala nomeada (`p-grande`, `gap-normal`).
+- Peças em `src/components`, vistas em http://localhost:7100/pecas. Ícones pelo componente `Icone` (20 px).
+- Logo: `npm run gerar:logo` (não editar `public/marca`, `src/app/icon.svg` e `src/components/logo-dados.ts` à mão). Prints das páginas: `npm run capturar` (precisa do sistema ligado).
 
 ## Pendências
 
@@ -80,3 +78,7 @@ Ler `PENDENCIAS.md` no início de cada sessão. Ali está o que aguarda aprovaç
 Sempre que o usuário corrigir algo, acrescentar aqui a regra nova, em uma linha, logo após a correção.
 
 - Quando o usuário tiver que fazer algo fora do Claude Code (comando no PowerShell, ação no site do GitHub, outro programa), avisar sempre e destacar em negrito, dizendo onde fazer e o que fazer.
+- Nunca fazer `git push` (nem outro envio ao GitHub) sem autorização do usuário. O usuário quer conferir antes. Pedir autorização a cada rodada, a menos que ele a conceda de forma geral.
+- Janelas e caixas de preenchimento (cadastro, busca, balões) devem ser quase opacas: claras no modo claro e escuras no modo escuro. Vidro transparente demais deixa o campo pouco visível.
+- Telas novas precisam ser testadas no navegador de verdade (clicar nos botões, trocar tema e largura), não só conferidas em captura de imagem. Ao testar o protótipo, servir por http (o Playwright bloqueia `file://`).
+- Ao instalar plugins, skills ou MCPs a pedido do usuário, avisar o que ficou instalado e onde (usuário ou projeto), e que o outro computador precisa repetir a instalação.

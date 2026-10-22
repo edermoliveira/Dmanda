@@ -1,6 +1,6 @@
 # FUNCIONALIDADES: Mapa do Dmanda
 
-Atualizado em 21/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e `DECISOES.md` (esta é a fonte mais recente). Só o mapa, sem código.
+Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e `DECISOES.md` (esta é a fonte mais recente). Só o mapa, sem código.
 
 **Quem usa:** o **admin**, que é o Secretário, o único usuário. Não existe equipe, convite nem comentário.
 
@@ -35,7 +35,8 @@ Atualizado em 21/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Cadastro rápido (número, prazo, assunto, origem, tipo opcional) em qualquer etapa.
 - Mover card entre etapas. Botão **"Já vi"** leva de Cadastro para Vista (com ou sem tarefas).
 - Quando todas as tarefas forem concluídas, o card sugere "Finalizar?". Sem tarefas, há o botão Concluir.
-- Contagem de cards por etapa. Filtros (prazo, origem, só atrasadas, legal, próprio, sem prazo).
+- Contagem de cards por etapa. Filtros (prazo, origem, só atrasadas, legal, próprio, sem prazo) e filtro de texto.
+- No **Quadro**, arrastar o card para outra etapa. Atalho `N` abre nova anotação.
 - Atalho "Arquivo" ao final da tela.
 
 ### Card (dois lados)
@@ -123,7 +124,7 @@ Atualizado em 21/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 
 ## 3. Etapas de construção (substituem as antigas "fatias")
 
-1. **Design system novo e protótipo:** 3 direções de estilo, escolha, paletas, fontes, peças, navegação.
+1. **Design system novo e protótipo:** três temas definitivos (Aurora, Papel e Grafite) já no protótipo. Falta a página de peças com os cinco estados e a conferência de contraste.
 2. **Base técnica:** banco de dados, login Google, publicação na Vercel.
 3. **Versão mínima de Demandas + Início:** cadastro rápido, cards de dois lados, etapas, tarefas, prazos, concluir, quantitativos e alertas. Permite iniciar a carga inicial.
 4. **Demandas completas:** visões Quadro, Tabela e Lista, Arquivo, edição de qualquer campo, reativar, tipos de documento, rascunhos.
@@ -144,7 +145,7 @@ Atualizado em 21/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 Estão em `DECISOES.md`. Resumo das regras de negócio: Aguardando retorno é uma **coluna**. Sem prazo, 30 dias automáticos editáveis. Categoria é o **tipo de documento**, opcional. Arquivar é sempre manual e todo card tem esse botão. Excluir definitivamente pede segunda confirmação.
 
 ## 5. Pontos ainda em aberto
-- Escolha final de ícones, fontes e direção de estilo (feita no protótipo).
+- Padrões de cada tema (par de fontes, estilo de ícones e paleta de Aurora, Papel e Grafite). Direção e logo já decididos: três temas definitivos e logo da Aurora.
 - Limites do plano gratuito do Postgres (Neon ou Supabase) e da IA gratuita.
-- Se o logo (D de três colunas) continua.
 - Nomes e textos exatos de botões, ficam para a etapa das telas.
+- Peças com os cinco estados e conferência de contraste nos três temas.

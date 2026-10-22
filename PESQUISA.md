@@ -40,7 +40,7 @@ Quem respondeu: Secretário de Administração da Prefeitura de Taquara/RS (advo
 - **Reativada:** quando uma demanda já encerrada volta para a Secretaria, ela reabre a demanda antiga, e não cria uma nova.
 
 ### Exemplo dado por ele
-> **Demanda A** – Processo Administrativo nº xxx/2026, origem Secretaria de Saúde, assunto: pedido de férias.
+> **Demanda A:** Processo Administrativo nº xxx/2026, origem Secretaria de Saúde, assunto: pedido de férias.
 > Prazo: 30/10/2026 (restam 11 dias). Chegou em 10/10/2026 (há 9 dias aguardando).
 > Tarefas: 1) pedir informações ao DP; 2) com o retorno, analisar; 3A) se positivo, ao Gabinete para a portaria de férias; 3B) se negativo, ao DP para ciência da servidora e arquivamento.
 

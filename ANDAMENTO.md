@@ -1,6 +1,6 @@
 # Andamento do Dmanda
 
-Última revisão: 22/10/2026. **Total: 15%.**
+Última revisão: 22/10/2026 (após a revisão geral). **Total: 15%.**
 
 Em 21/10/2026 o escopo cresceu muito (Entradas, Agenda com Google, Documentos, IA, Configurações, humor, clima, PWA) e o design system será refeito do zero. Por isso o percentual caiu de 24% para 6%: o cálculo agora considera o plano novo, ainda pendente de aprovação (ver `QUESTIONARIO.md`). O número volta a subir conforme as etapas forem entregues.
 

@@ -13,6 +13,8 @@ npm run dev
 
 Endereço: http://localhost:7100
 
+Protótipo visual dos três temas (Aurora, Papel e Grafite): dentro da pasta `prototipo`, rodar `python -m http.server 7200` e abrir http://127.0.0.1:7200. Não usa o Next.js.
+
 Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `.env.local` nunca vai para o Git.
 
 ## Documentos

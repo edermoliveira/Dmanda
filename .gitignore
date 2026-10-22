@@ -51,3 +51,8 @@ next-env.d.ts
 # arquivos enviados (uploads)
 /uploads/
 /public/uploads/
+
+# ferramentas locais de teste e design
+/.playwright-mcp/
+**/.playwright-mcp/
+/.taste-skill/

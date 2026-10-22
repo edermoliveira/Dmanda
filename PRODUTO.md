@@ -1,6 +1,6 @@
 # PRODUTO: Dmanda
 
-Atualizado em 21/10/2026 com as decisões de `DECISOES.md`.
+Atualizado em 22/10/2026 com as decisões de `DECISOES.md`.
 
 ## O problema
 O Secretário de Administração recebe demandas por vários canais e hoje não registra nada fixo. Por isso esquece o que é importante mas não urgente, perde de vista o que mandou para outro setor (PGM, DP, Gabinete) e só vê um prazo quando alguém cobra. Com TDAH, uma lista simples não ajuda: ele escolhe pelo que é interessante, e não pelo que vence primeiro. Ainda sente desgaste pessoal por achar que "nunca dá conta".
@@ -44,5 +44,6 @@ Desenvolvido local e publicado na **Vercel com login Google** assim que existir 
 - Poucos campos e poucas cores por tela. Cor forte só para o que é atrasado ou crítico. (Exceções combinadas: post-its pastel em Entradas e cores de demanda e evento na Agenda.)
 - Cadastro rápido nunca pode virar formulário grande, senão vira outra planilha abandonada.
 - Funcionar bem no celular, no iPad e no computador, com computador primeiro.
-- Texto sobre vidro precisa ser legível. Cards de demanda mais sólidos.
+- Texto sobre vidro precisa ser legível. Cards de demanda mais sólidos. Janelas e caixas de preenchimento quase opacas (claras no modo claro, escuras no escuro).
+- Três temas definitivos (Aurora, Papel e Grafite), cada um com claro e escuro e com cores, fontes, ícones e tamanhos ajustáveis.
 - Nada de mensagem de cobrança, culpa ou alerta negativo sobre o próprio usuário.

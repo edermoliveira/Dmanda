@@ -1,6 +1,6 @@
 // Protótipo do Dmanda: dados fictícios, sem rede, sem gravar nada. Hoje no protótipo: quarta-feira, 21/10/2026.
 (function () {
-  var estado = { dir: 'a', tema: 'claro', dev: 'desktop', tela: 'inicio', virado: {}, plus: false, humor: 3, vis: 'cards', ord: 'prazo', ordDir: 1, aberto: {}, ag: 'semana', pal: null, fonte: 0, fs: 15, ico: 20, cardh: 340, anim: false, iconeEstilo: '', chat: [], lib: 'iconoir', q: '', soAtras: false, grupos: {}, etapaSel: 'Cadastro' };
+  var estado = { dir: 'a', tema: 'claro', dev: 'desktop', tela: 'inicio', virado: {}, plus: false, humor: 3, vis: 'cards', ord: 'prazo', ordDir: 1, aberto: {}, ag: 'semana', pal: null, fs: 15, ico: 20, cardh: 340, anim: false, iconeEstilo: '', chat: [], lib: 'iconoir', q: '', soAtras: false, grupos: {}, etapaSel: 'Cadastro' };
 
   var NOTAS = {
     a: 'Aurora: vidro estilo Apple em quase tudo, gradiente suave, cantos grandes. Tema definitivo do Dmanda.',
@@ -47,35 +47,12 @@
   function stat(n, r, icone, alerta) {
     return '<button class="stat' + (alerta ? ' alerta' : '') + '" data-act="msg" data-m="Abriria a lista filtrada"><span class="n">' + n + '</span><span class="r">' + ic(icone, 'duo') + r + '</span></button>';
   }
-  function inicio() {
-    var emojis = ['😔', '🙁', '😐', '🙂', '😄'], rot = ['Muito mal', 'Mal', 'Neutro', 'Bem', 'Muito bem'];
-    return '<div class="hero">' +
-      '<section class="painel"><div class="data">quarta-feira, 21 de outubro</div><p class="frase">Um passo de cada vez já é caminhar. Hoje, o primeiro é pequeno.</p></section>' +
-      '<section class="painel clima"><div>' + ic('cloud-sun', 'duo') + '</div><div><b>24°</b><div class="data">Taquara/RS, parcialmente nublado</div></div></section></div>' +
-      '<div class="humor" role="group" aria-label="Como você está agora"><span>Como você está agora?</span>' +
-      emojis.map(function (e, i) { return '<button class="emo" data-act="humor" data-i="' + i + '" aria-pressed="' + (estado.humor === i) + '" aria-label="' + rot[i] + '"><img class="emo-img" src="emojis/humor-' + (i + 1) + '.png" alt="" data-e="' + e + '"></button>'; }).join('') +
-      '<button class="btn mini" data-act="msg" data-m="Registrar energia">' + ic('battery-medium') + 'Energia</button></div>' +
-      '<div class="stats">' + stat(1, 'Atrasadas', 'clock', true) + stat(1, 'Para hoje', 'target') + stat(3, 'Próximos 7 dias', 'calendar') + stat(1, 'Aguardando retorno', 'hourglass') + stat(4, 'Entradas sem tratar', 'inbox') + '</div>' +
-      '<section class="sec"><h3>Alertas</h3><div class="alertas">' +
-      '<div class="alerta-l atrasada">' + ic('clock') + '<span>Resposta ao TCE sobre diárias está atrasada</span><span class="quando">3 dias</span></div>' +
-      '<div class="alerta-l">' + ic('calendar') + '<span>Reunião com a Prefeita</span><span class="quando">hoje 14:00</span></div>' +
-      '<div class="alerta-l">' + ic('hourglass') + '<span>Parecer da PGM parado há 9 dias</span><span class="quando">acompanhar 24/10</span></div></div></section>' +
-      '<section class="sec"><h3>Foco do dia <small>até 3 demandas, você pode trocar</small></h3><div class="cards">' +
-      FOCO.map(function (id) { return cardHTML(DEMANDAS.filter(function (d) { return d.id === id; })[0]); }).join('') + '</div></section>';
-  }
   // ---------- paletas e fontes (Configurações) ----------
   var PALETAS = [['Água-marinha', 170, 1], ['Céu', 200, 1], ['Oceano', 220, 1], ['Índigo', 245, 1], ['Violeta', 270, 1], ['Orquídea', 300, 1], ['Rosa', 330, 1], ['Âmbar', 42, 1], ['Oliva', 90, 1], ['Grafite', 220, 0.1]];
-  var FONTES = [
-    ['Sora e Inter', '"Inter", system-ui, sans-serif', '"Sora", "Inter", sans-serif'],
-    ['Jakarta', '"Plus Jakarta Sans", system-ui, sans-serif', '"Plus Jakarta Sans", sans-serif'],
-    ['DM Sans e DM Serif', '"DM Sans", system-ui, sans-serif', '"DM Serif Display", Georgia, serif'],
-    ['Fraunces e Inter', '"Inter", system-ui, sans-serif', '"Fraunces", Georgia, serif'],
-    ['Manrope', '"Manrope", system-ui, sans-serif', '"Manrope", sans-serif']
-  ];
   function hsl(h, sa, l, a) { return 'hsl(' + (((h % 360) + 360) % 360) + ' ' + Math.round(sa) + '% ' + l + '%' + (a ? ' / ' + a : '') + ')'; }
   function estiloApp() {
-    var v = [], c = estado.pal === null ? null : PALETAS[estado.pal], f = FONTES[estado.fonte];
-    v.push('--font:' + f[1], '--font-h:' + f[2], '--fs:' + estado.fs + 'px', '--icn:' + estado.ico + 'px', '--cardh:' + estado.cardh + 'px');
+    var v = [], c = estado.pal === null ? null : PALETAS[estado.pal];
+    v.push('--fs:' + estado.fs + 'px', '--icn:' + estado.ico + 'px', '--cardh:' + estado.cardh + 'px');
     if (c) {
       var h = c[1], k = c[2];
       if (estado.tema === 'claro') v.push('--acc:' + hsl(h, 72 * k, 48), '--acc-ink:' + hsl(h, 90 * k, 9), '--acc-soft:' + hsl(h, 72 * k, 48, 0.18), '--acc-text:' + hsl(h, 80 * k, 24),
@@ -283,36 +260,11 @@
     return '<div class="chat">' + base.concat(estado.chat).map(function (m) { return '<div class="bolha ' + m[0] + '">' + esc(m[1]) + '</div>'; }).join('') +
       '</div><form class="chat-f" data-form="chat"><input name="m" placeholder="Peça algo à estagiária" aria-label="Mensagem" autocomplete="off"><button class="btn pri" type="submit">' + ic('arrow-right') + 'Enviar</button></form>';
   }
-  function perfil() {
-    var dias = [['seg', 2], ['ter', 1], ['qua', 0], ['qui', 3], ['sex', 2], ['sáb', 0], ['dom', 0]];
-    return '<div class="hero"><section class="painel"><h3>Hoje</h3><p class="frase">1 demanda finalizada</p><div class="data">Humor e energia são só seus. Este espaço não substitui acompanhamento profissional.</div></section>' +
-      '<section class="painel"><h3>Semana</h3><div class="grafico">' + dias.map(function (d) { return '<div class="gcol" tabindex="0" title="' + d[0] + ': ' + d[1] + ' finalizadas"><i style="height:' + (10 + d[1] * 28) + 'px"></i><span>' + d[0] + '</span></div>'; }).join('') + '</div></section></div>';
-  }
   function arquivo() { return '<div class="lista">' + [['Memorando 031/2026', 'Mudança do protocolo', 'Finalizada'], ['Ofício 198/2026', 'Resposta ao Ministério Público', 'Finalizada']].map(function (x) { return '<div class="linha"><div class="linha-c"><span class="mono num">' + x[0] + '</span><span class="ass">' + x[1] + '</span><span class="chip neutro">' + x[2] + '</span><button class="btn mini" data-act="msg" data-m="Desarquivar">Desarquivar</button></div></div>'; }).join('') + '</div>'; }
   function mais() { return '<div class="lista">' + [['entradas', 'Entradas', 'inbox'], ['documentos', 'Documentos', 'file-text'], ['ia', 'IA', 'sparkles'], ['config', 'Configurações', 'settings'], ['arquivo', 'Arquivo', 'archive']].map(function (x) { return '<button class="navi grande" data-nav="' + x[0] + '"><span class="ico">' + ic(x[2], 'duo') + '</span><span>' + x[1] + '</span></button>'; }).join('') + '</div>'; }
 
-  // ---------- Configurações ----------
-  function config() {
-    return '<div class="cfg">' +
-      '<section class="painel"><h3>Cores</h3><div class="pal">' + PALETAS.map(function (p, i) {
-        return '<button class="sw" data-act="pal" data-i="' + i + '" aria-pressed="' + (estado.pal === i || (estado.pal === null && i === 0)) + '" aria-label="Paleta ' + p[0] + '" style="--sw1:' + hsl(p[1], 72 * p[2], 48) + ';--sw2:' + hsl(p[1] + 60, 70 * p[2], 80) + '"><i></i><span>' + p[0] + '</span></button>';
-      }).join('') + '</div><div class="acoes"><button class="btn mini" data-act="surpreenda">' + ic('sparkles') + 'Surpreenda-me</button><button class="btn mini" data-act="tema">' + ic(estado.tema === 'claro' ? 'moon' : 'sun') + 'Tema ' + (estado.tema === 'claro' ? 'escuro' : 'claro') + '</button>' +
-      '<button class="btn mini" data-act="anim" aria-pressed="' + estado.anim + '">Fundo animado: ' + (estado.anim ? 'ligado' : 'desligado') + '</button></div></section>' +
-      '<section class="painel"><h3>Fontes</h3><div class="fontes">' + FONTES.map(function (f, i) {
-        return '<button class="fonte" data-act="fonte" data-i="' + i + '" aria-pressed="' + (estado.fonte === i) + '"><span style="font-family:' + f[2] + ';font-size:20px;font-weight:700">' + f[0] + '</span><span style="font-family:' + f[1] + ';font-size:13px">Resposta ao Ofício 311/2026, ação, atenção e coração</span></button>';
-      }).join('') + '</div></section>' +
-      '<section class="painel"><h3>Ícones</h3><div class="acoes">' + [['iconoir', 'Iconoir'], ['lucide', 'Lucide']].map(function (x) {
-        return '<button class="btn mini" data-act="lib" data-v="' + x[0] + '" aria-pressed="' + (estado.lib === x[0]) + '">' + x[1] + '</button>';
-      }).join('') + '</div><div class="acoes">' + [['pastilha', 'Lucide em pastilha'], ['fino', 'Lucide fino'], ['duotone', 'Lucide duotone']].map(function (x) {
-        return '<button class="btn mini" data-act="ico" data-v="' + x[0] + '" aria-pressed="' + (iconeEstilo() === x[0]) + '">' + x[1] + '</button>';
-      }).join('') + '</div><div class="amostra-ic">' + ['house', 'inbox', 'square-kanban', 'calendar', 'file-text', 'sparkles', 'settings', 'clock', 'hourglass'].map(function (n) { return '<span class="ico">' + ic(n, 'duo') + '</span>'; }).join('') + '</div></section>' +
-      '<section class="painel"><h3>Tamanhos</h3>' + [['fs', 'Texto', 13, 20, estado.fs], ['ico', 'Ícones', 16, 28, estado.ico], ['cardh', 'Altura dos cards', 300, 420, estado.cardh]].map(function (r) {
-        return '<label class="rng">' + r[1] + ' <b class="mono">' + r[4] + '</b><input type="range" data-cfg="' + r[0] + '" min="' + r[2] + '" max="' + r[3] + '" value="' + r[4] + '"></label>';
-      }).join('') + '<div class="acoes"><button class="btn mini" data-act="restaurar">Restaurar padrão</button></div><p class="data">Os limites impedem texto ilegível e botão abaixo de 44 px.</p></section></div>';
-  }
-
   var TITULOS = { inicio: 'Início', entradas: 'Entradas', demandas: 'Demandas', agenda: 'Agenda', documentos: 'Documentos', ia: 'IA', config: 'Configurações', perfil: 'Perfil', arquivo: 'Arquivo', mais: 'Mais' };
-  var TELAS_FN = { inicio: inicio, entradas: entradas, demandas: demandas, agenda: agenda, documentos: documentos, ia: ia, config: config, perfil: perfil, arquivo: arquivo, mais: mais };
+  var TELAS_FN = { entradas: entradas, demandas: demandas, agenda: agenda, documentos: documentos, ia: ia, arquivo: arquivo, mais: mais };
 
   // ---------- montagem do app ----------
   var SUBS = { inicio: 'Seu dia em um só lugar.', entradas: 'Anotações rápidas que podem virar demandas.', agenda: 'Prazos de demanda e compromissos, juntos.', documentos: 'Modelos e arquivos ligados às demandas.', ia: 'Sua estagiária: pergunta, executa e desfaz.', config: 'Cores, fontes, ícones e tamanhos, com visualização na hora.', perfil: 'Só seu e privado.', arquivo: 'Demandas arquivadas.', mais: 'Outras áreas do Dmanda.' };
@@ -329,7 +281,7 @@
       '<button class="bi" data-nav="mais"' + (emMais ? ' aria-current="page"' : '') + '>' + ic('ellipsis') + 'Mais</button>';
     var menu = MAIS.map(function (m, i) { return (i === 3 ? '<hr>' : '') + '<button class="' + (m[3] ? 'rapido' : '') + '" data-act="msg" data-m="Novo: ' + m[1] + '">' + ic(m[2]) + m[1] + '</button>'; }).join('');
     var sub = estado.tela === 'demandas' ? DEMANDAS.length + ' demandas, ' + DEMANDAS.filter(atrasada).length + ' atrasada. Do cadastro à conclusão.' : (SUBS[estado.tela] || '');
-    var corpo = (TELAS_FN[estado.tela] || inicio)();
+    var corpo = (TELAS_FN[estado.tela] || TELAS_FN.inicio)();
     f.innerHTML = '<div class="app" data-dir="' + estado.dir + '" data-tema="' + estado.tema + '" data-ico="' + iconeEstilo() + '" data-anim="' + estado.anim + '" data-dev="' + (estado.dev === 'desktop' || estado.dev === 'media' || estado.dev === 'tablet-h' ? 'desktop' : 'toque') + '">' +
       '<div class="bg"></div>' +
       '<aside class="side" aria-label="Menu"><div class="logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' + nav + '<div class="esp"></div><button class="navi col-b" data-act="colapsar" title="' + (estado.col ? 'Expandir menu' : 'Recolher menu') + '" aria-label="' + (estado.col ? 'Expandir menu' : 'Recolher menu') + '"><span class="ico">' + ic(estado.col ? 'expandir' : 'recolher') + '</span><span class="tx">Recolher menu</span></button><div class="rodape">' + esc(estado.cidade || 'Taquara/RS') + '</div></aside>' +
@@ -352,7 +304,7 @@
 
   var tt;
   function toast(m) { var t = $('#toast'); if (!t) return; t.textContent = m + ' (exemplo do protótipo)'; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { t.classList.remove('on'); }, 1800); }
-  function trocar(opc) { var y = $('#main') ? $('#main').scrollTop : 0; if (opc.dir && opc.dir !== estado.dir) window.DM.mudaTema(estado.dir, opc.dir); Object.assign(estado, opc); montar(); if ($('#main')) $('#main').scrollTop = y; }
+  function trocar(opc) { var y = $('#main') && !(opc.tela && opc.tela !== estado.tela) ? $('#main').scrollTop : 0; if (opc.dir && opc.dir !== estado.dir) window.DM.mudaTema(estado.dir, opc.dir); Object.assign(estado, opc); montar(); if ($('#main')) $('#main').scrollTop = y; }
   function buscar() {
     var q = $('#q').value.toLowerCase(), r = [];
     DEMANDAS.forEach(function (d) { var s = (d.tipo + ' ' + d.num + ' ' + d.assunto + ' ' + d.origem).toLowerCase(); if (!q || s.indexOf(q) > -1) r.push(['Demandas', 'square-kanban', d.tipo + ' ' + d.num + ': ' + d.assunto]); });
@@ -399,11 +351,8 @@
     else if (a === 'abrirlinha') { estado.aberto[id] = !estado.aberto[id]; trocar({}); }
     else if (a === 'ag') trocar({ ag: b.dataset.v });
     else if (a === 'pal') trocar({ pal: +b.dataset.i });
-    else if (a === 'surpreenda') trocar({ pal: Math.floor(Math.random() * PALETAS.length), fonte: Math.floor(Math.random() * FONTES.length) });
-    else if (a === 'fonte') trocar({ fonte: +b.dataset.i });
     else if (a === 'ico') trocar({ iconeEstilo: b.dataset.v });
     else if (a === 'anim') trocar({ anim: !estado.anim });
-    else if (a === 'restaurar') trocar({ pal: null, fonte: 0, fs: 15, ico: 20, cardh: 340, anim: false, iconeEstilo: '', lib: 'iconoir' });
     else if (a === 'msg') { toast(b.dataset.m); if (estado.plus) trocar({ plus: false }); }
     if (a !== 'plus' && a !== 'msg' && estado.plus && !b.closest('.menuplus')) { estado.plus = false; var mp = $('.menuplus'); if (mp) mp.classList.remove('aberto'); }
   });
@@ -428,7 +377,7 @@
     if (e.key === 'Escape') { fecharBusca(); if (estado.plus) trocar({ plus: false }); }
     else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); abrirBusca(); }
     else if (e.key === '/' && e.target.tagName !== 'INPUT') { e.preventDefault(); var fq = $('#fq'); if (fq) fq.focus(); else abrirBusca(); }
-    else if ((e.key === 'Enter') && e.target.dataset && e.target.dataset.act === 'abrir') toast('Abriria a demanda completa');
+    else if ((e.key === 'Enter') && e.target.dataset && e.target.dataset.act === 'abrir') window.DM.acoes.abrir(e.target);
   });
 
   window.DM = {
