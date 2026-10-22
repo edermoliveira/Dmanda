@@ -6,7 +6,7 @@ Arquivo lido no início de cada sessão. Fica no repositório para valer em qual
 
 1. **Criar o banco de 500 frases** motivacionais e bem-humoradas para a mensagem do dia (o sistema só fornece o lugar para cadastrar). Não bloqueia nada: pode ser feito a qualquer momento antes do Início ficar pronto.
 2. **Emojis de energia (opcional):** enviar `energia-1.png` a `energia-5.png` na pasta `prototipo/emojis/` (hoje a energia usa ícones de bateria). Os cinco de humor já estão lá.
-3. **Avaliar o protótipo** (`prototipo/`, ver o `README.md`) e dizer o que ainda destoa do visual desejado. O usuário já disse que a direção está certa, mas ainda não é o visual final.
+3. **Aprovar a nova versão do protótipo** (`prototipo/`, rodada de 22/10/2026 com os 11 itens da avaliação aplicados, exceto Agenda). Falta dizer o que ainda destoa. Rodar `node verificar-cores.mjs` dentro de `prototipo` confere que não há branco nem preto absolutos.
 4. **Escolher os padrões de cada tema:** par de fontes, estilo de ícones e paleta padrão de Aurora, Papel e Grafite (hoje há padrões provisórios).
 
 ## Próximo passo do Claude

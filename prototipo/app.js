@@ -1,6 +1,6 @@
 // Protótipo do Dmanda: dados fictícios, sem rede, sem gravar nada. Hoje no protótipo: quarta-feira, 21/10/2026.
 (function () {
-  var estado = { dir: 'a', tema: 'claro', dev: 'desktop', tela: 'inicio', virado: {}, plus: false, humor: 3, vis: 'cards', ord: 'prazo', ordDir: 1, aberto: {}, ag: 'semana', pal: null, fs: 15, ico: 20, cardh: 340, anim: false, iconeEstilo: '', chat: [], lib: 'iconoir', q: '', soAtras: false, grupos: {}, etapaSel: 'Cadastro' };
+  var estado = { dir: 'a', tema: 'claro', dev: 'desktop', tela: 'inicio', virado: {}, fixo: {}, filtroIni: null, tagSel: null, plus: false, humor: 3, vis: 'cards', ord: 'prazo', ordDir: 1, aberto: {}, ag: 'semana', pal: null, fs: 16, ico: 20, cardh: 340, anim: false, iconeEstilo: '', chat: [], lib: 'iconoir', q: '', soAtras: false, grupos: {}, etapaSel: 'Cadastro' };
 
   var NOTAS = {
     a: 'Aurora: vidro estilo Apple em quase tudo, gradiente suave, cantos grandes. Tema definitivo do Dmanda.',
@@ -16,20 +16,23 @@
 
   var LOGOS = { a: LOGOS_ORIG.a, b: LOGOS_ORIG.a, c: LOGOS_ORIG.a };
 
-  // Hoje: 21/10/2026. Prazos e datas fictícios.
+  // Hoje: 21/10/2026. Prazos e datas fictícios. prazo nulo = sem prazo (nada é inventado).
+  // area (só processo e protocolo): Geral (azul), Pessoal (verde) ou Compras (amarelo). Os demais tipos têm a frente neutra.
   var DEMANDAS = [
-    { id: 1, tipo: 'Processo', num: '1842/2026', assunto: 'Resposta ao TCE sobre diárias de 2025', origem: 'TCE-RS', etapa: 'Fazendo', prazoTipo: 'Legal', prazo: '18/10', atraso: 3,
+    { id: 1, tipo: 'Processo', area: 'Geral', num: '1842/2026', assunto: 'Resposta ao TCE sobre diárias de 2025', origem: 'TCE-RS', etapa: 'Fazendo', prazoTipo: 'Legal', prazo: '18/10', atraso: 3,
       tarefas: [{ t: 'Levantar diárias de 2025', f: true }, { t: 'Conferir com a Contabilidade', f: true }, { t: 'Redigir a resposta', f: false }, { t: 'Revisão jurídica', f: false }, { t: 'Protocolar', f: false }], chegou: '02/10', parado: 2 },
-    { id: 2, tipo: 'Memorando', num: '087/2026', assunto: 'Revisão do contrato de limpeza', origem: 'Gabinete', etapa: 'Vista', prazoTipo: 'Próprio', prazo: '23/10', atraso: 0, tarefas: [], chegou: '19/10', parado: 2 },
+    { id: 2, tipo: 'Memorando', num: '087/2026', assunto: 'Revisão do contrato de limpeza', origem: 'Gabinete', etapa: 'Vista', prazoTipo: 'Próprio', prazo: '21/10', atraso: 0, tarefas: [], chegou: '19/10', parado: 2 },
     { id: 3, tipo: 'Ofício', num: '311/2026', assunto: 'Parecer sobre cessão de servidor', origem: 'Secretaria de Saúde', etapa: 'Aguardando retorno', setor: 'PGM', diasAg: 9, acompanhar: '24/10', prazoTipo: 'Próprio', prazo: '30/10', atraso: 0,
       tarefas: [{ t: 'Enviar ofício à PGM', f: true }, { t: 'Cobrar o parecer', f: false }], chegou: '08/10', parado: 9 },
-    { id: 4, tipo: 'Processo', num: '2210/2026', assunto: 'Nomeação dos aprovados no concurso', origem: 'Câmara de Vereadores', etapa: 'Cadastro', prazoTipo: 'Legal', prazo: '28/10', atraso: 0, tarefas: [], chegou: '21/10', parado: 0 },
+    { id: 4, tipo: 'Protocolo', area: 'Pessoal', num: '2210/2026', assunto: 'Nomeação dos aprovados no concurso', origem: 'Recursos Humanos', etapa: 'Cadastro', prazoTipo: 'Legal', prazo: '28/10', atraso: 0, tarefas: [], chegou: '21/10', parado: 0 },
     { id: 5, tipo: 'Portaria', num: '045/2026', assunto: 'Horário de verão dos servidores', origem: 'Gabinete', etapa: 'Fazendo', prazoTipo: 'Próprio', prazo: '25/10', atraso: 0,
       tarefas: [{ t: 'Minutar a portaria', f: true }, { t: 'Assinatura da Prefeita', f: true }], chegou: '15/10', parado: 1 },
     { id: 6, tipo: 'Memorando', num: '071/2026', assunto: 'Reorganização do arquivo morto', origem: 'Secretaria', etapa: 'Finalizado', prazoTipo: 'Próprio', prazo: '14/10', atraso: 0,
-      tarefas: [{ t: 'Listar caixas', f: true }, { t: 'Triagem', f: true }, { t: 'Descarte autorizado', f: true }], chegou: '01/10', parado: 0 }
+      tarefas: [{ t: 'Listar caixas', f: true }, { t: 'Triagem', f: true }, { t: 'Descarte autorizado', f: true }], chegou: '01/10', parado: 0, concluido: '14/10' },
+    { id: 7, tipo: 'Processo', area: 'Compras', num: '3120/2026', assunto: 'Registro de preços de material de expediente', origem: 'Setor de Compras', etapa: 'Vista', prazoTipo: 'Próprio', prazo: '29/10', atraso: 0, tarefas: [], chegou: '20/10', parado: 1 },
+    { id: 8, tipo: 'Pedido de informação', num: '012/2026', assunto: 'Lotação dos servidores da Secretaria de Obras', origem: 'Câmara de Vereadores', etapa: 'Fazendo', prazoTipo: 'Próprio', prazo: null, atraso: 0,
+      tarefas: [{ t: 'Levantar a lotação atual', f: false }], chegou: '14/10', parado: 4 }
   ];
-  var FOCO = [1, 2, 3];
 
   var NAV = [
     ['inicio', 'Início', 'house'], ['entradas', 'Entradas', 'inbox'], ['demandas', 'Demandas', 'square-kanban'],
@@ -74,15 +77,55 @@
   }
 
   // ---------- peças compartilhadas dos cards ----------
-  var TIPO_COR = { Processo: 262, Memorando: 212, 'Ofício': 28, Portaria: 150 };
+  var TIPO_COR = { Processo: 262, Protocolo: 262, Memorando: 212, 'Ofício': 28, Portaria: 150, 'Pedido de informação': 190, 'Projeto de lei': 340 };
   var ETAPA_COR = { Cadastro: 48, Vista: 205, Fazendo: 262, 'Aguardando retorno': 330, Finalizado: 150 };
   var MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   function dataCurta(p) { var m = p.split('/'); return +m[0] + ' ' + MESES[+m[1] - 1]; }
-  function atrasada(d) { return d.atraso > 0 && d.etapa !== 'Finalizado'; }
+  // ---------- datas do protótipo (hoje = 21/10/2026) ----------
+  var HOJE_MS = Date.UTC(2026, 9, 21);
+  function ms(c) { var m = c.split('/'); return Date.UTC(2026, +m[1] - 1, +m[0]); }
+  function diasAte(c) { return Math.round((ms(c) - HOJE_MS) / 864e5); }
+  function diasDesde(c) { return -diasAte(c); }
+  function plural(n, u) { return n + ' ' + u + (n === 1 ? '' : 's'); }
+  function curto(n) { return n + ' d'; }
+  // sem prazo não é inventado: a demanda fica fora dos filtros e mostra só há quanto tempo chegou
+  function atrasada(d) { return !!d.prazo && diasAte(d.prazo) < 0 && d.etapa !== 'Finalizado'; }
+  function atrasoDias(d) { return atrasada(d) ? -diasAte(d.prazo) : 0; }
+  // data que conta para os filtros: quem aguarda retorno só volta quando faltarem 3 dias para o acompanhamento
+  function dataFiltro(d) {
+    if (d.etapa === 'Finalizado') return null;
+    if (d.etapa === 'Aguardando retorno') { var a = d.acompanhar ? diasAte(d.acompanhar) : null; return a !== null && a <= 3 ? d.acompanhar : null; }
+    return d.prazo || null;
+  }
+  function grupoFiltro(d) {
+    var c = dataFiltro(d); if (!c) return null;
+    var n = diasAte(c);
+    return n < 0 ? 'atrasadas' : n === 0 ? 'hoje' : n <= 7 ? 'sete' : null;
+  }
+  function ordemFiltro(d) { var c = dataFiltro(d); return [c ? diasAte(c) : 999, -diasDesde(d.chegou)]; }
+  function porGrupo(g) {
+    return DEMANDAS.filter(function (d) { return grupoFiltro(d) === g; }).sort(function (a, b) { var x = ordemFiltro(a), y = ordemFiltro(b); return x[0] - y[0] || x[1] - y[1]; });
+  }
+  // Foco do dia: até 3 demandas, atrasadas primeiro (a mais antiga), depois hoje, depois os próximos 7 dias
+  function focoDoDia() { return porGrupo('atrasadas').concat(porGrupo('hoje'), porGrupo('sete')).slice(0, 3); }
   function hue(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }
   function chipTipo(d) { return '<span class="tag" style="--h:' + (TIPO_COR[d.tipo] || 212) + '">' + esc(d.tipo) + '</span>'; }
-  function chipPrazo(d) { var at = atrasada(d); return '<span class="pz' + (at ? ' venc' : '') + '">' + ic('calendar') + dataCurta(d.prazo) + (at ? ' · ' + d.atraso + ' d' : '') + '</span>'; }
-  function chipSelo(d) { return '<span class="selo' + (d.prazoTipo === 'Legal' ? ' legal' : '') + '">' + ic('flag') + d.prazoTipo + '</span>'; }
+  // contagem regressiva quando há prazo; sem prazo, só a data de cadastro
+  function chipPrazo(d) {
+    if (!d.prazo) return '<span class="pz sem">' + ic('calendar') + 'Sem prazo</span>';
+    if (d.etapa === 'Finalizado') return '<span class="pz">' + ic('calendar') + dataCurta(d.prazo) + '</span>';
+    var n = diasAte(d.prazo), at = n < 0;
+    return '<span class="pz' + (at ? ' venc' : '') + '">' + ic('calendar') + dataCurta(d.prazo) + ' · ' + (at ? 'atrasada ' + curto(-n) : n === 0 ? 'vence hoje' : 'faltam ' + curto(n)) + '</span>';
+  }
+  // acompanhamento do tempo: desde a chegada até a conclusão (ou até hoje)
+  function chipTempo(d) {
+    if (d.etapa === 'Finalizado' && d.concluido) return '<span class="tempo mono" title="Da chegada à conclusão">' + ic('clock') + 'Resolvida em ' + curto(Math.max(0, diasDesde(d.chegou) - diasDesde(d.concluido))) + '</span>';
+    return '<span class="tempo mono" title="Desde que chegou">' + ic('clock') + (diasDesde(d.chegou) === 0 ? 'Chegou hoje' : 'Chegou há ' + curto(diasDesde(d.chegou))) + '</span>';
+  }
+  function chipSelo(d) { return d.prazo ? '<span class="selo' + (d.prazoTipo === 'Legal' ? ' legal' : '') + '">' + ic('flag') + d.prazoTipo + '</span>' : ''; }
+  // cor de frente do card: documentos em geral são neutros; processos e protocolos têm tom pastel pela área
+  var AREA_COR = { Geral: 'azul', Pessoal: 'verde', Compras: 'amar' };
+  function corCard(d) { return (d.tipo === 'Processo' || d.tipo === 'Protocolo') && AREA_COR[d.area || 'Geral'] ? ' cat-' + AREA_COR[d.area || 'Geral'] : ''; }
   function origemP(d) { return '<span class="origem-p"><i class="pt" style="--h:' + hue(d.origem) + '"></i>' + esc(d.origem) + '</span>'; }
   function contagem(d) { var f = d.tarefas.filter(function (t) { return t.f; }).length; return d.tarefas.length ? f + '/' + d.tarefas.length : ''; }
   function barraProg(d) {
@@ -98,6 +141,10 @@
   }
 
   // ---------- card de dois lados ----------
+  // O botão de virar fica nos dois lados. Quem não escolheu nada vê o verso ao passar o mouse; depois do toque, o lado escolhido fica fixo.
+  function btnGirar(d, para) {
+    return '<button class="girar" data-act="girar" data-id="' + d.id + '" data-lado="' + para + '" aria-label="' + (para === 'verso' ? 'Fixar o verso do card' : 'Fixar a frente do card') + '" title="' + (para === 'verso' ? 'Ver tarefas' : 'Ver a frente') + '">' + ic('rotate-cw') + '</button>';
+  }
   function cardHTML(d) {
     var pend = d.tarefas.filter(function (t) { return !t.f; }), fin = d.etapa === 'Finalizado', at = atrasada(d), meio;
     if (!d.tarefas.length) {
@@ -108,37 +155,35 @@
       meio = '<div class="fin"><span>Todas as tarefas concluídas</span><button data-act="finalizar" data-id="' + d.id + '">Finalizar demanda?</button></div>';
     } else { meio = ''; }
     var etapaChip = fin ? '<span class="chip">Finalizada</span>' : '<span class="chip neutro">' + esc(d.etapa) + (d.etapa === 'Aguardando retorno' ? ' · ' + esc(d.setor) + ' ' + d.diasAg + ' d' : '') + '</span>';
-    var frente = '<div class="face front"><div class="cab">' + origemP(d) +
-      '<button class="girar" data-act="girar" data-id="' + d.id + '" aria-label="Girar o card para ver o verso">' + ic('rotate-cw') + '</button></div>' +
+    var frente = '<div class="face front' + corCard(d) + '"><div class="cab">' + origemP(d) + btnGirar(d, 'verso') + '</div>' +
       '<div class="tags">' + chipTipo(d) + '<span class="num mono">' + esc(d.num) + '</span>' + etapaChip + '</div>' +
       '<div class="assunto" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</div>' +
-      '<div class="chips">' + chipPrazo(d) + chipSelo(d) + '</div>' + meio + barraProg(d) + '</div>';
+      '<div class="chips">' + chipPrazo(d) + chipSelo(d) + '</div><div class="chips">' + chipTempo(d) + '</div>' + meio + barraProg(d) + '</div>';
     var tarefas = d.tarefas.length ? '<ul class="tarefas">' + d.tarefas.map(function (t, i) {
       return '<li><label><input type="checkbox" data-act="tarefa" data-id="' + d.id + '" data-i="' + i + '"' + (t.f ? ' checked' : '') + '><span class="' + (t.f ? 'feita' : '') + '">' + esc(t.t) + '</span></label></li>';
     }).join('') + '</ul>' : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span><button data-act="add" data-id="' + d.id + '">+ Adicionar tarefa</button></div>';
-    var meta = '<div class="meta"><div>Chegou em<b>' + d.chegou + '</b></div><div>Dias parada<b>' + d.parado + '</b></div><div>Tipo<b>' + esc(d.tipo) + '</b></div>' +
+    var meta = '<div class="meta"><div>Chegou em<b>' + d.chegou + '</b></div><div>' + (fin ? 'Resolvida em' : 'Parada há') + '<b>' + (fin && d.concluido ? curto(Math.max(0, diasDesde(d.chegou) - diasDesde(d.concluido))) : curto(d.parado)) + '</b></div><div>Tipo<b>' + esc(d.tipo) + '</b></div>' +
       (d.setor ? '<div>Setor<b>' + esc(d.setor) + ' · ' + d.diasAg + ' dias</b></div><div>Acompanhar em<b>' + d.acompanhar + '</b></div>' : '') + '</div>';
     var acoes = '<div class="acoes">' +
       (d.etapa === 'Cadastro' ? '<button class="btn pri mini" data-act="javi" data-id="' + d.id + '">' + ic('eye') + 'Já vi</button>' : '') +
       (fin ? '<button class="btn mini" data-act="reabrir" data-id="' + d.id + '">Reabrir</button>' : '<button class="btn pri mini" data-act="concluir" data-id="' + d.id + '">' + ic('check') + 'Concluir</button>') +
       '<button class="btn mini so-icone" data-act="msg" data-m="Arquivar" aria-label="Arquivar" title="Arquivar">' + ic('archive') + '</button>' +
       '<button class="btn mini so-icone" data-act="msg" data-m="Mover de etapa" aria-label="Mover de etapa" title="Mover de etapa">' + ic('arrow-right') + '</button>' +
-      '<button class="btn mini so-icone" data-act="msg" data-m="Editar" aria-label="Editar" title="Editar">' + ic('pencil') + '</button></div>';
-    var verso = '<div class="face back"><div class="cab"><span class="num mono">' + esc(d.tipo) + ' ' + esc(d.num) + '</span>' +
-      '<button class="girar" data-act="girar" data-id="' + d.id + '" aria-label="Voltar para a frente do card">' + ic('rotate-cw') + '</button></div>' + tarefas + meta + acoes + '</div>';
-    return '<article class="dcard' + (at ? ' atrasada' : '') + (estado.virado[d.id] ? ' virado' : '') + '" data-id="' + d.id + '"><div class="faces">' + frente + verso + '</div></article>';
+      '<button class="btn mini so-icone" data-act="abrir" data-id="' + d.id + '" aria-label="Editar" title="Editar">' + ic('pencil') + '</button></div>';
+    var verso = '<div class="face back"><div class="cab"><span class="num mono">' + esc(d.tipo) + ' ' + esc(d.num) + '</span>' + btnGirar(d, 'frente') + '</div>' + tarefas + meta + acoes + '</div>';
+    return '<article class="dcard' + (at ? ' atrasada' : '') + '"' + (estado.fixo[d.id] ? ' data-fix="' + estado.fixo[d.id] + '"' : '') + ' data-id="' + d.id + '"><div class="faces">' + frente + verso + '</div></article>';
   }
 
   // ---------- visões de Demandas ----------
   function mini(d) {
     var fin = d.etapa === 'Finalizado', pend = d.tarefas.filter(function (t) { return !t.f; });
-    return '<article class="mini-card' + (atrasada(d) ? ' atrasada' : '') + (fin ? ' feita' : '') + '"><div class="m-top">' + origemP(d) +
+    return '<article class="mini-card' + corCard(d) + (atrasada(d) ? ' atrasada' : '') + (fin ? ' feita' : '') + '"><div class="m-top">' + origemP(d) +
       '<button class="mais" data-act="msg" data-m="Mais ações" aria-label="Mais ações">' + ic('ellipsis') + '</button></div>' +
       '<div class="tags">' + chipTipo(d) + '<span class="num mono">' + esc(d.num) + '</span></div>' +
       '<div class="m-tit"><button class="circ' + (fin ? ' ok' : '') + '" data-act="' + (fin ? 'reabrir' : 'concluir') + '" data-id="' + d.id + '" aria-label="' + (fin ? 'Reabrir demanda' : 'Marcar como finalizada') + '">' + (fin ? ic('check') : '') + '</button>' +
       '<span class="assunto" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</span></div>' +
       (pend.length && !fin ? '<div class="proxima-s">Próxima: ' + esc(pend[0].t) + '</div>' : '') +
-      '<div class="chips">' + chipPrazo(d) + chipSelo(d) + (d.setor ? '<span class="chip neutro">' + esc(d.setor) + ' · ' + d.diasAg + ' d</span>' : '') + '</div>' + barraProg(d) + '</article>';
+      '<div class="chips">' + chipPrazo(d) + chipSelo(d) + chipTempo(d) + (d.setor ? '<span class="chip neutro">' + esc(d.setor) + ' · ' + d.diasAg + ' d</span>' : '') + '</div>' + barraProg(d) + '</article>';
   }
   function quadro() {
     var lista = filtradas();
@@ -161,7 +206,7 @@
       if (k === 'origem') return d.origem;
       if (k === 'etapa') return ETAPAS.indexOf(d.etapa);
       if (k === 'pct') return pct(d) === null ? -1 : pct(d);
-      var m = d.prazo.split('/'); return +m[1] * 100 + +m[0];
+      if (!d.prazo) return 9999; var m = d.prazo.split('/'); return +m[1] * 100 + +m[0];
     }
     return filtradas().sort(function (a, b) { var x = chave(a), y = chave(b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
   }
@@ -205,27 +250,11 @@
       '<button class="btn escuro" data-act="msg" data-m="Nova demanda" aria-label="Nova demanda">' + ic('plus') + '<span class="tx">Nova demanda</span></button></div><div id="vista">' + vista() + '</div>';
   }
 
-  // ---------- Entradas ----------
-  var NOTAS_E = [
-    ['Ligar para o RH sobre as escalas de fim de ano', ['rh'], true], ['Ideia: painel de demandas por origem no relatório mensal', ['ideia'], false],
-    ['Conferir se a PGM respondeu o ofício 311', ['pgm', 'cobrar'], false], ['Pedir à Contabilidade o saldo de diárias', ['tce'], false],
-    ['Reunião de segunda: pauta de compras', ['reuniao'], false], ['Lembrar de assinar a portaria do horário de verão', ['portaria'], false]
-  ];
-  function entradas() {
-    var h = (PALETAS[estado.pal === null ? 0 : estado.pal])[1], e = estado.tema === 'escuro';
-    return '<div class="filtros"><button class="btn pri mini" data-act="msg" data-m="Nova nota">' + ic('plus') + 'Nova nota</button><span class="chip neutro">#rh</span><span class="chip neutro">#tce</span><span class="chip neutro">#ideia</span></div><div class="postits">' +
-      NOTAS_E.map(function (n, i) {
-        var cor = e ? hsl(h + i * 55, 38, 26) : hsl(h + i * 55, 75, 87);
-        return '<article class="postit" style="background:' + cor + '">' + (n[2] ? '<span class="fixo" title="Fixada no topo">' + ic('target') + '</span>' : '') + '<p>' + esc(n[0]) + '</p><div class="tags">' + n[1].map(function (t) { return '<span class="mono">#' + t + '</span>'; }).join(' ') + '</div>' +
-          '<div class="acoes"><button class="btn mini" data-act="msg" data-m="Virar demanda: abre o cadastro preenchido" data-n="' + i + '">' + ic('arrow-right') + 'Virar demanda</button><button class="btn mini so-icone" data-act="msg" data-m="Arquivar nota" aria-label="Arquivar nota">' + ic('archive') + '</button></div></article>';
-      }).join('') + '</div>';
-  }
-
   // ---------- Agenda ----------
   var DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   var EVENTOS = [[21, '14:00 a 15:00', 'Reunião com a Prefeita'], [23, '10:00 a 11:00', 'Reunião de equipe'], [27, '09:00 a 10:30', 'Visita à Secretaria de Saúde'], [28, 'dia inteiro', 'Dia do Servidor Público', 1]];
-  function demDia(dia) { return DEMANDAS.filter(function (d) { var m = d.prazo.split('/'); return +m[0] === dia && m[1] === '10' && d.etapa !== 'Finalizado'; }); }
-  function chipD(d) { return '<div class="ag-d' + (d.atraso > 0 ? ' venc' : '') + '" title="' + esc(d.assunto) + '">' + esc(d.num) + '</div>'; }
+  function demDia(dia) { return DEMANDAS.filter(function (d) { if (!d.prazo) return false; var m = d.prazo.split('/'); return +m[0] === dia && m[1] === '10' && d.etapa !== 'Finalizado'; }); }
+  function chipD(d) { return '<div class="ag-d' + (atrasada(d) ? ' venc' : '') + '" title="' + esc(d.assunto) + '">' + esc(d.num) + '</div>'; }
   function chipE(x) { return '<div class="ag-e' + (x[3] ? ' dia' : '') + '"><b class="mono">' + (x[3] ? '' : x[1].split(' ')[0]) + '</b> ' + esc(x[2]) + '</div>'; }
   function agenda() {
     var tabs = '<div class="filtros"><div class="vis" role="group" aria-label="Visão da agenda">' + [['hoje', 'Hoje'], ['semana', 'Semana'], ['mes', 'Mês']].map(function (t) { return '<button data-act="ag" data-v="' + t[0] + '" aria-pressed="' + (estado.ag === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div>' +
@@ -264,7 +293,7 @@
   function mais() { return '<div class="lista">' + [['entradas', 'Entradas', 'inbox'], ['documentos', 'Documentos', 'file-text'], ['ia', 'IA', 'sparkles'], ['config', 'Configurações', 'settings'], ['arquivo', 'Arquivo', 'archive']].map(function (x) { return '<button class="navi grande" data-nav="' + x[0] + '"><span class="ico">' + ic(x[2], 'duo') + '</span><span>' + x[1] + '</span></button>'; }).join('') + '</div>'; }
 
   var TITULOS = { inicio: 'Início', entradas: 'Entradas', demandas: 'Demandas', agenda: 'Agenda', documentos: 'Documentos', ia: 'IA', config: 'Configurações', perfil: 'Perfil', arquivo: 'Arquivo', mais: 'Mais' };
-  var TELAS_FN = { entradas: entradas, demandas: demandas, agenda: agenda, documentos: documentos, ia: ia, arquivo: arquivo, mais: mais };
+  var TELAS_FN = { demandas: demandas, agenda: agenda, documentos: documentos, ia: ia, arquivo: arquivo, mais: mais };
 
   // ---------- montagem do app ----------
   var SUBS = { inicio: 'Seu dia em um só lugar.', entradas: 'Anotações rápidas que podem virar demandas.', agenda: 'Prazos de demanda e compromissos, juntos.', documentos: 'Modelos e arquivos ligados às demandas.', ia: 'Sua estagiária: pergunta, executa e desfaz.', config: 'Cores, fontes, ícones e tamanhos, com visualização na hora.', perfil: 'Só seu e privado.', arquivo: 'Demandas arquivadas.', mais: 'Outras áreas do Dmanda.' };
@@ -334,12 +363,12 @@
       $$('#g-tema .seg').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.tema === estado.tema); });
     }
     else if (a === 'busca') abrirBusca();
-    else if (a === 'girar') { estado.virado[id] = !estado.virado[id]; var c = b.closest('.dcard'); c.classList.toggle('virado', !!estado.virado[id]); }
+    else if (a === 'girar') { estado.fixo[id] = b.dataset.lado; var c = b.closest('.dcard'); c.dataset.fix = b.dataset.lado; }
     else if (a === 'tarefa') { d.tarefas[+b.dataset.i].f = b.checked; trocar({}); }
     else if (a === 'humor') trocar({ humor: +b.dataset.i });
     else if (a === 'javi') { d.etapa = 'Vista'; trocar({}); toast('Marcada como Vista'); }
-    else if (a === 'concluir' || a === 'finalizar') { d.etapa = 'Finalizado'; trocar({}); toast('Demanda finalizada'); }
-    else if (a === 'reabrir') { d.etapa = 'Fazendo'; trocar({}); toast('Reaberta em Fazendo, histórico preservado'); }
+    else if (a === 'concluir' || a === 'finalizar') { d.etapa = 'Finalizado'; d.concluido = '21/10'; trocar({}); toast('Demanda finalizada'); }
+    else if (a === 'reabrir') { d.etapa = 'Fazendo'; d.concluido = null; trocar({}); toast('Reaberta em Fazendo, histórico preservado'); }
     else if (a === 'add') { d.tarefas.push({ t: 'Nova tarefa', f: false }); trocar({}); toast('Tarefa adicionada'); }
     else if (a === 'abrir') toast('Abriria a demanda completa');
     else if (a === 'vis') trocar({ vis: b.dataset.v });
@@ -381,8 +410,8 @@
   });
 
   window.DM = {
-    estado: estado, trocar: trocar, toast: toast, ic: ic, esc: esc, $: $, $$: $$, DEMANDAS: DEMANDAS, EVENTOS: EVENTOS, NOTAS_E: NOTAS_E, ETAPAS: ETAPAS,
-    PALETAS: PALETAS, hsl: hsl, estiloBase: estiloApp, estiloApp: estiloApp, iconeEstilo: iconeEstilo, cardHTML: cardHTML, stat: stat, FOCO: FOCO, TELAS_FN: TELAS_FN,
+    estado: estado, trocar: trocar, toast: toast, ic: ic, esc: esc, $: $, $$: $$, DEMANDAS: DEMANDAS, EVENTOS: EVENTOS, ETAPAS: ETAPAS,
+    PALETAS: PALETAS, hsl: hsl, estiloBase: estiloApp, estiloApp: estiloApp, iconeEstilo: iconeEstilo, cardHTML: cardHTML, stat: stat, focoDoDia: focoDoDia, porGrupo: porGrupo, grupoFiltro: grupoFiltro, diasAte: diasAte, diasDesde: diasDesde, atrasada: atrasada, corCard: corCard, dataCurta: dataCurta, plural: plural, TELAS_FN: TELAS_FN,
     acoes: {}, pos: function () {}, modalHTML: function () { return ''; }, mudaTema: function () {}, iniciar: function () {}
   };
   if (window.DM_EXTRA) window.DM_EXTRA(window.DM);
@@ -391,7 +420,7 @@
   var TELAS = { desktop: [1360, 780], 'tablet-h': [1180, 780], media: [1000, 780], 'tablet-v': [820, 900], phone: [390, 800] };
   new URLSearchParams(location.hash.slice(1)).forEach(function (v, k) { if (k in estado && k !== 'virado') estado[k] = (typeof estado[k] === 'number' || k === 'pal') && v !== '' && !isNaN(v) ? +v : v; });
   if (!TELAS[estado.dev]) estado.dev = 'desktop';
-  new URLSearchParams(location.hash.slice(1)).forEach(function (v, k) { if (k === 'virar') v.split(',').forEach(function (i) { estado.virado[i] = true; }); });
+  new URLSearchParams(location.hash.slice(1)).forEach(function (v, k) { if (k === 'virar') v.split(',').forEach(function (i) { estado.fixo[i] = 'verso'; }); });
   document.addEventListener('error', function (e) {
     var t = e.target;
     if (t && t.classList && t.classList.contains('emo-img') && t.dataset.e) t.replaceWith(document.createTextNode(t.dataset.e));

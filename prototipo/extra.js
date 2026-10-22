@@ -12,15 +12,15 @@ window.DM_EXTRA = function (DM) {
     ['Manrope', F('Manrope', 'system-ui, sans-serif')], ['Source Sans 3', F('Source Sans 3', 'system-ui, sans-serif')], ['Nunito Sans', F('Nunito Sans', 'system-ui, sans-serif')]];
   var FM = [['IBM Plex Mono', F('IBM Plex Mono', 'ui-monospace, monospace')], ['JetBrains Mono', F('JetBrains Mono', 'ui-monospace, monospace')], ['DM Mono', F('DM Mono', 'ui-monospace, monospace')],
     ['Space Mono', F('Space Mono', 'ui-monospace, monospace')], ['Fira Code', F('Fira Code', 'ui-monospace, monospace')]];
-  var CONJUNTOS = [['Sora, Inter e IBM Plex Mono', 0, 0, 0], ['Jakarta e JetBrains Mono', 1, 2, 1], ['DM Serif, DM Sans e DM Mono', 2, 1, 2], ['Fraunces, Inter e DM Mono', 3, 0, 2], ['Manrope, Inter e JetBrains Mono', 4, 0, 1]];
+  var CONJUNTOS = [['Manrope, Inter e IBM Plex Mono', 4, 0, 0], ['Sora, Inter e IBM Plex Mono', 0, 0, 0], ['Jakarta e JetBrains Mono', 1, 2, 1], ['DM Serif, DM Sans e DM Mono', 2, 1, 2], ['Fraunces, Inter e DM Mono', 3, 0, 2], ['Manrope, Inter e JetBrains Mono', 4, 0, 1]];
 
   // ---------- temas definitivos: cada um guarda suas próprias escolhas ----------
   var TEMAS = [['a', 'Aurora', 'Vidro estilo Apple, gradiente suave'], ['b', 'Papel', 'Calmo, tom de papel e títulos serifados'], ['c', 'Grafite', 'Denso, bordas finas e foco em leitura']];
   var KEYS = ['pal', 'fT', 'fS', 'fM', 'iconeEstilo', 'lib', 'fs', 'ico', 'cardh', 'anim'];
-  var PADRAO = { a: { fT: 0, fS: 0, fM: 0, iconeEstilo: 'pastilha' }, b: { fT: 3, fS: 0, fM: 2, iconeEstilo: 'pastilha' }, c: { fT: 4, fS: 0, fM: 1, iconeEstilo: 'duotone' } };
-  function base(dir) { return Object.assign({ pal: null, fT: 0, fS: 0, fM: 0, iconeEstilo: '', lib: 'iconoir', fs: 15, ico: 20, cardh: 340, anim: false }, PADRAO[dir]); }
+  var PADRAO = { a: { fT: 4, fS: 0, fM: 0, iconeEstilo: 'pastilha' }, b: { fT: 3, fS: 0, fM: 0, iconeEstilo: 'pastilha' }, c: { fT: 4, fS: 0, fM: 0, iconeEstilo: 'duotone' } };
+  function base(dir) { return Object.assign({ pal: null, fT: 0, fS: 0, fM: 0, iconeEstilo: '', lib: 'iconoir', fs: 16, ico: 20, cardh: 340, anim: false }, PADRAO[dir]); }
   function snap() { var o = {}; KEYS.forEach(function (k) { o[k] = E[k]; }); return o; }
-  E.salvo = {}; E.perfilV = 'semana'; E.cidade = 'Taquara/RS'; E.prazoAuto = 30; E.alertaParado = 7; E.baloes = 3; E.reduzir = false; E.modal = null; E.rascunho = {}; E.energia = 2; E.col = false; E.balaoAb = false; E.balaoVisto = false;
+  E.salvo = {}; E.perfilV = 'semana'; E.cidade = 'Taquara/RS'; E.sugestaoPrazo = 30; E.bH = null; E.bE = null; E.alertaParado = 7; E.baloes = 3; E.reduzir = false; E.modal = null; E.rascunho = {}; E.energia = 2; E.col = false; E.balaoAb = false; E.balaoVisto = false;
   DM.mudaTema = function (ant, nu) { E.salvo[ant] = snap(); Object.assign(E, E.salvo[nu] || base(nu)); };
   DM.iniciar = function () {
     var h = new URLSearchParams(location.hash.slice(1)), o = base(E.dir);
@@ -28,7 +28,7 @@ window.DM_EXTRA = function (DM) {
     if (h.get('balao') !== 'nao') setTimeout(function () { if (E.tela === 'inicio' && !E.balaoVisto && !E.modal) { E.balaoVisto = true; E.balaoAb = true; DM.trocar({}); } }, 2500);
     else E.balaoVisto = true;
   };
-  DM.estiloApp = function () { return DM.estiloBase() + ';--font:' + FS[E.fS][1] + ';--font-h:' + FT[E.fT][1] + ';--font-n:' + FM[E.fM][1]; };
+  DM.estiloApp = function () { return DM.estiloBase() + ';--font:' + FS[E.fS][1] + ';--font-h:' + FT[E.fT][1] + ';--font-n:' + FM[E.fM][1] + ';--font-ui:' + (E.dir === 'b' ? FS[E.fS][1] : FT[E.fT][1]); };
   DM.pos = function () {
     $$('#g-dir .seg').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.dir === E.dir); });
     $$('#g-tema .seg').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.tema === E.tema); });
@@ -48,20 +48,82 @@ window.DM_EXTRA = function (DM) {
     if (t && t.classList && t.classList.contains('emo-img') && t.dataset.fbi) { var s = document.createElement('span'); s.className = 'emo-fb'; s.innerHTML = ic(t.dataset.fbi); t.replaceWith(s); }
   }, true);
 
+  // ---------- Entradas: post-its ----------
+  // n = { t: título (opcional), x: texto, cor: 0 a 5, fixo, ed: última edição }. Abrir a nota não renova a data, só editar.
+  var NOTAS_E = DM.NOTAS_E = [
+    { t: '', x: 'Ligar para o RH sobre as escalas de fim de ano #rh', cor: 0, fixo: true, ed: '21/10' },
+    { t: 'Painel por origem', x: 'Ideia: painel de demandas por origem no relatório mensal #ideia', cor: 1, fixo: false, ed: '20/10' },
+    { t: '', x: 'Conferir se a PGM respondeu o ofício 311. Se não, cobrar por telefone #pgm #cobrar', cor: 2, fixo: false, ed: '19/10' },
+    { t: 'Diárias', x: 'Pedir à Contabilidade o saldo de diárias de 2025 #tce', cor: 3, fixo: false, ed: '18/10' },
+    { t: '', x: 'Reunião de segunda: pauta de compras e registro de preços #reuniao', cor: 4, fixo: false, ed: '17/10' },
+    { t: 'Portaria', x: 'Lembrar de assinar a portaria do horário de verão #portaria', cor: 5, fixo: false, ed: '16/10' }
+  ];
+  var RE_TAG = /#[\p{L}\p{N}_]+/gu;
+  function tagsDe(n) { var m = ((n.t || '') + ' ' + n.x).match(RE_TAG) || [], o = []; m.forEach(function (x) { x = x.slice(1).toLowerCase(); if (o.indexOf(x) < 0) o.push(x); }); return o; }
+  function limpo(s) { return (s || '').replace(RE_TAG, '').replace(/\s+/g, ' ').trim(); }
+  // na grade aparece só o título; sem título, as primeiras frases do texto
+  function resumoNota(n) { return limpo(n.t) || limpo(n.x); }
+  function corNota(c) { var h = DM.PALETAS[E.pal === null ? 0 : E.pal][1]; return E.tema === 'escuro' ? DM.hsl(h + c * 55, 38, 26) : DM.hsl(h + c * 55, 75, 87); }
+  // sem escolha, sorteia entre as cores menos usadas para não repetir demais
+  function corAuto() {
+    var uso = [0, 0, 0, 0, 0, 0]; NOTAS_E.forEach(function (n) { uso[n.cor]++; });
+    var min = Math.min.apply(null, uso), livres = []; uso.forEach(function (u, i) { if (u === min) livres.push(i); });
+    return livres[Math.floor(Math.random() * livres.length)];
+  }
+  function entradas() {
+    var cont = {}; NOTAS_E.forEach(function (n) { tagsDe(n).forEach(function (t) { cont[t] = (cont[t] || 0) + 1; }); });
+    var lista = NOTAS_E.map(function (n, i) { return [n, i]; }).filter(function (x) { return !E.tagSel || tagsDe(x[0]).indexOf(E.tagSel) > -1; });
+    lista.sort(function (a, b) { return (b[0].fixo ? 1 : 0) - (a[0].fixo ? 1 : 0) || a[1] - b[1]; });
+    return '<div class="filtros"><button class="btn pri mini" data-act="msg" data-m="Nova nota">' + ic('plus') + 'Nova nota</button>' +
+      '<div class="tagbar" role="group" aria-label="Filtrar por tag"><button class="chip neutro" data-act="filtro-tag" data-t="" aria-pressed="' + !E.tagSel + '">Todas ' + NOTAS_E.length + '</button>' +
+      Object.keys(cont).sort().map(function (t) { return '<button class="chip neutro mono" data-act="filtro-tag" data-t="' + esc(t) + '" aria-pressed="' + (E.tagSel === t) + '">#' + esc(t) + ' ' + cont[t] + '</button>'; }).join('') + '</div></div>' +
+      (lista.length ? '<div class="postits">' + lista.map(function (x, k) {
+        var n = x[0], i = x[1];
+        return '<div class="pw" style="--rot:' + (k % 3 === 0 ? -.6 : k % 3 === 1 ? .5 : -.2) + 'deg"><article class="postit' + (n.fixo ? ' fixado' : '') + '" style="background:' + corNota(n.cor) + '" data-act="editar-nota" data-i="' + i + '" tabindex="0" role="button" aria-label="Abrir a nota: ' + esc(resumoNota(n)) + '">' +
+          '<div class="p-top"><button class="pin-b" data-act="pin" data-i="' + i + '" aria-pressed="' + !!n.fixo + '" aria-label="' + (n.fixo ? 'Desafixar a nota' : 'Fixar a nota') + '" title="' + (n.fixo ? 'Desafixar' : 'Fixar') + '">' + ic('pin') + '</button>' +
+          '<button class="pin-b virar" data-act="virar-nota" data-n="' + i + '" aria-label="Virar demanda" title="Virar demanda">' + ic('arrow-right') + '</button></div>' +
+          '<p class="p-txt' + (n.t && limpo(n.t) ? ' com-titulo' : '') + '">' + esc(resumoNota(n)) + '</p>' +
+          '<div class="p-tags">' + tagsDe(n).map(function (t) { return '<span class="mono">#' + esc(t) + '</span>'; }).join(' ') + '</div></article></div>';
+      }).join('') + '</div>' : '<div class="vazio">' + ic('sticky-note', 'grande') + '<h3>Nenhuma nota com essa tag</h3><p>Escolha outra tag ou veja todas.</p></div>');
+  }
+  TELAS.entradas = entradas;
+
   // ---------- Início ----------
+  // Widgets compactos no topo (ampliam ao passar o mouse ou focar), agenda, três filtros e Foco do dia.
+  function widget(cls, resumo, cheio) { return '<div class="w ' + cls + '" tabindex="0"><div class="w-r">' + resumo + '</div><div class="w-c painel">' + cheio + '</div></div>'; }
+  var FRASE = 'Um passo de cada vez já é caminhar. Hoje, o primeiro é pequeno.';
+  var DSEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   TELAS.inicio = function () {
-    return '<div class="hero"><section class="painel"><div class="data">quarta-feira, 21 de outubro</div><p class="frase">Um passo de cada vez já é caminhar. Hoje, o primeiro é pequeno.</p></section>' +
-      '<section class="painel clima"><div>' + ic('cloud-sun', 'duo') + '</div><div><b>24°</b><div class="data">' + esc(E.cidade) + ', parcialmente nublado</div></div></section></div>' +
-      '<section class="painel registro"><div class="reg-l"><span>Como você está agora?</span><div class="emos" role="group" aria-label="Humor">' + seletor('humor', E.humor, 'humor', ROT_H) + '</div></div>' +
-      '<div class="reg-l"><span>E a energia?</span><div class="emos" role="group" aria-label="Energia">' + seletor('energia', E.energia, 'energia', ROT_E) + '</div></div>' +
-      '<button class="pend" data-act="completar">' + ic('clock') + '<span>Há 2 dias sem registro. Completar agora (opcional)</span>' + ic('right') + '</button></section>' +
-      '<div class="stats">' + DM.stat(1, 'Atrasadas', 'clock', true) + DM.stat(1, 'Para hoje', 'target') + DM.stat(3, 'Próximos 7 dias', 'calendar') + DM.stat(1, 'Aguardando retorno', 'hourglass') + DM.stat(4, 'Entradas sem tratar', 'inbox') + '</div>' +
-      '<section class="sec"><h3>Alertas</h3><div class="alertas">' +
-      '<div class="alerta-l atrasada">' + ic('clock') + '<span>Resposta ao TCE sobre diárias está atrasada</span><span class="quando">3 dias</span></div>' +
-      '<div class="alerta-l">' + ic('calendar') + '<span>Reunião com a Prefeita</span><span class="quando">hoje 14:00</span></div>' +
-      '<div class="alerta-l">' + ic('hourglass') + '<span>Parecer da PGM parado há ' + E.alertaParado + '+ dias</span><span class="quando">acompanhar 24/10</span></div></div></section>' +
-      '<section class="sec"><h3>Foco do dia <small>até 3 demandas, você pode trocar</small></h3><div class="cards">' +
-      DM.FOCO.map(function (id) { return DM.cardHTML(DEM.filter(function (d) { return d.id === id; })[0]); }).join('') + '</div></section>';
+    var faixa = '<div class="faixa">' +
+      widget('w-data', ic('calendar', 'duo') + '<b class="mono">qua, 21 out</b>', '<div class="data">Hoje</div><b>quarta-feira, 21 de outubro de 2026</b>') +
+      widget('w-frase', ic('sparkles', 'duo') + '<span class="w-fr">' + esc(FRASE) + '</span>', '<div class="data">Frase do dia</div><p class="frase">' + esc(FRASE) + '</p>') +
+      widget('w-clima', ic('cloud-sun', 'duo') + '<b class="mono">24°</b>', '<div class="data">' + esc(E.cidade) + '</div><b>24°, parcialmente nublado</b>') +
+      widget('w-humor', img('humor', E.humor) + '<span class="w-t">Humor</span>', '<div class="data">Como você está agora?</div><div class="emos" role="group" aria-label="Humor">' + seletor('humor', E.humor, 'humor', ROT_H) + '</div>' +
+        '<button class="pend" data-act="completar">' + ic('clock') + '<span>Há 2 dias sem registro. Completar (opcional)</span>' + ic('right') + '</button>') +
+      widget('w-energia', img('energia', E.energia) + '<span class="w-t">Energia</span>', '<div class="data">E a energia?</div><div class="emos" role="group" aria-label="Energia">' + seletor('energia', E.energia, 'energia', ROT_E) + '</div>') +
+      '</div>';
+
+    var ev = DM.EVENTOS.filter(function (x) { return x[0] >= 21; }).sort(function (a, b) { return a[0] - b[0]; }).slice(0, 5);
+    var agenda = '<section class="sec"><h3>Compromissos <button class="link-s" data-nav="agenda">Ver agenda</button></h3><div class="ag-mini-l">' +
+      (ev.length ? ev.map(function (x) {
+        var q = x[0] === 21 ? 'hoje' : DSEM[(x[0] - 18) % 7] + ' ' + x[0];
+        return '<div class="ag-mini' + (x[0] === 21 ? ' hoje' : '') + '"><b class="mono">' + q + (x[3] ? '' : ' · ' + x[1].split(' ')[0]) + '</b><span>' + esc(x[2]) + '</span></div>';
+      }).join('') : '<div class="vazio-c">Nenhum compromisso próximo</div>') + '</div></section>';
+
+    var G = [['atrasadas', 'Atrasadas', 'clock', true], ['hoje', 'Para hoje', 'target'], ['sete', 'Próximos 7 dias', 'calendar']];
+    var filtros = '<section class="sec"><div class="stats tres" role="group" aria-label="Filtrar demandas por prazo">' + G.map(function (g) {
+      var n = DM.porGrupo(g[0]).length;
+      return '<button class="stat' + (g[3] && n ? ' alerta' : '') + '" data-act="filtro-ini" data-g="' + g[0] + '" aria-pressed="' + (E.filtroIni === g[0]) + '"><span class="n">' + n + '</span><span class="r">' + ic(g[2], 'duo') + g[1] + '</span></button>';
+    }).join('') + '</div>';
+    if (E.filtroIni) {
+      var l = DM.porGrupo(E.filtroIni), nome = G.filter(function (g) { return g[0] === E.filtroIni; })[0][1];
+      filtros += '<h3 class="sub-f">' + nome + ' <small>' + DM.plural(l.length, 'demanda') + '</small></h3>' + (l.length ? '<div class="cards">' + l.map(DM.cardHTML).join('') + '</div>' : '<div class="vazio-c">Nenhuma demanda aqui. Bom sinal.</div>');
+    }
+    filtros += '</section>';
+
+    var foco = DM.focoDoDia();
+    return faixa + agenda + filtros + '<section class="sec"><h3>Foco do dia <small>até 3 demandas: atrasadas, depois hoje, depois os próximos 7 dias</small></h3>' +
+      (foco.length ? '<div class="cards">' + foco.map(DM.cardHTML).join('') + '</div>' : '<div class="vazio-c">Nada urgente por enquanto.</div>') + '</section>';
   };
 
   // ---------- Perfil ----------
@@ -117,7 +179,7 @@ window.DM_EXTRA = function (DM) {
       }).join('') + '<div class="acoes"><button class="btn mini" data-act="restaurar">Restaurar padrão do tema</button></div><p class="data">Os limites impedem texto ilegível e botão abaixo de 44 px.</p></section>' +
       '<section class="painel"><h3>Preferências</h3><div class="acoes"><button class="btn mini" data-act="reduzir" aria-pressed="' + E.reduzir + '">Reduzir movimento: ' + (E.reduzir ? 'ligado' : 'desligado') + '</button></div>' +
       '<label class="fld"><span>Cidade do clima</span><input data-pref="cidade" value="' + esc(E.cidade) + '"></label>' +
-      '<label class="fld"><span>Prazo automático, em dias (sem prazo informado)</span><input data-pref="prazoAuto" type="number" min="1" max="120" value="' + E.prazoAuto + '"></label>' +
+      '<label class="fld"><span>Prazo sugerido, em dias (só sugere, nunca preenche sozinho)</span><input data-pref="sugestaoPrazo" type="number" min="1" max="120" value="' + E.sugestaoPrazo + '"></label>' +
       '<label class="fld"><span>Alerta de parado há quantos dias</span><input data-pref="alertaParado" type="number" min="1" max="60" value="' + E.alertaParado + '"></label>' +
       '<label class="fld"><span>Balão de humor e energia a cada</span><select data-pref="baloes"><option value="2"' + (E.baloes == 2 ? ' selected' : '') + '>2 horas</option><option value="3"' + (E.baloes == 3 ? ' selected' : '') + '>3 horas</option><option value="4"' + (E.baloes == 4 ? ' selected' : '') + '>4 horas</option></select></label></section>' +
       '<section class="painel"><h3>Dados e conteúdo</h3><div class="acoes">' +
@@ -129,12 +191,11 @@ window.DM_EXTRA = function (DM) {
   };
 
   // ---------- janelas (cadastro rápido, nota, evento, tarefa, demanda aberta, dias sem registro) ----------
-  var TIPOS = ['Processo', 'Memorando', 'Ofício', 'Portaria', 'Reunião', 'Pedido pessoal'];
+  var TIPOS = ['Protocolo', 'Processo', 'Memorando', 'Ofício', 'Pedido de informação', 'Projeto de lei', 'Portaria', 'Outro documento'];
   var HOJE = Date.UTC(2026, 9, 21);
   function isoParaCurto(iso) { var p = iso.split('-'); return p[2] + '/' + p[1]; }
   function curtoParaIso(c) { var p = c.split('/'); return '2026-' + p[1] + '-' + p[0]; }
-  function atrasoDe(iso) { var p = iso.split('-'); var d = Date.UTC(+p[0], +p[1] - 1, +p[2]); return Math.max(0, Math.round((HOJE - d) / 864e5)); }
-  function maisDias(n) { var d = new Date(HOJE + n * 864e5); return d.toISOString().slice(0, 10); }
+  function maisDias(n, base) { var p = (base || '2026-10-21').split('-'); var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]) + n * 864e5); return d.toISOString().slice(0, 10); }
   function abrir(m) { m.v = m.v || {}; m.foco = true; DM.trocar({ modal: m, plus: false }); }
   function fechar() { DM.trocar({ modal: null }); }
   function campo(rot, nome, tipo, v, extra) { return '<div class="fld"><label for="m-' + nome + '">' + rot + '</label><input id="m-' + nome + '" data-v="' + nome + '" type="' + (tipo || 'text') + '" value="' + esc(v || '') + '" ' + (extra || '') + ' autocomplete="off"></div>'; }
@@ -142,18 +203,30 @@ window.DM_EXTRA = function (DM) {
   function opcoes(k, lista, atual) { return '<div class="opcoes" role="group">' + lista.map(function (o) { return '<button type="button" data-act="m-set" data-k="' + k + '" data-val="' + o + '" aria-pressed="' + (atual === o) + '">' + o + '</button>'; }).join('') + '</div>'; }
 
   function mNovaDem(m) {
-    var v = m.v;
+    var v = m.v, cheg = v.chegada || '2026-10-21', tipo = v.tipo || 'Processo', temArea = tipo === 'Processo' || tipo === 'Protocolo';
+    var areas = tipo === 'Protocolo' ? ['Geral', 'Pessoal'] : ['Geral', 'Pessoal', 'Compras'];
     return cab('Nova demanda') + '<p class="data">Cadastro rápido. Só o assunto é obrigatório.</p>' +
       campo('Número do processo ou memorando', 'num', 'text', v.num, 'placeholder="Ex.: 2310/2026"') + campo('Assunto', 'assunto', 'text', v.assunto, 'placeholder="Do que se trata?"') +
       campo('Origem', 'origem', 'text', v.origem, 'placeholder="Quem pediu ou de onde veio"') +
-      '<div class="fld"><label>Tipo de documento (opcional)</label>' + opcoes('tipo', TIPOS, v.tipo) + '</div>' +
-      '<div class="fld"><label>Prazo</label>' + opcoes('prazoTipo', ['Legal', 'Próprio'], v.prazoTipo || 'Próprio') + '</div>' +
-      campo('Data do prazo (vazio: ' + E.prazoAuto + ' dias automáticos)', 'prazo', 'date', v.prazo) +
+      '<div class="fld"><label>Tipo de documento</label>' + opcoes('tipo', TIPOS, tipo) + '</div>' +
+      (temArea ? '<div class="fld"><label>Área (define a cor do card)</label>' + opcoes('area', areas, areas.indexOf(v.area) > -1 ? v.area : 'Geral') + '<span class="data">' + (tipo === 'Protocolo' ? 'Protocolo geral é azul e de pessoal é verde. Amarelo (compras) só em processo aberto pelo setor de compras.' : 'Azul: geral. Verde: pessoal. Amarelo: compras.') + '</span></div>' : '') +
+      '<div class="dois">' + campo('Chegou em', 'chegada', 'date', cheg) + '<div class="fld"><label>Tipo de prazo</label>' + opcoes('prazoTipo', ['Legal', 'Próprio'], v.prazoTipo || 'Próprio') + '</div></div>' +
+      '<div class="fld"><label for="m-prazo">Prazo (opcional)</label><div class="add-t"><input id="m-prazo" data-v="prazo" type="date" value="' + esc(v.prazo || '') + '">' +
+      '<button class="btn mini" type="button" data-act="sugerir-prazo">Sugerir ' + E.sugestaoPrazo + ' dias</button>' + (v.prazo ? '<button class="btn mini" type="button" data-act="limpar-prazo">Sem prazo</button>' : '') + '</div>' +
+      '<span class="data">' + (v.prazo ? 'Terá contagem regressiva até a data escolhida.' : 'Sem prazo: nada é inventado. Fica só a contagem do tempo desde a chegada.') + '</span></div>' +
       '<footer class="m-f"><span class="data">Rascunho guardado automaticamente</span><span class="esp"></span><button class="btn" data-act="fechar-modal">Cancelar</button><button class="btn pri" data-act="salvar-dem">Cadastrar</button></footer>';
   }
   function mNota(m) {
-    return cab('Nova anotação') + '<div class="fld"><label for="m-texto">Texto</label><textarea id="m-texto" data-v="texto" rows="5" placeholder="Escreva rápido. Use # para tags.">' + esc(m.v.texto || '') + '</textarea></div>' +
-      '<footer class="m-f"><span class="data">Rascunho guardado automaticamente</span><span class="esp"></span><button class="btn" data-act="fechar-modal">Cancelar</button><button class="btn pri" data-act="salvar-nota">Guardar</button></footer>';
+    var v = m.v, ed = m.i != null, cor = v.cor == null ? -1 : v.cor;
+    var sw = '<button type="button" class="cor-b auto" data-act="m-cor" data-c="-1" aria-pressed="' + (cor === -1) + '" aria-label="Cor automática" title="Automática">' + ic('sparkles') + '</button>' +
+      [0, 1, 2, 3, 4, 5].map(function (c) { return '<button type="button" class="cor-b" data-act="m-cor" data-c="' + c + '" aria-pressed="' + (cor === c) + '" aria-label="Cor ' + (c + 1) + '" style="background:' + corNota(c) + '"></button>'; }).join('');
+    return cab(ed ? 'Nota' : 'Nova nota') + '<div class="fld"><label for="m-titulo">Título (opcional)</label><input id="m-titulo" data-v="t" value="' + esc(v.t || '') + '" placeholder="Sem título, aparecem as primeiras frases" autocomplete="off"></div>' +
+      '<div class="fld"><label for="m-texto">Texto</label><textarea id="m-texto" data-v="x" rows="6" placeholder="Escreva rápido. Use # para tags, em qualquer lugar.">' + esc(v.x || '') + '</textarea></div>' +
+      '<div class="fld"><span>Cor</span><div class="cores" role="group" aria-label="Cor da nota">' + sw + '</div><span class="data">Sem escolha, uma cor é aplicada sozinha.</span></div>' +
+      '<div class="fld"><button type="button" class="btn mini" data-act="m-pin" aria-pressed="' + !!v.fixo + '">' + ic('pin') + (v.fixo ? 'Fixada' : 'Fixar a nota') + '</button></div>' +
+      (ed ? '<p class="data">Editada em ' + esc(v.ed || '') + '. Só editar renova o prazo de 30 dias; abrir não.</p>' : '') +
+      '<footer class="m-f">' + (ed ? '<button class="btn mini" data-act="virar-nota" data-n="' + m.i + '">' + ic('arrow-right') + 'Virar demanda</button><button class="btn mini" data-act="arquivar-nota" data-n="' + m.i + '">' + ic('archive') + 'Arquivar</button>' : '<span class="data">Rascunho guardado automaticamente</span>') +
+      '<span class="esp"></span><button class="btn" data-act="fechar-modal">Cancelar</button><button class="btn pri" data-act="salvar-nota">' + (ed ? 'Salvar alterações' : 'Guardar') + '</button></footer>';
   }
   function mEvento(m) {
     var v = m.v;
@@ -168,21 +241,28 @@ window.DM_EXTRA = function (DM) {
       '<footer class="m-f"><span class="esp"></span><button class="btn" data-act="fechar-modal">Cancelar</button><button class="btn pri" data-act="salvar-tar">Adicionar</button></footer>';
   }
   function mDemanda(m) {
-    var d = DEM.filter(function (x) { return x.id === m.id; })[0]; if (!d) return '';
-    var fin = d.etapa === 'Finalizado';
-    var tar = d.tarefas.length ? '<ul class="tarefas">' + d.tarefas.map(function (t, i) { return '<li><label><input type="checkbox" data-act="tarefa" data-id="' + d.id + '" data-i="' + i + '"' + (t.f ? ' checked' : '') + '><span class="' + (t.f ? 'feita' : '') + '">' + esc(t.t) + '</span></label></li>'; }).join('') + '</ul>' : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span></div>';
+    var d = m.copia; if (!d) return '';
+    var fin = d.etapa === 'Finalizado', temArea = d.tipo === 'Processo' || d.tipo === 'Protocolo';
+    var areas = d.tipo === 'Protocolo' ? ['Geral', 'Pessoal'] : ['Geral', 'Pessoal', 'Compras'];
+    var tar = d.tarefas.length ? '<ul class="tarefas">' + d.tarefas.map(function (t, i) { return '<li><label><input type="checkbox" data-act="tarefa-m" data-i="' + i + '"' + (t.f ? ' checked' : '') + '><span class="' + (t.f ? 'feita' : '') + '">' + esc(t.t) + '</span></label></li>'; }).join('') + '</ul>' : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span></div>';
+    var desde = DM.diasDesde(d.chegou), cont = !d.prazo ? 'Sem prazo cadastrado' : (function () { var n = DM.diasAte(d.prazo); return n < 0 ? 'Atrasada há ' + DM.plural(-n, 'dia') : n === 0 ? 'Vence hoje' : 'Faltam ' + DM.plural(n, 'dia'); })();
     return cab(esc(d.tipo + ' ' + d.num)) + '<div class="m-cols"><div>' +
       '<div class="fld"><label for="d-assunto">Assunto</label><input id="d-assunto" data-d="assunto" value="' + esc(d.assunto) + '"></div>' +
       '<div class="dois"><div class="fld"><label for="d-num">Número</label><input id="d-num" data-d="num" value="' + esc(d.num) + '"></div><div class="fld"><label for="d-origem">Origem</label><input id="d-origem" data-d="origem" value="' + esc(d.origem) + '"></div></div>' +
       '<div class="fld"><label>Tipo de documento</label>' + opcoes('tipoDem', TIPOS, d.tipo) + '</div>' +
-      '<div class="dois"><div class="fld"><label for="d-prazo">Prazo</label><input id="d-prazo" data-d="prazo" type="date" value="' + curtoParaIso(d.prazo) + '"></div><div class="fld"><label>Tipo de prazo</label>' + opcoes('prazoTipoDem', ['Legal', 'Próprio'], d.prazoTipo) + '</div></div>' +
+      (temArea ? '<div class="fld"><label>Área (define a cor do card)</label>' + opcoes('areaDem', areas, areas.indexOf(d.area) > -1 ? d.area : 'Geral') + '</div>' : '') +
+      '<div class="dois"><div class="fld"><label for="d-chegou">Chegou em</label><input id="d-chegou" data-d="chegou" type="date" value="' + curtoParaIso(d.chegou) + '"></div><div class="fld"><label>Tipo de prazo</label>' + opcoes('prazoTipoDem', ['Legal', 'Próprio'], d.prazoTipo) + '</div></div>' +
+      '<div class="fld"><label for="d-prazo">Prazo (opcional)</label><div class="add-t"><input id="d-prazo" data-d="prazo" type="date" value="' + (d.prazo ? curtoParaIso(d.prazo) : '') + '">' +
+      '<button class="btn mini" type="button" data-act="sugerir-prazo-d">Sugerir ' + E.sugestaoPrazo + ' dias</button>' + (d.prazo ? '<button class="btn mini" type="button" data-act="limpar-prazo-d">Sem prazo</button>' : '') + '</div><span class="data">' + cont + '</span></div>' +
       '<div class="fld"><label for="d-etapa">Etapa</label><select id="d-etapa" data-d="etapa">' + DM.ETAPAS.map(function (e) { return '<option' + (e === d.etapa ? ' selected' : '') + '>' + e + '</option>'; }).join('') + '</select></div>' +
       (d.etapa === 'Aguardando retorno' ? '<div class="dois"><div class="fld"><label for="d-setor">Setor</label><input id="d-setor" data-d="setor" value="' + esc(d.setor || '') + '"></div><div class="fld"><label for="d-ac">Acompanhar em</label><input id="d-ac" data-d="acompanhar" type="date" value="' + curtoParaIso(d.acompanhar || '24/10') + '"></div></div>' : '') +
-      '</div><div><h4>Tarefas</h4>' + tar + '<div class="add-t"><input id="m-nt" data-v="nt" placeholder="Nova tarefa" aria-label="Nova tarefa" value="' + esc(m.v.nt || '') + '"><button class="btn mini" data-act="add-tarefa-m" data-id="' + d.id + '">' + ic('plus') + 'Adicionar</button></div>' +
-      '<div class="meta"><div>Chegou em<b>' + d.chegou + '</b></div><div>Dias parada<b>' + d.parado + '</b></div></div>' +
+      '</div><div><h4>Tarefas</h4>' + tar + '<div class="add-t"><input id="m-nt" data-v="nt" placeholder="Nova tarefa" aria-label="Nova tarefa" value="' + esc(m.v.nt || '') + '"><button class="btn mini" data-act="add-tarefa-m">' + ic('plus') + 'Adicionar</button></div>' +
+      '<div class="meta"><div>Chegou em<b>' + d.chegou + '</b></div><div>' + (fin && d.concluido ? 'Resolvida em' : 'Desde a chegada') + '<b>' + (fin && d.concluido ? Math.max(0, desde - DM.diasDesde(d.concluido)) : desde) + ' d</b></div></div>' +
       '<p class="data">O percentual mede só as tarefas. Concluir todas não muda a etapa sozinho.</p></div></div>' +
       '<footer class="m-f">' + (m.conf ? '<span class="data">Excluir de vez? Não dá para desfazer.</span><button class="btn perigo" data-act="excluir-ok" data-id="' + d.id + '">' + ic('trash') + 'Confirmar exclusão</button>' : '<button class="btn mini" data-act="msg" data-m="Arquivar">' + ic('archive') + 'Arquivar</button><button class="btn mini" data-act="excluir" data-id="' + d.id + '">' + ic('trash') + 'Excluir</button>') +
-      '<span class="esp"></span>' + (fin ? '<button class="btn pri" data-act="reabrir-m" data-id="' + d.id + '">Reabrir (volta para Fazendo)</button>' : '<button class="btn pri" data-act="concluir-m" data-id="' + d.id + '">' + ic('check') + 'Concluir</button>') + '</footer>';
+      '<span class="esp"></span><button class="btn" data-act="fechar-modal">Cancelar</button>' +
+      (fin ? '<button class="btn" data-act="reabrir-m">Reabrir (volta para Fazendo)</button>' : '<button class="btn" data-act="concluir-m">' + ic('check') + 'Concluir demanda</button>') +
+      '<button class="btn pri" data-act="salvar-edicao">Salvar alterações</button></footer>';
   }
   function mDias() {
     var dias = [['Terça, 20', 'ter'], ['Segunda, 19', 'seg']];
@@ -191,8 +271,9 @@ window.DM_EXTRA = function (DM) {
       '<footer class="m-f"><span class="esp"></span><button class="btn" data-act="fechar-modal">Agora não</button><button class="btn pri" data-act="fechar-modal">Salvar</button></footer>';
   }
   function balao() {
-    return '<div class="balao lg" role="status"><button class="icbtn-s" data-act="fechar-balao" aria-label="Fechar">' + ic('x') + '</button><b>Um registro rápido?</b><p class="data">Opcional. Só o último de cada indicador fica no dia.</p>' +
-      '<div class="emos mini">' + seletor('humor', E.humor, 'humor-b', ROT_H) + '</div><div class="emos mini">' + seletor('energia', E.energia, 'energia-b', ROT_E) + '</div></div>';
+    var falta = E.bH === null && E.bE === null ? 'Escolha o humor e a energia para registrar.' : E.bH === null ? 'Falta escolher o humor.' : E.bE === null ? 'Falta escolher a energia.' : '';
+    return '<div class="balao lg" role="status"><button class="icbtn-s" data-act="fechar-balao" aria-label="Fechar">' + ic('x') + '</button><b>Um registro rápido?</b><p class="data">Opcional. Só registra quando os dois estiverem escolhidos.</p>' +
+      '<div class="emos mini">' + seletor('humor', E.bH, 'humor-b', ROT_H) + '</div><div class="emos mini">' + seletor('energia', E.bE, 'energia-b', ROT_E) + '</div><p class="data balao-f">' + falta + '</p></div>';
   }
   DM.modalHTML = function () {
     var out = '', m = E.modal;
@@ -211,9 +292,15 @@ window.DM_EXTRA = function (DM) {
   A.restaurar = function () { DM.trocar(base(E.dir)); };
   A.conjunto = function (b) { var c = CONJUNTOS[+b.dataset.i]; DM.trocar({ fT: c[1], fS: c[2], fM: c[3] }); };
   A.energia = function (b) { DM.trocar({ energia: +b.dataset.i }); };
-  A['humor-b'] = function (b) { DM.trocar({ humor: +b.dataset.i, balaoAb: false }); DM.toast('Humor registrado'); };
-  A['energia-b'] = function (b) { DM.trocar({ energia: +b.dataset.i, balaoAb: false }); DM.toast('Energia registrada'); };
-  A['fechar-balao'] = function () { DM.trocar({ balaoAb: false }); };
+  function registrar() {
+    if (E.bH !== null && E.bE !== null) { DM.trocar({ humor: E.bH, energia: E.bE, balaoAb: false, bH: null, bE: null }); DM.toast('Humor e energia registrados'); }
+    else DM.trocar({});
+  }
+  A['humor-b'] = function (b) { E.bH = +b.dataset.i; registrar(); };
+  A['energia-b'] = function (b) { E.bE = +b.dataset.i; registrar(); };
+  A['fechar-balao'] = function () { DM.trocar({ balaoAb: false, bH: null, bE: null }); };
+  A['filtro-ini'] = function (b) { DM.trocar({ filtroIni: E.filtroIni === b.dataset.g ? null : b.dataset.g }); };
+  A['filtro-tag'] = function (b) { DM.trocar({ tagSel: b.dataset.t || null }); };
   A.noop = function () {};
   A.reduzir = function () { DM.trocar({ reduzir: !E.reduzir }); };
   A.perfilv = function (b) { DM.trocar({ perfilV: b.dataset.v }); };
@@ -221,33 +308,52 @@ window.DM_EXTRA = function (DM) {
   A.completar = function () { abrir({ t: 'dias' }); };
   A['fechar-modal'] = fechar;
   A['fechar-ov'] = function (b, e) { if (e.target === b) fechar(); };
-  A.abrir = function (b) { abrir({ t: 'demanda', id: +b.dataset.id }); };
+  function real(id) { return DEM.filter(function (x) { return x.id === id; })[0]; }
+  // a edição trabalha numa cópia: só vale quando você confirma em "Salvar alterações"
+  A.abrir = function (b) { var d = real(+b.dataset.id); abrir({ t: 'demanda', id: d.id, copia: JSON.parse(JSON.stringify(d)) }); };
   A['m-set'] = function (b) {
     var m = E.modal, k = b.dataset.k, val = b.dataset.val;
-    if (k === 'tipoDem' || k === 'prazoTipoDem') { var d = DEM.filter(function (x) { return x.id === m.id; })[0]; if (k === 'tipoDem') d.tipo = val; else d.prazoTipo = val; }
-    else m.v[k] = val;
+    if (k === 'tipoDem') { m.copia.tipo = val; if (val === 'Protocolo' && m.copia.area === 'Compras') m.copia.area = 'Geral'; }
+    else if (k === 'prazoTipoDem') m.copia.prazoTipo = val;
+    else if (k === 'areaDem') m.copia.area = val;
+    else { m.v[k] = val; if (k === 'tipo' && val === 'Protocolo' && m.v.area === 'Compras') m.v.area = 'Geral'; }
     DM.trocar({});
   };
+  A['sugerir-prazo'] = function () { E.modal.v.prazo = maisDias(E.sugestaoPrazo, E.modal.v.chegada); DM.trocar({}); };
+  A['limpar-prazo'] = function () { E.modal.v.prazo = ''; DM.trocar({}); };
+  A['sugerir-prazo-d'] = function () { var c = E.modal.copia; c.prazo = isoParaCurto(maisDias(E.sugestaoPrazo, curtoParaIso(c.chegou))); DM.trocar({}); };
+  A['limpar-prazo-d'] = function () { E.modal.copia.prazo = null; DM.trocar({}); };
+  A['tarefa-m'] = function (b) { E.modal.copia.tarefas[+b.dataset.i].f = b.checked; DM.trocar({}); };
+  A['salvar-edicao'] = function () { var m = E.modal; Object.assign(real(m.id), m.copia); DM.trocar({ modal: null }); DM.toast('Alterações salvas'); };
   A.excluir = function () { E.modal.conf = true; DM.trocar({}); };
   A['excluir-ok'] = function (b) { var i = DEM.findIndex(function (x) { return x.id === +b.dataset.id; }); if (i > -1) DEM.splice(i, 1); DM.trocar({ modal: null }); DM.toast('Demanda excluída'); };
-  A['concluir-m'] = function (b) { DEM.filter(function (x) { return x.id === +b.dataset.id; })[0].etapa = 'Finalizado'; DM.trocar({}); DM.toast('Demanda finalizada'); };
-  A['reabrir-m'] = function (b) { DEM.filter(function (x) { return x.id === +b.dataset.id; })[0].etapa = 'Fazendo'; DM.trocar({}); DM.toast('Reaberta em Fazendo, histórico preservado'); };
-  A['add-tarefa-m'] = function (b) {
-    var d = DEM.filter(function (x) { return x.id === +b.dataset.id; })[0], t = (E.modal.v.nt || '').trim() || 'Nova tarefa';
-    d.tarefas.push({ t: t, f: false }); E.modal.v.nt = ''; DM.trocar({});
+  A['concluir-m'] = function () { var m = E.modal, d = real(m.id); Object.assign(d, m.copia, { etapa: 'Finalizado', concluido: '21/10' }); DM.trocar({ modal: null }); DM.toast('Demanda concluída'); };
+  A['reabrir-m'] = function () { var m = E.modal, d = real(m.id); Object.assign(d, m.copia, { etapa: 'Fazendo', concluido: null }); DM.trocar({ modal: null }); DM.toast('Reaberta em Fazendo, histórico preservado'); };
+  A['add-tarefa-m'] = function () {
+    var t = (E.modal.v.nt || '').trim() || 'Nova tarefa';
+    E.modal.copia.tarefas.push({ t: t, f: false }); E.modal.v.nt = ''; DM.trocar({});
   };
   A['salvar-dem'] = function () {
     var v = E.modal.v; if (!(v.assunto || '').trim()) { DM.toast('Escreva o assunto'); return; }
-    var iso = v.prazo || maisDias(E.prazoAuto), id = DEM.reduce(function (a, d) { return Math.max(a, d.id); }, 0) + 1;
-    DEM.push({ id: id, tipo: v.tipo || 'Processo', num: v.num || 's/n', assunto: v.assunto.trim(), origem: v.origem || 'Não informada', etapa: E.modal.etapa || 'Cadastro', prazoTipo: v.prazoTipo || 'Próprio', prazo: isoParaCurto(iso), atraso: atrasoDe(iso), tarefas: [], chegou: '21/10', parado: 0 });
-    if (E.modal.nota != null) DM.NOTAS_E.splice(E.modal.nota, 1);
-    delete E.rascunho.dem; DM.trocar({ modal: null }); DM.toast(v.prazo ? 'Demanda cadastrada' : 'Demanda cadastrada com prazo de ' + E.prazoAuto + ' dias');
+    var id = DEM.reduce(function (a, d) { return Math.max(a, d.id); }, 0) + 1, tipo = v.tipo || 'Processo', temArea = tipo === 'Processo' || tipo === 'Protocolo';
+    var area = temArea ? (v.area === 'Pessoal' || (v.area === 'Compras' && tipo !== 'Protocolo') ? v.area : 'Geral') : undefined;
+    DEM.push({ id: id, tipo: tipo, area: area, num: v.num || 's/n', assunto: v.assunto.trim(), origem: v.origem || 'Não informada', etapa: E.modal.etapa || 'Cadastro', prazoTipo: v.prazoTipo || 'Próprio',
+      prazo: v.prazo ? isoParaCurto(v.prazo) : null, atraso: 0, tarefas: [], chegou: v.chegada ? isoParaCurto(v.chegada) : '21/10', parado: 0 });
+    if (E.modal.nota != null) NOTAS_E.splice(E.modal.nota, 1);
+    delete E.rascunho.dem; DM.trocar({ modal: null }); DM.toast(v.prazo ? 'Demanda cadastrada' : 'Demanda cadastrada sem prazo');
   };
   A['salvar-nota'] = function () {
-    var t = (E.modal.v.texto || '').trim(); if (!t) { DM.toast('Escreva a anotação'); return; }
-    var tags = (t.match(/#(\w+)/g) || []).map(function (x) { return x.slice(1); });
-    DM.NOTAS_E.unshift([t.replace(/#\w+/g, '').trim() || t, tags, false]); delete E.rascunho.nota; DM.trocar({ modal: null, tela: 'entradas' }); DM.toast('Anotação guardada');
+    var v = E.modal.v, x = (v.x || '').trim(); if (!x) { DM.toast('Escreva o texto da nota'); return; }
+    if (E.modal.i != null) { var n = NOTAS_E[E.modal.i]; Object.assign(n, { t: (v.t || '').trim(), x: x, fixo: !!v.fixo, ed: '21/10' }); if (v.cor != null && v.cor > -1) n.cor = v.cor; DM.trocar({ modal: null }); DM.toast('Nota atualizada'); return; }
+    NOTAS_E.unshift({ t: (v.t || '').trim(), x: x, cor: v.cor != null && v.cor > -1 ? v.cor : corAuto(), fixo: !!v.fixo, ed: '21/10' });
+    delete E.rascunho.nota; DM.trocar({ modal: null, tela: 'entradas' }); DM.toast('Anotação guardada');
   };
+  A['editar-nota'] = function (b) { var i = +b.dataset.i, n = NOTAS_E[i]; abrir({ t: 'nota', i: i, v: { t: n.t, x: n.x, cor: n.cor, fixo: n.fixo, ed: n.ed } }); };
+  A.pin = function (b) { var n = NOTAS_E[+b.dataset.i]; n.fixo = !n.fixo; DM.trocar({}); DM.toast(n.fixo ? 'Nota fixada' : 'Nota desafixada'); };
+  A['m-pin'] = function () { E.modal.v.fixo = !E.modal.v.fixo; DM.trocar({}); };
+  A['m-cor'] = function (b) { E.modal.v.cor = +b.dataset.c; DM.trocar({}); };
+  A['arquivar-nota'] = function (b) { NOTAS_E.splice(+b.dataset.n, 1); DM.trocar({ modal: null }); DM.toast('Nota arquivada'); };
+  A['virar-nota'] = function (b) { var n = NOTAS_E[+b.dataset.n]; abrir({ t: 'dem', nota: +b.dataset.n, v: { assunto: n ? resumoNota(n) : '', origem: '' } }); };
   A['salvar-ev'] = function () {
     var v = E.modal.v, t = (v.titulo || '').trim(); if (!t) { DM.toast('Escreva o título'); return; }
     var dia = +(v.dia || '2026-10-22').split('-')[2], mes = (v.dia || '2026-10-22').split('-')[1];
@@ -261,8 +367,7 @@ window.DM_EXTRA = function (DM) {
   };
   A.msg = function (b) {
     var m = b.dataset.m || '', n = b.dataset.n;
-    if (/^Virar demanda/.test(m)) { var nota = DM.NOTAS_E[+n]; abrir({ t: 'dem', nota: +n, v: { assunto: nota ? nota[0].split('\n')[0] : '', origem: '' } }); }
-    else if (/^Nova demanda|^Novo: Demanda/.test(m)) { var et = m.match(/em (.+)$/); abrir({ t: 'dem', v: E.rascunho.dem || {}, etapa: et ? et[1] : null }); }
+    if (/^Nova demanda|^Novo: Demanda/.test(m)) { var et = m.match(/em (.+)$/); abrir({ t: 'dem', v: E.rascunho.dem || {}, etapa: et ? et[1] : null }); }
     else if (/^Novo: Anotação|^Nova nota/.test(m)) abrir({ t: 'nota', v: E.rascunho.nota || {} });
     else if (/^Novo: Evento/.test(m)) abrir({ t: 'ev', v: {} });
     else if (/^Novo: Tarefa/.test(m)) abrir({ t: 'tar', v: {} });
@@ -274,10 +379,10 @@ window.DM_EXTRA = function (DM) {
   document.addEventListener('input', function (e) {
     var t = e.target, m = E.modal;
     if (t.dataset.v && m) { m.v[t.dataset.v] = t.value; if (m.t === 'dem' || m.t === 'nota') E.rascunho[m.t] = m.v; }
-    else if (t.dataset.d && m) {
-      var d = DEM.filter(function (x) { return x.id === m.id; })[0], k = t.dataset.d;
-      if (k === 'prazo') { d.prazo = isoParaCurto(t.value); d.atraso = atrasoDe(t.value); }
-      else if (k === 'acompanhar') d.acompanhar = isoParaCurto(t.value);
+    else if (t.dataset.d && m && m.copia) {
+      var d = m.copia, k = t.dataset.d;
+      if (k === 'prazo') d.prazo = t.value ? isoParaCurto(t.value) : null;
+      else if (k === 'acompanhar' || k === 'chegou') { if (t.value) d[k] = isoParaCurto(t.value); }
       else d[k] = t.value;
     } else if (t.dataset.pref && t.tagName === 'INPUT') E[t.dataset.pref] = t.type === 'number' ? +t.value : t.value;
   });
@@ -285,7 +390,8 @@ window.DM_EXTRA = function (DM) {
     var t = e.target;
     if (t.dataset.sel) DM.trocar((function () { var o = {}; o[t.dataset.sel] = +t.value; return o; })());
     else if (t.dataset.pref && t.tagName === 'SELECT') E[t.dataset.pref] = +t.value;
-    else if (t.dataset.d === 'etapa' && E.modal) { DEM.filter(function (x) { return x.id === E.modal.id; })[0].etapa = t.value; DM.trocar({}); }
+    else if (t.dataset.d === 'etapa' && E.modal && E.modal.copia) { E.modal.copia.etapa = t.value; DM.trocar({}); }
+    else if ((t.dataset.d === 'prazo' || t.dataset.d === 'chegou') && E.modal && E.modal.copia) DM.trocar({})
     else if (t.dataset.v === 'dem' && E.modal) E.modal.v.dem = t.value;
   });
   // mantém o Tab dentro da janela aberta
@@ -298,6 +404,7 @@ window.DM_EXTRA = function (DM) {
     else if (!e.shiftKey && document.activeElement === u) { e.preventDefault(); p.focus(); }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && E.modal) { e.stopImmediatePropagation(); fechar(); } }, true);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.act === 'editar-nota') A['editar-nota'](e.target); });
   // ---------- Quadro: arrastar o card para outra etapa; atalho N para nova anotação ----------
   var arrastando = null;
   document.addEventListener('dragstart', function (e) { var c = e.target.closest && e.target.closest('.mini-card'); if (!c) return; arrastando = +c.dataset.id; c.classList.add('arrastando'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(arrastando)); } catch { /* navegador sem suporte */ } });

@@ -127,7 +127,7 @@ Legenda: **[definido]** o usuário decidiu. **[aprovado]** era uma recomendaçã
 
 ## Avaliação do protótipo (22/10/2026)
 
-Respostas do usuário após testar o protótipo. Ainda não aplicadas no código.
+Respostas do usuário após testar o protótipo. **Aplicadas no protótipo em 22/10/2026** (exceto Agenda, item 11). Aguardando aprovação. No Início, as estatísticas "Aguardando retorno" e "Entradas sem tratar" e a lista de Alertas saíram para dar foco à agenda e aos três filtros. A frente neutra vale para documentos em geral; "Papel" manteve o fundo cor de papel como identidade do tema, com texto neutro.
 
 1. **Humor e energia:** o balão só salva e fecha quando os dois estiverem preenchidos.
 2. **Início:** widgets de data, frase, clima, humor e energia ficam compactos no topo, ampliando ao passar o mouse. O foco da tela são os compromissos da agenda (cards menores) e três filtros: Atrasadas, Para hoje e Próximos 7 dias. Foco do dia mostra 3 demandas, sempre na ordem atrasadas, hoje, 7 dias. Desempate: mais antiga primeiro (atrasada há mais tempo; nas demais, prazo mais próximo e depois a que chegou antes). A visão macro dos cards fica em Demandas.
