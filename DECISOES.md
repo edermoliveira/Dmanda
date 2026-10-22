@@ -122,4 +122,5 @@ Legenda: **[definido]** o usuário decidiu. **[aprovado]** era uma recomendaçã
 - [definido] **Menu lateral recolhido:** versão só com ícones, como nos prints, com botão para recolher e expandir. Vale nas larguras grandes; nas médias já nasce recolhido.
 - [definido] **Vidro líquido** aplicado em todo o desenho (barras, menu, painéis, indicadores, alertas, janelas, botão "+", campos e abas), em intensidades diferentes por tema. Cards de demanda seguem mais sólidos.
 - [definido] Rolagem lateral é aceita onde for necessária (por exemplo, o Quadro com 5 etapas).
+- [definido] **Caixas de preenchimento (22/10/2026):** janelas de cadastro, busca e balões ficam quase opacas: brancas no modo claro e escuras no modo escuro, com campos de alto contraste, para facilitar a leitura e o preenchimento. O vidro fica para barras, menu, painéis e botões.
 
