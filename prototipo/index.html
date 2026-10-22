@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipo Dmanda: 3 direções</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Manrope:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="ctl" role="toolbar" aria-label="Controles do protótipo">
+  <h1>Dmanda: protótipo</h1>
+  <div class="grp" id="g-dir"><span>Direção</span>
+    <button class="seg" data-dir="a" aria-pressed="true">A Aurora</button>
+    <button class="seg" data-dir="b" aria-pressed="false">B Papel</button>
+    <button class="seg" data-dir="c" aria-pressed="false">C Grafite</button>
+  </div>
+  <div class="grp" id="g-tema"><span>Tema</span>
+    <button class="seg" data-tema="claro" aria-pressed="true">Claro</button>
+    <button class="seg" data-tema="escuro" aria-pressed="false">Escuro</button>
+  </div>
+  <div class="grp" id="g-dev"><span>Tela</span>
+    <button class="seg" data-dev="desktop" data-w="1360" data-h="780" aria-pressed="true">Computador</button>
+    <button class="seg" data-dev="tablet-h" data-w="1180" data-h="780" aria-pressed="false">iPad horizontal</button>
+    <button class="seg" data-dev="media" data-w="1000" data-h="780" aria-pressed="false">Janela média</button>
+    <button class="seg" data-dev="tablet-v" data-w="820" data-h="900" aria-pressed="false">iPad vertical</button>
+    <button class="seg" data-dev="phone" data-w="390" data-h="800" aria-pressed="false">Celular</button>
+  </div>
+  <div class="grp" id="g-tela"><span>Página</span>
+    <button class="seg" data-tela="inicio" aria-pressed="true">Início</button>
+    <button class="seg" data-tela="demandas" aria-pressed="false">Demandas</button>
+  </div>
+</div>
+<p class="nota-dir" id="nota-dir"></p>
+<div class="stage"><div class="frame" id="frame"></div></div>
+<script src="icones.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

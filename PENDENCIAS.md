@@ -8,9 +8,9 @@ Arquivo lido no início de cada sessão. Fica no repositório para valer em qual
 
 Os itens [aprovado] de `DECISOES.md` foram revisados em 21/10/2026. **O protótipo está liberado.**
 
-## Próximo passo do Claude
+## Aguardando avaliação do usuário
 
-- Fazer o **protótipo de 3 direções de estilo** (Início, card de dois lados, menu lateral, barra inferior, botão "+" e busca, claro e escuro, computador primeiro e depois iPad e celular). Antes: instalar `design-taste-frontend` (taste-skill) depois de ler os scripts, e a base shadcn. Usar `critique` e `delight` como revisão. O usuário escolhe a direção, o par de fontes padrão e o estilo de ícones.
+- **Protótipo de 3 direções de estilo** pronto em `prototipo/` (A Aurora, B Papel, C Grafite). Abrir `prototipo/index.html` no navegador (precisa de internet para as fontes do Google). Escolher: direção, par de fontes padrão, estilo de ícones e logo. Depois disso, as peças e o design system são refeitos sobre a base shadcn.
 - Peças e marca atuais (de 20/10/2026) ficam **substituídas** pela refação. Os prints em `imagens/aprovacao` não precisam mais de aprovação.
 
 ## Pontos em aberto técnicos (não dependem do usuário)
@@ -18,7 +18,7 @@ Os itens [aprovado] de `DECISOES.md` foram revisados em 21/10/2026. **O protóti
 - Confirmar os limites atuais do plano gratuito do Postgres (Neon ou Supabase) e escolher um.
 - Confirmar os limites da IA gratuita (Gemini ou Groq) na hora da etapa de IA.
 - Rodar `trail init --dry-run` e instalar o Trail-code depois da versão mínima de Demandas.
-- Quando o design system estiver pronto, remover o plugin `ui-ux-pro-max`.
+- Quando o design system estiver pronto, avaliar a remoção do plugin `ui-ux-pro-max` (agora instalado no ambiente do usuário, a pedido).
 
 ## Como continuar em outro computador
 
