@@ -3,9 +3,9 @@
   var estado = { dir: 'a', tema: 'claro', dev: 'desktop', tela: 'inicio', virado: {}, plus: false, humor: 3, vis: 'cards', ord: 'prazo', ordDir: 1, aberto: {}, ag: 'semana', pal: null, fonte: 0, fs: 15, ico: 20, cardh: 340, anim: false, iconeEstilo: '', chat: [], lib: 'iconoir', q: '', soAtras: false, grupos: {}, etapaSel: 'Cadastro' };
 
   var NOTAS = {
-    a: 'Aurora (a escolhida): estilo Apple com vidro em menu, barra superior, janelas e botão flutuante. Gradiente suave, cards sólidos, cantos de 24 px, logo D de três colunas. Fontes, paleta, ícones e tamanhos podem ser testados em Configurações. Todas as áreas do menu abrem.',
-    b: 'Papel: calmo e quase sem vidro. Fundo quente, cards de papel com borda fina, títulos e números em Fraunces (serifada), texto em Inter, ícones Lucide de traço firme em pastilhas suaves. Logo: monograma D em quadrado arredondado.',
-    c: 'Grafite: denso e de leitura rápida. Bordas finas, cantos de 10 px, números em JetBrains Mono, faixa única de indicadores, ícones duotone. Logo: três barras ascendentes dentro de um D vazado.'
+    a: 'Aurora: vidro estilo Apple em quase tudo, gradiente suave, cantos grandes. Tema definitivo do Dmanda.',
+    b: 'Papel: calmo, tom de papel, títulos serifados, vidro discreto. Tema definitivo do Dmanda.',
+    c: 'Grafite: denso, bordas finas, ícones duotone, leitura rápida. Tema definitivo do Dmanda.'
   };
 
   var LOGOS_ORIG = {
@@ -240,7 +240,7 @@
       NOTAS_E.map(function (n, i) {
         var cor = e ? hsl(h + i * 55, 38, 26) : hsl(h + i * 55, 75, 87);
         return '<article class="postit" style="background:' + cor + '">' + (n[2] ? '<span class="fixo" title="Fixada no topo">' + ic('target') + '</span>' : '') + '<p>' + esc(n[0]) + '</p><div class="tags">' + n[1].map(function (t) { return '<span class="mono">#' + t + '</span>'; }).join(' ') + '</div>' +
-          '<div class="acoes"><button class="btn mini" data-act="msg" data-m="Virar demanda: abre o cadastro preenchido">' + ic('arrow-right') + 'Virar demanda</button><button class="btn mini so-icone" data-act="msg" data-m="Arquivar nota" aria-label="Arquivar nota">' + ic('archive') + '</button></div></article>';
+          '<div class="acoes"><button class="btn mini" data-act="msg" data-m="Virar demanda: abre o cadastro preenchido" data-n="' + i + '">' + ic('arrow-right') + 'Virar demanda</button><button class="btn mini so-icone" data-act="msg" data-m="Arquivar nota" aria-label="Arquivar nota">' + ic('archive') + '</button></div></article>';
       }).join('') + '</div>';
   }
 
@@ -332,7 +332,7 @@
     var corpo = (TELAS_FN[estado.tela] || inicio)();
     f.innerHTML = '<div class="app" data-dir="' + estado.dir + '" data-tema="' + estado.tema + '" data-ico="' + iconeEstilo() + '" data-anim="' + estado.anim + '" data-dev="' + (estado.dev === 'desktop' || estado.dev === 'media' || estado.dev === 'tablet-h' ? 'desktop' : 'toque') + '">' +
       '<div class="bg"></div>' +
-      '<aside class="side" aria-label="Menu"><div class="logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' + nav + '<div class="esp"></div><div class="rodape">Taquara/RS</div></aside>' +
+      '<aside class="side" aria-label="Menu"><div class="logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' + nav + '<div class="esp"></div><button class="navi col-b" data-act="colapsar" title="' + (estado.col ? 'Expandir menu' : 'Recolher menu') + '" aria-label="' + (estado.col ? 'Expandir menu' : 'Recolher menu') + '"><span class="ico">' + ic(estado.col ? 'expandir' : 'recolher') + '</span><span class="tx">Recolher menu</span></button><div class="rodape">' + esc(estado.cidade || 'Taquara/RS') + '</div></aside>' +
       '<header class="top"><div class="top-logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' +
       '<button class="icbtn buscabtn" data-act="busca" aria-label="Buscar em tudo">' + ic('search') + '<span class="tx">Buscar demanda, entrada, evento ou documento</span><kbd>Ctrl K</kbd></button>' +
       '<button class="icbtn sino" data-act="msg" data-m="Avisos de compromissos" aria-label="Avisos, 2 novos">' + ic('bell') + '<span class="badge">2</span></button>' +
@@ -343,15 +343,16 @@
       '<button class="fab" data-act="plus" aria-label="Criar novo" aria-expanded="' + estado.plus + '">' + ic('plus') + '</button>' +
       '<div class="menuplus glass' + (estado.plus ? ' aberto' : '') + '" role="menu" aria-label="Criar">' + menu + '</div>' +
       '<div class="busca-ov" id="ov"><div class="busca-box glass" role="dialog" aria-label="Busca"><input id="q" placeholder="Buscar demanda, entrada, evento ou documento" autocomplete="off"><div id="res"></div></div></div>' +
-      '<div class="toast" id="toast" role="status"></div></div>';
+      window.DM.modalHTML() + '<div class="toast" id="toast" role="status"></div></div>';
     // estilo (paleta, fonte, tamanhos) aplicado por DOM: o valor tem aspas e não pode ir dentro do atributo em texto
-    $('.app').setAttribute('style', estiloApp());
+    $('.app').setAttribute('style', window.DM.estiloApp());
+    window.DM.pos();
     $('#nota-dir').textContent = NOTAS[estado.dir];
   }
 
   var tt;
   function toast(m) { var t = $('#toast'); if (!t) return; t.textContent = m + ' (exemplo do protótipo)'; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { t.classList.remove('on'); }, 1800); }
-  function trocar(opc) { var y = $('#main') ? $('#main').scrollTop : 0; Object.assign(estado, opc); montar(); if ($('#main')) $('#main').scrollTop = y; }
+  function trocar(opc) { var y = $('#main') ? $('#main').scrollTop : 0; if (opc.dir && opc.dir !== estado.dir) window.DM.mudaTema(estado.dir, opc.dir); Object.assign(estado, opc); montar(); if ($('#main')) $('#main').scrollTop = y; }
   function buscar() {
     var q = $('#q').value.toLowerCase(), r = [];
     DEMANDAS.forEach(function (d) { var s = (d.tipo + ' ' + d.num + ' ' + d.assunto + ' ' + d.origem).toLowerCase(); if (!q || s.indexOf(q) > -1) r.push(['Demandas', 'square-kanban', d.tipo + ' ' + d.num + ': ' + d.assunto]); });
@@ -374,6 +375,7 @@
     }
     if (b.dataset.nav) { var n = b.dataset.nav; trocar({ tela: n, plus: false }); $$('#g-tela .seg').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.tela === estado.tela); }); return; }
     var a = b.dataset.act, id = +b.dataset.id, d = DEMANDAS.filter(function (x) { return x.id === id; })[0];
+    if (window.DM.acoes[a]) { window.DM.acoes[a](b, e); return; }
     if (a === 'plus') trocar({ plus: !estado.plus });
     else if (a === 'tema') {
       trocar({ tema: estado.tema === 'claro' ? 'escuro' : 'claro' });
@@ -411,11 +413,12 @@
     else if (e.target.id === 'fq') { estado.q = e.target.value; var v = $('#vista'); if (v) v.innerHTML = vista(); }
     else if (e.target.dataset && e.target.dataset.cfg) {
       var k = e.target.dataset.cfg; estado[k] = +e.target.value;
-      var app = $('.app'); if (app) app.setAttribute('style', estiloApp());
+      var app = $('.app'); if (app) app.setAttribute('style', window.DM.estiloApp());
       var out = e.target.parentNode.querySelector('b'); if (out) out.textContent = e.target.value;
     }
   });
   document.addEventListener('submit', function (e) {
+    if (e.target.dataset.form !== 'chat') return;
     e.preventDefault();
     var m = e.target.elements.m.value.trim(); if (!m) return;
     estado.chat.push(['eu', m], ['ia', 'Entendi. No sistema de verdade eu buscaria nos seus dados e executaria, com opção de desfazer. Aqui é só um exemplo.']);
@@ -428,6 +431,13 @@
     else if ((e.key === 'Enter') && e.target.dataset && e.target.dataset.act === 'abrir') toast('Abriria a demanda completa');
   });
 
+  window.DM = {
+    estado: estado, trocar: trocar, toast: toast, ic: ic, esc: esc, $: $, $$: $$, DEMANDAS: DEMANDAS, EVENTOS: EVENTOS, NOTAS_E: NOTAS_E, ETAPAS: ETAPAS,
+    PALETAS: PALETAS, hsl: hsl, estiloBase: estiloApp, estiloApp: estiloApp, iconeEstilo: iconeEstilo, cardHTML: cardHTML, stat: stat, FOCO: FOCO, TELAS_FN: TELAS_FN,
+    acoes: {}, pos: function () {}, modalHTML: function () { return ''; }, mudaTema: function () {}, iniciar: function () {}
+  };
+  if (window.DM_EXTRA) window.DM_EXTRA(window.DM);
+
   // Estado inicial pela URL, por exemplo: index.html#dir=b&tema=escuro&dev=phone&tela=demandas
   var TELAS = { desktop: [1360, 780], 'tablet-h': [1180, 780], media: [1000, 780], 'tablet-v': [820, 900], phone: [390, 800] };
   new URLSearchParams(location.hash.slice(1)).forEach(function (v, k) { if (k in estado && k !== 'virado') estado[k] = (typeof estado[k] === 'number' || k === 'pal') && v !== '' && !isNaN(v) ? +v : v; });
@@ -435,11 +445,12 @@
   new URLSearchParams(location.hash.slice(1)).forEach(function (v, k) { if (k === 'virar') v.split(',').forEach(function (i) { estado.virado[i] = true; }); });
   document.addEventListener('error', function (e) {
     var t = e.target;
-    if (t && t.classList && t.classList.contains('emo-img')) t.replaceWith(document.createTextNode(t.dataset.e));
+    if (t && t.classList && t.classList.contains('emo-img') && t.dataset.e) t.replaceWith(document.createTextNode(t.dataset.e));
   }, true);
 
   var f0 = $('#frame'); f0.style.setProperty('--w', TELAS[estado.dev][0] + 'px'); f0.style.setProperty('--h', TELAS[estado.dev][1] + 'px');
   $$('.ctl .seg').forEach(function (x) { var k = x.dataset.dir ? 'dir' : x.dataset.tema ? 'tema' : x.dataset.dev ? 'dev' : 'tela'; x.setAttribute('aria-pressed', x.dataset[k] === estado[k]); });
   estado.plus = estado.plus === 'true' || estado.plus === true;
+  window.DM.iniciar();
   montar();
 })();

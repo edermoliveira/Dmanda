@@ -10,7 +10,7 @@ Os itens [aprovado] de `DECISOES.md` foram revisados em 21/10/2026. **O protóti
 
 ## Aguardando avaliação do usuário
 
-- **Protótipo de 3 direções de estilo** pronto em `prototipo/` (A Aurora, B Papel, C Grafite). Abrir `prototipo/index.html` no navegador (precisa de internet para as fontes do Google). Direção (Aurora) e logo já escolhidos. Falta escolher, em Configurações do protótipo: par de fontes padrão, estilo de ícones e paleta padrão. Depois disso, as peças e o design system são refeitos sobre a base shadcn.
+- **Protótipo de 3 direções de estilo** pronto em `prototipo/` (A Aurora, B Papel, C Grafite). Abrir `prototipo/index.html` no navegador (precisa de internet para as fontes do Google). Os três temas (Aurora, Papel, Grafite) são definitivos e o logo da Aurora vale para todos. Falta escolher, em Configurações do protótipo: par de fontes padrão, estilo de ícones e paleta padrão. Depois disso, as peças e o design system são refeitos sobre a base shadcn.
 - Peças e marca atuais (de 20/10/2026) ficam **substituídas** pela refação. Os prints em `imagens/aprovacao` não precisam mais de aprovação.
 
 ## Pontos em aberto técnicos (não dependem do usuário)
