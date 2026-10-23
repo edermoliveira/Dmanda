@@ -87,7 +87,7 @@ for (const tema of temas) for (const modo of modos) {
       const lum = (r, g, b) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
       let min = 99;
       for (const it of itens) {
-        const t = it.cor.match(/[\d.]+/g).map(Number), lt = lum(t[0], t[1], t[2]);
+        const esc = it.cor.startsWith('color(') ? 255 : 1, t = it.cor.match(/[\d.]+/g).map((x) => Number(x) * esc), lt = lum(t[0], t[1], t[2]);
         const d = cx.getImageData(Math.max(0, Math.floor(it.x)), Math.max(0, Math.floor(it.y)), Math.max(1, Math.ceil(it.w)), Math.max(1, Math.ceil(it.h))).data;
         for (let k = 0; k < d.length; k += 4) { const lb = lum(d[k], d[k + 1], d[k + 2]); const c = (Math.max(lt, lb) + 0.05) / (Math.min(lt, lb) + 0.05); if (c < min) min = c; }
       }
@@ -136,6 +136,30 @@ for (const tema of temas) for (const modo of modos) {
   // Início usa o mesmo card
   await ir({ tela: 'inicio' });
   conferir(rot + 'C: Início mostra o card atrasado com a cor do tipo', (await p.getAttribute('.dcard[data-id="1"] .face.front', 'class')).includes('cat-azul'));
+  // ---- D: menu lateral e ícones ----
+  for (const aberto of [true, false]) {
+    const pi = await medirMenu('.ico .ic', aberto);
+    conferir(rot + 'D: ícones do menu ' + (aberto ? 'aberto' : 'recolhido') + ' com contraste (pior caso ' + pi.toFixed(1) + ':1, mínimo 3)', pi >= 3, pi);
+  }
+  await ir({ tela: 'demandas', menuAb: false });
+  const nomes = await p.evaluate(() => [...document.querySelectorAll('.side .navi')].map((n) => n.getAttribute('aria-label')));
+  conferir(rot + 'D: todo item do menu tem nome acessível (recolhido também)', nomes.length >= 8 && nomes.every((x) => x && x.length >= 2), nomes);
+  const sel = await p.evaluate(() => { const n = document.querySelector('.side .navi[aria-current="page"]'); return { peso: +getComputedStyle(n.querySelector('.tx')).fontWeight, barra: getComputedStyle(n, '::before').content, nome: n.getAttribute('aria-label') }; });
+  conferir(rot + 'D: seleção não depende só da cor (rótulo em negrito e ' + (tema === 'd' ? 'cápsula' : 'barra') + ')', sel.peso >= 700 && (tema === 'd' || sel.barra !== 'none'), sel);
+  // mesmo desenho selecionado ou não
+  await ir({ tela: 'entradas' }); const dSel = await p.evaluate(() => document.querySelector('.side .navi[data-nav="entradas"] svg').innerHTML);
+  await ir({ tela: 'inicio' }); const dRep = await p.evaluate(() => document.querySelector('.side .navi[data-nav="entradas"] svg').innerHTML);
+  conferir(rot + 'D: o ícone mantém o mesmo desenho ao ser selecionado', dSel === dRep);
+  // foco por teclado, diferente da seleção
+  await p.focus('.side .navi[data-nav="agenda"]'); await p.keyboard.press('Shift+Tab'); await p.keyboard.press('Tab');
+  const foco = await p.evaluate(() => { const e = document.activeElement; const c = getComputedStyle(e); return { nav: e.dataset && e.dataset.nav, ancora: c.outlineStyle, w: parseFloat(c.outlineWidth) }; });
+  conferir(rot + 'D: foco por teclado com anel visível', foco.nav === 'agenda' && foco.ancora !== 'none' && foco.w >= 2, foco);
+  await p.keyboard.press('Enter'); await p.waitForTimeout(250);
+  conferir(rot + 'D: Enter no item do menu abre a tela', (await p.evaluate(() => window.DM.estado.tela)) === 'agenda');
+  // área de toque
+  await ir({ tela: 'demandas', menuAb: false });
+  const alvo = await p.evaluate(() => [...document.querySelectorAll('.side .navi')].map((n) => { const r = n.getBoundingClientRect(); return Math.min(r.width, r.height); }));
+  conferir(rot + 'D: itens do menu com ao menos 44 px de toque', alvo.every((x) => x >= 44), alvo);
   // celular: largura estreita
   await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300);
   await ir({ tela: 'demandas', vis: 'cards' });

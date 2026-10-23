@@ -311,23 +311,23 @@
   var SUBS = { inicio: 'Seu dia em um só lugar.', entradas: 'Anotações rápidas que podem virar demandas.', agenda: 'Prazos de demanda e compromissos, juntos.', documentos: 'Modelos e arquivos ligados às demandas.', ia: 'Sua estagiária: pergunta, executa e desfaz.', config: 'Cores, fontes, ícones e tamanhos, com visualização na hora.', perfil: 'Só seu e privado.', arquivo: 'Demandas arquivadas.', mais: 'Outras áreas do Dmanda.' };
   function montar() {
     var f = $('#frame');
-    var nav = NAV.filter(function (n) { return n[0] !== 'config'; }).map(function (n) { var at = n[0] === estado.tela; return '<button class="navi" data-nav="' + n[0] + '"' + (at ? ' aria-current="page"' : '') + ' title="' + n[1] + '"><span class="ico">' + ic(n[2], 'duo' + (at ? ' sol' : '')) + '</span><span class="tx">' + n[1] + '</span></button>'; }).join('');
+    var nav = NAV.filter(function (n) { return n[0] !== 'config'; }).map(function (n) { var at = n[0] === estado.tela; return '<button class="navi" data-nav="' + n[0] + '"' + (at ? ' aria-current="page"' : '') + ' title="' + n[1] + '" aria-label="' + n[1] + '"><span class="ico">' + ic(n[2], 'duo') + '</span><span class="tx">' + n[1] + '</span></button>'; }).join('');
     var cfgAt = estado.tela === 'config';
-    var cfgBtn = '<button class="navi" data-nav="config"' + (cfgAt ? ' aria-current="page"' : '') + ' title="Configurações"><span class="ico">' + ic('settings', 'duo' + (cfgAt ? ' sol' : '')) + '</span><span class="tx">Configurações</span></button>';
+    var cfgBtn = '<button class="navi" data-nav="config"' + (cfgAt ? ' aria-current="page"' : '') + ' title="Configurações" aria-label="Configurações"><span class="ico">' + ic('settings', 'duo') + '</span><span class="tx">Configurações</span></button>';
     var emMais = ['mais', 'entradas', 'documentos', 'ia', 'config', 'arquivo'].indexOf(estado.tela) > -1;
     var bar = [['inicio', 'Início', 'house'], ['demandas', 'Demandas', 'square-kanban']].map(function (n) {
       var at = n[0] === estado.tela;
-      return '<button class="bi" data-nav="' + n[0] + '"' + (at ? ' aria-current="page"' : '') + '>' + ic(n[2], 'duo' + (at ? ' sol' : '')) + n[1] + '</button>';
+      return '<button class="bi" data-nav="' + n[0] + '"' + (at ? ' aria-current="page"' : '') + '>' + ic(n[2], 'duo') + n[1] + '</button>';
     }).join('') +
       '<button class="mais-c" data-act="plus" aria-label="Criar novo" aria-expanded="' + estado.plus + '">' + ic('plus') + '</button>' +
-      '<button class="bi" data-nav="agenda"' + (estado.tela === 'agenda' ? ' aria-current="page"' : '') + '>' + ic('calendar', 'duo' + (estado.tela === 'agenda' ? ' sol' : '')) + 'Agenda</button>' +
+      '<button class="bi" data-nav="agenda"' + (estado.tela === 'agenda' ? ' aria-current="page"' : '') + '>' + ic('calendar', 'duo') + 'Agenda</button>' +
       '<button class="bi" data-nav="mais"' + (emMais ? ' aria-current="page"' : '') + '>' + ic('ellipsis') + 'Mais</button>';
     var menu = MAIS.map(function (m, i) { return (i === 3 ? '<hr>' : '') + '<button class="' + (m[3] ? 'rapido' : '') + '" data-act="msg" data-m="Novo: ' + m[1] + '">' + ic(m[2]) + m[1] + '</button>'; }).join('');
     var sub = estado.tela === 'demandas' ? DEMANDAS.length + ' demandas, ' + DEMANDAS.filter(atrasada).length + ' atrasada. Do cadastro à conclusão.' : (SUBS[estado.tela] || '');
     var corpo = (TELAS_FN[estado.tela] || TELAS_FN.inicio)();
     f.innerHTML = '<div class="app" data-dir="' + estado.dir + '" data-tema="' + estado.tema + '" data-ico="' + iconeEstilo() + '" data-anim="' + estado.anim + '" data-dev="' + (estado.dev === 'desktop' || estado.dev === 'media' || estado.dev === 'tablet-h' ? 'desktop' : 'toque') + '">' +
       '<div class="bg"></div>' +
-      '<aside class="side" aria-label="Menu"><div class="logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' + nav + '<div class="esp"></div>' + cfgBtn + '<button class="navi col-b" data-act="colapsar" aria-expanded="' + estado.menuAb + '" title="' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '"><span class="ico">' + ic(estado.menuAb ? 'recolher' : 'expandir') + '</span><span class="tx">' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '</span></button><div class="rodape">' + esc(estado.cidade || 'Taquara/RS') + '</div></aside>' +
+      '<aside class="side" aria-label="Menu"><div class="logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' + nav + '<div class="esp"></div>' + cfgBtn + '<button class="navi col-b" data-act="colapsar" aria-expanded="' + estado.menuAb + '" aria-label="' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '" title="' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '"><span class="ico">' + ic(estado.menuAb ? 'recolher' : 'expandir') + '</span><span class="tx">' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '</span></button><div class="rodape">' + esc(estado.cidade || 'Taquara/RS') + '</div></aside>' +
       '<header class="top"><div class="top-logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' +
       '<button class="icbtn buscabtn" data-act="busca" aria-label="Buscar em tudo">' + ic('search') + '<span class="tx">Buscar demanda, entrada, evento ou documento</span><kbd>Ctrl K</kbd></button>' +
       '<button class="icbtn sino" data-act="msg" data-m="Avisos de compromissos" aria-label="Avisos, 2 novos">' + ic('bell') + '<span class="badge">2</span></button>' +

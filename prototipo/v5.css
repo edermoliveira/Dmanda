@@ -272,8 +272,21 @@ button.wg:active { transform: scale(.97); }
 .app .desc.cheia { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; margin: 0 0 8px; }
 .app .assunto.fit:has(+ .desc) { min-height: 0; }
 
-/* ---------- menu lateral: rótulo na cor principal, para ler bem sobre o vidro mais transparente ---------- */
+/* ---------- menu lateral: ícones e estados (mesmo desenho em todos os estados; a seleção se vê pela forma, não só pela cor) ---------- */
+.app { --ico-cor: var(--acc-text); }
+.app[data-tema="escuro"] { --ico-cor: color-mix(in srgb, var(--acc-text) 55%, var(--text)); }
+.app .side .navi { position: relative; }
 .app .side .navi .tx { color: var(--text); }
+.app .side .navi .ico { color: var(--ico-cor); }
+/* repouso, passar o mouse e foco: cada um tem a sua forma (foco = anel externo, o global de estilo.css) */
+.app .side .navi:hover { background: var(--acc-soft); }
+.app .side .navi:hover .ico { color: var(--text); }
+/* selecionado: ladrilho cheio com a tinta de alto contraste, rótulo em negrito e barra à esquerda */
+.app:not([data-dir="d"]) .side .navi[aria-current="page"] { background: var(--acc-soft); }
+.app:not([data-dir="d"]) .side .navi[aria-current="page"] .ico { background: var(--acc); color: var(--acc-ink); }
+.app:not([data-dir="d"]) .side .navi[aria-current="page"] .tx { font-weight: 700; }
+.app:not([data-dir="d"]) .side .navi[aria-current="page"]::before { content: ""; position: absolute; left: -6px; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--acc); }
+.app[data-dir="d"] .side .navi[aria-current="page"] .tx { font-weight: 700; }
 
 /* ---------- processo atrasado: fundo vermelho pastel (regra de atraso) e faixa lateral na cor do tipo ---------- */
 .app .dcard.atrasada .face.front.cat-azul, .app .mini-card.atrasada.cat-azul { box-shadow: inset 6px 0 0 var(--cat-azul-barra), 0 0 0 1px var(--anel-atraso, transparent), 0 8px 24px var(--lg-sh); }

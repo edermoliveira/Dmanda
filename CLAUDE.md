@@ -61,7 +61,7 @@ O protótipo navegável está em `prototipo/` (HTML, CSS e JS puros, dados fict�
 
 - **iPhone e iPad (decidido em 23/10/2026):** o mobile é pensado para o iPhone como PWA, mas **construído como app nativo**. O iPad segue a mesma regra e, no futuro, terá Entradas com Apple Pencil. Propostas técnicas aguardando aprovação em `DECISOES.md`.
 - **Vidro líquido** em quase todo o desenho (barras, menu, painéis, indicadores, botões, abas). Cards de demanda mais sólidos. **Caixas de preenchimento (janelas, busca, balões) quase opacas**: brancas no claro e escuras no escuro, com campos de alto contraste.
-- **Fontes em três papéis:** principal para títulos, secundária para subtítulos e textos, mono para detalhes pontuais (números de processo, datas, contadores).
+- **Fontes em três papéis:** principal para títulos, secundária para subtítulos e textos, mono para detalhes pontuais (números de processo, datas, contadores) e, por exceção, a descrição resumida dos cards de demanda.
 - **Ícones:** Iconoir (padrão, MIT) ou Lucide, em pastilha, fino ou duotone, sempre por uma única função ou componente de ícone. Nada de emoji nos controles. Os emojis de humor são os PNGs do usuário em `prototipo/emojis/` (ver o `LEIA-ME.md` da pasta).
 - **Regras mantidas:** nenhuma cor solta no código (valores só nos arquivos de tokens), espaços e cantos por nome, alvo de toque de 44 px, funcionar nos dois modos, cinco estados por peça (normal, foco, desativado, carregando, erro), vermelho só para atrasado ou crítico.
 - **Exceções à regra do travessão:** o traço "—" aparece na interface como símbolo de "sem progresso" (decisão do usuário), e valem fora da regra o `AGENTS.md` (gerado pelo Next.js) e as skills de terceiros copiadas em `.claude/skills/`.
