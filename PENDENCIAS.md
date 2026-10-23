@@ -42,7 +42,7 @@ O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês
 
 ## Pontos em aberto técnicos (não dependem do usuário)
 
-- Confirmar os limites atuais do plano gratuito do Postgres (Neon ou Supabase) e escolher um.
+- Confirmar os limites atuais do plano gratuito do Postgres do Supabase (escolha do projeto) antes de configurar.
 - Confirmar os limites da IA gratuita (Gemini ou Groq) na hora da etapa de IA.
 - Rodar `trail init --dry-run` e instalar o Trail-code depois da versão mínima de Demandas.
 - Quando o design system real estiver pronto, avaliar a remoção do plugin `ui-ux-pro-max` (instalado no ambiente do usuário a pedido).

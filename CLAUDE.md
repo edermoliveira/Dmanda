@@ -75,6 +75,21 @@ O que está em `src/` ainda é o design de 20/10/2026 (verde-água, Averia Serif
 - Peças em `src/components`, vistas em http://localhost:7100/pecas. Ícones pelo componente `Icone` (20 px).
 - Logo: `npm run gerar:logo` (não editar `public/marca`, `src/app/icon.svg` e `src/components/logo-dados.ts` à mão). Prints das páginas: `npm run capturar` (precisa do sistema ligado).
 
+## Ferramentas (decidido em 23/10/2026)
+
+São regras de trabalho, não travas técnicas: os plugins instalados no escopo do usuário continuam disponíveis em qualquer sessão, então a disciplina é nossa.
+
+- **Impeccable** (instalada no projeto, versão 4.7.0, sem hooks, telemetria desligada em `.impeccable/config.json`): UX, responsividade, acessibilidade e acabamento. Serve para avaliar e refinar a direção já aprovada, nunca para gerar novas direções. `bolder` e `overdrive` ficam fora. As sugestões dela não substituem as decisões do usuário.
+- **Taste:** só para exploração artística pedida expressamente.
+- **ui-ux-pro-max:** uso excepcional, quando acrescentar algo que a Impeccable não cobre.
+- **Ponytail:** adiada para o Bloco C. **Vercel React Best Practices:** só na implementação real em React/Next.js.
+- **Transitions.dev:** só os recursos gratuitos, para microinterações concretas.
+- **Playwright:** manter os testes atuais com `playwright-core` e o Edge. Sem CLI nem troca da infraestrutura por ora.
+- **Context7:** consultar quando precisar de documentação externa.
+- **code-review e code-simplifier:** conforme a necessidade, nunca os dois automaticamente sobre o mesmo diff.
+- **Supabase** é o banco do projeto, mas nada de MCP, banco ou backend até a decisão de iniciar. A IA operacional é etapa futura (Open Notebook não serve).
+- Sem hooks automáticos de auditoria e sem pacotes de memória. Superpowers completo não será instalado (só as três skills copiadas em `.claude/skills/`).
+
 ## Pendências
 
 Ler `PENDENCIAS.md` no início de cada sessão. Ali está o que aguarda aprovação do usuário.

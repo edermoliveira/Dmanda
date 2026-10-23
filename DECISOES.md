@@ -13,7 +13,7 @@ Legenda: **[definido]** o usuário decidiu. **[aprovado]** era uma recomendaçã
 
 ## 2. Onde roda, dados e segurança
 - [definido] Desenvolver local até a primeira tela de Demandas, e então publicar na **Vercel com login**.
-- [definido] Banco: **Postgres gratuito (Neon ou Supabase)**, com exportação de cópia de segurança. Confirmar os limites do plano gratuito antes de escolher entre os dois.
+- [definido] Banco: **Postgres gratuito no Supabase** (escolha do usuário, confirmada em 23/10/2026), com exportação de cópia de segurança. Confirmar os limites do plano gratuito antes de configurar. Nada de banco foi configurado ainda.
 - [definido] Login: **conta Google**, com uma única conta permitida. **A sessão expira após 6 horas sem uso** e pede login de novo (decisão de 22/10/2026, substitui a "sessão longa").
 - [definido] Os dados ficam em serviço de terceiros e o usuário decidiu seguir sem consultar a TI ou o jurídico da Prefeitura. A responsabilidade é dele. Mesmo assim, o sistema guarda só o necessário (número, assunto, origem), sem CPF.
 - [definido] Google Calendar e Drive: começar em modo de teste (o Google pede para reconectar a cada 7 dias) e publicar o aplicativo no Google Cloud quando a integração estiver pronta.
@@ -173,7 +173,7 @@ Aplicado no protótipo (`prototipo/v5.css`, `v5.js`, `app.js`, `extra.js`, `cata
 ## Questões para o futuro (22/10/2026)
 
 - [definido] **Testes a cada etapa:** rodar um script que clica em todos os menus, botões e ferramentas, mede a legibilidade (contraste) e procura defeitos (erros, estouro de layout, cliques sem efeito), para não descobrir erro na hora em que o sistema for necessário. Hoje: `node testes/clicar-tudo.mjs` dentro de `prototipo` (usa o Edge instalado). O mesmo método vale para o sistema real.
-- [definido] **Cópia de segurança:** os dados não podem se perder se um serviço cair. Plano: cópia automática do banco (Supabase ou Neon) para outro lugar (Google Drive do usuário e arquivo baixável), código no GitHub e uma cópia offline no computador. Nenhum serviço é o único dono dos dados. Exportar e importar tudo continua em Configurações.
+- [definido] **Cópia de segurança:** os dados não podem se perder se um serviço cair. Plano: cópia automática do banco (Supabase) para outro lugar (Google Drive do usuário e arquivo baixável), código no GitHub e uma cópia offline no computador. Nenhum serviço é o único dono dos dados. Exportar e importar tudo continua em Configurações.
 - [definido] **Segurança e privacidade:** os dados são do usuário, que tem autorização para incluir, alterar e excluir. Login Google de conta única, **com novo login após 6 horas sem uso**.
 - [definido] **Velocidade:** o sistema precisa abrir rápido e ser fluido, com os efeitos e o movimento, inclusive no celular com internet fraca (PWA com cache, telas leves, dados carregados aos poucos).
 
@@ -203,3 +203,12 @@ Pedidos do usuário, já autorizados e aplicados no protótipo (`prototipo/`), c
 - **D. Menu lateral e ícones:** o ícone do item selecionado ficava escuro sobre roxo translúcido (1,9:1 no Aurora escuro), por regras de `estilo.css` que se anulavam. Agora o selecionado é um ladrilho cheio com tinta de alto contraste, barra à esquerda e rótulo em negrito (a seleção não depende só de cor); hover, foco (anel) e seleção têm formas diferentes. O mesmo desenho é usado selecionado ou não: o Iconoir só tem versão cheia de 14 ícones (2 dos 7 do menu), então a troca de desenho foi removida. Itens têm `aria-label` (menu recolhido). Contraste real medido por pixel.
 - **Pendente de decisão:** trocar a biblioteca de ícones por uma família com contorno e cheio completos e proporções próximas às dos apps Apple (proposta a apresentar, nada foi adicionado).
 - **Ferramentas (item 3 da ordem de trabalho):** inventário conferido em 23/10/2026. Proposta de configuração a apresentar, nada foi instalado nem alterado.
+
+## Configuração de casa e ferramentas (23/10/2026)
+
+- **Impeccable autorizada e instalada** no escopo do projeto, sem hooks (`npx impeccable install --providers=claude --scope=project --no-hooks`), versão 4.7.0 (motor 0.1.16). Telemetria desligada em `.impeccable/config.json` (`"telemetry": false`). Não elimina chamadas externas: a skill sempre consulta o impeccable.style ao começar um design. O `--no-hooks` vale só para a execução, então toda atualização futura deve repetir a opção.
+- **Uso da Impeccable:** só para avaliar e refinar a direção aprovada. Sem novas direções visuais, sem `bolder` e `overdrive`, sem alterações no aplicativo antes da avaliação do usuário.
+- **Demais ferramentas:** regras de trabalho em `CLAUDE.md`, seção "Ferramentas". Ponytail fica para o Bloco C.
+- **Supabase** é o banco escolhido. Nada configurado.
+- **Ícones:** comparação em `prototipo/icones-comparacao/` (Iconoir atual, Lucide, Phosphor, Ionicons). Recomendação: Phosphor. **Aguarda a escolha do usuário**; o aplicativo continua com Iconoir.
+- **Correção do relatório:** a regra da aba selecionada das etapas no `catalyst.css` não está restrita a telas estreitas, mas a barra de etapas só aparece abaixo de 900 px (no computador ela é `display: none`, conferido no Catalyst claro e escuro), então na prática só atua no celular. A regra do botão de busca está dentro do container abaixo de 900 px.

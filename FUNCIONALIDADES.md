@@ -146,6 +146,6 @@ Estão em `DECISOES.md`. Resumo das regras de negócio: Aguardando retorno é um
 
 ## 5. Pontos ainda em aberto
 - Padrões de cada tema (par de fontes, estilo de ícones e paleta de Aurora, Papel e Grafite). Direção e logo já decididos: três temas definitivos e logo da Aurora.
-- Limites do plano gratuito do Postgres (Neon ou Supabase) e da IA gratuita.
+- Limites do plano gratuito do Postgres (Supabase) e da IA gratuita.
 - Nomes e textos exatos de botões, ficam para a etapa das telas.
 - Peças com os cinco estados e conferência de contraste nos três temas.
