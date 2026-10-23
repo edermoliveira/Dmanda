@@ -24,7 +24,7 @@
 .app[data-dir] .btn.mini, .app[data-dir] .modal .btn.mini { min-height: var(--bt-s); padding: 0 var(--bt-px-s); font-size: var(--bt-fs-s); }
 .app[data-dir] .btn.mini .ic { width: var(--bt-ic-s); height: var(--bt-ic-s); }
 .app[data-dir] .btn.so-icone { width: var(--bt-m); padding: 0; justify-content: center; }
-.app[data-dir] .btn.mini.so-icone { width: var(--bt-s); }
+.app[data-dir] .btn.mini.so-icone { width: var(--bt-s); padding: 0; } /* mais específica que o .btn.mini do Catalyst */
 .app[data-dir] .btn::after { content: ""; position: absolute; top: min(0px, calc((100% - 44px) / 2)); bottom: min(0px, calc((100% - 44px) / 2)); left: min(0px, calc((100% - 44px) / 2)); right: min(0px, calc((100% - 44px) / 2)); }
 .app[data-dir] .btn:disabled { opacity: .4; cursor: not-allowed; }
 .app[data-dir] .icbtn:not(.buscabtn) { width: var(--bt-l); height: var(--bt-l); }
@@ -293,3 +293,8 @@ button.wg:active { transform: scale(.97); }
 .app .dcard.atrasada .face.front.cat-verde, .app .mini-card.atrasada.cat-verde { box-shadow: inset 6px 0 0 var(--cat-verde-barra), 0 0 0 1px var(--anel-atraso, transparent), 0 8px 24px var(--lg-sh); }
 .app .dcard.atrasada .face.front.cat-amar, .app .mini-card.atrasada.cat-amar { box-shadow: inset 6px 0 0 var(--cat-amar-barra), 0 0 0 1px var(--anel-atraso, transparent), 0 8px 24px var(--lg-sh); }
 .app[data-dir="d"] { --anel-atraso: var(--perigo); }
+
+/* ---------- contraste no modo escuro (achado pelo teste de cliques no Grafite): o acento claro não bastava sobre card colorido ---------- */
+.app[data-tema="escuro"] :is(.face.front[class*="cat-"], .dcard.atrasada .face.front, .mini-card[class*="cat-"], .mini-card.atrasada) .btn.fino.pri.bloco { color: var(--cc-chip-tx); }
+.app[data-tema="escuro"] .chip:not(.neutro):not(.perigo) { color: color-mix(in srgb, var(--acc-text) 75%, var(--text)); }
+.app .btn.fino.bloco:not(.pri) { color: color-mix(in srgb, var(--acc-text) 80%, var(--text)); }

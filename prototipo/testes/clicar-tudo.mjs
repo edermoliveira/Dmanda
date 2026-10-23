@@ -75,7 +75,7 @@ function medirNaPagina(rolagemOk) {
   return out;
 }
 
-const navegador = await chromium.launch({ channel: 'msedge', headless: true });
+const navegador = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--disable-background-networking', '--renderer-process-limit=1', '--js-flags=--max-old-space-size=384'] }) // flags que poupam memória;
 const pagina = await navegador.newPage({ viewport: { width: 1480, height: 1000 } });
 const erros = [];
 pagina.on('pageerror', (e) => erros.push(String(e.message || e)));

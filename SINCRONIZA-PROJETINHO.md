@@ -2,9 +2,34 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** sessão de 22 para 23/10/2026, no computador de casa. A próxima sessão será no computador do trabalho (sem administrador).
+**Última atualização:** 23/10/2026, no computador do trabalho, com um ponto de retomada na branch `checkpoint/2026-10-23-ajustes-a-d` (seção 0). A próxima sessão será em casa.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
+
+---
+
+## 0. PONTO DE RETOMADA (checkpoint de 23/10/2026, computador do trabalho)
+
+**Branch do checkpoint:** `checkpoint/2026-10-23-ajustes-a-d` (enviada ao GitHub com autorização expressa; **sem merge na main**). Para continuar em casa, **no PowerShell, dentro da pasta do projeto:** `git fetch` e `git checkout checkpoint/2026-10-23-ajustes-a-d`, depois `npm install`.
+
+**Trabalho realizado (implementado, commitado nesta branch):**
+- A. Descrição opcional nas demandas (cadastro, edição, cards, Quadro, Início, Lista), em mono, até 3 linhas.
+- B. Vidro cerca de 30% mais transparente por um fator único (`--vidro: .7`).
+- C. Cores dos processos restauradas (causa: empate de especificidade no Catalyst), faixa do tipo no card atrasado.
+- D. Menu lateral: ícone selecionado legível, mesmo desenho em todos os estados, seleção por forma, nome acessível.
+- Correções achadas pelo teste: contraste de "Concluir demanda", "Finalizada" e "Reabrir demanda" no modo escuro e claro; botão mini só com ícone no Catalyst. Detalhes em `DECISOES.md`, seção "Ajustes A a D".
+
+**Atividade interrompida (incompleta):** investigação de dois defeitos **antigos** do Catalyst no celular (existem também no commit `c314b53`, não vêm do trabalho de hoje): (1) o botão de busca do topo (`.icbtn.buscabtn`) é acusado de "texto maior que o botão" em todas as telas; (2) "Cadastro 0" no Quadro com contraste 1:1 (rótulo da aba selecionada some). Pistas: `catalyst.css` linhas 63, 80 e 176 a 178 e `v3.css` linhas 60 e 61 (aba selecionada com `--acc`/`--acc-ink` contra o fundo `var(--card)` do Catalyst). **Nada foi alterado para esses dois defeitos.**
+
+**Testes concluídos (passaram, 0 problemas):** `ajustes-a-d.mjs` nos 4 temas, claro e escuro; `fluxos.mjs`; `clicar-tudo.mjs` no computador nos 4 temas, claro e escuro (8 combinações), e no celular Aurora claro e escuro, todos depois das últimas correções de CSS.
+
+**Verificações pendentes:** `clicar-tudo.mjs d claro phone` e `d escuro phone` **falham** pelos dois defeitos antigos acima. Papel e Grafite no celular nunca foram rodados. Não houve aprovação visual sua dos itens A a D.
+
+**Decisões suas pendentes:** (1) biblioteca de ícones (apresentar exemplos de normal e selecionado e a recomendação, sem adicionar dependência antes da sua decisão); (2) configuração das ferramentas, começando pela Impeccable, um item por vez (nada instalado); (3) avaliação visual de A a D; (4) autorização para o merge na main, se quiser.
+
+**Próxima ação em casa:** rodar `node testes/ajustes-a-d.mjs` e `node testes/fluxos.mjs` para confirmar o ambiente; corrigir os dois defeitos do Catalyst no celular e rodar `clicar-tudo.mjs d claro phone`; depois apresentar a proposta dos ícones.
+
+**Lembretes de máquina:** no trabalho o computador ficou com pouca memória (Chrome do usuário ocupa muita). O `clicar-tudo.mjs` agora usa flags que poupam memória; rodar uma combinação por vez. Não rodar a suíte inteira de uma vez.
 
 ---
 
