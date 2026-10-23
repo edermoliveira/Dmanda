@@ -78,6 +78,8 @@
   background: linear-gradient(to bottom, var(--bgbase) 12%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   -webkit-mask-image: linear-gradient(to bottom, #0A0A0A 45%, transparent); mask-image: linear-gradient(to bottom, #0A0A0A 45%, transparent); }
 .app[data-dir="d"] .buscabtn { border-radius: 999px; min-height: var(--bt-l); padding: 0 18px; }
+/* celular: o botão de busca vira só o ícone (44 px); sem isto o padding de 18 px acima sobrava e o ícone ficava espremido */
+@container tela (max-width: 899px) { .app[data-dir="d"] .buscabtn { padding: 0; } }
 .app[data-dir="d"] .top .icbtn:not(.buscabtn) { width: var(--bt-l); height: var(--bt-l); padding: 0; border-radius: 50%; display: grid; place-items: center; position: relative; }
 .app[data-dir="d"] .perfil-b { border-radius: 999px; min-height: var(--bt-l); padding: 0 14px 0 4px; gap: 10px; font-weight: 600; }
 .app[data-dir="d"] .perfil-b .avatar { width: 36px; height: 36px; }
@@ -176,6 +178,8 @@
 .app[data-dir="d"] :is(.tema-c, .sw, .emo, .etapas-tabs button) { border-radius: 20px; transition: box-shadow .25s var(--rapido), transform .35s var(--mola); }
 .app[data-dir="d"] :is(.tema-c, .sw, .emo, .etapas-tabs button):active { transform: scale(.96); }
 .app[data-dir="d"] :is(.tema-c, .sw, .emo, .etapas-tabs button, .filtro)[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--acc), 0 6px 18px color-mix(in srgb, var(--acc) 25%, transparent); }
+/* aba selecionada das etapas: aqui o fundo é o do card (a seleção é o anel), então o texto fica na cor principal e não na cor sobre o destaque */
+.app[data-dir="d"] .etapas-tabs button[aria-pressed="true"], .app[data-dir="d"] .etapas-tabs button[aria-pressed="true"] .cnt { color: var(--text); }
 .app[data-dir="d"] .tema-c[aria-pressed="true"] b { color: var(--acc-text); }
 
 /* ---------- caixas de marcar: círculo do iOS (24 px visíveis, 44 px de toque, sem mexer no layout) ---------- */
