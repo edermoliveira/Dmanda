@@ -31,9 +31,9 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 
 ### Demandas
 - Visões, cada uma com função própria: **Cards** (leitura visual), **Quadro** (mover entre etapas), **Tabela** (análise detalhada, colunas ordenáveis e filtros) e **Lista** (consulta rápida, linhas expansíveis para ver e marcar tarefas).
-- Cinco etapas: **Cadastro, Vista, Fazendo, Aguardando retorno, Finalizado**.
+- Cinco etapas: **Cadastro, Vistos, Fazendo, Aguardando retorno, Finalizado**.
 - Cadastro rápido (número, prazo, assunto, origem, tipo opcional) em qualquer etapa.
-- Mover card entre etapas. Botão **"Já vi"** leva de Cadastro para Vista (com ou sem tarefas).
+- Mover card entre etapas. Botão **"Já vi"** leva de Cadastro para Vistos (com ou sem tarefas). Cadastrar a primeira tarefa também leva para Vistos.
 - Quando todas as tarefas forem concluídas, o card sugere "Finalizar?". Sem tarefas, há o botão Concluir.
 - Contagem de cards por etapa. Filtros (prazo, origem, só atrasadas, legal, próprio, sem prazo) e filtro de texto.
 - No **Quadro**, arrastar o card para outra etapa. Atalho `N` abre nova anotação.
@@ -112,7 +112,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 
 1. **Chega.** Processo, memorando, ofício ou pedido por papel, e-mail, WhatsApp ou reunião. Pode começar como uma **entrada** (nota rápida) e virar demanda.
 2. **Cadastro.** Registra-se número, prazo, assunto e origem, e o tipo de documento se quiser. Sem prazo, 30 dias automáticos. Prazo legal prevalece.
-3. **Vista.** Você olhou, entendeu o que precisa ser feito e tocou em **"Já vi"**. Pode cadastrar tarefas (ou não, se for um passo só).
+3. **Vistos.** Você olhou, entendeu o que precisa ser feito e tocou em **"Já vi"**. Pode cadastrar tarefas (ou não, se for um passo só).
 4. **Fazendo.** Está em trabalho com você.
 5. **Aguardando retorno.** Enviou a outro setor externo à Secretaria, ou aguarda análise ou decisão da Prefeita. Mostra o setor e os dias parado.
 6. **Retorno.** Quando a resposta volta, você marca o retorno e a demanda volta para Fazendo.

@@ -17,6 +17,15 @@ npm run dev
 
 Endereço: http://localhost:7100 (a porta 7100 está fixada no package.json).
 
+Testes do protótipo (dentro de `prototipo`, usam o Edge instalado, sem servidor à parte):
+
+```
+node testes/fluxos.mjs                          (fluxos principais, cerca de 1 minuto)
+node testes/clicar-tudo.mjs d claro desktop     (cliques, contraste e layout de um tema, cerca de 5 minutos)
+node testes/clicar-tudo.mjs                     (os quatro temas, claro e escuro, computador e celular, cerca de 70 minutos)
+node verificar-cores.mjs                        (nenhum branco ou preto absoluto)
+```
+
 Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `.env.local` nunca vai para o Git.
 
 ## Documentos do projeto
@@ -86,3 +95,6 @@ Sempre que o usuário corrigir algo, acrescentar aqui a regra nova, em uma linha
 - Texto digitado nunca se perde: clicar fora de uma janela com texto não fecha, Esc e X guardam rascunho, só Cancelar descarta.
 - Tom dos textos: simpático e direto, sem bajulação, com tom de alerta quando necessário.
 - Botões no estilo Apple: chatos, levemente arredondados, sem borda nem relevo. Sem prazo, nada é mostrado (nem "Chegou há N d").
+- Botões numa escala única e harmônica (40 px padrão, 32 px mini, 44 px só nas barras), área de toque sempre de 44 px. Nada de tamanho solto.
+- Toda informação incluída pelo usuário (tarefa, nota, evento, demanda, perfil) precisa ser alterável de forma fácil, de preferência no próprio lugar.
+- A cada etapa, rodar o teste de cliques (`node testes/clicar-tudo.mjs` em `prototipo`) e corrigir o que ele achar antes de dizer que está pronto.

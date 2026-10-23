@@ -9,6 +9,12 @@ Arquivo lido no início de cada sessão. Fica no repositório para valer em qual
 3. **Aprovar a nova versão do protótipo** (`prototipo/`, rodada de 22/10/2026 com os 11 itens da avaliação aplicados, exceto Agenda). Falta dizer o que ainda destoa. Rodar `node verificar-cores.mjs` dentro de `prototipo` confere que não há branco nem preto absolutos.
 4. **Escolher os padrões de cada tema:** par de fontes, estilo de ícones e paleta padrão de Aurora, Papel e Grafite (hoje há padrões provisórios).
 
+5. **Avaliar a rodada 3 do protótipo** (22/10/2026): Amanhã nos compromissos, botões na escala nova, Concluir mais fino, tarefas editáveis, etapa Vistos, notas com texto de um só tamanho, "+" em cada dia da Agenda, IA que registra entrada ou evento, widgets com Pomodoro e o Catalyst revisado. Ver `DECISOES.md`, rodada 3.
+
+## Limite do Figma
+
+O MCP do Figma usa o plano gratuito (Starter), que tem um número limitado de chamadas. Em 22/10/2026 o limite foi atingido durante a revisão do Catalyst (lidas: Widgets, Botões e Campos de texto; faltaram Steppers, Progresso, Popovers, Alertas, Estados vazios, Menus de contexto, Seletores de data e Exemplos). Retomar quando o limite renovar, sem pagar plano.
+
 ## Próximo passo do Claude
 
 - Página de **peças com os cinco estados** (normal, foco, desativado, carregando, erro) para os três temas, e conferência de contraste (`inspect.mjs` da taste-skill e verificação por código).

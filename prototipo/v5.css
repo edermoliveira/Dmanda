@@ -1,0 +1,267 @@
+/* =====================================================================
+   Quinta rodada (22/10/2026): escala única de botões, Concluir mais fino,
+   filtros do Início no formato do app Lembretes, tarefas editáveis,
+   post-its com texto de um só tamanho, "+" em cada dia da Agenda,
+   widgets do Início (Pomodoro) e a IA que registra entradas e eventos.
+   Carregado antes do catalyst.css (o Catalyst refina por cima).
+   Branco = #FCFCFC, preto = #0A0A0A (nunca absolutos).
+   ===================================================================== */
+
+/* ---------- tokens desta rodada ---------- */
+.app {
+  /* botões: três alturas e nada fora delas. M é o padrão, S é o "mini", L só nas barras. */
+  --bt-l: 44px; --bt-m: 40px; --bt-s: 32px;
+  --bt-px-m: 16px; --bt-px-s: 12px; --bt-fs-m: 14px; --bt-fs-s: 13px; --bt-ic-m: 18px; --bt-ic-s: 16px; --bt-gap: 6px;
+  --r-tile: 12px; --sw-on: var(--acc);
+}
+.app[data-dir="c"] { --r-tile: 8px; }
+.app[data-tema="claro"] { --sw-trilho: rgba(120,120,128,.18); --pomo-pausa: hsl(150 60% 34%); --wg-sh: 0 1px 2px rgba(10,10,10,.05), 0 6px 18px rgba(10,10,10,.06); }
+.app[data-tema="escuro"] { --sw-trilho: rgba(120,120,128,.36); --pomo-pausa: hsl(150 60% 55%); --wg-sh: 0 1px 2px rgba(10,10,10,.4); }
+
+/* ---------- botões: escala harmônica (40 px, 32 px no mini), área de toque sempre de 44 px ---------- */
+.app[data-dir] .btn { position: relative; min-height: var(--bt-m); padding: 0 var(--bt-px-m); gap: var(--bt-gap); font-size: var(--bt-fs-m); line-height: 1.2; white-space: nowrap; }
+.app[data-dir] .btn .ic { width: var(--bt-ic-m); height: var(--bt-ic-m); }
+.app[data-dir] .btn.mini, .app[data-dir] .modal .btn.mini { min-height: var(--bt-s); padding: 0 var(--bt-px-s); font-size: var(--bt-fs-s); }
+.app[data-dir] .btn.mini .ic { width: var(--bt-ic-s); height: var(--bt-ic-s); }
+.app[data-dir] .btn.so-icone { width: var(--bt-m); padding: 0; justify-content: center; }
+.app[data-dir] .btn.mini.so-icone { width: var(--bt-s); }
+.app[data-dir] .btn::after { content: ""; position: absolute; top: min(0px, calc((100% - 44px) / 2)); bottom: min(0px, calc((100% - 44px) / 2)); left: min(0px, calc((100% - 44px) / 2)); right: min(0px, calc((100% - 44px) / 2)); }
+.app[data-dir] .btn:disabled { opacity: .4; cursor: not-allowed; }
+.app[data-dir] .icbtn:not(.buscabtn) { width: var(--bt-l); height: var(--bt-l); }
+.app[data-dir] .buscabtn, .app[data-dir] .perfil-b { min-height: var(--bt-l); }
+.app[data-dir] .tabs button { min-height: calc(var(--bt-m) - 8px); padding: 0 14px; }
+.app[data-dir] .filtro { min-height: var(--bt-m); }
+.app[data-dir] .opcoes { gap: 8px; row-gap: 12px; }
+.app[data-dir] .opcoes button { min-height: var(--bt-s); padding: 0 12px; font-size: var(--bt-fs-s); position: relative; }
+.app[data-dir] .opcoes button::after { content: ""; position: absolute; inset: -6px 0; }
+.app[data-dir] button.chip { min-height: var(--bt-s); padding: 0 12px; font-size: var(--bt-fs-s); }
+.app[data-dir] button.chip::after { inset: -6px 0; }
+.app[data-dir] .link-s { font-size: var(--bt-fs-s); }
+/* botões redondos pequenos (fechar, "+" e "..." das colunas): 32 px, toque de 44 px */
+.app[data-dir] .icbtn-s { position: relative; width: var(--bt-s); height: var(--bt-s); min-width: var(--bt-s); min-height: var(--bt-s); margin: 0; }
+.app[data-dir] .icbtn-s::after { content: ""; position: absolute; inset: -6px; }
+.app[data-dir] .balao .icbtn-s { position: absolute; top: 8px; right: 8px; }
+.app[data-dir] .icbtn-s .ic { width: 16px; height: 16px; }
+.app[data-dir] .coluna header { gap: 6px; }
+.app[data-dir] .coluna header h4 { min-width: 0; }
+@container tela (max-width: 520px) {
+  .app[data-dir] .toolbar .btn.gl, .app[data-dir] .toolbar .btn.escuro { width: var(--bt-m); height: var(--bt-m); padding: 0; justify-content: center; }
+}
+
+/* ---------- card no computador: não gira enquanto o mouse está num controle da frente ----------
+   (antes, mirar em "Concluir demanda", na próxima tarefa ou no assunto fazia o card virar antes do clique) */
+.app[data-dev="desktop"] .dcard:not([data-fix]):hover .faces { transition-delay: .3s; }
+.app[data-dev="desktop"] .dcard:not([data-fix]):hover:has(.face.front :is(button, input, .assunto, .t-txt, .prox-t, .t-ed):hover) .faces,
+.app[data-dev="desktop"] .dcard:not([data-fix]):has(.face.front :focus-within, .face.front :focus) .faces { transform: none; }
+
+/* ---------- contraste: etiquetas de tipo e vencido na agenda (o teste achou abaixo de 4,5:1) ---------- */
+.app[data-tema="claro"] .tag { background: hsl(var(--h) 62% 31%); }
+.app[data-tema="escuro"] .tag { background: hsl(var(--h) 52% 32%); }
+.app .ag-d.venc { background: var(--z-venc-bg); color: #FCFCFC; border-color: transparent; }
+.app[data-tema="claro"] .chip:not(.neutro):not(.amar):not(.azul):not(.perigo) { color: color-mix(in srgb, var(--acc-text) 82%, #0A0A0A); }
+/* fins de semana e dias de outro mês: esmaecidos no fundo, nunca no texto (a transparência apagava o texto) */
+.app .ag-col.fim, .app .ag-cel.fim { opacity: 1; background: color-mix(in srgb, var(--card) 55%, transparent); }
+.app .ag-col.fim .ag-h span, .app .ag-cel.fim > .ag-ch b { color: var(--text2); }
+.app .ag-cel.fora { opacity: 1; background: transparent; box-shadow: none; border-color: transparent; }
+.app .ag-cel.fora b { color: var(--text2); font-weight: 400; }
+.app .tabela tr.atrasada .selo, .app .linha.atrasada .selo { background: var(--card); color: var(--text); }
+/* tela Mais: os itens grandes ocupam a linha em qualquer largura */
+.main .navi.grande { width: 100%; justify-content: flex-start; padding: 4px 14px 4px 8px; }
+.main .navi.grande span.tx { display: inline; }
+
+/* ---------- Concluir demanda: mesma largura, mais fino e sutil, sempre em uma linha ---------- */
+.app[data-dir] .btn.fino.bloco { display: flex; width: 100%; min-height: var(--bt-s); padding: 0 12px; font-size: var(--bt-fs-s); flex: none; justify-content: center; overflow: hidden; text-overflow: ellipsis; }
+.app[data-dir] .btn.fino.bloco .ic { width: 15px; height: 15px; }
+.app[data-dir][data-tema] .btn.fino.pri { background: var(--acc-soft); color: var(--acc-text); box-shadow: none; border: 0; filter: none; }
+.app[data-dir][data-tema] .btn.fino.pri:hover { background: color-mix(in srgb, var(--acc) 24%, transparent); filter: none; }
+.app :is(.face.front[class*="cat-"], .dcard.atrasada .face.front, .mini-card[class*="cat-"], .mini-card.atrasada) .btn.fino.pri.bloco { background: var(--cc-chip-bg); color: var(--acc-text); }
+
+/* ---------- Início: filtros no formato do app Lembretes (ícone em círculo, número à direita, rótulo embaixo) ---------- */
+.app[data-dir] .stats.tres { gap: 12px; }
+.app[data-dir] .stats.tres .stat { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "ic n" "r r"; align-items: center; row-gap: 8px; padding: 12px 14px; border-radius: var(--r-tile); min-height: 0; text-align: left; }
+.app[data-dir] .stats.tres .st-ic { grid-area: ic; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--text2); color: var(--bgbase); }
+.app[data-dir] .stats.tres .st-ic .ic { width: 17px; height: 17px; stroke-width: 2.1; }
+.app[data-dir] .stats.tres .st-hoje .st-ic { background: var(--acc); color: var(--acc-ink); }
+.app[data-dir] .stats.tres .st-atrasadas.alerta .st-ic { background: var(--perigo); color: var(--on-perigo); }
+.app[data-dir] .stats.tres .stat .n { grid-area: n; justify-self: end; font-size: 26px; line-height: 1; font-weight: 700; }
+.app[data-dir] .stats.tres .stat .r { grid-area: r; font-size: 14px; font-weight: 600; color: var(--text2); }
+.app[data-dir] .stats.tres .stat[aria-pressed="true"] .r { color: var(--text); }
+.app[data-dir="b"] .stats.tres .stat { border-width: 0 0 3px 0; border-radius: var(--r-tile) var(--r-tile) 0 0; }
+@container tela (max-width: 520px) { .app[data-dir] .stats.tres { gap: 8px; } .app[data-dir] .stats.tres .stat { padding: 10px; } .app[data-dir] .stats.tres .stat .n { font-size: 22px; } .app[data-dir] .stats.tres .st-ic { width: 26px; height: 26px; } .app[data-dir] .stats.tres .stat .r { font-size: 12px; } }
+
+/* ---------- Início: compromissos clicáveis, com selo de Hoje e Amanhã ---------- */
+button.ag-mini { font: inherit; text-align: left; cursor: pointer; width: 100%; transition: transform .2s, box-shadow .2s; }
+button.ag-mini:hover { transform: translateY(-1px); box-shadow: 0 6px 16px var(--lg-sh); }
+.ag-mini.hoje:hover { box-shadow: 0 0 0 2px var(--acc), 0 6px 16px var(--lg-sh); }
+.am-hoje.am-amanha { background: transparent; color: var(--k-tx); box-shadow: inset 0 0 0 1.5px var(--k-tx); }
+.app[data-tema="claro"] { --k4-bg: hsl(220 14% 95%); --k4-ac: hsl(220 9% 42%); --k4-brd: hsl(220 12% 84%); }
+.app[data-tema="escuro"] { --k4-bg: hsl(220 8% 18%); --k4-ac: hsl(220 10% 68%); --k4-brd: hsl(220 8% 30%); }
+.ag-mini.k-lembrete { --k-bg: var(--k4-bg); --k-ac: var(--k4-ac); --k-brd: var(--k4-brd); }
+
+/* ---------- tarefas editáveis: o círculo marca, o texto edita ---------- */
+.app .tarefas { gap: 0; }
+.t-item { display: flex; align-items: center; gap: 10px; min-height: 40px; min-width: 0; }
+.t-item > input[type="checkbox"] { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--acc); cursor: pointer; }
+.t-txt { flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; padding: 3px 6px; margin: 0 -6px; border-radius: 6px; cursor: text; overflow-wrap: anywhere; }
+.t-txt:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.t-txt:focus-visible { outline: 2px solid var(--foco, var(--acc)); outline-offset: 1px; }
+.t-txt.feita, .t-campo.feita { text-decoration: line-through; color: var(--text2); }
+.t-ed, .t-campo { flex: 1; min-width: 0; font: inherit; font-size: 14px; line-height: 1.35; color: var(--text); background: var(--solido, var(--card)); border: 0; border-radius: 8px; padding: 5px 8px; margin: 0 -2px; box-shadow: 0 0 0 2px var(--acc); outline: 0; }
+.t-campo { background: transparent; box-shadow: none; border-radius: 0; border-bottom: 1px solid var(--brd); }
+.t-campo:hover { border-bottom-color: var(--campo); }
+.t-campo:focus { background: var(--solido, var(--card)); border-radius: 8px; border-bottom-color: transparent; box-shadow: 0 0 0 2px var(--acc); }
+.t-lapis { position: relative; flex: none; width: 28px; height: 28px; border: 0; border-radius: 50%; display: grid; place-items: center; background: transparent; color: var(--text2); opacity: 0; transition: opacity .15s, background .15s; cursor: pointer; }
+.t-lapis::after { content: ""; position: absolute; inset: -8px; }
+.t-lapis .ic { width: 15px; height: 15px; }
+.t-lapis:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+.t-item:hover .t-lapis, .t-lapis:focus-visible, .app[data-dev="toque"] .t-lapis, .tarefas.ed .t-lapis { opacity: 1; }
+.prox-t { cursor: default; }
+.prox-t .prox-c { display: block; flex: 1; min-width: 0; overflow: visible; -webkit-line-clamp: unset; }
+.prox-t .t-txt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 0 -6px; padding: 1px 6px; }
+.prox-t .t-ed { width: 100%; margin-top: 2px; }
+.m-cols h4 small { font-weight: 400; margin-left: 6px; }
+
+/* ---------- Entradas: todo texto da nota no mesmo tamanho (título ou não) ---------- */
+.app .postit .p-txt, .app .postit .p-txt.com-titulo { font-family: var(--font); font-size: 15px; line-height: 1.4; font-weight: 500; letter-spacing: 0; }
+.app .postit .p-txt.com-titulo { font-weight: 700; }
+.app .postit .p-tags { font-family: var(--font); font-size: 15px; line-height: 1.4; font-weight: 600; opacity: .72; }
+.app .postit .p-tags .mono { font-family: inherit; font-size: inherit; font-weight: inherit; }
+
+/* ---------- Agenda: "+" em cada dia, igual ao botão flutuante, e eventos que abrem para editar ---------- */
+.ag-h, .ag-ch { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 28px; }
+.ag-h { justify-content: flex-start; }
+.ag-h b { margin-right: auto; }
+.ag-ch b { margin-right: auto; }
+.dia-mais { position: relative; flex: none; width: 26px; height: 26px; border: 0; border-radius: 50%; display: grid; place-items: center; padding: 0; cursor: pointer;
+  background: var(--acc); color: var(--acc-ink); box-shadow: 0 3px 10px color-mix(in srgb, var(--acc) 35%, transparent);
+  opacity: 0; transform: scale(.6); transition: opacity .15s, transform .3s cubic-bezier(.32, 1.25, .5, 1); }
+.dia-mais::after { content: ""; position: absolute; inset: -9px; }
+.dia-mais .ic { width: 16px; height: 16px; stroke-width: 2.4; }
+.ag-col:hover .dia-mais, .ag-cel:hover .dia-mais, .dia-mais:focus-visible, .ag-col.mostra .dia-mais, .ag-cel.mostra .dia-mais { opacity: 1; transform: none; }
+.app[data-dev="toque"] .ag-col .dia-mais { opacity: 1; transform: none; }
+.dia-mais:hover { filter: brightness(1.08); }
+.dia-mais:active { transform: scale(.9); }
+button.ag-e { display: block; width: 100%; border: 0; font: inherit; text-align: left; cursor: pointer; transition: filter .15s; }
+button.ag-e:hover { filter: brightness(.96); }
+.app[data-tema="escuro"] button.ag-e:hover { filter: brightness(1.15); }
+.ag-e.grande { font-size: 15px; }
+.sec > h3 .btn { margin-left: auto; }
+.dia-esc { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--r-field); background: var(--acc-soft); color: var(--text); margin: 0 0 12px; }
+.dia-esc .ic { width: 18px; height: 18px; color: var(--acc-text); }
+
+/* ---------- widgets do Início: quadradinhos de cantos arredondados, como no iOS ---------- */
+.widgets { display: grid; grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.wg { position: relative; min-width: 0; aspect-ratio: 1 / 1; display: flex; flex-direction: column; gap: 4px; padding: 14px; overflow: hidden; border: 0; border-radius: max(var(--r-card), 16px);
+  background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--card-brd), var(--wg-sh); font: inherit; text-align: left; }
+.app[data-dir="c"] .wg { border-radius: var(--r-card); }
+button.wg { cursor: pointer; transition: transform .3s cubic-bezier(.32, 1.25, .5, 1); }
+button.wg:hover { transform: translateY(-2px); }
+button.wg:active { transform: scale(.97); }
+.wg-m { grid-column: span 2; aspect-ratio: auto; }
+.wg-h { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); }
+.wg-h .ic { width: 16px; height: 16px; color: var(--acc-text); }
+.wg-h b { font-weight: 600; }
+.wg-dia { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--acc-text); }
+/* Hoje na agenda */
+.wg-hoje .wg-dia { font-size: 15px; font-weight: 600; letter-spacing: 0; }
+.wg-hoje .wg-dia span { color: var(--text2); }
+.wg-num { font-family: var(--font-h); font-size: 40px; font-weight: 600; line-height: 1; letter-spacing: -.02em; margin-bottom: 4px; }
+.wg-evs { display: grid; gap: 6px; margin-top: auto; min-width: 0; }
+.wg-ev { display: grid; padding-left: 8px; border-left: 3px solid var(--k1-ac); min-width: 0; }
+.wg-ev.k-compromisso { border-color: var(--k2-ac); }
+.wg-ev.k-feriado { border-color: var(--k3-ac); }
+.wg-ev.k-lembrete { border-color: var(--k4-ac); }
+.wg-ev b { font-size: 12px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wg-ev .mono { font-size: 11px; color: var(--text2); }
+/* Calendário */
+.mg { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px 0; margin-top: auto; font-size: 10.5px; text-align: center; }
+.mg i { font-style: normal; line-height: 18px; height: 18px; position: relative; }
+.mg i.l { font-weight: 700; color: var(--text2); font-family: var(--font); }
+.mg i.f { color: var(--text2); }
+.mg i.t::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 3px; height: 3px; margin-left: -1.5px; border-radius: 50%; background: var(--acc); }
+.mg i.h { justify-self: center; width: 18px; border-radius: 50%; background: var(--acc); color: var(--acc-ink); font-weight: 700; }
+.mg i.h::after { display: none; }
+/* Clima */
+.wg-cid { font-size: 13px; font-weight: 600; }
+.wg-temp { font-family: var(--font-h); font-size: 42px; font-weight: 300; line-height: 1.05; }
+.wg-ceu { display: flex; align-items: center; gap: 6px; margin-top: auto; font-size: 12px; font-weight: 600; }
+.wg-ceu .ic { width: 18px; height: 18px; color: var(--acc-text); }
+.wg-mm { font-size: 11px; color: var(--text2); }
+/* Última anotação */
+.wg-nota { background: var(--nota, var(--card)); }
+.wg-nota .wg-dia { color: var(--text); opacity: .7; }
+.wg-ntx { font-size: 15px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; overflow: hidden; }
+/* Pomodoro */
+.wg-pomo { flex-direction: row; align-items: center; gap: 14px; --pomo: var(--acc); }
+.wg-pomo.pausa { --pomo: var(--pomo-pausa); }
+.pomo-anel { position: relative; flex: none; width: 124px; height: 124px; }
+.pomo-anel svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.pomo-anel circle { fill: none; stroke-width: 7; }
+.pomo-anel .trilho { stroke: var(--track); }
+.pomo-anel .arco { stroke: var(--pomo); stroke-linecap: round; transition: stroke-dashoffset .3s linear; }
+.pomo-c { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; }
+.pomo-t { font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: -.02em; }
+.pomo-s { font-size: 11px; color: var(--text2); margin-top: 4px; }
+.pomo-ed { display: flex; align-items: baseline; gap: 2px; }
+.pomo-ed input { width: 58px; font-size: 26px; font-weight: 600; text-align: right; color: var(--text); background: transparent; border: 0; border-bottom: 2px dashed color-mix(in srgb, var(--pomo) 60%, transparent); border-radius: 0; padding: 0; -moz-appearance: textfield; appearance: textfield; }
+.pomo-ed input::-webkit-inner-spin-button, .pomo-ed input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.pomo-ed input:focus { outline: 0; border-bottom-style: solid; border-bottom-color: var(--pomo); }
+.pomo-ed span { font-size: 13px; color: var(--text2); }
+.pomo-lado { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: 1; }
+.seg-p { display: inline-flex; padding: 2px; border-radius: 9px; background: var(--track); align-self: flex-start; }
+.seg-p button { position: relative; min-height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
+.seg-p button::after { content: ""; position: absolute; inset: -8px 0; }
+.seg-p button[aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(10,10,10,.14); }
+.app[data-tema="escuro"] .seg-p button[aria-pressed="true"] { background: color-mix(in srgb, var(--text) 22%, var(--card)); }
+.pomo-ctl { display: flex; gap: 8px; align-items: center; }
+.pomo-b { position: relative; width: var(--bt-s); height: var(--bt-s); border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--btn-bg); color: var(--text); cursor: pointer; transition: transform .3s cubic-bezier(.32, 1.25, .5, 1), background .15s; }
+.pomo-b::after { content: ""; position: absolute; inset: -6px; }
+.pomo-b .ic { width: 16px; height: 16px; }
+.pomo-b.play { width: var(--bt-m); height: var(--bt-m); background: var(--pomo); color: var(--bgbase); }
+.pomo-b.play .ic { width: 18px; height: 18px; fill: currentColor; }
+.pomo-b:hover:not(:disabled) { background: var(--btn-hov); }
+.pomo-b.play:hover { background: var(--pomo); filter: brightness(1.08); }
+.pomo-b:active:not(:disabled) { transform: scale(.9); }
+.pomo-b:disabled { opacity: .35; cursor: default; }
+.wg-pomo.acabou .pomo-anel { animation: pomo-pulsa 1s ease-in-out 3; }
+@keyframes pomo-pulsa { 50% { transform: scale(1.05); } }
+.app[data-reduzir="true"] .wg-pomo.acabou .pomo-anel { animation: none; }
+@container tela (max-width: 520px) {
+  .widgets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .pomo-anel { width: 104px; height: 104px; }
+  .pomo-t, .pomo-ed input { font-size: 22px; }
+  .pomo-ed input { width: 48px; }
+}
+
+/* ---------- Configurações: interruptores no estilo iOS ---------- */
+.wg-cfg { display: grid; gap: 2px; margin-top: 8px; }
+.wg-l { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 0; border-bottom: 1px solid var(--brd); }
+.wg-l:last-child { border-bottom: 0; }
+.wg-l-t { flex: 1; min-width: 0; display: grid; }
+.wg-l-t b { font-size: 15px; font-weight: 600; }
+.wg-l-t small { font-size: 13px; color: var(--text2); }
+.switch { position: relative; flex: none; width: 51px; height: 31px; border: 0; border-radius: 999px; background: var(--sw-trilho); cursor: pointer; padding: 0; transition: background .25s; }
+.switch::before { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #FCFCFC; box-shadow: 0 3px 8px rgba(10,10,10,.15), 0 1px 1px rgba(10,10,10,.16); transition: transform .35s cubic-bezier(.32, 1.25, .5, 1); }
+.switch::after { content: ""; position: absolute; inset: -7px -2px; }
+.switch[aria-checked="true"] { background: var(--sw-on); }
+.switch[aria-checked="true"]::before { transform: translateX(20px); }
+.switch:focus-visible { outline: 3px solid color-mix(in srgb, var(--acc) 55%, transparent); outline-offset: 2px; }
+.app[data-reduzir="true"] .switch::before { transition: none; }
+
+/* ---------- IA: registro de entrada ou evento a partir de texto livre ---------- */
+.ia-modos { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.ia-ex { display: flex; flex-wrap: wrap; gap: 8px; }
+.ia-ex .chip { white-space: normal; text-align: left; height: auto; padding: 6px 12px; line-height: 1.35; }
+.prop { display: grid; gap: 8px; max-width: 560px; padding: 14px 16px; border-radius: var(--r-card); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd), var(--wg-sh); }
+.prop.feito { box-shadow: 0 0 0 1.5px var(--acc), var(--wg-sh); }
+.prop.apagado { opacity: .62; }
+.prop-k { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--acc-text); }
+.prop-t { font-size: 17px; font-weight: 700; line-height: 1.3; }
+.prop-d { margin: 0; font-size: 14px; color: var(--text2); line-height: 1.45; }
+.prop-c { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.prop-c .chip .ic { width: 13px; height: 13px; }
+.prop-cor { width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(10,10,10,.12); }
+.prop .acoes { align-items: center; margin-top: 2px; }
+.data.ok { display: inline-flex; align-items: center; gap: 6px; color: var(--acc-text); font-weight: 600; }
+.data.ok .ic { width: 16px; height: 16px; }
+.chat-f .btn { min-height: 48px; }

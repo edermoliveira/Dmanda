@@ -14,7 +14,7 @@ Legenda: **[definido]** o usuário decidiu. **[aprovado]** era uma recomendaçã
 ## 2. Onde roda, dados e segurança
 - [definido] Desenvolver local até a primeira tela de Demandas, e então publicar na **Vercel com login**.
 - [definido] Banco: **Postgres gratuito (Neon ou Supabase)**, com exportação de cópia de segurança. Confirmar os limites do plano gratuito antes de escolher entre os dois.
-- [definido] Login: **conta Google**, com uma única conta permitida e sessão longa.
+- [definido] Login: **conta Google**, com uma única conta permitida. **A sessão expira após 6 horas sem uso** e pede login de novo (decisão de 22/10/2026, substitui a "sessão longa").
 - [definido] Os dados ficam em serviço de terceiros e o usuário decidiu seguir sem consultar a TI ou o jurídico da Prefeitura. A responsabilidade é dele. Mesmo assim, o sistema guarda só o necessário (número, assunto, origem), sem CPF.
 - [definido] Google Calendar e Drive: começar em modo de teste (o Google pede para reconectar a cada 7 dias) e publicar o aplicativo no Google Cloud quando a integração estiver pronta.
 
@@ -30,7 +30,7 @@ Legenda: **[definido]** o usuário decidiu. **[aprovado]** era uma recomendaçã
 ## 3. Demandas
 - [definido] Colunas do quadro:
   1. **Cadastro:** acabou de chegar, ainda não vi do que se trata.
-  2. **Vista:** já vi o que precisa ser feito. O marco é o botão **"Já vi"**, manual. Vale com ou sem tarefas (demanda de passo único não precisa de tarefa).
+  2. **Vistos** (antes "Vista", renomeada em 22/10/2026): já vi o que precisa ser feito. A demanda chega aqui quando ganha a primeira tarefa ou quando o usuário a move (botão **"Já vi"** ou arrastando). Vale com ou sem tarefas (demanda de passo único não precisa de tarefa).
   3. **Fazendo:** em trabalho comigo (já comecei parte das tarefas).
   4. **Aguardando retorno:** mandei a outro setor externo à Secretaria, ou aguarda análise ou decisão da Prefeita. Mostra o setor e os dias parados.
   5. **Finalizado:** concluída. O card sugere "Finalizar?" quando todas as tarefas forem concluídas. Sem tarefas, há o botão Concluir. Sempre manual.
@@ -154,5 +154,27 @@ Aplicado no protótipo (`prototipo/v4.css`, `app.js`, `extra.js`):
 - **Rascunho:** clicar fora de uma janela com texto não salvo não fecha. Esc e X fecham e guardam o rascunho (reabrir recupera). Cancelar descarta.
 - **Botões:** estilo Apple, chatos e levemente arredondados (raio 12), sem borda nem relevo.
 - **Textos:** simpáticos e diretos, sem bajulação, com tom de alerta quando necessário.
+
+## Avaliação do protótipo, rodada 3 (22/10/2026)
+
+Aplicado no protótipo (`prototipo/v5.css`, `v5.js`, `app.js`, `extra.js`, `catalyst.css`):
+
+- **Início:** os compromissos ganham o selo **"Amanhã"** além do "Hoje". Os botões de filtro (Atrasadas, Para hoje, Próximos 7 dias) ficam menos arredondados (cantos de 12 px), no formato dos blocos do app Lembretes da Apple: ícone em círculo, número à direita, rótulo embaixo. Os cards de compromisso abrem para editar.
+- **Botões (todo o sistema):** escala única e harmônica. São três alturas: 40 px (padrão), 32 px (mini) e 44 px (só nas barras do topo). A área de toque continua com 44 px.
+- **Concluir demanda:** mesma largura, mais fino (32 px), sutil (fundo azul claro em vez de cheio) e sempre em uma linha, também no Quadro.
+- **Tudo é editável:** tarefas passam a ser alteradas no próprio texto (clicar no texto edita, clicar no círculo marca, como no app Lembretes; Enter ou clicar fora guarda, Esc desiste). Na demanda aberta, cada tarefa é um campo editável com botão de remover. Eventos da Agenda e do Início abrem para editar e excluir. Notas de Entradas já abriam para editar. Regra geral: qualquer informação incluída no sistema pode ser alterada de forma fácil.
+- **Etapa "Vista" passa a se chamar "Vistos".** Critério: a demanda em Cadastro vai para Vistos quando ganha a primeira tarefa, ou quando o usuário a move (botão "Já vi" ou arrastando).
+- **Entradas:** todo texto da nota tem o mesmo tamanho (título, texto e tags). O título só se distingue pelo negrito.
+- **Agenda:** botão "+" redondo, igual ao botão flutuante, aparece ao passar o mouse em cada dia (Semana e Mês; no toque, ao tocar no dia). Abre o cadastro de evento com a data daquele dia já preenchida. Tipos de evento: Reunião, Compromisso, Lembrete e Feriado ou ponto facultativo (dia inteiro, sem horário). A visão Hoje tem o botão "Novo evento hoje".
+- **IA:** uso principal é **registrar uma entrada ou um evento a partir de um texto escrito de qualquer jeito**. A IA classifica, escolhe a cor, cria título, breve descrição e tags, e mostra uma prévia com Registrar, Ajustar (abre a janela normal já preenchida), "É um evento/É uma entrada", Descartar e, depois de registrar, Desfazer. Modo Automático, Entrada ou Evento. Nunca inventa dia ou horário: se faltar, pede para ajustar. Registrar demanda pela IA fica para depois, de forma mais completa.
+- **Widgets no Início:** quadradinhos de cantos arredondados, como os widgets do iOS, ligados e desligados em Configurações > Widgets do Início. Primeiros: **Pomodoro** (foco e pausa, com o tempo que o usuário quiser, de 1 a 180 minutos; sem som), Hoje na agenda, Calendário do mês, Clima e Última anotação.
+- **Catalyst revisado com o kit do Figma:** formulários das janelas no estilo dos campos do iOS (fundo cinza agrupado e campos brancos), botões na escala nova, filtros no formato Lembretes, widgets com cantos de 22 px, interruptores verdes do iOS, seletor da Agenda segmentado, círculo das tarefas corrigido (não aparecia quando desmarcado). A leitura do kit parou nas páginas Widgets, Botões e Campos de texto porque o plano gratuito do Figma atingiu o limite de chamadas.
+
+## Questões para o futuro (22/10/2026)
+
+- [definido] **Testes a cada etapa:** rodar um script que clica em todos os menus, botões e ferramentas, mede a legibilidade (contraste) e procura defeitos (erros, estouro de layout, cliques sem efeito), para não descobrir erro na hora em que o sistema for necessário. Hoje: `node testes/clicar-tudo.mjs` dentro de `prototipo` (usa o Edge instalado). O mesmo método vale para o sistema real.
+- [definido] **Cópia de segurança:** os dados não podem se perder se um serviço cair. Plano: cópia automática do banco (Supabase ou Neon) para outro lugar (Google Drive do usuário e arquivo baixável), código no GitHub e uma cópia offline no computador. Nenhum serviço é o único dono dos dados. Exportar e importar tudo continua em Configurações.
+- [definido] **Segurança e privacidade:** os dados são do usuário, que tem autorização para incluir, alterar e excluir. Login Google de conta única, **com novo login após 6 horas sem uso**.
+- [definido] **Velocidade:** o sistema precisa abrir rápido e ser fluido, com os efeitos e o movimento, inclusive no celular com internet fraca (PWA com cache, telas leves, dados carregados aos poucos).
 
 Pendente de decisão do usuário: o tema **Catalyst** (quarto tema, a partir do kit iOS e iPadOS 27 da Apple no Figma). Exige conectar o Figma ao Claude Code (ver PENDENCIAS.md). Energia: PNGs em `prototipo/emojis/energia-1.png` a `energia-5.png`.
