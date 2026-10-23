@@ -212,3 +212,33 @@ Avaliadas em 21/10/2026, a pedido do usuário, para ajudar a decidir ícones e a
 **Fica fora:** Claude-mem, ECC, aitmpl completo, quase todas as skills de Matt Pocock, Fancy Components, CanvasUI, Pryzm (só inspiração), Free Faces (só inspiração), Hugeicons, Memos (copiar a ideia), Mobbin (a menos que já assine), Calendar e AI Chat Pro do BoardUI.
 
 **Adiado:** Bencho (não confirmado), MCP PostgreSQL e markitdown (quando houver banco e Documentos), app nativo.
+
+---
+
+## 11. Avaliações de 22 e 23/10/2026 (nada foi instalado; aguardam decisão do usuário)
+
+### 11.1 no-ai-slop (https://github.com/petergyang/no-ai-slop)
+
+- **O que é:** uma skill (licença MIT, sem scripts, sem chave de API) que **edita texto escrito** para tirar mais de 20 vícios de "texto de IA": contrastes do tipo "não é X, é Y", aberturas enfeitadas ("a verdade é que"), falsa profundidade, palavras proibidas ("leverage", "delve"), advérbios vazios, finais que repetem o resumo, uso demais de dois-pontos, negrito e emoji. O vício mais citado é o travessão (a regra dela é "em texto curto, nenhum"), o que combina com a nossa regra do projeto. Tem modos de editar e de só detectar ("isso é slop?"). Devolve texto, não mexe em arquivo.
+- **Funcionaria?** Para texto, sim, mas **só em inglês**: as listas de padrões e de palavras proibidas estão todas em inglês, e o português tem vícios próprios (gerúndio no fim da frase, "vale ressaltar", "é importante destacar", "no cenário atual"). Usada como está, ela pegaria poucos vícios nos nossos textos.
+- **Não serve para o visual.** Se a "cara de IA" for a aparência das telas (cantos arredondados em tudo, gradiente roxo, cartões iguais), quem cobre isso é a **taste-skill**, que já está instalada e é justamente anti-"slop" visual.
+- **Instalação:** `npx skills add petergyang/no-ai-slop --skill no-ai-slop --global --yes` (precisa de Node, que já temos, e grava na pasta do usuário, sem administrador pelo que a página indica; confirmar ao instalar). Pelas regras do projeto, só se instala na hora de usar e depois de ler o que ela escreve. O `SKILL.md` já foi lido em 23/10/2026 (sem scripts, só regras de edição); falta ler o `eval.md`.
+- **Opções para o usuário decidir:** (a) instalar como está e testar em textos curtos em português; (b) criar uma versão **em português** dentro do projeto (`.claude/skills/`, com a licença MIT junto, como já fazemos com as três skills do Superpowers), com os vícios do português e as nossas regras (sem travessão, tom simpático e direto, sem bajulação); (c) não usar. Onde ajudaria: textos da interface, mensagens do sistema, as 500 frases do dia, as respostas da IA e os documentos do projeto.
+
+### 11.2 Open Notebook (https://github.com/lfnovo/open-notebook)
+
+- **O que é:** **não é uma skill.** É um aplicativo completo, de código aberto (MIT) e hospedado por quem usa, parecido com o Google NotebookLM: você junta fontes (PDF, links, anotações), conversa com elas, gera resumos e podcasts. Usa Python (FastAPI), Next.js e o banco SurrealDB, e roda com **Docker Compose** (dois serviços). Aceita mais de 20 provedores de IA, inclusive Ollama local, e tem API REST e integração por MCP.
+- **Funcionaria como a IA do sistema? Não, pelos motivos abaixo:**
+  1. **Precisa de servidor sempre ligado e de Docker.** O Dmanda roda na Vercel (sem servidor próprio) e o Docker Desktop pede administrador, que o computador do trabalho não dá. Hospedar em outro lugar quebra a regra de não pagar nada além do Claude Pro e do ChatGPT Plus.
+  2. **Segurança:** a própria página avisa que a interface e a API vêm **sem senha** e abertas na rede. Com dados de uma Prefeitura, isso exigiria cuidado extra.
+  3. **Finalidade diferente:** ele foi feito para **pesquisar e conversar com documentos**, e não para **executar ações no banco do Dmanda** (registrar entrada, marcar tarefa, arquivar) **com Desfazer**, que é o que decidimos para a nossa IA. Essa parte é código nosso, e o modelo só entende o pedido e redige.
+- **O que ele pode oferecer:** (a) **referência de desenho** para trocar de provedor de IA sem mexer no resto (já é a nossa estratégia provedor-agnóstico); (b) uma **ferramenta separada, só no computador de casa**, para pesquisar PDFs no futuro, sem ligação com o sistema (talvez útil quando chegar a etapa Documentos). Nenhuma das duas é urgente.
+
+### 11.3 Graphify e mapas de código
+
+- **Ainda não vale a pena.** Em 22/10/2026 o código somava cerca de 5 mil linhas (protótipo e testes) e a documentação cerca de 1,5 mil. Leio tudo direto e um mapa economizaria pouco. Reavaliar depois da versão mínima de Demandas, **junto com o Trail-code** (mesma finalidade), e ficar com **um só**, depois de ler o que ele instala.
+
+### 11.4 Figma (plano gratuito)
+
+- A conta está no plano **Starter**. As ferramentas que **leem** o Figma têm limite de **20 chamadas por mês**, e as que só escrevem não contam. As 20 foram usadas entre 21 e 22/10/2026 (cada página do kit lida custa uma). A documentação do Figma **não informa quando o limite renova**. Plano pago (Professional, 200 por dia) está fora das regras de custo.
+- **Alternativa sem custo:** o usuário exporta as páginas que faltam do kit como imagem (PNG) no próprio Figma e salva numa pasta do projeto; o Claude lê as imagens. Páginas que faltam: Steppers, Progress Indicators, Popovers, Alerts, Empty States, Contextual Menus, Date and Time Pickers e Examples.

@@ -97,4 +97,7 @@ Sempre que o usuário corrigir algo, acrescentar aqui a regra nova, em uma linha
 - Botões no estilo Apple: chatos, levemente arredondados, sem borda nem relevo. Sem prazo, nada é mostrado (nem "Chegou há N d").
 - Botões numa escala única e harmônica (40 px padrão, 32 px mini, 44 px só nas barras), área de toque sempre de 44 px. Nada de tamanho solto.
 - Toda informação incluída pelo usuário (tarefa, nota, evento, demanda, perfil) precisa ser alterável de forma fácil, de preferência no próprio lugar.
+- Nenhuma decisão é tomada pelo Claude sem o conhecimento e a autorização prévios do usuário: dúvida vira pergunta no chat e a resposta é gravada em `DECISOES.md`.
+- Trabalhar em blocos maiores (início, fim e entrega testada). No fim de cada bloco, informar o percentual do projeto, o que ficou pendente do usuário e **sugerir o modelo (Opus ou Sonnet) e o effort do próximo bloco**. É sempre sugestão: quem troca é o usuário. Plano em `SINCRONIZA-PROJETINHO.md`, seção 6.
+- Ao encerrar uma sessão, atualizar `SINCRONIZA-PROJETINHO.md` (estado, histórico, pendências e prompt de retomada), fazer o commit e, só com autorização, o push.
 - A cada etapa, rodar o teste de cliques (`node testes/clicar-tudo.mjs` em `prototipo`) e corrigir o que ele achar antes de dizer que está pronto.

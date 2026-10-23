@@ -4,19 +4,29 @@ Arquivo lido no início de cada sessão. Fica no repositório para valer em qual
 
 ## Aguardando o usuário
 
-1. **Criar o banco de 500 frases** motivacionais e bem-humoradas para a mensagem do dia (o sistema só fornece o lugar para cadastrar). Não bloqueia nada: pode ser feito a qualquer momento antes do Início ficar pronto.
-2. **Emojis de energia (opcional):** enviar `energia-1.png` a `energia-5.png` na pasta `prototipo/emojis/` (hoje a energia usa ícones de bateria). Os cinco de humor já estão lá.
-3. **Aprovar a nova versão do protótipo** (`prototipo/`, rodada de 22/10/2026 com os 11 itens da avaliação aplicados, exceto Agenda). Falta dizer o que ainda destoa. Rodar `node verificar-cores.mjs` dentro de `prototipo` confere que não há branco nem preto absolutos.
-4. **Escolher os padrões de cada tema:** par de fontes, estilo de ícones e paleta padrão de Aurora, Papel e Grafite (hoje há padrões provisórios).
+Nada abaixo foi decidido pelo Claude. O detalhe de cada item está em `SINCRONIZA-PROJETINHO.md`, seção 3.
 
-5. **Avaliar a rodada 3 do protótipo** (22/10/2026): Amanhã nos compromissos, botões na escala nova, Concluir mais fino, tarefas editáveis, etapa Vistos, notas com texto de um só tamanho, "+" em cada dia da Agenda, IA que registra entrada ou evento, widgets com Pomodoro e o Catalyst revisado. Ver `DECISOES.md`, rodada 3.
+**Decisões**
+1. **GitHub Issues:** aprovar (ou ajustar) a proposta de etiquetas, marcos e uso nos commits, e dizer "pode criar". Nada foi criado ainda.
+2. **no-ai-slop** (skill de texto, só em inglês): instalar como está, criar versão em português no projeto, ou não usar. Avaliação em `ANALISE-FERRAMENTAS.md`, seção 11.1.
+3. **Open Notebook:** o Claude avaliou que não serve como IA do sistema (aplicativo com Docker e servidor, sem senha por padrão, feito para pesquisar documentos). Confirmar a conclusão. Seção 11.2.
+4. **Concluir demanda:** manter o fundo azul claro (mais sutil) ou voltar ao azul cheio, já mais fino.
+5. **Avaliar a rodada 3 e o Catalyst** (http://127.0.0.1:7200): dizer o que ainda destoa. Ver `DECISOES.md`, rodada 3.
+6. **Escolher os padrões de cada tema:** par de fontes, estilo de ícones e paleta padrão de Aurora, Papel e Grafite (hoje há padrões provisórios).
+7. **Figma:** esperar o limite renovar ou exportar como PNG as 8 páginas que faltam do kit (ver abaixo).
+8. **Plano de blocos maiores e de modelos (Opus ou Sonnet, effort):** aprovar ou ajustar, `SINCRONIZA-PROJETINHO.md`, seção 6.
+
+**Ações**
+9. **No computador de casa, apagar `Desktop\Dmanda\Dmanda`** (cópia limpa do repositório dentro do projeto, sem nada novo), se concordar.
+10. Sem pressa: **banco de 500 frases** da mensagem do dia e, opcional, `energia-1.png` a `energia-5.png` em `prototipo/emojis/`.
 
 ## Limite do Figma
 
-O MCP do Figma usa o plano gratuito (Starter), que tem um número limitado de chamadas. Em 22/10/2026 o limite foi atingido durante a revisão do Catalyst (lidas: Widgets, Botões e Campos de texto; faltaram Steppers, Progresso, Popovers, Alertas, Estados vazios, Menus de contexto, Seletores de data e Exemplos). Retomar quando o limite renovar, sem pagar plano.
+O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês**, e escrever não conta. As 20 foram usadas em 21 e 22/10/2026 (lidas: Widgets, Botões e Campos de texto do kit; faltam Steppers, Progress Indicators, Popovers, Alerts, Empty States, Contextual Menus, Date and Time Pickers e Examples). A documentação não informa quando renova: o Claude tenta de novo em novembro. Plano pago está fora das regras de custo.
 
 ## Próximo passo do Claude
 
+- **Blocos maiores** daqui em diante. No fim de cada bloco: percentual do projeto e sugestão de modelo e effort para o próximo (plano em `SINCRONIZA-PROJETINHO.md`, seção 6).
 - Página de **peças com os cinco estados** (normal, foco, desativado, carregando, erro) para os três temas, e conferência de contraste (`inspect.mjs` da taste-skill e verificação por código).
 - Depois, começar a **construção real** (ordem em `DECISOES.md`, seção 1): base técnica (banco, login Google, publicação na Vercel) e versão mínima de Demandas e Início, sobre os três temas.
 - O código de `src/` ainda é o design antigo e será substituído (ver `CLAUDE.md`).
