@@ -98,6 +98,44 @@ for (const tema of temas) for (const modo of modos) {
   };
   const pRot = await medirMenu('.tx', true);
   conferir(rot + 'B: rótulos do menu aberto legíveis sobre o vidro (pior caso ' + pRot.toFixed(1) + ':1, mínimo 4,5)', pRot >= 4.5, pRot);
+  // ---- C: cores dos processos ----
+  const cores = async (vis) => {
+    await ir({ tela: 'demandas', vis, etapaSel: 'Vistos', menuAb: false });
+    return p.evaluate((vis) => {
+      const sonda = (v) => { const d = document.createElement('div'); d.style.cssText = 'background-color:' + v; document.querySelector('.app').appendChild(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; };
+      const T = { azul: sonda('var(--cat-azul)'), verde: sonda('var(--cat-verde)'), amar: sonda('var(--cat-amar)'), venc: sonda('var(--cat-venc)'), card: sonda('var(--card)'), bAzul: sonda('var(--cat-azul-barra)') };
+      const face = (id) => { const c = document.querySelector((vis === 'cards' ? '.dcard' : '.mini-card') + '[data-id="' + id + '"]'); return c && (vis === 'cards' ? c.querySelector('.face.front') : c); };
+      const bg = (id) => { const f = face(id); return f ? getComputedStyle(f).backgroundColor : null; };
+      if (vis === 'quadro') { /* o quadro mostra uma etapa por vez no celular; no computador mostra todas */ }
+      return { T, verde: bg(4), amar: bg(7), azul: bg(9), neutro: bg(2), venc: bg(1), sombra: face(1) ? getComputedStyle(face(1)).boxShadow : '' };
+    }, vis);
+  };
+  for (const vis of ['cards', 'quadro']) {
+    const r = await cores(vis);
+    conferir(rot + 'C [' + vis + ']: Protocolo de pessoal em verde pastel', r.verde === r.T.verde, [r.verde, r.T.verde]);
+    conferir(rot + 'C [' + vis + ']: Processo de compras em amarelo pastel', r.amar === r.T.amar, [r.amar, r.T.amar]);
+    conferir(rot + 'C [' + vis + ']: Processo geral em azul pastel', r.azul === r.T.azul, [r.azul, r.T.azul]);
+    conferir(rot + 'C [' + vis + ']: memorando segue neutro', r.neutro === r.T.card, [r.neutro, r.T.card]);
+    conferir(rot + 'C [' + vis + ']: atrasado mantém o vermelho pastel e a faixa do tipo', r.venc === r.T.venc && r.sombra.includes(r.T.bAzul), [r.venc, r.sombra]);
+  }
+  // o verso continua neutro
+  await ir({ tela: 'demandas', vis: 'cards' });
+  const verso = await p.evaluate(() => { const d = document.createElement('div'); d.style.cssText = 'background-color:var(--card)'; document.querySelector('.app').appendChild(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return [getComputedStyle(document.querySelector('.dcard[data-id="4"] .face.back')).backgroundColor, c]; });
+  conferir(rot + 'C: verso do card neutro', verso[0] === verso[1], verso);
+  // a cor decorre da classificação: editar muda o card
+  await p.click('.dcard[data-id="9"] .face.front .assunto'); await p.waitForTimeout(250);
+  await p.click('.modal [data-k="areaDem"][data-val="Compras"]'); await p.click('.modal >> text=Salvar alterações'); await p.waitForTimeout(300);
+  conferir(rot + 'C: trocar a área para Compras deixa o card amarelo', (await p.getAttribute('.dcard[data-id="9"] .face.front', 'class')).includes('cat-amar'));
+  await p.click('.dcard[data-id="9"] .face.front .assunto'); await p.waitForTimeout(250);
+  await p.click('.modal [data-k="tipoDem"][data-val="Memorando"]'); await p.click('.modal >> text=Salvar alterações'); await p.waitForTimeout(300);
+  conferir(rot + 'C: trocar o tipo para Memorando deixa o card neutro', !(await p.getAttribute('.dcard[data-id="9"] .face.front', 'class')).includes('cat-'));
+  // título não influencia: assunto com a palavra "compras" no memorando 2 continua neutro
+  await p.click('.dcard[data-id="2"] .face.front .assunto'); await p.waitForTimeout(250);
+  await p.fill('#d-assunto', 'Processo de compras de papel'); await p.click('.modal >> text=Salvar alterações'); await p.waitForTimeout(300);
+  conferir(rot + 'C: a cor não depende de palavras do título', !(await p.getAttribute('.dcard[data-id="2"] .face.front', 'class')).includes('cat-'));
+  // Início usa o mesmo card
+  await ir({ tela: 'inicio' });
+  conferir(rot + 'C: Início mostra o card atrasado com a cor do tipo', (await p.getAttribute('.dcard[data-id="1"] .face.front', 'class')).includes('cat-azul'));
   // celular: largura estreita
   await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300);
   await ir({ tela: 'demandas', vis: 'cards' });

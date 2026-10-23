@@ -58,7 +58,9 @@
 .app[data-dir="d"][data-tema] .toast { background: var(--lq-fill-forte); color: var(--text); border-radius: 999px; padding: 12px 20px; font-weight: 600; }
 
 /* ---------- superfícies de conteúdo: sólidas, sem vidro (como nos apps nativos) ---------- */
-.app[data-dir="d"] :is(.painel, .stat, .alerta-l, .filtro, .etapas-tabs button, .sw, .tema-c, .pend, .linha, .tabela-w, .ag-col, .ag-cel, .bolha.ia, .face, .mini-card, .coluna, .grupo, .emo) {
+/* cards: :where() zera a especificidade, para a cor do tipo de processo (cat-azul, cat-verde, cat-amar) e a de atrasado sempre vencerem */
+.app[data-dir="d"] :where(.face, .mini-card) { background: var(--card); border: 0; box-shadow: 0 0 0 1px var(--card-brd), 0 1px 2px rgba(10,10,10,.04); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.app[data-dir="d"] :is(.painel, .stat, .alerta-l, .filtro, .etapas-tabs button, .sw, .tema-c, .pend, .linha, .tabela-w, .ag-col, .ag-cel, .bolha.ia, .coluna, .grupo, .emo) {
   background: var(--card); border: 0; box-shadow: 0 0 0 1px var(--card-brd), 0 1px 2px rgba(10,10,10,.04);
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }

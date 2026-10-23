@@ -32,7 +32,8 @@
       tarefas: [{ t: 'Listar caixas', f: true }, { t: 'Triagem', f: true }, { t: 'Descarte autorizado', f: true }], chegou: '01/10', parado: 0, concluido: '14/10' },
     { id: 7, tipo: 'Processo', area: 'Compras', num: '3120/2026', assunto: 'Registro de preços de material de expediente', origem: 'Setor de Compras', etapa: 'Vistos', prazoTipo: 'Próprio', prazo: '29/10', atraso: 0, tarefas: [], chegou: '20/10', parado: 1 },
     { id: 8, tipo: 'Pedido de informação', num: '012/2026', assunto: 'Lotação dos servidores da Secretaria de Obras', origem: 'Câmara de Vereadores', etapa: 'Fazendo', prazoTipo: 'Próprio', prazo: null, atraso: 0,
-      tarefas: [{ t: 'Levantar a lotação atual', f: false }], chegou: '14/10', parado: 4 }
+      tarefas: [{ t: 'Levantar a lotação atual', f: false }], chegou: '14/10', parado: 4 },
+    { id: 9, tipo: 'Processo', area: 'Geral', num: '3305/2026', assunto: 'Certidão de tempo de serviço de ex-servidora', origem: 'Munícipe', etapa: 'Cadastro', prazoTipo: 'Legal', prazo: '12/11', atraso: 0, tarefas: [], chegou: '21/10', parado: 0 }
   ];
 
   var NAV = [
@@ -110,7 +111,9 @@
   // Foco do dia: até 3 demandas, atrasadas primeiro (a mais antiga), depois hoje, depois os próximos 7 dias
   function focoDoDia() { return porGrupo('atrasadas').concat(porGrupo('hoje'), porGrupo('sete')).slice(0, 3); }
   function hue(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }
-  function chipTipo(d) { return '<span class="tag" style="--h:' + (TIPO_COR[d.tipo] || 212) + '">' + esc(d.tipo) + '</span>'; }
+  // o título do selo diz a área do processo, para a cor não ser a única pista
+  var AREA_NOME = { Geral: 'geral', Pessoal: 'de pessoal', Compras: 'de compras' };
+  function chipTipo(d) { var t = (d.tipo === 'Processo' || d.tipo === 'Protocolo') ? ' title="' + d.tipo + ' ' + AREA_NOME[d.area || 'Geral'] + '"' : ''; return '<span class="tag"' + t + ' style="--h:' + (TIPO_COR[d.tipo] || 212) + '">' + esc(d.tipo) + '</span>'; }
   // contagem regressiva: neutra até 6 dias; amarela com 5 e 4; laranja com 3 e 2; vermelha com 1 e no dia; vencido em vermelho vivo. Sem prazo não aparece nada.
   function nivelPrazo(n) { return n <= 1 ? ' n-verm' : n <= 3 ? ' n-lar' : n <= 5 ? ' n-amar' : ''; }
   function chipPrazo(d) {

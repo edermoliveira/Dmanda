@@ -274,3 +274,9 @@ button.wg:active { transform: scale(.97); }
 
 /* ---------- menu lateral: rótulo na cor principal, para ler bem sobre o vidro mais transparente ---------- */
 .app .side .navi .tx { color: var(--text); }
+
+/* ---------- processo atrasado: fundo vermelho pastel (regra de atraso) e faixa lateral na cor do tipo ---------- */
+.app .dcard.atrasada .face.front.cat-azul, .app .mini-card.atrasada.cat-azul { box-shadow: inset 6px 0 0 var(--cat-azul-barra), 0 0 0 1px var(--anel-atraso, transparent), 0 8px 24px var(--lg-sh); }
+.app .dcard.atrasada .face.front.cat-verde, .app .mini-card.atrasada.cat-verde { box-shadow: inset 6px 0 0 var(--cat-verde-barra), 0 0 0 1px var(--anel-atraso, transparent), 0 8px 24px var(--lg-sh); }
+.app .dcard.atrasada .face.front.cat-amar, .app .mini-card.atrasada.cat-amar { box-shadow: inset 6px 0 0 var(--cat-amar-barra), 0 0 0 1px var(--anel-atraso, transparent), 0 8px 24px var(--lg-sh); }
+.app[data-dir="d"] { --anel-atraso: var(--perigo); }
