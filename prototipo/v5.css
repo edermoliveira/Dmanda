@@ -14,7 +14,6 @@
   --bt-px-m: 16px; --bt-px-s: 12px; --bt-fs-m: 14px; --bt-fs-s: 13px; --bt-ic-m: 18px; --bt-ic-s: 16px; --bt-gap: 6px;
   --r-tile: 12px; --sw-on: var(--acc);
 }
-.app[data-dir="c"] { --r-tile: 8px; }
 .app[data-tema="claro"] { --sw-trilho: rgba(120,120,128,.18); --pomo-pausa: hsl(150 60% 34%); --wg-sh: 0 1px 2px rgba(10,10,10,.05), 0 6px 18px rgba(10,10,10,.06); }
 .app[data-tema="escuro"] { --sw-trilho: rgba(120,120,128,.36); --pomo-pausa: hsl(150 60% 55%); --wg-sh: 0 1px 2px rgba(10,10,10,.4); }
 
@@ -86,7 +85,6 @@
 .app[data-dir] .stats.tres .stat .n { grid-area: n; justify-self: end; font-size: 26px; line-height: 1; font-weight: 700; }
 .app[data-dir] .stats.tres .stat .r { grid-area: r; font-size: 14px; font-weight: 600; color: var(--text2); }
 .app[data-dir] .stats.tres .stat[aria-pressed="true"] .r { color: var(--text); }
-.app[data-dir="b"] .stats.tres .stat { border-width: 0 0 3px 0; border-radius: var(--r-tile) var(--r-tile) 0 0; }
 @container tela (max-width: 520px) { .app[data-dir] .stats.tres { gap: 8px; } .app[data-dir] .stats.tres .stat { padding: 10px; } .app[data-dir] .stats.tres .stat .n { font-size: 22px; } .app[data-dir] .stats.tres .st-ic { width: 26px; height: 26px; } .app[data-dir] .stats.tres .stat .r { font-size: 12px; } }
 
 /* ---------- Início: compromissos clicáveis, com selo de Hoje e Amanhã ---------- */
@@ -153,7 +151,6 @@ button.ag-e:hover { filter: brightness(.96); }
 .widgets { display: grid; grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 14px; margin-bottom: 22px; }
 .wg { position: relative; min-width: 0; aspect-ratio: 1 / 1; display: flex; flex-direction: column; gap: 4px; padding: 14px; overflow: hidden; border: 0; border-radius: max(var(--r-card), 16px);
   background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--card-brd), var(--wg-sh); font: inherit; text-align: left; }
-.app[data-dir="c"] .wg { border-radius: var(--r-card); }
 button.wg { cursor: pointer; transition: transform .3s cubic-bezier(.32, 1.25, .5, 1); }
 button.wg:hover { transform: translateY(-2px); }
 button.wg:active { transform: scale(.97); }
@@ -281,11 +278,6 @@ button.wg:active { transform: scale(.97); }
 /* repouso, passar o mouse e foco: cada um tem a sua forma (foco = anel externo, o global de estilo.css) */
 .app .side .navi:hover { background: var(--acc-soft); }
 .app .side .navi:hover .ico { color: var(--text); }
-/* selecionado: ladrilho cheio com a tinta de alto contraste, rótulo em negrito e barra à esquerda */
-.app:not([data-dir="d"]) .side .navi[aria-current="page"] { background: var(--acc-soft); }
-.app:not([data-dir="d"]) .side .navi[aria-current="page"] .ico { background: var(--acc); color: var(--acc-ink); }
-.app:not([data-dir="d"]) .side .navi[aria-current="page"] .tx { font-weight: 700; }
-.app:not([data-dir="d"]) .side .navi[aria-current="page"]::before { content: ""; position: absolute; left: -6px; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--acc); }
 .app[data-dir="d"] .side .navi[aria-current="page"] .tx { font-weight: 700; }
 
 /* ---------- processo atrasado: fundo vermelho pastel (regra de atraso) e faixa lateral na cor do tipo ---------- */

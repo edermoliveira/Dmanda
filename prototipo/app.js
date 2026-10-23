@@ -1,21 +1,11 @@
 // Protótipo do Dmanda: dados fictícios, sem rede, sem gravar nada. Hoje no protótipo: quarta-feira, 21/10/2026.
 (function () {
-  var estado = { dir: 'a', tema: 'claro', dev: 'desktop', tela: 'inicio', virado: {}, fixo: {}, filtroIni: null, tagSel: null, plus: false, humor: 3, vis: 'cards', ord: 'prazo', ordDir: 1, aberto: {}, ag: 'semana', pal: null, fs: 16, ico: 20, cardh: 340, anim: false, iconeEstilo: '', chat: [], lib: 'iconoir', q: '', soAtras: false, grupos: {}, etapaSel: 'Cadastro', perfilAb: false, menuAb: false, edT: null };
+  var estado = { dir: 'd', tema: 'claro', dev: 'desktop', tela: 'inicio', virado: {}, fixo: {}, filtroIni: null, tagSel: null, plus: false, humor: 3, vis: 'cards', ord: 'prazo', ordDir: 1, aberto: {}, ag: 'semana', pal: null, fs: 16, ico: 20, cardh: 340, anim: false, iconeEstilo: '', chat: [], lib: 'iconoir', q: '', soAtras: false, grupos: {}, etapaSel: 'Cadastro', perfilAb: false, menuAb: false, edT: null };
 
-  var NOTAS = {
-    a: 'Aurora: vidro estilo Apple em quase tudo, gradiente suave, cantos grandes. Tema definitivo do Dmanda.',
-    b: 'Papel: calmo, tom de papel, títulos serifados, vidro discreto. Tema definitivo do Dmanda.',
-    c: 'Grafite: denso, bordas finas, ícones duotone, leitura rápida. Tema definitivo do Dmanda.',
-    d: 'Catalyst: estilo nativo Apple (iOS e iPadOS 27) a partir do kit oficial do Figma. Liquid Glass nas barras, menus, folhas e botões, abas em cápsula, cards sólidos sobre cinza de sistema e movimento com mola.'
-  };
 
-  var LOGOS_ORIG = {
-    a: '<svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10 4H32A28 28 0 0 1 32 60H10A6 6 0 0 1 4 54V10A6 6 0 0 1 10 4ZM16 16H18A3 3 0 0 1 21 19V45A3 3 0 0 1 18 48H16A3 3 0 0 1 13 45V19A3 3 0 0 1 16 16ZM28 16H30A3 3 0 0 1 33 19V35A3 3 0 0 1 30 38H28A3 3 0 0 1 25 35V19A3 3 0 0 1 28 16ZM40 16H42A3 3 0 0 1 45 19V25A3 3 0 0 1 42 28H40A3 3 0 0 1 37 25V19A3 3 0 0 1 40 16Z"/></svg>',
-    b: '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="18" fill="currentColor"/><text x="32" y="46" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-style="italic" font-weight="700" font-size="40" fill="var(--acc-ink)">D</text></svg>',
-    c: '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 6H30A26 26 0 0 1 30 58H10Z" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/><rect x="19" y="36" width="6" height="14" rx="2" fill="currentColor"/><rect x="29" y="26" width="6" height="24" rx="2" fill="currentColor"/><rect x="39" y="16" width="6" height="34" rx="2" fill="currentColor"/></svg>'
-  };
+  var LOGO = '<svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M10 4H32A28 28 0 0 1 32 60H10A6 6 0 0 1 4 54V10A6 6 0 0 1 10 4ZM16 16H18A3 3 0 0 1 21 19V45A3 3 0 0 1 18 48H16A3 3 0 0 1 13 45V19A3 3 0 0 1 16 16ZM28 16H30A3 3 0 0 1 33 19V35A3 3 0 0 1 30 38H28A3 3 0 0 1 25 35V19A3 3 0 0 1 28 16ZM40 16H42A3 3 0 0 1 45 19V25A3 3 0 0 1 42 28H40A3 3 0 0 1 37 25V19A3 3 0 0 1 40 16Z"/></svg>';
 
-  var LOGOS = { a: LOGOS_ORIG.a, b: LOGOS_ORIG.a, c: LOGOS_ORIG.a, d: LOGOS_ORIG.a };
+
 
   // Hoje: 21/10/2026. Prazos e datas fictícios. prazo nulo = sem prazo (nada é inventado).
   // area (só processo e protocolo): Geral (azul), Pessoal (verde) ou Compras (amarelo). Os demais tipos têm a frente neutra.
@@ -67,7 +57,7 @@
     }
     return v.join(';');
   }
-  function iconeEstilo() { return estado.iconeEstilo || (estado.dir === 'c' ? 'duotone' : 'pastilha'); }
+  function iconeEstilo() { return estado.iconeEstilo || 'fino'; }
 
   var ETAPAS = ['Cadastro', 'Vistos', 'Fazendo', 'Aguardando retorno', 'Finalizado'];
   // ---------- ícones: Iconoir (padrão) ou Lucide; no Iconoir o item ativo usa a versão sólida ----------
@@ -327,8 +317,8 @@
     var corpo = (TELAS_FN[estado.tela] || TELAS_FN.inicio)();
     f.innerHTML = '<div class="app" data-dir="' + estado.dir + '" data-tema="' + estado.tema + '" data-ico="' + iconeEstilo() + '" data-anim="' + estado.anim + '" data-dev="' + (estado.dev === 'desktop' || estado.dev === 'media' || estado.dev === 'tablet-h' ? 'desktop' : 'toque') + '">' +
       '<div class="bg"></div>' +
-      '<aside class="side" aria-label="Menu"><div class="logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' + nav + '<div class="esp"></div>' + cfgBtn + '<button class="navi col-b" data-act="colapsar" aria-expanded="' + estado.menuAb + '" aria-label="' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '" title="' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '"><span class="ico">' + ic(estado.menuAb ? 'recolher' : 'expandir') + '</span><span class="tx">' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '</span></button><div class="rodape">' + esc(estado.cidade || 'Taquara/RS') + '</div></aside>' +
-      '<header class="top"><div class="top-logo">' + LOGOS[estado.dir] + '<span>Dmanda</span></div>' +
+      '<aside class="side" aria-label="Menu"><div class="logo">' + LOGO + '<span>Dmanda</span></div>' + nav + '<div class="esp"></div>' + cfgBtn + '<button class="navi col-b" data-act="colapsar" aria-expanded="' + estado.menuAb + '" aria-label="' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '" title="' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '"><span class="ico">' + ic(estado.menuAb ? 'recolher' : 'expandir') + '</span><span class="tx">' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '</span></button><div class="rodape">' + esc(estado.cidade || 'Taquara/RS') + '</div></aside>' +
+      '<header class="top"><div class="top-logo">' + LOGO + '<span>Dmanda</span></div>' +
       '<button class="icbtn buscabtn" data-act="busca" aria-label="Buscar em tudo">' + ic('search') + '<span class="tx">Buscar demanda, entrada, evento ou documento</span><kbd>Ctrl K</kbd></button>' +
       '<button class="icbtn sino" data-act="msg" data-m="Avisos de compromissos" aria-label="Avisos, 2 novos">' + ic('bell') + '<span class="badge">2</span></button>' +
       '<button class="icbtn" data-act="tema" aria-label="Alternar tema claro e escuro">' + ic(estado.tema === 'claro' ? 'moon' : 'sun') + '</button>' +
@@ -344,7 +334,6 @@
     window.DM.pos();
     ajustar();
     var te = $('.t-ed'); if (te) { te.focus(); te.setSelectionRange(te.value.length, te.value.length); }
-    $('#nota-dir').textContent = NOTAS[estado.dir];
   }
 
 
@@ -380,7 +369,7 @@
 
   var tt;
   function toast(m, cru) { var t = $('#toast'); if (!t) return; t.textContent = cru ? m : m + ' (exemplo do protótipo)'; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(function () { t.classList.remove('on'); }, 1800); }
-  function trocar(opc) { var y = $('#main') && !(opc.tela && opc.tela !== estado.tela) ? $('#main').scrollTop : 0; if (opc.dir && opc.dir !== estado.dir) window.DM.mudaTema(estado.dir, opc.dir); Object.assign(estado, opc); montar(); if ($('#main')) $('#main').scrollTop = y; }
+  function trocar(opc) { var y = $('#main') && !(opc.tela && opc.tela !== estado.tela) ? $('#main').scrollTop : 0; Object.assign(estado, opc); montar(); if ($('#main')) $('#main').scrollTop = y; }
   function buscar() {
     var q = $('#q').value.toLowerCase(), r = [];
     DEMANDAS.forEach(function (d) { var s = (d.tipo + ' ' + d.num + ' ' + d.assunto + ' ' + d.origem).toLowerCase(); if (!q || s.indexOf(q) > -1) r.push(['Demandas', 'square-kanban', d.tipo + ' ' + d.num + ': ' + d.assunto]); });
@@ -392,10 +381,9 @@
   function fecharBusca() { var o = $('#ov'); if (o) o.classList.remove('aberto'); }
 
   document.addEventListener('click', function (e) {
-    var b = e.target.closest('[data-dir],[data-tema],[data-dev],[data-tela],[data-nav],[data-act]'); if (!b) { return; }
+    var b = e.target.closest('[data-tema],[data-dev],[data-tela],[data-nav],[data-act]'); if (!b) { return; }
     if (b.closest('.ctl')) {
       var g = b.parentNode; $$('.seg', g).forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
-      if (b.dataset.dir) trocar({ dir: b.dataset.dir, plus: false });
       if (b.dataset.tema) trocar({ tema: b.dataset.tema });
       if (b.dataset.tela) trocar({ tela: b.dataset.tela, plus: false });
       if (b.dataset.dev) { var f = $('#frame'); f.style.setProperty('--w', b.dataset.w + 'px'); f.style.setProperty('--h', b.dataset.h + 'px'); trocar({ dev: b.dataset.dev, ag: b.dataset.dev === 'phone' ? 'hoje' : estado.ag }); }
@@ -468,7 +456,7 @@
   window.DM = {
     estado: estado, trocar: trocar, toast: toast, ic: ic, esc: esc, $: $, $$: $$, DEMANDAS: DEMANDAS, EVENTOS: EVENTOS, ETAPAS: ETAPAS,
     PALETAS: PALETAS, hsl: hsl, estiloBase: estiloApp, estiloApp: estiloApp, iconeEstilo: iconeEstilo, cardHTML: cardHTML, stat: stat, focoDoDia: focoDoDia, porGrupo: porGrupo, grupoFiltro: grupoFiltro, diasAte: diasAte, diasDesde: diasDesde, atrasada: atrasada, corCard: corCard, dataCurta: dataCurta, plural: plural, TELAS_FN: TELAS_FN, ajustar: ajustar, chipsRow: chipsRow, acaoCard: acaoCard, FRASE: 'Um passo de cada vez já é caminhar. Hoje, o primeiro é pequeno.',
-    acoes: {}, pos: function () {}, modalHTML: function () { return ''; }, mudaTema: function () {}, iniciar: function () {}
+    acoes: {}, pos: function () {}, modalHTML: function () { return ''; }, iniciar: function () {}
   };
   if (window.DM_EXTRA) window.DM_EXTRA(window.DM);
   if (window.DM_V5) window.DM_V5(window.DM);
@@ -476,6 +464,8 @@
   // Estado inicial pela URL, por exemplo: index.html#dir=b&tema=escuro&dev=phone&tela=demandas
   var TELAS = { desktop: [1360, 780], 'tablet-h': [1180, 780], media: [1000, 780], 'tablet-v': [820, 900], phone: [390, 800] };
   new URLSearchParams(location.hash.slice(1)).forEach(function (v, k) { if (k in estado && k !== 'virado') estado[k] = (typeof estado[k] === 'number' || k === 'pal') && v !== '' && !isNaN(v) ? +v : v; });
+  // o Catalyst é a única direção: endereços e preferências antigas (dir=a, b ou c) abrem o Catalyst, mantendo modo e tela
+  estado.dir = 'd'; if (estado.tema !== 'claro' && estado.tema !== 'escuro') estado.tema = 'claro';
   if (!TELAS[estado.dev]) estado.dev = 'desktop';
   new URLSearchParams(location.hash.slice(1)).forEach(function (v, k) { if (k === 'virar') v.split(',').forEach(function (i) { estado.fixo[i] = 'verso'; }); });
   document.addEventListener('error', function (e) {
@@ -484,7 +474,7 @@
   }, true);
 
   var f0 = $('#frame'); f0.style.setProperty('--w', TELAS[estado.dev][0] + 'px'); f0.style.setProperty('--h', TELAS[estado.dev][1] + 'px');
-  $$('.ctl .seg').forEach(function (x) { var k = x.dataset.dir ? 'dir' : x.dataset.tema ? 'tema' : x.dataset.dev ? 'dev' : 'tela'; x.setAttribute('aria-pressed', x.dataset[k] === estado[k]); });
+  $$('.ctl .seg').forEach(function (x) { var k = x.dataset.tema ? 'tema' : x.dataset.dev ? 'dev' : 'tela'; x.setAttribute('aria-pressed', x.dataset[k] === estado[k]); });
   estado.plus = estado.plus === 'true' || estado.plus === true;
   window.DM.iniciar();
   montar();

@@ -39,6 +39,7 @@ const resultado = {};
 for (const tema of ['claro', 'escuro']) for (const dev of DEVS) for (const [tela, vis] of TELAS) {
   const chave = [tema, dev, tela, vis || ''].join('/');
   await pg.goto(srv.url + '#dir=d&tema=' + tema + '&dev=' + dev + '&tela=' + tela + (vis ? (tela === 'agenda' ? '&ag=' : '&vis=') + vis : '') + '&balao=nao&aviso=nao');
+  await pg.reload(); // mudar só o # não recarrega o app: sem isto todas as telas mediriam a primeira
   await pg.waitForFunction(() => window.DM && document.querySelector('.app'));
   await pg.addStyleTag({ content: '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }' });
   await pg.evaluate(() => document.fonts.ready);
@@ -58,7 +59,9 @@ for (const chave of Object.keys(antes)) {
   for (let i = 0; i < a.length; i++) {
     const x = a[i], y = d[i];
     if (x.k !== y.k) { n++; if (exemplos.length < 25) exemplos.push(chave + ' #' + i + ': ' + x.k + ' → ' + y.k); continue; }
-    if (x.r.some((v, j) => Math.abs(v - y.r[j]) > 0.6)) { n++; if (exemplos.length < 25) exemplos.push(chave + ' ' + x.k + ' caixa ' + x.r + ' → ' + y.r); }
+    // posições relativas ao canto do aplicativo (a moldura do protótipo fora dele pode mudar sem afetar o Catalyst)
+    const oculto = !x.r[2] && !x.r[3] && !y.r[2] && !y.r[3]; // elemento sem caixa (escondido): a posição não vale
+    if (!oculto && x.r.some((v, j) => Math.abs((v - (j < 2 ? a[0].r[j] : 0)) - (y.r[j] - (j < 2 ? d[0].r[j] : 0))) > 0.6)) { n++; if (exemplos.length < 25) exemplos.push(chave + ' ' + x.k + ' caixa ' + x.r + ' → ' + y.r); }
     for (const p of PROPS) if (x.s[p] !== y.s[p]) { n++; if (exemplos.length < 25) exemplos.push(chave + ' ' + x.k + ' ' + p + ': ' + x.s[p] + ' → ' + y.s[p]); }
   }
   if (n) telasDif++; difs += n;

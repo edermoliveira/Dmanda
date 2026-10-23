@@ -15,20 +15,18 @@ window.DM_EXTRA = function (DM) {
   var CONJUNTOS = [['Manrope, Inter e IBM Plex Mono', 4, 0, 0], ['Sora, Inter e IBM Plex Mono', 0, 0, 0], ['Jakarta e JetBrains Mono', 1, 2, 1], ['DM Serif, DM Sans e DM Mono', 2, 1, 2], ['Fraunces, Inter e DM Mono', 3, 0, 2], ['Manrope, Inter e JetBrains Mono', 4, 0, 1]];
 
   // ---------- temas definitivos: cada um guarda suas próprias escolhas ----------
-  var TEMAS = [['a', 'Aurora', 'Vidro estilo Apple, gradiente suave'], ['b', 'Papel', 'Calmo, tom de papel e títulos serifados'], ['c', 'Grafite', 'Denso, bordas finas e foco em leitura'], ['d', 'Catalyst', 'Estilo Apple Mac e iPad: cinza de sistema, azul, listas com linhas finas']];
   var KEYS = ['pal', 'fT', 'fS', 'fM', 'iconeEstilo', 'lib', 'fs', 'ico', 'cardh', 'anim'];
-  var PADRAO = { a: { fT: 4, fS: 0, fM: 0, iconeEstilo: 'pastilha' }, b: { fT: 3, fS: 0, fM: 0, iconeEstilo: 'pastilha' }, c: { fT: 4, fS: 0, fM: 0, iconeEstilo: 'duotone' }, d: { fT: 8, fS: 0, fM: 0, iconeEstilo: 'fino' } };
-  function base(dir) { return Object.assign({ pal: null, fT: 0, fS: 0, fM: 0, iconeEstilo: '', lib: 'iconoir', fs: 16, ico: 20, cardh: 340, anim: false }, PADRAO[dir]); }
+  var PADRAO = { fT: 8, fS: 0, fM: 0, iconeEstilo: 'fino' };
+  function base() { return Object.assign({ pal: null, fT: 0, fS: 0, fM: 0, iconeEstilo: '', lib: 'iconoir', fs: 16, ico: 20, cardh: 340, anim: false }, PADRAO); }
   function snap() { var o = {}; KEYS.forEach(function (k) { o[k] = E[k]; }); return o; }
-  E.salvo = {}; E.perfilV = 'semana'; E.cidade = 'Taquara/RS'; E.sugestaoPrazo = 30; E.bH = null; E.bE = null; E.alertaParado = 7; E.baloes = 3; E.reduzir = false; E.modal = null; E.rascunho = {}; E.energia = 2; E.col = true; E.balaoAb = false; E.balaoVisto = false;
+  E.perfilV = 'semana'; E.cidade = 'Taquara/RS'; E.sugestaoPrazo = 30; E.bH = null; E.bE = null; E.alertaParado = 7; E.baloes = 3; E.reduzir = false; E.modal = null; E.rascunho = {}; E.energia = 2; E.col = true; E.balaoAb = false; E.balaoVisto = false;
   E.nome = 'Secretário'; E.cargo = 'Secretário de Administração'; E.orgao = 'Prefeitura de Taquara/RS'; E.expIni = '08:00'; E.expFim = '17:00'; E.lapso = 7; E.ultimo = 8; E.avisos = []; E.perfilNovo = false;
-  DM.mudaTema = function (ant, nu) { E.salvo[ant] = snap(); Object.assign(E, E.salvo[nu] || base(nu)); };
   // "Mostrar menu" é preferência da interface: vale ao navegar e ao recarregar (guardada só no navegador; sem armazenamento, começa recolhido)
   var MENU_CHAVE = 'dmanda:menu-aberto';
   function menuGuardado() { try { return localStorage.getItem(MENU_CHAVE) === 'true'; } catch (x) { return false; } }
   function guardarMenu(v) { try { localStorage.setItem(MENU_CHAVE, v ? 'true' : 'false'); } catch (x) { /* sem armazenamento: vale só nesta visita */ } }
   DM.iniciar = function () {
-    var h = new URLSearchParams(location.hash.slice(1)), o = base(E.dir);
+    var h = new URLSearchParams(location.hash.slice(1)), o = base();
     E.menuAb = h.has('menuAb') ? h.get('menuAb') === 'true' : menuGuardado();
     KEYS.forEach(function (k) { if (!h.has(k)) E[k] = o[k]; });
     if (E.ultimo >= E.lapso && h.get('aviso') !== 'nao') E.avisos = ['lapso'];
@@ -36,9 +34,8 @@ window.DM_EXTRA = function (DM) {
     if (h.get('balao') !== 'nao') setTimeout(function () { if (E.tela === 'inicio' && !E.balaoVisto && !E.modal) { E.balaoVisto = true; E.balaoAb = true; DM.trocar({}); } }, 2500);
     else E.balaoVisto = true;
   };
-  DM.estiloApp = function () { return DM.estiloBase() + ';--font:' + FS[E.fS][1] + ';--font-h:' + FT[E.fT][1] + ';--font-n:' + FM[E.fM][1] + ';--font-ui:' + (E.dir === 'b' ? FS[E.fS][1] : FT[E.fT][1]); };
+  DM.estiloApp = function () { return DM.estiloBase() + ';--font:' + FS[E.fS][1] + ';--font-h:' + FT[E.fT][1] + ';--font-n:' + FM[E.fM][1] + ';--font-ui:' + FT[E.fT][1]; };
   DM.pos = function () {
-    $$('#g-dir .seg').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.dir === E.dir); });
     $$('#g-tema .seg').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.tema === E.tema); });
     var app = $('.app'); if (app) { app.dataset.col = 'true'; app.dataset.aberto = E.menuAb; app.dataset.reduzir = E.reduzir; }
     $$('.mini-card').forEach(function (c) { c.draggable = true; });
@@ -190,9 +187,7 @@ window.DM_EXTRA = function (DM) {
   TELAS.config = function () {
     var P = DM.PALETAS;
     return '<div class="cfg">' +
-      '<section class="painel"><h3>Tema</h3><div class="temas">' + TEMAS.map(function (t) {
-        return '<button class="tema-c" data-act="tema-dir" data-v="' + t[0] + '" aria-pressed="' + (E.dir === t[0]) + '"><b>' + t[1] + '</b><span>' + t[2] + '</span></button>';
-      }).join('') + '</div><p class="data">Cada tema guarda as suas próprias escolhas de cores, fontes, ícones e tamanhos.</p>' +
+      '<section class="painel"><h3>Aparência</h3>' +
       '<div class="acoes"><button class="btn mini" data-act="tema">' + ic(E.tema === 'claro' ? 'moon' : 'sun') + 'Modo ' + (E.tema === 'claro' ? 'escuro' : 'claro') + '</button></div></section>' +
       '<section class="painel"><h3>Cores</h3><div class="pal">' + P.map(function (p, i) {
         return '<button class="sw" data-act="pal" data-i="' + i + '" aria-pressed="' + (E.pal === i || (E.pal === null && i === 0)) + '" aria-label="Paleta ' + p[0] + '" style="--sw1:' + DM.hsl(p[1], 72 * p[2], 48) + ';--sw2:' + DM.hsl(p[1] + 60, 70 * p[2], 80) + '"><i></i><span>' + p[0] + '</span></button>';
@@ -343,9 +338,8 @@ window.DM_EXTRA = function (DM) {
 
   // ---------- ações ----------
   var A = DM.acoes;
-  A['tema-dir'] = function (b) { DM.trocar({ dir: b.dataset.v }); };
   A.surpreenda = function () { var c = CONJUNTOS[Math.floor(Math.random() * CONJUNTOS.length)]; DM.trocar({ pal: Math.floor(Math.random() * DM.PALETAS.length), fT: c[1], fS: c[2], fM: c[3] }); };
-  A.restaurar = function () { DM.trocar(base(E.dir)); };
+  A.restaurar = function () { DM.trocar(base()); };
   A.conjunto = function (b) { var c = CONJUNTOS[+b.dataset.i]; DM.trocar({ fT: c[1], fS: c[2], fM: c[3] }); };
   A.energia = function (b) { DM.trocar({ energia: +b.dataset.i }); };
   function registrar() {

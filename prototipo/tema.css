@@ -8,18 +8,12 @@ h1, h2, .logo, .top-logo, .frase, .stat .n, .clima b, .assunto, .grande-n { font
 h3, h4, .grupo-h, .coluna header h4, .pagehead p, .sec > h3 { font-family: var(--font); }
 h3, h4 { font-weight: 700; }
 .mono, .pz, .tags .num, .cnt, .badge, kbd, .prog b, .linha-c .num, .quando, .ag-h b, .ag-d, .meta b, .tabela td.mono, .rng b { font-family: var(--font-n); }
-.app[data-dir="b"] .stat .n, .app[data-dir="b"] .frase { font-family: var(--font-h); }
 
 /* ---------- vidro líquido ---------- */
 /* --vidro: fator da transparência do preenchimento do vidro (1 = antes; .7 = cerca de 30% mais transparente). Vale para barras, menu, painéis e botões; não vale para cards, janelas e caixas de preenchimento. Bordas e realces ficam como estavam. */
 .app { --vidro: .7; }
 .app[data-tema="claro"] { --lg-top: hsl(0 0% 98.8% / calc(.68 * var(--vidro))); --lg-bot: hsl(0 0% 98.8% / calc(.26 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .5); --lg-edge: hsl(0 0% 98.8% / .95); --lg-edge2: hsl(0 0% 98.8% / .5); --lg-sh: hsl(215 40% 30% / .14); }
 .app[data-tema="escuro"] { --lg-top: hsl(0 0% 98.8% / calc(.14 * var(--vidro))); --lg-bot: hsl(0 0% 98.8% / calc(.04 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .16); --lg-edge: hsl(0 0% 98.8% / .30); --lg-edge2: hsl(0 0% 98.8% / .10); --lg-sh: hsl(0 0% 3.9% / .5); }
-/* Papel e Grafite: o mesmo vidro, mais discreto e mais opaco */
-.app[data-dir="b"][data-tema="claro"] { --lg-top: hsl(40 60% 99% / calc(.9 * var(--vidro))); --lg-bot: hsl(40 40% 96% / calc(.72 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .35); --lg-sh: hsl(30 30% 20% / .10); }
-.app[data-dir="c"][data-tema="claro"] { --lg-top: hsl(0 0% 98.8% / calc(.86 * var(--vidro))); --lg-bot: hsl(220 30% 98% / calc(.6 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .35); --lg-sh: hsl(220 30% 20% / .10); }
-.app[data-dir="b"][data-tema="escuro"] { --lg-top: hsl(35 30% 98.8% / calc(.09 * var(--vidro))); --lg-bot: hsl(35 30% 98.8% / calc(.04 * var(--vidro))); }
-.app[data-dir="c"][data-tema="escuro"] { --lg-top: hsl(0 0% 98.8% / calc(.10 * var(--vidro))); --lg-bot: hsl(0 0% 98.8% / calc(.035 * var(--vidro))); }
 
 .app .painel, .app .stat, .app .alerta-l, .app .tabs, .app .filtro, .app .btn.gl, .app .icbtn, .app .perfil-b, .app .menuplus, .app .bar, .app .busca-box, .app .modal, .app .balao,
 .app .etapas-tabs button, .app .sw, .app .tema-c, .app .pend, .app .chat-f input, .app .linha, .app .tabela-w, .app .ag-col, .app .ag-cel, .app .bolha.ia, .app .toast {
@@ -34,8 +28,6 @@ h3, h4 { font-weight: 700; }
   border: 1px solid var(--lg-edge2); box-shadow: inset 0 1px 0 var(--lg-edge), 0 10px 30px var(--lg-sh);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(1.7); backdrop-filter: blur(var(--blur)) saturate(1.7);
 }
-.app[data-dir="b"] .side, .app[data-dir="c"] .side { border-radius: var(--r-card); margin: 12px; }
-.app[data-dir="b"] .top, .app[data-dir="c"] .top { margin: 12px 12px 0 0; border-radius: var(--r-card); border-bottom-width: 1px; }
 /* cards de demanda: mais sólidos, com borda de vidro */
 .app .face, .app .mini-card { background: linear-gradient(160deg, hsl(0 0% 98.8% / .12), transparent 40%), var(--card); box-shadow: inset 0 1px 0 var(--lg-edge2), 0 8px 24px var(--lg-sh); }
 .app .coluna, .app .grupo { box-shadow: inset 0 1px 0 var(--lg-edge), inset 0 0 0 1px var(--lg-edge2), 0 12px 32px var(--lg-sh); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.5); backdrop-filter: blur(var(--blur)) saturate(1.5); }
@@ -53,7 +45,6 @@ h3, h4 { font-weight: 700; }
 
 /* ---------- menu lateral recolhido (só ícones), como nos prints ---------- */
 .app[data-col="true"] { --col: 96px; }
-.app[data-dir="c"][data-col="true"] { --col: 92px; }
 .app[data-col="true"] .side { align-items: center; padding: 16px 8px; }
 .app[data-col="true"] .navi { justify-content: center; padding: 4px; width: 52px; }
 .app[data-col="true"] .navi .tx, .app[data-col="true"] .logo span, .app[data-col="true"] .rodape { display: none; }
@@ -120,10 +111,6 @@ h3, h4 { font-weight: 700; }
 .hc .emo-img { width: 22px; height: 22px; }
 
 /* ---------- Configurações ---------- */
-.temas { display: grid; gap: 8px; }
-.tema-c { display: grid; gap: 2px; text-align: left; min-height: 56px; padding: 10px 14px; border-radius: var(--r-field); color: var(--text); }
-.tema-c span { font-size: 13px; color: var(--text2); }
-.tema-c[aria-pressed="true"] { border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc); }
 .cfg .fld { margin-top: 12px; }
 
 /* ---------- reduzir movimento ---------- */
@@ -146,9 +133,6 @@ h3, h4 { font-weight: 700; }
 /* caixas de preenchimento: quase opacas, claras no modo claro e escuras no modo escuro */
 .app[data-tema="claro"] { --solido: hsl(0 0% 98.8% / .98); --solido-brd: hsl(215 25% 82%); }
 .app[data-tema="escuro"] { --solido: hsl(220 18% 12% / .98); --solido-brd: hsl(0 0% 98.8% / .18); }
-.app[data-dir="b"][data-tema="claro"] { --solido: hsl(40 60% 99% / .98); }
-.app[data-dir="b"][data-tema="escuro"] { --solido: hsl(30 12% 13% / .98); }
-.app[data-dir="c"][data-tema="escuro"] { --solido: hsl(225 16% 11% / .98); }
 .app .modal, .app .busca-box, .app .balao {
   background: var(--solido);
   border: 1px solid var(--solido-brd);
@@ -177,7 +161,6 @@ h3, h4 { font-weight: 700; }
 .hist { max-width: 100%; }
 @container tela (max-width: 899px) {
   .app[data-dir] .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .app[data-dir="c"] .stats .stat:last-child { grid-column: span 2; }
   .hist { grid-template-columns: repeat(7, minmax(0, 1fr)); }
   .ind3, .ind3 > * { min-width: 0; }
 }

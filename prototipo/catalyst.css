@@ -3,7 +3,7 @@
    Liquid Glass nas barras, menus, folhas e botões (blur, saturação, brilho de borda e lente),
    cinza agrupado do sistema por baixo, cards sólidos, azul de sistema e movimento com mola.
    Vermelho só para atraso ou crítico. Branco = #FCFCFC, preto = #0A0A0A (nunca absolutos).
-   Só vale para .app[data-dir="d"]; Aurora, Papel e Grafite não são tocados.
+   Só vale para .app[data-dir="d"], o identificador interno do Catalyst.
    O movimento é feito por catalyst.js (observa a troca de tela e anima entrada, saída e seleção).
    ===================================================================== */
 
