@@ -8,25 +8,29 @@ Nada abaixo foi decidido pelo Claude. O detalhe de cada item está em `SINCRONIZ
 
 **Decisões**
 1. **GitHub Issues:** aprovar (ou ajustar) a proposta de etiquetas, marcos e uso nos commits, e dizer "pode criar". Nada foi criado ainda.
-2. **no-ai-slop** (skill de texto, só em inglês): instalar como está, criar versão em português no projeto, ou não usar. Avaliação em `ANALISE-FERRAMENTAS.md`, seção 11.1.
-3. **Open Notebook:** o Claude avaliou que não serve como IA do sistema (aplicativo com Docker e servidor, sem senha por padrão, feito para pesquisar documentos). Confirmar a conclusão. Seção 11.2.
-4. **Concluir demanda:** manter o fundo azul claro (mais sutil) ou voltar ao azul cheio, já mais fino.
-5. **Avaliar a rodada 3 e o Catalyst** (http://127.0.0.1:7200): dizer o que ainda destoa. Ver `DECISOES.md`, rodada 3.
-6. **Escolher os padrões de cada tema:** par de fontes, estilo de ícones e paleta padrão de Aurora, Papel e Grafite (hoje há padrões provisórios).
-7. **Figma:** esperar o limite renovar ou exportar como PNG as 8 páginas que faltam do kit (ver abaixo).
-8. **Plano de blocos maiores e de modelos (Opus ou Sonnet, effort):** aprovar ou ajustar, `SINCRONIZA-PROJETINHO.md`, seção 6.
+2. **Skills de design:** o Claude recomenda a **Impeccable** (melhor encaixe, pode substituir a Taste skill). Decidir se instala, quando, e se testa Transitions.dev, Playwright CLI, Ponytail e Claude Design. Avaliação em `ANALISE-FERRAMENTAS.md`, seção 11.5. Nada foi instalado.
+3. **no-ai-slop** (skill de texto, só em inglês): instalar como está, criar versão em português no projeto, ou não usar. Seção 11.1.
+4. **Open Notebook:** o Claude avaliou que não serve como IA do sistema. Confirmar a conclusão. Seção 11.2.
+5. **Direção iPhone e iPad:** aprovar, ajustar ou recusar as seis propostas técnicas em `DECISOES.md`, "Direção iPhone e iPad".
+6. **Figma:** guardar os PNGs exportados dentro do Git (recomendado, cerca de 10 MB) ou só em casa; e se inclui a lista B (5 páginas por causa de iPhone e iPad).
+7. **Concluir demanda:** manter o fundo azul claro (mais sutil) ou voltar ao azul cheio, já mais fino.
+8. **Avaliar a rodada 3 e o Catalyst** (http://127.0.0.1:7200): dizer o que ainda destoa. Ver `DECISOES.md`, rodada 3.
+9. **Escolher os padrões de cada tema:** par de fontes, estilo de ícones e paleta padrão de Aurora, Papel e Grafite (hoje há padrões provisórios).
+10. **Plano de blocos maiores e de modelos (Opus ou Sonnet, effort):** aprovar ou ajustar, `SINCRONIZA-PROJETINHO.md`, seção 7.
 
 **Ações**
-9. **No computador de casa, apagar `Desktop\Dmanda\Dmanda`** (cópia limpa do repositório dentro do projeto, sem nada novo), se concordar.
-10. Sem pressa: **banco de 500 frases** da mensagem do dia e, opcional, `energia-1.png` a `energia-5.png` em `prototipo/emojis/`.
+11. **No Figma (navegador), exportar como PNG as páginas que faltam** (8 da lista A, mais as da lista B se aprovar), seguindo o passo a passo da seção 6 do `SINCRONIZA-PROJETINHO.md`. Salvar em `imagens\figma-kit\`.
+12. Sem pressa: **banco de 500 frases** da mensagem do dia e, opcional, `energia-1.png` a `energia-5.png` em `prototipo/emojis/`.
+
+**Resolvido em 23/10/2026:** a pasta duplicada `Dmanda\Dmanda` foi revisada e excluída (conteúdo idêntico ao commit `d6e8406`, nada exclusivo).
 
 ## Limite do Figma
 
-O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês**, e escrever não conta. As 20 foram usadas em 21 e 22/10/2026 (lidas: Widgets, Botões e Campos de texto do kit; faltam Steppers, Progress Indicators, Popovers, Alerts, Empty States, Contextual Menus, Date and Time Pickers e Examples). A documentação não informa quando renova: o Claude tenta de novo em novembro. Plano pago está fora das regras de custo.
+O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês**, e escrever não conta. As 20 foram usadas em 21 e 22/10/2026. A documentação não informa quando renova: o Claude tenta de novo em novembro. Plano pago está fora das regras de custo. **Para não depender do limite, o plano é exportar as páginas que faltam como PNG (ação 11).** Páginas que faltam: Steppers, Progress Indicators, Popovers, Alerts, Empty States, Contextual Menus, Date and Time Pickers e Examples.
 
 ## Próximo passo do Claude
 
-- **Blocos maiores** daqui em diante. No fim de cada bloco: percentual do projeto e sugestão de modelo e effort para o próximo (plano em `SINCRONIZA-PROJETINHO.md`, seção 6).
+- **Blocos maiores** daqui em diante. No fim de cada bloco: percentual do projeto e sugestão de modelo e effort para o próximo (plano em `SINCRONIZA-PROJETINHO.md`, seção 7).
 - Página de **peças com os cinco estados** (normal, foco, desativado, carregando, erro) para os três temas, e conferência de contraste (`inspect.mjs` da taste-skill e verificação por código).
 - Depois, começar a **construção real** (ordem em `DECISOES.md`, seção 1): base técnica (banco, login Google, publicação na Vercel) e versão mínima de Demandas e Início, sobre os três temas.
 - O código de `src/` ainda é o design antigo e será substituído (ver `CLAUDE.md`).

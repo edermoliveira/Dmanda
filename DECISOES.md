@@ -177,4 +177,18 @@ Aplicado no protótipo (`prototipo/v5.css`, `v5.js`, `app.js`, `extra.js`, `cata
 - [definido] **Segurança e privacidade:** os dados são do usuário, que tem autorização para incluir, alterar e excluir. Login Google de conta única, **com novo login após 6 horas sem uso**.
 - [definido] **Velocidade:** o sistema precisa abrir rápido e ser fluido, com os efeitos e o movimento, inclusive no celular com internet fraca (PWA com cache, telas leves, dados carregados aos poucos).
 
+## Direção iPhone e iPad (23/10/2026)
+
+- [definido] **iPhone:** o design mobile é pensado para o iPhone, como PWA no começo, mas **construído como se fosse um app nativo** (estrutura, gestos, movimento e medidas do iOS).
+- [definido] **iPad:** vale a mesma regra. No futuro, **Entradas com Apple Pencil** (escrever e desenhar à mão).
+
+**Propostas do Claude, que aguardam a sua aprovação (nada abaixo foi decidido):**
+
+1. **Estrutura de app nativo no iPhone:** barra de abas inferior (já existe), título grande que encolhe ao rolar, folhas com alça e duas alturas, gesto de arrastar da borda para voltar, ações por deslizar nas linhas (concluir tarefa, arquivar), menu ao manter o dedo pressionado, áreas seguras (notch, Dynamic Island e barra inferior), alvos de 44 px e texto que acompanha o tamanho de fonte do sistema.
+2. **Configuração do PWA:** tela cheia (`standalone`), `viewport-fit=cover`, ícone e telas de abertura, cor da barra de status, sem rolagem elástica indevida e teclado que não cobre o campo.
+3. **Limites do PWA no iOS a conferir antes de prometer:** não há vibração (haptics) no Safari; notificações só com o app instalado na tela de início; cache e execução em segundo plano são mais limitados que num app nativo.
+4. **Apple Pencil:** o Safari do iPad entrega a caneta (pressão e inclinação) pelos eventos de ponteiro, então desenhar e escrever à mão já é possível no PWA. A escrita à mão em campos de texto (Scribble) funciona pelo sistema. Transformar um desenho em texto exige reconhecimento (IA ou recurso nativo). Latência e gestos do Pencil (toque duplo, apertar) são melhores no app nativo. **Confirmar com um teste num iPad de verdade.**
+5. **Arquitetura pronta para virar nativo:** separar as telas (apresentação) dos dados e das regras, manter os tokens de design num único arquivo exportável e a camada de dados por API. Assim o PWA pode virar app nativo depois, por empacotamento (Capacitor) ou reescrita em SwiftUI. A escolha fica para a etapa do app nativo e da conta Apple Developer, já adiadas.
+6. **Protótipo:** trocar as telas genéricas por molduras de iPhone (390 por 844, com ilha dinâmica e áreas seguras) e de iPad (retrato e paisagem), e conferir em aparelho real quando possível.
+
 Pendente de decisão do usuário: o tema **Catalyst** (quarto tema, a partir do kit iOS e iPadOS 27 da Apple no Figma). Exige conectar o Figma ao Claude Code (ver PENDENCIAS.md). Energia: PNGs em `prototipo/emojis/energia-1.png` a `energia-5.png`.

@@ -59,6 +59,7 @@ Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `
 
 O protótipo navegável está em `prototipo/` (HTML, CSS e JS puros, dados fictícios, isolado do `src/`). Abrir por um servidor local, por exemplo `python -m http.server 7200` dentro da pasta `prototipo`, e acessar http://127.0.0.1:7200. Hashes úteis na URL: `#dir=a|b|c|d&tema=claro|escuro&tela=demandas&vis=quadro&dev=phone&balao=nao`.
 
+- **iPhone e iPad (decidido em 23/10/2026):** o mobile é pensado para o iPhone como PWA, mas **construído como app nativo**. O iPad segue a mesma regra e, no futuro, terá Entradas com Apple Pencil. Propostas técnicas aguardando aprovação em `DECISOES.md`.
 - **Vidro líquido** em quase todo o desenho (barras, menu, painéis, indicadores, botões, abas). Cards de demanda mais sólidos. **Caixas de preenchimento (janelas, busca, balões) quase opacas**: brancas no claro e escuras no escuro, com campos de alto contraste.
 - **Fontes em três papéis:** principal para títulos, secundária para subtítulos e textos, mono para detalhes pontuais (números de processo, datas, contadores).
 - **Ícones:** Iconoir (padrão, MIT) ou Lucide, em pastilha, fino ou duotone, sempre por uma única função ou componente de ícone. Nada de emoji nos controles. Os emojis de humor são os PNGs do usuário em `prototipo/emojis/` (ver o `LEIA-ME.md` da pasta).
@@ -98,6 +99,7 @@ Sempre que o usuário corrigir algo, acrescentar aqui a regra nova, em uma linha
 - Botões numa escala única e harmônica (40 px padrão, 32 px mini, 44 px só nas barras), área de toque sempre de 44 px. Nada de tamanho solto.
 - Toda informação incluída pelo usuário (tarefa, nota, evento, demanda, perfil) precisa ser alterável de forma fácil, de preferência no próprio lugar.
 - Nenhuma decisão é tomada pelo Claude sem o conhecimento e a autorização prévios do usuário: dúvida vira pergunta no chat e a resposta é gravada em `DECISOES.md`.
-- Trabalhar em blocos maiores (início, fim e entrega testada). No fim de cada bloco, informar o percentual do projeto, o que ficou pendente do usuário e **sugerir o modelo (Opus ou Sonnet) e o effort do próximo bloco**. É sempre sugestão: quem troca é o usuário. Plano em `SINCRONIZA-PROJETINHO.md`, seção 6.
+- Trabalhar em blocos maiores (início, fim e entrega testada). No fim de cada bloco, informar o percentual do projeto, o que ficou pendente do usuário e **sugerir o modelo (Opus ou Sonnet) e o effort do próximo bloco**. É sempre sugestão: quem troca é o usuário. Plano em `SINCRONIZA-PROJETINHO.md`, seção 7.
 - Ao encerrar uma sessão, atualizar `SINCRONIZA-PROJETINHO.md` (estado, histórico, pendências e prompt de retomada), fazer o commit e, só com autorização, o push.
+- Antes de excluir qualquer pasta ou arquivo, olhar o alvo e conferir que nada exclusivo se perde (por exemplo, comparar o hash da árvore do Git). Excluir só com pedido ou autorização do usuário.
 - A cada etapa, rodar o teste de cliques (`node testes/clicar-tudo.mjs` em `prototipo`) e corrigir o que ele achar antes de dizer que está pronto.
