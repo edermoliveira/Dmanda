@@ -29,7 +29,7 @@ body { font-family: system-ui, "Segoe UI", sans-serif; background: #15171c; colo
 }
 .app[data-dir="a"][data-tema="claro"] {
   --bg1: #d9f6ef; --bg2: #d6e6ff; --bg3: #efe3ff; --bgbase: #eef6f7;
-  --glass: rgba(252,252,252,.55); --glass-brd: rgba(252,252,252,.75); --blur: 22px;
+  --glass: rgba(252,252,252,calc(.55 * var(--vidro))); --glass-brd: rgba(252,252,252,.75); --blur: 22px;
   --card: rgba(252,252,252,.9); --card-brd: rgba(252,252,252,.9); --panel: rgba(252,252,252,.6);
   --text: #0e2a2b; --text2: #43605f; --brd: rgba(14,42,43,.12);
   --acc: #19c9a9; --acc-ink: #04302a; --acc-soft: rgba(25,201,169,.18); --acc-text: #07705f;
@@ -37,7 +37,7 @@ body { font-family: system-ui, "Segoe UI", sans-serif; background: #15171c; colo
 }
 .app[data-dir="a"][data-tema="escuro"] {
   --bg1: #0f3a3a; --bg2: #14264a; --bg3: #2a1a4a; --bgbase: #0a1213;
-  --glass: rgba(20,34,36,.55); --glass-brd: rgba(252,252,252,.12); --blur: 22px;
+  --glass: rgba(20,34,36,calc(.55 * var(--vidro))); --glass-brd: rgba(252,252,252,.12); --blur: 22px;
   --card: rgba(24,40,42,.92); --card-brd: rgba(252,252,252,.1); --panel: rgba(24,40,42,.6);
   --text: #e7f5f3; --text2: #9bb8b5; --brd: rgba(252,252,252,.14);
   --acc: #2ee0c0; --acc-ink: #03231e; --acc-soft: rgba(46,224,192,.16); --acc-text: #4fe8cc;
@@ -52,7 +52,7 @@ body { font-family: system-ui, "Segoe UI", sans-serif; background: #15171c; colo
 }
 .app[data-dir="b"][data-tema="claro"] {
   --bg1: #f6f1e9; --bg2: #f6f1e9; --bg3: #f6f1e9; --bgbase: #f6f1e9;
-  --glass: rgba(251,248,242,.82); --glass-brd: rgba(60,45,30,.1);
+  --glass: rgba(251,248,242,calc(.82 * var(--vidro))); --glass-brd: rgba(60,45,30,.1);
   --card: #fffdf8; --card-brd: rgba(60,45,30,.12); --panel: #fbf7ef;
   --text: #2b2723; --text2: #6b6256; --brd: rgba(60,45,30,.14);
   --acc: #3f6b58; --acc-ink: #FCFCFC; --acc-soft: #dde8e0; --acc-text: #2f5d49;
@@ -60,7 +60,7 @@ body { font-family: system-ui, "Segoe UI", sans-serif; background: #15171c; colo
 }
 .app[data-dir="b"][data-tema="escuro"] {
   --bg1: #1b1916; --bg2: #1b1916; --bg3: #1b1916; --bgbase: #1b1916;
-  --glass: rgba(34,31,27,.85); --glass-brd: rgba(252,252,252,.08);
+  --glass: rgba(34,31,27,calc(.85 * var(--vidro))); --glass-brd: rgba(252,252,252,.08);
   --card: #25221e; --card-brd: rgba(252,252,252,.09); --panel: #211e1a;
   --text: #efe9df; --text2: #aaa293; --brd: rgba(252,252,252,.13);
   --acc: #8cc0a6; --acc-ink: #11221a; --acc-soft: rgba(140,192,166,.16); --acc-text: #9fd0b6;
@@ -75,7 +75,7 @@ body { font-family: system-ui, "Segoe UI", sans-serif; background: #15171c; colo
 }
 .app[data-dir="c"][data-tema="claro"] {
   --bg1: #eef0f4; --bg2: #eef0f4; --bg3: #eef0f4; --bgbase: #eef0f4;
-  --glass: rgba(252,252,252,.8); --glass-brd: rgba(20,22,27,.09);
+  --glass: rgba(252,252,252,calc(.8 * var(--vidro))); --glass-brd: rgba(20,22,27,.09);
   --card: #FCFCFC; --card-brd: rgba(20,22,27,.1); --panel: #f7f8fa;
   --text: #14161b; --text2: #5a6070; --brd: rgba(20,22,27,.12);
   --acc: #4f46e5; --acc-ink: #FCFCFC; --acc-soft: rgba(79,70,229,.1); --acc-text: #4338ca;
@@ -83,7 +83,7 @@ body { font-family: system-ui, "Segoe UI", sans-serif; background: #15171c; colo
 }
 .app[data-dir="c"][data-tema="escuro"] {
   --bg1: #0e1014; --bg2: #0e1014; --bg3: #0e1014; --bgbase: #0e1014;
-  --glass: rgba(23,26,33,.85); --glass-brd: rgba(252,252,252,.08);
+  --glass: rgba(23,26,33,calc(.85 * var(--vidro))); --glass-brd: rgba(252,252,252,.08);
   --card: #171a21; --card-brd: rgba(252,252,252,.08); --panel: #13161c;
   --text: #e8eaf0; --text2: #9aa1b2; --brd: rgba(252,252,252,.12);
   --acc: #8b93ff; --acc-ink: #0b0d24; --acc-soft: rgba(139,147,255,.14); --acc-text: #a3a9ff;

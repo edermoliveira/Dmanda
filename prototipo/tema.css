@@ -11,13 +11,15 @@ h3, h4 { font-weight: 700; }
 .app[data-dir="b"] .stat .n, .app[data-dir="b"] .frase { font-family: var(--font-h); }
 
 /* ---------- vidro líquido ---------- */
-.app[data-tema="claro"] { --lg-top: hsl(0 0% 98.8% / .68); --lg-bot: hsl(0 0% 98.8% / .26); --lg-hi: hsl(0 0% 98.8% / .5); --lg-edge: hsl(0 0% 98.8% / .95); --lg-edge2: hsl(0 0% 98.8% / .5); --lg-sh: hsl(215 40% 30% / .14); }
-.app[data-tema="escuro"] { --lg-top: hsl(0 0% 98.8% / .14); --lg-bot: hsl(0 0% 98.8% / .04); --lg-hi: hsl(0 0% 98.8% / .16); --lg-edge: hsl(0 0% 98.8% / .30); --lg-edge2: hsl(0 0% 98.8% / .10); --lg-sh: hsl(0 0% 3.9% / .5); }
+/* --vidro: fator da transparência do preenchimento do vidro (1 = antes; .7 = cerca de 30% mais transparente). Vale para barras, menu, painéis e botões; não vale para cards, janelas e caixas de preenchimento. Bordas e realces ficam como estavam. */
+.app { --vidro: .7; }
+.app[data-tema="claro"] { --lg-top: hsl(0 0% 98.8% / calc(.68 * var(--vidro))); --lg-bot: hsl(0 0% 98.8% / calc(.26 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .5); --lg-edge: hsl(0 0% 98.8% / .95); --lg-edge2: hsl(0 0% 98.8% / .5); --lg-sh: hsl(215 40% 30% / .14); }
+.app[data-tema="escuro"] { --lg-top: hsl(0 0% 98.8% / calc(.14 * var(--vidro))); --lg-bot: hsl(0 0% 98.8% / calc(.04 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .16); --lg-edge: hsl(0 0% 98.8% / .30); --lg-edge2: hsl(0 0% 98.8% / .10); --lg-sh: hsl(0 0% 3.9% / .5); }
 /* Papel e Grafite: o mesmo vidro, mais discreto e mais opaco */
-.app[data-dir="b"][data-tema="claro"] { --lg-top: hsl(40 60% 99% / .9); --lg-bot: hsl(40 40% 96% / .72); --lg-hi: hsl(0 0% 98.8% / .35); --lg-sh: hsl(30 30% 20% / .10); }
-.app[data-dir="c"][data-tema="claro"] { --lg-top: hsl(0 0% 98.8% / .86); --lg-bot: hsl(220 30% 98% / .6); --lg-hi: hsl(0 0% 98.8% / .35); --lg-sh: hsl(220 30% 20% / .10); }
-.app[data-dir="b"][data-tema="escuro"] { --lg-top: hsl(35 30% 98.8% / .09); --lg-bot: hsl(35 30% 98.8% / .04); }
-.app[data-dir="c"][data-tema="escuro"] { --lg-top: hsl(0 0% 98.8% / .10); --lg-bot: hsl(0 0% 98.8% / .035); }
+.app[data-dir="b"][data-tema="claro"] { --lg-top: hsl(40 60% 99% / calc(.9 * var(--vidro))); --lg-bot: hsl(40 40% 96% / calc(.72 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .35); --lg-sh: hsl(30 30% 20% / .10); }
+.app[data-dir="c"][data-tema="claro"] { --lg-top: hsl(0 0% 98.8% / calc(.86 * var(--vidro))); --lg-bot: hsl(220 30% 98% / calc(.6 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .35); --lg-sh: hsl(220 30% 20% / .10); }
+.app[data-dir="b"][data-tema="escuro"] { --lg-top: hsl(35 30% 98.8% / calc(.09 * var(--vidro))); --lg-bot: hsl(35 30% 98.8% / calc(.04 * var(--vidro))); }
+.app[data-dir="c"][data-tema="escuro"] { --lg-top: hsl(0 0% 98.8% / calc(.10 * var(--vidro))); --lg-bot: hsl(0 0% 98.8% / calc(.035 * var(--vidro))); }
 
 .app .painel, .app .stat, .app .alerta-l, .app .tabs, .app .filtro, .app .btn.gl, .app .icbtn, .app .perfil-b, .app .menuplus, .app .bar, .app .busca-box, .app .modal, .app .balao,
 .app .etapas-tabs button, .app .sw, .app .tema-c, .app .pend, .app .chat-f input, .app .linha, .app .tabela-w, .app .ag-col, .app .ag-cel, .app .bolha.ia, .app .toast {

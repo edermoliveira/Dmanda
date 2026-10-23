@@ -271,3 +271,6 @@ button.wg:active { transform: scale(.97); }
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; flex: 0 0 auto; }
 .app .desc.cheia { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; margin: 0 0 8px; }
 .app .assunto.fit:has(+ .desc) { min-height: 0; }
+
+/* ---------- menu lateral: rótulo na cor principal, para ler bem sobre o vidro mais transparente ---------- */
+.app .side .navi .tx { color: var(--text); }

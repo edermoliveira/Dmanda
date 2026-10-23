@@ -10,9 +10,9 @@
 .app[data-dir="a"][data-tema="escuro"] { --card: rgba(20,20,20,.92); --panel: rgba(15,15,15,.72); --text: #FCFCFC; --text2: #A7A7A7; --brd: #2C2C2C; --track: #2C2C2C; }
 .app[data-dir="b"][data-tema="claro"] { --text: #0A0A0A; --text2: #5F5F5F; --lg-sh: hsl(30 10% 15% / .09); }
 .app[data-dir="b"][data-tema="escuro"] { --text: #FCFCFC; --text2: #A7A7A7; }
-.app[data-dir="c"][data-tema="claro"] { --bg1: #FCFCFC; --bg2: #FCFCFC; --bg3: #FCFCFC; --bgbase: #FCFCFC; --card: #FEFEFE; --panel: #F7F7F7; --glass: rgba(254,254,254,.8);
+.app[data-dir="c"][data-tema="claro"] { --bg1: #FCFCFC; --bg2: #FCFCFC; --bg3: #FCFCFC; --bgbase: #FCFCFC; --card: #FEFEFE; --panel: #F7F7F7; --glass: rgba(254,254,254,calc(.8 * var(--vidro)));
   --text: #0A0A0A; --text2: #5F5F5F; --brd: #DADADA; --track: #E4E4E4; --lg-top: hsl(0 0% 99.6% / .86); --lg-bot: hsl(0 0% 96.9% / .7); --lg-sh: hsl(0 0% 10% / .08); }
-.app[data-dir="c"][data-tema="escuro"] { --bg1: #0A0A0A; --bg2: #0A0A0A; --bg3: #0A0A0A; --bgbase: #0A0A0A; --card: #141414; --panel: #0F0F0F; --glass: rgba(20,20,20,.85);
+.app[data-dir="c"][data-tema="escuro"] { --bg1: #0A0A0A; --bg2: #0A0A0A; --bg3: #0A0A0A; --bgbase: #0A0A0A; --card: #141414; --panel: #0F0F0F; --glass: rgba(20,20,20,calc(.85 * var(--vidro)));
   --text: #FCFCFC; --text2: #A7A7A7; --brd: #2C2C2C; --track: #2C2C2C; }
 .app[data-tema="claro"] { --solido: rgba(254,254,254,.98); --btn-bg: rgba(254,254,254,.5); --btn-brd: rgba(10,10,10,.12); --btn-hi: rgba(254,254,254,.95); --btn-hov: rgba(254,254,254,.85); }
 .app[data-tema="escuro"] { --btn-bg: rgba(252,252,252,.07); --btn-brd: rgba(252,252,252,.16); --btn-hi: rgba(252,252,252,.14); --btn-hov: rgba(252,252,252,.14); }

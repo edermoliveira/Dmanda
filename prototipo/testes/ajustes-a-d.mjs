@@ -64,6 +64,40 @@ for (const tema of temas) for (const modo of modos) {
   conferir(rot + 'A: Lista aberta mostra a descrição inteira', (await p.locator('.linha-d .desc.cheia').count()) === 2);
   await ir({ tela: 'inicio' });
   conferir(rot + 'A: Início usa o mesmo card com descrição', (await p.locator('.dcard .desc').count()) >= 1);
+  // ---- B: vidro mais transparente, legível, cards sólidos ----
+  await ir({ tela: 'demandas', vis: 'cards', menuAb: true, pal: tema === 'b' ? 7 : tema === 'a' ? 4 : null });
+  const vid = await p.evaluate(() => {
+    const app = document.querySelector('.app'), cs = getComputedStyle(app);
+    const alfa = (c) => { const m = c.match(/[\d.]+/g); return m && m.length > 3 ? +m[3] : 1; };
+    const face = getComputedStyle(document.querySelector('.dcard .face.front'));
+    return { fator: cs.getPropertyValue('--vidro').trim(), card: alfa(face.backgroundColor), cardImg: face.backgroundImage };
+  });
+  conferir(rot + 'B: fator do vidro em 0,7 (cerca de 30% mais transparente)', vid.fator === '.7' || vid.fator === '0.7', vid.fator);
+  conferir(rot + 'B: cards continuam sólidos', vid.card >= 0.9, vid.card);
+  // contraste real: esconde o item, fotografa o fundo atrás dele e mede o pior pixel
+  const medirMenu = async (sel, aberto) => {
+    await ir({ menuAb: aberto }); await p.hover('.main', { position: { x: 600, y: 300 } }); await p.waitForTimeout(500);
+    const itens = await p.evaluate((sel) => [...document.querySelectorAll('.side .navi')].map((n) => { const a = n.querySelector(sel); if (!a || getComputedStyle(a).display === 'none') return null; const r = a.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, cor: getComputedStyle(a).color }; }).filter(Boolean), sel);
+    await p.addStyleTag({ content: '.side .navi ' + sel + ', .side .navi ' + sel + ' * { color: transparent !important; stroke: transparent !important; fill: transparent !important; }' });
+    await p.waitForTimeout(200);
+    const png = (await p.screenshot()).toString('base64');
+    const pior = await p.evaluate(async ([b64, itens]) => {
+      const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+      const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height; const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
+      const lum = (r, g, b) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+      let min = 99;
+      for (const it of itens) {
+        const t = it.cor.match(/[\d.]+/g).map(Number), lt = lum(t[0], t[1], t[2]);
+        const d = cx.getImageData(Math.max(0, Math.floor(it.x)), Math.max(0, Math.floor(it.y)), Math.max(1, Math.ceil(it.w)), Math.max(1, Math.ceil(it.h))).data;
+        for (let k = 0; k < d.length; k += 4) { const lb = lum(d[k], d[k + 1], d[k + 2]); const c = (Math.max(lt, lb) + 0.05) / (Math.min(lt, lb) + 0.05); if (c < min) min = c; }
+      }
+      return min;
+    }, [png, itens]);
+    await p.reload(); await p.waitForFunction(() => window.DM && document.querySelector('.app')); await ir({ tela: 'demandas', vis: 'cards', menuAb: false });
+    return pior;
+  };
+  const pRot = await medirMenu('.tx', true);
+  conferir(rot + 'B: rótulos do menu aberto legíveis sobre o vidro (pior caso ' + pRot.toFixed(1) + ':1, mínimo 4,5)', pRot >= 4.5, pRot);
   // celular: largura estreita
   await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300);
   await ir({ tela: 'demandas', vis: 'cards' });
