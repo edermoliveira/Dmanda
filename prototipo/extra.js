@@ -23,8 +23,13 @@ window.DM_EXTRA = function (DM) {
   E.salvo = {}; E.perfilV = 'semana'; E.cidade = 'Taquara/RS'; E.sugestaoPrazo = 30; E.bH = null; E.bE = null; E.alertaParado = 7; E.baloes = 3; E.reduzir = false; E.modal = null; E.rascunho = {}; E.energia = 2; E.col = true; E.balaoAb = false; E.balaoVisto = false;
   E.nome = 'Secretário'; E.cargo = 'Secretário de Administração'; E.orgao = 'Prefeitura de Taquara/RS'; E.expIni = '08:00'; E.expFim = '17:00'; E.lapso = 7; E.ultimo = 8; E.avisos = []; E.perfilNovo = false;
   DM.mudaTema = function (ant, nu) { E.salvo[ant] = snap(); Object.assign(E, E.salvo[nu] || base(nu)); };
+  // "Mostrar menu" é preferência da interface: vale ao navegar e ao recarregar (guardada só no navegador; sem armazenamento, começa recolhido)
+  var MENU_CHAVE = 'dmanda:menu-aberto';
+  function menuGuardado() { try { return localStorage.getItem(MENU_CHAVE) === 'true'; } catch (x) { return false; } }
+  function guardarMenu(v) { try { localStorage.setItem(MENU_CHAVE, v ? 'true' : 'false'); } catch (x) { /* sem armazenamento: vale só nesta visita */ } }
   DM.iniciar = function () {
     var h = new URLSearchParams(location.hash.slice(1)), o = base(E.dir);
+    E.menuAb = h.has('menuAb') ? h.get('menuAb') === 'true' : menuGuardado();
     KEYS.forEach(function (k) { if (!h.has(k)) E[k] = o[k]; });
     if (E.ultimo >= E.lapso && h.get('aviso') !== 'nao') E.avisos = ['lapso'];
     if (E.tela === 'perfil') { E.tela = 'inicio'; E.perfilAb = true; }
@@ -363,7 +368,7 @@ window.DM_EXTRA = function (DM) {
     if (E.modal && sujo(E.modal)) { var el = $('.modal'); if (el) { el.classList.remove('sacudir'); void el.offsetWidth; el.classList.add('sacudir'); } DM.toast('Há texto não salvo. Use Salvar ou Cancelar para sair.', 1); return; }
     fechar();
   };
-  A.colapsar = function () { DM.trocar({ menuAb: !E.menuAb }); };
+  A.colapsar = function () { guardarMenu(!E.menuAb); DM.trocar({ menuAb: !E.menuAb }); };
   A.perfil = function () { DM.trocar({ perfilAb: true, perfilNovo: true, plus: false }); };
   A['fechar-perfil'] = function (b, e) { if (b.classList.contains('dr-ov') && e.target !== b) return; DM.trocar({ perfilAb: false }); };
   A['perfil-cfg'] = function () { DM.trocar({ perfilAb: false, tela: 'config' }); };

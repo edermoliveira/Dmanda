@@ -70,10 +70,17 @@
 /* ---------- menu lateral: recolhido por padrão; abre ao passar o mouse ou pelo botão ---------- */
 @container tela (min-width: 900px) {
   .app .side { z-index: 30; overflow: hidden; }
-  .app[data-col="true"] .side:is(:hover, :focus-within), .app[data-col="true"][data-aberto="true"] .side { width: 248px; justify-self: start; align-items: stretch; box-shadow: 0 18px 50px var(--lg-sh); }
-  .app[data-col="true"] .side:is(:hover, :focus-within) .navi, .app[data-col="true"][data-aberto="true"] .side .navi { width: 100%; justify-content: flex-start; padding: 4px 10px; }
-  .app[data-col="true"] .side:is(:hover, :focus-within) :is(.navi .tx, .logo span, .rodape), .app[data-col="true"][data-aberto="true"] .side :is(.navi .tx, .logo span, .rodape) { display: inline; }
-  .app[data-col="true"] .side:is(:hover, :focus-within) .logo, .app[data-col="true"][data-aberto="true"] .side .logo { padding: 4px 8px 16px; }
+  .app[data-col="true"] .side:is(:hover, :focus-within) { width: 248px; justify-self: start; align-items: stretch; box-shadow: 0 18px 50px var(--lg-sh); }
+  .app[data-col="true"] .side:is(:hover, :focus-within) .navi { width: 100%; justify-content: flex-start; padding: 4px 10px; }
+  .app[data-col="true"] .side:is(:hover, :focus-within) :is(.navi .tx, .logo span, .rodape) { display: inline; }
+  .app[data-col="true"] .side:is(:hover, :focus-within) .logo { padding: 4px 8px 16px; }
+}
+/* aberto pelo botão "Mostrar menu": só onde o botão existe (a partir de 1100 px); abaixo disso a preferência guardada não age */
+@container tela (min-width: 1100px) {
+  .app[data-col="true"][data-aberto="true"] .side { width: 248px; justify-self: start; align-items: stretch; box-shadow: 0 18px 50px var(--lg-sh); }
+  .app[data-col="true"][data-aberto="true"] .side .navi { width: 100%; justify-content: flex-start; padding: 4px 10px; }
+  .app[data-col="true"][data-aberto="true"] .side :is(.navi .tx, .logo span, .rodape) { display: inline; }
+  .app[data-col="true"][data-aberto="true"] .side .logo { padding: 4px 8px 16px; }
 }
 
 /* ---------- Início: frase no lugar do título, aviso, compromissos por tipo ---------- */

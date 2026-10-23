@@ -260,6 +260,11 @@
 @media (prefers-reduced-motion: reduce) { .app[data-dir="d"] *, .app[data-dir="d"] *::before { animation-duration: .01s !important; transition-duration: .01s !important; animation-delay: 0s !important; } }
 .app[data-dir="d"][data-reduzir="true"] *, .app[data-dir="d"][data-reduzir="true"] *::before { animation-duration: .01s !important; transition-duration: .01s !important; animation-delay: 0s !important; }
 
+/* menu aberto pelo botão (a partir de 1100 px): a coluna cresce e o conteúdo não fica coberto de forma permanente */
+@container tela (min-width: 1100px) {
+  .app[data-dir="d"][data-col="true"][data-aberto="true"] { --col: 268px; }
+}
+
 /* ---------- larguras menores ---------- */
 @container tela (max-width: 1099px) {
   .app[data-dir="d"] .stats:not(.tres) .stat:last-child { grid-column: span 2; }
