@@ -243,6 +243,7 @@ window.DM_EXTRA = function (DM) {
     return cab('Nova demanda') + '<p class="data">Cadastro rápido. Só o assunto é obrigatório.</p>' +
       campo('Número do processo ou memorando', 'num', 'text', v.num, 'placeholder="Ex.: 2310/2026"') + campo('Assunto', 'assunto', 'text', v.assunto, 'placeholder="Do que se trata?"') +
       campo('Origem', 'origem', 'text', v.origem, 'placeholder="Quem pediu ou de onde veio"') +
+      '<div class="fld"><label for="m-descricao">Descrição (opcional)</label><textarea id="m-descricao" data-v="descricao" rows="3" placeholder="Explique do que se trata, sem sobrecarregar o assunto">' + esc(v.descricao || '') + '</textarea></div>' +
       '<div class="fld"><label>Tipo de documento</label>' + opcoes('tipo', TIPOS, tipo) + '</div>' +
       (temArea ? '<div class="fld"><label>Área (define a cor do card)</label>' + opcoes('area', areas, areas.indexOf(v.area) > -1 ? v.area : 'Geral') + '<span class="data">' + (tipo === 'Protocolo' ? 'Protocolo geral é azul e de pessoal é verde. Amarelo (compras) só em processo aberto pelo setor de compras.' : 'Azul: geral. Verde: pessoal. Amarelo: compras.') + '</span></div>' : '') +
       '<div class="dois">' + campo('Chegou em', 'chegada', 'date', cheg) + '<div class="fld"><label>Tipo de prazo</label>' + opcoes('prazoTipo', ['Legal', 'Próprio'], v.prazoTipo || 'Próprio') + '</div></div>' +
@@ -298,6 +299,7 @@ window.DM_EXTRA = function (DM) {
     return cab(esc(d.tipo + ' ' + d.num)) + (m.rec ? '<p class="data rec">Rascunho recuperado. Cancelar descarta as alterações.</p>' : '') + '<div class="m-cols"><div>' +
       '<div class="fld"><label for="d-assunto">Assunto</label><input id="d-assunto" data-d="assunto" value="' + esc(d.assunto) + '"></div>' +
       '<div class="dois"><div class="fld"><label for="d-num">Número</label><input id="d-num" data-d="num" value="' + esc(d.num) + '"></div><div class="fld"><label for="d-origem">Origem</label><input id="d-origem" data-d="origem" value="' + esc(d.origem) + '"></div></div>' +
+      '<div class="fld"><label for="d-descricao">Descrição (opcional)</label><textarea id="d-descricao" data-d="descricao" rows="4" placeholder="Explique do que se trata, sem sobrecarregar o assunto">' + esc(d.descricao || '') + '</textarea></div>' +
       '<div class="fld"><label>Tipo de documento</label>' + opcoes('tipoDem', TIPOS, d.tipo) + '</div>' +
       (temArea ? '<div class="fld"><label>Área (define a cor do card)</label>' + opcoes('areaDem', areas, areas.indexOf(d.area) > -1 ? d.area : 'Geral') + '</div>' : '') +
       '<div class="dois"><div class="fld"><label for="d-chegou">Chegou em</label><input id="d-chegou" data-d="chegou" type="date" value="' + curtoParaIso(d.chegou) + '"></div><div class="fld"><label>Tipo de prazo</label>' + opcoes('prazoTipoDem', ['Legal', 'Próprio'], d.prazoTipo) + '</div></div>' +
@@ -383,7 +385,7 @@ window.DM_EXTRA = function (DM) {
   A['sugerir-prazo-d'] = function () { var c = E.modal.copia; c.prazo = isoParaCurto(maisDias(E.sugestaoPrazo, curtoParaIso(c.chegou))); DM.trocar({}); };
   A['limpar-prazo-d'] = function () { E.modal.copia.prazo = null; DM.trocar({}); };
   A['tarefa-m'] = function (b) { E.modal.copia.tarefas[+b.dataset.i].f = b.checked; DM.trocar({}); };
-  A['salvar-edicao'] = function () { var m = E.modal; m.copia.tarefas = m.copia.tarefas.filter(function (t) { return (t.t || '').trim(); }); Object.assign(real(m.id), m.copia); fim({ modal: null }); DM.toast('Alterações salvas', 1); };
+  A['salvar-edicao'] = function () { var m = E.modal; m.copia.tarefas = m.copia.tarefas.filter(function (t) { return (t.t || '').trim(); }); m.copia.descricao = (m.copia.descricao || '').trim(); Object.assign(real(m.id), m.copia); fim({ modal: null }); DM.toast('Alterações salvas', 1); };
   A.excluir = function () { E.modal.conf = true; DM.trocar({}); };
   A['excluir-ok'] = function (b) { var i = DEM.findIndex(function (x) { return x.id === +b.dataset.id; }); if (i > -1) DEM.splice(i, 1); fim({ modal: null }); DM.toast('Demanda excluída'); };
   A['concluir-m'] = function () { var m = E.modal, d = real(m.id); Object.assign(d, m.copia, { etapa: 'Finalizado', concluido: '21/10' }); d.tarefas.forEach(function (t) { t.f = true; }); fim({ modal: null }); DM.toast('Demanda concluída'); };
@@ -399,7 +401,7 @@ window.DM_EXTRA = function (DM) {
     var v = E.modal.v; if (!(v.assunto || '').trim()) { DM.toast('Escreva o assunto'); return; }
     var id = DEM.reduce(function (a, d) { return Math.max(a, d.id); }, 0) + 1, tipo = v.tipo || 'Processo', temArea = tipo === 'Processo' || tipo === 'Protocolo';
     var area = temArea ? (v.area === 'Pessoal' || (v.area === 'Compras' && tipo !== 'Protocolo') ? v.area : 'Geral') : undefined;
-    DEM.push({ id: id, tipo: tipo, area: area, num: v.num || 's/n', assunto: v.assunto.trim(), origem: v.origem || 'Não informada', etapa: E.modal.etapa || 'Cadastro', prazoTipo: v.prazoTipo || 'Próprio',
+    DEM.push({ id: id, tipo: tipo, area: area, num: v.num || 's/n', assunto: v.assunto.trim(), descricao: (v.descricao || '').trim(), origem: v.origem || 'Não informada', etapa: E.modal.etapa || 'Cadastro', prazoTipo: v.prazoTipo || 'Próprio',
       prazo: v.prazo ? isoParaCurto(v.prazo) : null, atraso: 0, tarefas: [], chegou: v.chegada ? isoParaCurto(v.chegada) : '21/10', parado: 0 });
     if (E.modal.nota != null) NOTAS_E.splice(E.modal.nota, 1);
     delete E.rascunho.dem; fim({ modal: null }); DM.toast(v.prazo ? 'Demanda cadastrada' : 'Demanda cadastrada sem prazo');

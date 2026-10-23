@@ -20,13 +20,13 @@
   // Hoje: 21/10/2026. Prazos e datas fictícios. prazo nulo = sem prazo (nada é inventado).
   // area (só processo e protocolo): Geral (azul), Pessoal (verde) ou Compras (amarelo). Os demais tipos têm a frente neutra.
   var DEMANDAS = [
-    { id: 1, tipo: 'Processo', area: 'Geral', num: '1842/2026', assunto: 'Resposta ao TCE sobre diárias de 2025', origem: 'TCE-RS', etapa: 'Fazendo', prazoTipo: 'Legal', prazo: '18/10', atraso: 3,
+    { id: 1, tipo: 'Processo', area: 'Geral', num: '1842/2026', assunto: 'Resposta ao TCE sobre diárias de 2025', origem: 'TCE-RS', descricao: 'O Tribunal de Contas pediu esclarecimentos sobre as diárias pagas em 2025, com a relação de servidores, destinos, valores e a justificativa de cada viagem. A resposta precisa seguir com os comprovantes da Contabilidade e passar pela revisão jurídica antes do protocolo.', etapa: 'Fazendo', prazoTipo: 'Legal', prazo: '18/10', atraso: 3,
       tarefas: [{ t: 'Levantar diárias de 2025', f: true }, { t: 'Conferir com a Contabilidade', f: true }, { t: 'Redigir a resposta', f: false }, { t: 'Revisão jurídica', f: false }, { t: 'Protocolar', f: false }], chegou: '02/10', parado: 2 },
-    { id: 2, tipo: 'Memorando', num: '087/2026', assunto: 'Revisão do contrato de limpeza', origem: 'Gabinete', etapa: 'Vistos', prazoTipo: 'Próprio', prazo: '21/10', atraso: 0, tarefas: [], chegou: '19/10', parado: 2 },
+    { id: 2, tipo: 'Memorando', num: '087/2026', assunto: 'Revisão do contrato de limpeza', origem: 'Gabinete', descricao: 'Verificar reajuste e prazo de vigência.', etapa: 'Vistos', prazoTipo: 'Próprio', prazo: '21/10', atraso: 0, tarefas: [], chegou: '19/10', parado: 2 },
     { id: 3, tipo: 'Ofício', num: '311/2026', assunto: 'Parecer sobre cessão de servidor', origem: 'Secretaria de Saúde', etapa: 'Aguardando retorno', setor: 'PGM', diasAg: 9, acompanhar: '24/10', prazoTipo: 'Próprio', prazo: '30/10', atraso: 0,
       tarefas: [{ t: 'Enviar ofício à PGM', f: true }, { t: 'Cobrar o parecer', f: false }], chegou: '08/10', parado: 9 },
     { id: 4, tipo: 'Protocolo', area: 'Pessoal', num: '2210/2026', assunto: 'Nomeação dos aprovados no concurso', origem: 'Recursos Humanos', etapa: 'Cadastro', prazoTipo: 'Legal', prazo: '28/10', atraso: 0, tarefas: [], chegou: '21/10', parado: 0 },
-    { id: 5, tipo: 'Portaria', num: '045/2026', assunto: 'Horário de verão dos servidores', origem: 'Gabinete', etapa: 'Fazendo', prazoTipo: 'Próprio', prazo: '25/10', atraso: 0,
+    { id: 5, tipo: 'Portaria', num: '045/2026', assunto: 'Horário de verão dos servidores', origem: 'Gabinete', descricao: 'Define o novo horário de atendimento durante o horário de verão, para todas as secretarias.', etapa: 'Fazendo', prazoTipo: 'Próprio', prazo: '25/10', atraso: 0,
       tarefas: [{ t: 'Minutar a portaria', f: true }, { t: 'Assinatura da Prefeita', f: true }], chegou: '15/10', parado: 1 },
     { id: 6, tipo: 'Memorando', num: '071/2026', assunto: 'Reorganização do arquivo morto', origem: 'Secretaria', etapa: 'Finalizado', prazoTipo: 'Próprio', prazo: '14/10', atraso: 0,
       tarefas: [{ t: 'Listar caixas', f: true }, { t: 'Triagem', f: true }, { t: 'Descarte autorizado', f: true }], chegou: '01/10', parado: 0, concluido: '14/10' },
@@ -143,6 +143,8 @@
     return '<li class="t-item"><input type="checkbox" data-act="tarefa" data-id="' + d.id + '" data-i="' + i + '"' + (t.f ? ' checked' : '') + ' aria-label="Concluir a tarefa: ' + esc(t.t) + '">' + textoTarefa(d, t, i) +
       '<button class="t-lapis" data-act="ed-tarefa" data-id="' + d.id + '" data-i="' + i + '" aria-label="Editar a tarefa" title="Editar">' + ic('pencil') + '</button></li>';
   }
+  // descrição opcional: sem texto, nada é desenhado (nenhum espaço reservado)
+  function descHTML(d) { var x = (d.descricao || '').trim(); return x ? '<div class="desc">' + esc(x) + '</div>' : ''; }
   function chipSelo(d) { return d.prazo ? '<span class="selo' + (d.prazoTipo === 'Legal' ? ' legal' : '') + '">' + ic('flag') + d.prazoTipo + '</span>' : ''; }
   // cor de frente do card: documentos em geral são neutros; processos e protocolos têm tom pastel pela área
   var AREA_COR = { Geral: 'azul', Pessoal: 'verde', Compras: 'amar' };
@@ -157,7 +159,7 @@
     var q = estado.q.trim().toLowerCase();
     return DEMANDAS.filter(function (d) {
       if (estado.soAtras && !atrasada(d)) return false;
-      return !q || (d.tipo + ' ' + d.num + ' ' + d.assunto + ' ' + d.origem).toLowerCase().indexOf(q) > -1;
+      return !q || (d.tipo + ' ' + d.num + ' ' + d.assunto + ' ' + d.origem + ' ' + (d.descricao || '')).toLowerCase().indexOf(q) > -1;
     });
   }
 
@@ -171,7 +173,7 @@
     var etapaChip = fin ? '<span class="chip">Finalizada</span>' : '<span class="chip neutro">' + esc(d.etapa) + (d.etapa === 'Aguardando retorno' ? ' · ' + esc(d.setor) + ' ' + d.diasAg + ' d' : '') + '</span>';
     var frente = '<div class="face front' + corCard(d) + '"><div class="cab">' + origemP(d) + btnGirar(d, 'verso') + '</div>' +
       '<div class="tags">' + chipTipo(d) + '<span class="num mono">' + esc(d.num) + '</span>' + etapaChip + '</div>' +
-      '<div class="assunto fit" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</div>' +
+      '<div class="assunto fit" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</div>' + descHTML(d) +
       chipsRow(d) + acaoCard(d) + barraProg(d) + '</div>';
     var tarefas = d.tarefas.length ? '<ul class="tarefas">' + d.tarefas.map(function (t, i) { return itemTarefa(d, t, i); }).join('') + '</ul>' :'<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span><button data-act="add" data-id="' + d.id + '">+ Adicionar tarefa</button></div>';
     var meta = '<div class="meta"><div>Chegou em<b>' + d.chegou + '</b></div><div>' + (fin ? 'Resolvida em' : 'Parada há') + '<b>' + (fin && d.concluido ? curto(Math.max(0, diasDesde(d.chegou) - diasDesde(d.concluido))) : curto(d.parado)) + '</b></div><div>Tipo<b>' + esc(d.tipo) + '</b></div>' +
@@ -191,7 +193,7 @@
     return '<article class="mini-card' + corCard(d) + (atrasada(d) ? ' atrasada' : '') + (fin ? ' feita' : '') + '" data-id="' + d.id + '"><div class="m-top">' + origemP(d) +
       '<button class="mais" data-act="msg" data-m="Mais ações" aria-label="Mais ações">' + ic('ellipsis') + '</button></div>' +
       '<div class="tags">' + chipTipo(d) + '<span class="num mono">' + esc(d.num) + '</span></div>' +
-      '<div class="assunto" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</div>' +
+      '<div class="assunto" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</div>' + descHTML(d) +
       chipsRow(d) + (d.setor ? '<div class="chips"><span class="chip neutro">' + esc(d.setor) + ' · ' + d.diasAg + ' d</span></div>' : '') + acaoCard(d) + barraProg(d) + '</article>';
   }
   function quadro() {
@@ -239,7 +241,7 @@
             : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span><button data-act="add" data-id="' + d.id + '">+ Adicionar tarefa</button></div>';
           return '<div class="linha' + (atrasada(d) ? ' atrasada' : '') + (fin ? ' feita' : '') + '"><div class="linha-c">' +
             '<button class="linha-m" data-act="abrirlinha" data-id="' + d.id + '" aria-expanded="' + !!ab + '"><span class="mono num">#' + esc(d.num) + '</span><span class="ass">' + esc(d.assunto) + '</span>' + origemP(d) + chipTipo(d) + '</button>' +
-            '<span class="dir">' + chipSelo(d) + chipPrazo(d) + '<b class="mono pc">' + (pct(d) === null ? '—' : pct(d) + '%') + '</b></span></div>' + (ab ? '<div class="linha-d">' + tar + acaoCard(d) + '</div>' : '') + '</div>';
+            '<span class="dir">' + chipSelo(d) + chipPrazo(d) + '<b class="mono pc">' + (pct(d) === null ? '—' : pct(d) + '%') + '</b></span></div>' + (ab ? '<div class="linha-d">' + (d.descricao ? '<p class="desc cheia">' + esc(d.descricao) + '</p>' : '') + tar + acaoCard(d) + '</div>' : '') + '</div>';
         }).join('') || '<div class="vazio-c">Nenhuma demanda</div>')) + '</section>';
     }).join('') + '</div>';
   }
@@ -348,6 +350,9 @@
   function ajustar() {
     $$('.face.front').forEach(function (f) {
       $$('.oculto', f).forEach(function (x) { x.classList.remove('oculto'); });
+      // a descrição ocupa até 3 linhas conforme a largura; se faltar altura, perde linhas antes de qualquer outra coisa
+      var ds = f.querySelector('.desc');
+      if (ds) { var n = 3; ds.style.webkitLineClamp = '3'; while (n > 1 && f.scrollHeight > f.clientHeight + 1) { n--; ds.style.webkitLineClamp = String(n); } if (f.scrollHeight > f.clientHeight + 1) ds.classList.add('oculto'); }
       ['.tempo', '.selo', '.prog', '.tags .chip'].forEach(function (q) { var x = f.querySelector(q); if (x && f.scrollHeight > f.clientHeight + 1) x.classList.add('oculto'); });
     });
     $$('.postit').forEach(function (p) { var t = p.querySelector('.p-tags'); if (t) t.classList.remove('oculto'); var x = p.querySelector('.fit'); if (t && x && x.clientHeight < 40) t.classList.add('oculto'); });
