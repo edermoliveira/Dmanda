@@ -82,7 +82,7 @@
 @container tela (max-width: 899px) { .app[data-dir="d"] .buscabtn { padding: 0; } }
 .app[data-dir="d"] .top .icbtn:not(.buscabtn) { width: var(--bt-l); height: var(--bt-l); padding: 0; border-radius: 50%; display: grid; place-items: center; position: relative; }
 .app[data-dir="d"] .perfil-b { border-radius: 999px; min-height: var(--bt-l); padding: 0 14px 0 4px; gap: 10px; font-weight: 600; }
-.app[data-dir="d"] .perfil-b .avatar { width: 36px; height: 36px; }
+.app[data-dir="d"] .perfil-b .avatar { width: 36px; height: 36px; flex: none; aspect-ratio: 1; display: grid; place-items: center; line-height: 1; /* círculo fixo: nunca encolhe nem estica com o botão */ }
 .app[data-dir="d"] .avatar { background: var(--acc); color: var(--acc-ink); }
 .app[data-dir="d"] .badge { background: var(--perigo); color: var(--on-perigo); }
 .app[data-dir="d"] .logo { padding-inline: 4px; }
@@ -267,6 +267,8 @@
 
 /* ---------- larguras menores ---------- */
 @container tela (max-width: 1099px) {
+  /* Perfil sem nome (rótulo oculto de 900 a 1099px por estilo.css e abaixo de 900px): o botão é só a área de toque de 44px e o círculo de 36px fica centrado, sem o padding do Catalyst espremendo-o */
+  .app[data-dir="d"] .perfil-b { padding: 0; justify-content: center; }
   .app[data-dir="d"] .stats:not(.tres) .stat:last-child { grid-column: span 2; }
 }
 @container tela (max-width: 899px) {

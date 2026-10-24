@@ -200,10 +200,10 @@ button.wg:active { transform: scale(.97); }
 .pomo-t { font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: -.02em; }
 .pomo-s { font-size: 11px; color: var(--text2); margin-top: 4px; }
 .pomo-ed { display: flex; align-items: baseline; gap: 2px; }
-.pomo-ed input { width: 58px; font-size: 26px; font-weight: 600; text-align: right; color: var(--text); background: transparent; border: 0; border-bottom: 2px dashed color-mix(in srgb, var(--pomo) 60%, transparent); border-radius: 0; padding: 0; -moz-appearance: textfield; appearance: textfield; }
+.pomo-ed input { width: calc(var(--dg, 2) * 1ch + 2px); font-size: 26px; font-weight: 600; text-align: center; color: var(--text); background: transparent; border: 0; border-bottom: 2px solid transparent; /* a largura segue o número de dígitos para o conjunto "número + min" ficar centrado no anel; o sublinhado só aparece no foco */ border-radius: 0; padding: 0; -moz-appearance: textfield; appearance: textfield; }
 .pomo-ed input::-webkit-inner-spin-button, .pomo-ed input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .pomo-ed input:focus { outline: 0; border-bottom-style: solid; border-bottom-color: var(--pomo); }
-.pomo-ed span { font-size: 13px; color: var(--text2); }
+.pomo-ed span { font-size: 10.4px; /* 20% menor que os 13px anteriores */ color: var(--text2); }
 .pomo-lado { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: 1; }
 .seg-p { display: inline-flex; padding: 2px; border-radius: 9px; background: var(--track); align-self: flex-start; }
 .seg-p button { position: relative; min-height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
@@ -227,7 +227,6 @@ button.wg:active { transform: scale(.97); }
   .widgets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .pomo-anel { width: 104px; height: 104px; }
   .pomo-t, .pomo-ed input { font-size: 22px; }
-  .pomo-ed input { width: 48px; }
 }
 
 /* ---------- Configurações: interruptores no estilo iOS ---------- */

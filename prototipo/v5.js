@@ -31,7 +31,7 @@ window.DM_V5 = function (DM) {
   var VOLTA = 2 * Math.PI * 44;
   function pomoHTML() {
     var P = E.pomo, r = restante(), inicial = !P.rodando && P.rest == null, frac = r / total(), foco = P.modo === 'foco';
-    var centro = inicial ? '<label class="pomo-ed"><input class="mono" type="number" inputmode="numeric" min="1" max="180" value="' + P.min[P.modo] + '" data-pomo-min aria-label="Minutos de ' + (foco ? 'foco' : 'pausa') + '"><span>min</span></label>'
+    var centro = inicial ? '<label class="pomo-ed"><input class="mono" type="number" inputmode="numeric" min="1" max="180" value="' + P.min[P.modo] + '" style="--dg:' + String(P.min[P.modo]).length + '" data-pomo-min aria-label="Minutos de ' + (foco ? 'foco' : 'pausa') + '"><span>min</span></label>'
       : '<b class="pomo-t mono" aria-live="off">' + mmss(r) + '</b><span class="pomo-s">' + (P.rodando ? (foco ? 'focando' : 'pausa') : 'pausado') + '</span>';
     return '<section class="wg wg-m wg-pomo' + (foco ? '' : ' pausa') + (P.acabou ? ' acabou' : '') + (P.rodando ? ' rodando' : '') + '" aria-label="Pomodoro">' +
       '<div class="pomo-anel"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="trilho" cx="50" cy="50" r="44"/><circle class="arco" cx="50" cy="50" r="44" stroke-dasharray="' + VOLTA.toFixed(2) + '" stroke-dashoffset="' + (VOLTA * (1 - frac)).toFixed(2) + '"/></svg><div class="pomo-c">' + centro + '</div></div>' +
@@ -64,7 +64,7 @@ window.DM_V5 = function (DM) {
   A['pomo-zerar'] = function () { Object.assign(E.pomo, { rodando: false, rest: null, fim: null }); repintaPomo(); };
   A['pomo-modo'] = function (b) { Object.assign(E.pomo, { modo: b.dataset.v, rodando: false, rest: null, fim: null }); repintaPomo(); };
   A['pomo-passo'] = function (b) { var P = E.pomo; P.min[P.modo] = Math.min(180, Math.max(1, P.min[P.modo] + +b.dataset.n)); repintaPomo(); };
-  document.addEventListener('input', function (e) { if (e.target.hasAttribute && e.target.hasAttribute('data-pomo-min')) { var v = Math.round(+e.target.value); if (v >= 1 && v <= 180) E.pomo.min[E.pomo.modo] = v; } });
+  document.addEventListener('input', function (e) { if (e.target.hasAttribute && e.target.hasAttribute('data-pomo-min')) { var v = Math.round(+e.target.value); if (v >= 1 && v <= 180) E.pomo.min[E.pomo.modo] = v; e.target.style.setProperty('--dg', Math.max(1, String(e.target.value).length)); } });
   document.addEventListener('change', function (e) { if (e.target.hasAttribute && e.target.hasAttribute('data-pomo-min')) setTimeout(repintaPomo, 0); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.hasAttribute && e.target.hasAttribute('data-pomo-min')) { e.preventDefault(); e.target.blur(); A['pomo-play'](); } });
 
