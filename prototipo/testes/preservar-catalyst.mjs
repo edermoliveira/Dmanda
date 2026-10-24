@@ -26,7 +26,7 @@ const pg = await nav.newPage({ viewport: { width: 1480, height: 1000 } });
 const erros = [];
 pg.on('pageerror', (e) => erros.push(String(e.message || e)));
 pg.on('requestfailed', (r) => erros.push('recurso não carregou: ' + r.url()));
-pg.on('response', (r) => { if (r.status() >= 400 && !/energia-\d\.png/.test(r.url())) erros.push('HTTP ' + r.status() + ': ' + r.url()); });
+pg.on('response', (r) => { if (r.status() >= 400) erros.push('HTTP ' + r.status() + ': ' + r.url()); });
 
 function coletar(props) {
   const app = document.querySelector('.app'); if (!app) return null;

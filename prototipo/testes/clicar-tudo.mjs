@@ -79,7 +79,9 @@ const navegador = await chromium.launch({ channel: 'msedge', headless: true, arg
 const pagina = await navegador.newPage({ viewport: { width: 1480, height: 1000 } });
 const erros = [];
 pagina.on('pageerror', (e) => erros.push(String(e.message || e)));
-pagina.on('console', (m) => { if (m.type() === 'error' && !/energia-\d\.png|404|Failed to load resource/.test(m.text())) erros.push(m.text()); });
+pagina.on('console', (m) => { if (m.type() === 'error') erros.push(m.text()); });
+pagina.on('requestfailed', (r) => erros.push('recurso não carregou: ' + r.url()));
+pagina.on('response', (r) => { if (r.status() >= 400) erros.push('HTTP ' + r.status() + ': ' + r.url()); });
 pagina.on('dialog', (d) => d.dismiss());
 
 const relatorio = { cliques: 0, semEfeito: [], naoClicavel: [], erros: [], contraste: [], estouro: [], pequenos: [] };

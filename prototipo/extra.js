@@ -44,16 +44,13 @@ window.DM_EXTRA = function (DM) {
     if (E.modal && E.modal.foco) { E.modal.foco = false; var el = $('.modal input:not([type=checkbox]), .modal textarea'); if (el) el.focus(); }
   };
 
-  // ---------- emojis: PNG do usuário, com reserva ----------
+  // ---------- emojis: humor em PNG e energia em SVG colorido, do usuário (sem reserva: se faltar, o erro aparece) ----------
   var EMO_TXT = ['🥴', '🫠', '🙂', '😄', '🥰'], ROT_H = ['Muito mal', 'Mal', 'Neutro', 'Bem', 'Muito bem'], ROT_E = ['Muito baixa', 'Baixa', 'Média', 'Alta', 'Muito alta'];
-  function img(tipo, i) { return '<img class="emo-img" src="emojis/' + tipo + '-' + (i + 1) + '.png" alt="" ' + (tipo === 'humor' ? 'data-e="' + EMO_TXT[i] + '"' : 'data-fbi="bat' + i + '"') + '>'; }
+  // energia: SVG usado direto em <img> (cores e transparência originais, sem currentColor); humor: PNG
+  function img(tipo, i, alt) { return '<img class="emo-img" src="emojis/' + tipo + '-' + (i + 1) + (tipo === 'energia' ? '.svg' : '.png') + '" alt="' + (alt || '') + '"' + (tipo === 'humor' ? ' data-e="' + EMO_TXT[i] + '"' : '') + '>'; }
   function seletor(tipo, atual, act, rot) {
     return rot.map(function (r, i) { return '<button class="emo' + (tipo === 'energia' ? ' en' : '') + '" data-act="' + act + '" data-i="' + i + '" aria-pressed="' + (atual === i) + '" aria-label="' + r + '" title="' + r + '">' + img(tipo, i) + '</button>'; }).join('');
   }
-  document.addEventListener('error', function (e) {
-    var t = e.target;
-    if (t && t.classList && t.classList.contains('emo-img') && t.dataset.fbi) { var s = document.createElement('span'); s.className = 'emo-fb'; s.innerHTML = ic(t.dataset.fbi); t.replaceWith(s); }
-  }, true);
 
   // ---------- Entradas: post-its ----------
   // n = { t: título (opcional), x: texto, cor: 0 a 5, fixo, ed: última edição }. Abrir a nota não renova a data, só editar.
@@ -113,7 +110,7 @@ window.DM_EXTRA = function (DM) {
       widget('w-clima', ic('cloud-sun', 'duo') + '<b class="mono">24°</b>', '<div class="data">' + esc(E.cidade) + '</div><b>24°, parcialmente nublado</b>') +
       widget('w-humor', img('humor', E.humor) + '<span class="w-t">Humor</span>', '<div class="data">Como você está agora?</div><div class="emos" role="group" aria-label="Humor">' + seletor('humor', E.humor, 'humor', ROT_H) + '</div>' +
         '<button class="pend" data-act="completar">' + ic('clock') + '<span>Há 2 dias sem registro. Completar (opcional)</span>' + ic('right') + '</button>') +
-      widget('w-energia', img('energia', E.energia) + '<span class="w-t">Energia</span>', '<div class="data">E a energia?</div><div class="emos" role="group" aria-label="Energia">' + seletor('energia', E.energia, 'energia', ROT_E) + '</div>') +
+      widget('w-energia', img('energia', E.energia, 'Energia: ' + ROT_E[E.energia]) + '<span class="w-t">Energia</span>', '<div class="data">E a energia?</div><div class="emos" role="group" aria-label="Energia">' + seletor('energia', E.energia, 'energia', ROT_E) + '</div>') +
       '</div>';
 
     var ev = DM.EVENTOS.filter(function (x) { return x[0] >= 21; }).sort(function (a, b) { return a[0] - b[0] || (a[1] < b[1] ? -1 : 1); }).slice(0, 6);

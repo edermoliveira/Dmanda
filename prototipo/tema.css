@@ -55,7 +55,6 @@ h3, h4 { font-weight: 700; }
 
 /* ---------- registro de humor e energia ---------- */
 .emo-img { width: 30px; height: 30px; }
-.emo-fb { display: grid; place-items: center; color: var(--acc-text); }
 .emo.en { border-radius: 14px; }
 .registro { display: grid; gap: 10px; margin-bottom: 16px; padding: 14px 16px; }
 .reg-l { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -96,7 +95,6 @@ h3, h4 { font-weight: 700; }
 .ind3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
 .ind-v { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
 .ind-v .emo-img { width: 44px; height: 44px; }
-.ind-v .emo-fb .ic { width: 36px; height: 36px; }
 .grande-n { font-size: 44px; line-height: 1; }
 .painel + .painel, .ind3 + .painel { margin-top: 16px; }
 .ph { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }

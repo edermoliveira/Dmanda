@@ -91,7 +91,6 @@
 .w-r { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: var(--r-btn); max-width: 100%; }
 .w-r .ic { width: 18px; height: 18px; color: var(--acc-text); }
 .w-r .emo-img { width: 24px; height: 24px; }
-.w-r .emo-fb .ic { width: 22px; height: 22px; }
 .w-r b { font-size: 14px; font-weight: 600; }
 .w-r .w-t { font-size: 14px; font-weight: 600; font-family: var(--font-ui, var(--font)); }
 .w-fr { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
