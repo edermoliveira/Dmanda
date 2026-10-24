@@ -38,7 +38,6 @@ window.DM_EXTRA = function (DM) {
   DM.pos = function () {
     $$('#g-tema .seg').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.tema === E.tema); });
     var app = $('.app'); if (app) { app.dataset.col = 'true'; app.dataset.aberto = E.menuAb; app.dataset.reduzir = E.reduzir; }
-    $$('.mini-card').forEach(function (c) { c.draggable = true; });
     if (E.modal) guardar(E.modal);
     if (E.perfilNovo) { E.perfilNovo = false; var x = $('.dr .icbtn-s'); if (x) x.focus(); }
     if (E.modal && E.modal.foco) { E.modal.foco = false; var el = $('.modal input:not([type=checkbox]), .modal textarea'); if (el) el.focus(); }
@@ -485,16 +484,118 @@ window.DM_EXTRA = function (DM) {
   }, true);
   document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.act === 'editar-nota') A['editar-nota'](e.target); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.id === 'm-nt') { e.preventDefault(); A['add-tarefa-m'](); var n = $('#m-nt'); if (n) n.focus(); } });
-  // ---------- Quadro: arrastar o card para outra etapa; atalho N para nova anotação ----------
-  var arrastando = null;
-  document.addEventListener('dragstart', function (e) { var c = e.target.closest && e.target.closest('.mini-card'); if (!c) return; arrastando = +c.dataset.id; c.classList.add('arrastando'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(arrastando)); } catch { /* navegador sem suporte */ } });
-  document.addEventListener('dragend', function (e) { var c = e.target.closest && e.target.closest('.mini-card'); if (c) c.classList.remove('arrastando'); $$('.coluna.alvo').forEach(function (x) { x.classList.remove('alvo'); }); arrastando = null; });
-  document.addEventListener('dragover', function (e) { var col = e.target.closest && e.target.closest('.coluna'); if (col && arrastando !== null) { e.preventDefault(); $$('.coluna.alvo').forEach(function (x) { if (x !== col) x.classList.remove('alvo'); }); col.classList.add('alvo'); } });
-  document.addEventListener('drop', function (e) {
-    var col = e.target.closest && e.target.closest('.coluna'); if (!col || arrastando === null) return; e.preventDefault();
-    var d = DEM.filter(function (x) { return x.id === arrastando; })[0], et = col.getAttribute('aria-label'); arrastando = null;
-    if (d && et && d.etapa !== et) { d.etapa = et; if (et === 'Finalizado') { d.tarefas.forEach(function (x) { x.f = true; }); d.concluido = '21/10'; } if (et === 'Aguardando retorno' && !d.setor) { d.setor = 'Setor a informar'; d.diasAg = 0; d.acompanhar = '28/10'; } DM.trocar({ etapaSel: et }); DM.toast('Movida para ' + et); }
+  // ---------- Quadro: mover a demanda entre etapas ----------
+  // Uma só regra de transição para o arraste (mouse, toque e caneta) e para o menu "Mover para" (alternativa pelo teclado):
+  // concluir e reabrir seguem as mesmas regras dos botões "Concluir demanda" e "Reabrir demanda" (app.js).
+  DM.moverEtapa = function (id, et) {
+    var d = real(id); if (!d || !et || d.etapa === et) return false;
+    var de = d.etapa;
+    if (de === 'Finalizado' && et !== 'Fazendo') { DM.toast('Para reabrir, mova a demanda para Fazendo.', 1); return false; }
+    if (et === 'Finalizado') { d.etapa = et; d.concluido = '21/10'; d.tarefas.forEach(function (x) { x.f = true; }); DM.toast('Demanda finalizada. As tarefas foram marcadas como concluídas.', 1); }
+    else if (de === 'Finalizado') { d.etapa = 'Fazendo'; d.concluido = null; DM.toast('Reaberta em Fazendo. O histórico foi mantido.', 1); }
+    else { d.etapa = et; if (et === 'Aguardando retorno' && !d.setor) { d.setor = 'Setor a informar'; d.diasAg = 0; d.acompanhar = '28/10'; } DM.toast('Movida para ' + et, 1); }
+    DM.trocar({ etapaSel: et });
+    return true;
+  };
+
+  // menu "Mover para": botão do card (Mais ações ou Mover de etapa) abre a lista de etapas; Esc fecha e devolve o foco
+  var COR_ETAPA = { Cadastro: 48, Vistos: 205, Fazendo: 262, 'Aguardando retorno': 330, Finalizado: 150 };
+  function fechaMenuMover(volta) { var m = $('.mv-menu'); if (!m) return; var g = m._gatilho; m.remove(); if (volta && g && g.isConnected) g.focus(); }
+  A['mover-menu'] = function (b) {
+    var ja = $('.mv-menu'); if (ja) { var igual = ja._gatilho === b; fechaMenuMover(false); if (igual) return; }
+    var d = real(+b.dataset.id); if (!d) return;
+    var fr = $('.app'), rf = fr.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    var m = document.createElement('div'); m.className = 'mv-menu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Mover ' + d.tipo + ' ' + d.num + ' para a etapa'); m._gatilho = b;
+    m.innerHTML = '<div class="mv-t">Mover para</div>' + DM.ETAPAS.map(function (et) {
+      var atual = et === d.etapa, bloq = !atual && d.etapa === 'Finalizado' && et !== 'Fazendo';
+      return '<button type="button" role="menuitemradio" aria-checked="' + atual + '" data-et="' + et + '"' + (atual || bloq ? ' aria-disabled="true"' : '') + (bloq ? ' title="Para reabrir, mova para Fazendo"' : '') + '><i class="dot" style="--et:' + COR_ETAPA[et] + '"></i><span>' + et + '</span>' + (atual ? '<small>atual</small>' : '') + '</button>';
+    }).join('');
+    fr.appendChild(m);
+    var w = m.offsetWidth, h = m.offsetHeight;
+    var x = Math.min(Math.max(8, rb.right - rf.left - w), rf.width - w - 8), y = rb.bottom - rf.top + 6; if (y + h > rf.height - 8) y = Math.max(8, rb.top - rf.top - h - 6);
+    m.style.left = x + 'px'; m.style.top = y + 'px';
+    var itens = $$('button:not([aria-disabled="true"])', m); (itens.filter(function (i) { return i.getAttribute('aria-checked') !== 'true'; })[0] || itens[0] || m).focus();
+  };
+  document.addEventListener('click', function (e) {
+    var it = e.target.closest && e.target.closest('.mv-menu button[data-et]');
+    if (it) { e.stopPropagation(); if (it.getAttribute('aria-disabled') === 'true') return; var m = it.closest('.mv-menu'), id = +m._gatilho.dataset.id; m.remove(); DM.moverEtapa(id, it.dataset.et); return; }
+    if ($('.mv-menu') && !(e.target.closest && e.target.closest('.mv-menu, [data-act="mover-menu"]'))) fechaMenuMover(false);
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    var m = $('.mv-menu'); if (!m) return;
+    if (e.key === 'Escape') { e.stopImmediatePropagation(); fechaMenuMover(true); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); var its = $$('button:not([aria-disabled="true"])', m), i = its.indexOf(document.activeElement); its[(i + (e.key === 'ArrowDown' ? 1 : -1) + its.length) % its.length].focus(); }
+    if (e.key === 'Tab') fechaMenuMover(false);
+  }, true);
+
+  // arraste por ponteiro: mouse (depois de 6 px de movimento), toque e caneta (depois de segurar 380 ms; mexer antes disso é rolagem).
+  // O card acompanha o dedo, a coluna de destino (ou a aba da etapa, quando só uma coluna cabe) fica destacada e as bordas rolam o Quadro.
+  // Botões, caixas de marcar, texto de tarefa e links do card nunca iniciam o arraste.
+  var PD = null, semClique = 0, SKIP = 'button, input, textarea, select, a, [contenteditable], .t-txt, .prox-t, .t-ed';
+  function alvoSob(x, y) {
+    var els = document.elementsFromPoint(x, y);
+    for (var i = 0; i < els.length; i++) { var t = els[i].closest && els[i].closest('.etapas-tabs button[data-e], .coluna'); if (t && t.closest('.frame')) return t; }
+    return null;
+  }
+  function etapaDe(t) { return t ? (t.dataset.e || t.getAttribute('aria-label')) : null; }
+  function marcaAlvo(t) { $$('.coluna.alvo, .etapas-tabs button.alvo').forEach(function (x) { if (x !== t) x.classList.remove('alvo'); }); if (t) t.classList.add('alvo'); }
+  function pdLimpa() {
+    if (!PD) return; clearTimeout(PD.timer); cancelAnimationFrame(PD.raf);
+    if (PD.ghost) PD.ghost.remove(); if (PD.card) PD.card.classList.remove('arrastando', 'segurando');
+    marcaAlvo(null); var ap = $('.app'); if (ap) ap.classList.remove('arrastando-ativo'); PD = null;
+  }
+  function pdMover() {
+    if (!PD || !PD.ativo) return; var fr = $('.app').getBoundingClientRect();
+    PD.ghost.style.left = (PD.x - fr.left - PD.dx) + 'px'; PD.ghost.style.top = (PD.y - fr.top - PD.dy) + 'px';
+    marcaAlvo(alvoSob(PD.x, PD.y));
+  }
+  function pdRola() {
+    if (!PD || !PD.ativo) return;
+    var borda = 64, q = $('.quadro'), tabs = $('.etapas-tabs'), main = $('.main');
+    [q, tabs].forEach(function (s) {
+      if (!s || !s.getBoundingClientRect().width || s.scrollWidth <= s.clientWidth) return; var r = s.getBoundingClientRect();
+      if (PD.x < r.left + borda) s.scrollLeft -= Math.ceil((borda - (PD.x - r.left)) / 4); else if (PD.x > r.right - borda) s.scrollLeft += Math.ceil((borda - (r.right - PD.x)) / 4);
+    });
+    if (main) { var rm = main.getBoundingClientRect(); if (PD.y < rm.top + borda) main.scrollTop -= Math.ceil((borda - (PD.y - rm.top)) / 4); else if (PD.y > rm.bottom - borda) main.scrollTop += Math.ceil((borda - (rm.bottom - PD.y)) / 4); }
+    pdMover(); PD.raf = requestAnimationFrame(pdRola);
+  }
+  function pdComeca() {
+    if (!PD || PD.ativo) return; PD.ativo = true; clearTimeout(PD.timer);
+    var c = PD.card, r = c.getBoundingClientRect(), g = c.cloneNode(true);
+    g.classList.add('fantasma'); g.classList.remove('arrastando', 'segurando'); g.removeAttribute('data-id'); g.setAttribute('aria-hidden', 'true'); g.style.width = r.width + 'px';
+    PD.dx = PD.x0 - r.left; PD.dy = PD.y0 - r.top; $('.app').appendChild(g); PD.ghost = g;
+    c.classList.add('arrastando'); $('.app').classList.add('arrastando-ativo');
+    pdMover(); PD.raf = requestAnimationFrame(pdRola);
+  }
+  document.addEventListener('pointerdown', function (e) {
+    if (PD) pdLimpa();
+    if (e.button > 0 || E.modal || $('.mv-menu')) return;
+    var c = e.target.closest && e.target.closest('.mini-card'); if (!c || !c.closest('.quadro') || (e.target.closest && e.target.closest(SKIP))) return;
+    PD = { id: +c.dataset.id, card: c, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, pid: e.pointerId, tipo: e.pointerType, ativo: false };
+    if (e.pointerType !== 'mouse') { c.classList.add('segurando'); PD.timer = setTimeout(pdComeca, 380); }
   });
+  document.addEventListener('pointermove', function (e) {
+    if (!PD || e.pointerId !== PD.pid) return; PD.x = e.clientX; PD.y = e.clientY;
+    if (!PD.ativo) {
+      var dist = Math.hypot(PD.x - PD.x0, PD.y - PD.y0);
+      if (PD.tipo === 'mouse') { if (dist > 6) pdComeca(); }
+      else if (dist > 10) pdLimpa(); // moveu antes de segurar: é rolagem da página ou do Quadro
+      return;
+    }
+    e.preventDefault(); pdMover();
+  });
+  function pdFim(e, cancelado) {
+    if (!PD || e.pointerId !== PD.pid) return;
+    var foi = PD.ativo, id = PD.id, et = !cancelado && foi ? etapaDe(alvoSob(e.clientX, e.clientY)) : null;
+    pdLimpa(); if (foi) { semClique = Date.now(); if (et) DM.moverEtapa(id, et); }
+  }
+  document.addEventListener('pointerup', function (e) { pdFim(e, false); });
+  document.addEventListener('pointercancel', function (e) { pdFim(e, true); });
+  document.addEventListener('touchmove', function (e) { if (PD && PD.ativo) e.preventDefault(); }, { passive: false });
+  document.addEventListener('contextmenu', function (e) { if (PD) e.preventDefault(); });
+  document.addEventListener('click', function (e) { if (Date.now() - semClique < 120) { e.stopPropagation(); e.preventDefault(); semClique = 0; } }, true);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && PD && PD.ativo) { e.stopImmediatePropagation(); pdLimpa(); } }, true);
+  // atalho N para nova anotação
   document.addEventListener('keydown', function (e) {
     var t = e.target, digitando = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
     if (!digitando && !E.modal && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'n') { e.preventDefault(); abrir({ t: 'nota', key: 'nota', v: E.rascunho.nota || {}, rec: !!E.rascunho.nota }); }

@@ -324,3 +324,28 @@
 .app[data-dir="d"] .ag-d .ag-sig { flex: none; width: 22px; height: 22px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font: 700 10px/1 var(--font-n); font-style: normal; letter-spacing: -.02em; background: color-mix(in srgb, var(--ag-base) 70%, var(--ag-escura) 30%); color: var(--ag-sig-tx); }
 .app[data-dir="d"] .ag-d.venc .ag-sig { color: var(--ag-sig-venc); }
 .app[data-dir="d"][data-dev="toque"] button.ag-d { min-height: 44px; }
+
+/* ---------- Quadro: largura das colunas, rolagem dentro do Quadro, filtros sem corte, arraste e menu "Mover para" ---------- */
+/* a partir de 900px as etapas têm largura mínima legível e o Quadro rola na horizontal sozinho, sem alargar a página nem a barra de ferramentas */
+@container tela (min-width: 900px) {
+  .app[data-dir="d"] .quadro { grid-auto-columns: minmax(300px, 1fr); gap: 14px; padding: 4px 4px 16px; max-width: 100%; scrollbar-width: thin; overscroll-behavior-x: contain; }
+}
+/* abaixo de 900px só uma etapa aparece por vez e as abas rolam na horizontal: espaço para a borda de seleção e o foco, e primeiro e último chip alcançáveis */
+@container tela (max-width: 899px) {
+  .app[data-dir="d"] .etapas-tabs { padding: 8px 10px 12px; margin-inline: -10px; scroll-padding-inline: 10px; scrollbar-width: none; }
+  .app[data-dir="d"] .etapas-tabs button { flex: none; }
+}
+.app[data-dir="d"] .mini-card { -webkit-touch-callout: none; }
+.app[data-dir="d"] .quadro .mini-card.segurando { transform: scale(.985); }
+.app[data-dir="d"] .mini-card.arrastando { opacity: .35; }
+.app[data-dir="d"] .fantasma { position: absolute; z-index: 90; margin: 0; pointer-events: none; transform: scale(1.03) rotate(1.2deg); transform-origin: 30% 20%; box-shadow: 0 0 0 2px var(--acc), 0 18px 44px rgba(10, 10, 10, .28); opacity: .96; }
+.app.arrastando-ativo, .app.arrastando-ativo * { cursor: grabbing; -webkit-user-select: none; user-select: none; }
+.app[data-dir="d"] .coluna.alvo { outline: 2px dashed var(--acc); outline-offset: -4px; background: color-mix(in srgb, var(--acc) 8%, var(--panel)); }
+.app[data-dir="d"] .etapas-tabs button.alvo { box-shadow: 0 0 0 3px var(--acc); transform: scale(1.04); }
+.app[data-dir="d"] .mv-menu { position: absolute; z-index: 80; min-width: 220px; padding: 6px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd), 0 18px 44px rgba(10, 10, 10, .22); display: grid; gap: 2px; }
+.app[data-dir="d"] .mv-menu .mv-t { padding: 8px 12px 4px; font-size: 12px; font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .mv-menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.app[data-dir="d"] .mv-menu button:hover:not([aria-disabled="true"]) { background: var(--btn-hov); }
+.app[data-dir="d"] .mv-menu button[aria-disabled="true"] { opacity: .5; cursor: default; }
+.app[data-dir="d"] .mv-menu button small { margin-left: auto; color: var(--text2); font-weight: 400; }
+.app[data-dir="d"] .mv-menu .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: hsl(var(--et) 80% 55%); }

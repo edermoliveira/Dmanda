@@ -177,7 +177,7 @@
     var acoes = '<div class="acoes">' +
       (d.etapa === 'Cadastro' ? '<button class="btn mini" data-act="javi" data-id="' + d.id + '">' + ic('eye') + 'Já vi</button>' : '') +
       '<button class="btn mini so-icone" data-act="msg" data-m="Arquivar" aria-label="Arquivar" title="Arquivar">' + ic('archive') + '</button>' +
-      '<button class="btn mini so-icone" data-act="msg" data-m="Mover de etapa" aria-label="Mover de etapa" title="Mover de etapa">' + ic('arrow-right') + '</button>' +
+      '<button class="btn mini so-icone" data-act="mover-menu" data-id="' + d.id + '" aria-haspopup="menu" aria-label="Mover de etapa" title="Mover de etapa">' + ic('arrow-right') + '</button>' +
       '<button class="btn mini" data-act="abrir" data-id="' + d.id + '" aria-label="Editar" title="Editar">' + ic('pencil') + 'Editar</button></div>';
     var verso = '<div class="face back"><div class="cab"><span class="num mono">' + esc(d.tipo) + ' ' + esc(d.num) + '</span>' + btnGirar(d, 'frente') + '</div>' + tarefas + meta + acoes + '</div>';
     return '<article class="dcard' + (at ? ' atrasada' : '') + '"' + (estado.fixo[d.id] ? ' data-fix="' + estado.fixo[d.id] + '"' : '') + ' data-id="' + d.id + '"><div class="faces">' + frente + verso + '</div></article>';
@@ -187,7 +187,7 @@
   function mini(d) {
     var fin = d.etapa === 'Finalizado';
     return '<article class="mini-card' + corCard(d) + (atrasada(d) ? ' atrasada' : '') + (fin ? ' feita' : '') + '" data-id="' + d.id + '"><div class="m-top">' + origemP(d) +
-      '<button class="mais" data-act="msg" data-m="Mais ações" aria-label="Mais ações">' + ic('ellipsis') + '</button></div>' +
+      '<button class="mais" data-act="mover-menu" data-id="' + d.id + '" aria-haspopup="menu" aria-label="Mais ações: mover de etapa" title="Mover de etapa">' + ic('ellipsis') + '</button></div>' +
       '<div class="tags">' + chipTipo(d) + '<span class="num mono">' + esc(d.num) + '</span></div>' +
       '<div class="assunto" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</div>' + descHTML(d) +
       chipsRow(d) + (d.setor ? '<div class="chips"><span class="chip neutro">' + esc(d.setor) + ' · ' + d.diasAg + ' d</span></div>' : '') + acaoCard(d) + barraProg(d) + '</article>';
@@ -251,7 +251,7 @@
     var nAt = DEMANDAS.filter(atrasada).length;
     return '<div class="toolbar"><div class="tabs" role="group" aria-label="Visão">' + V.map(function (v) {
       return '<button data-act="vis" data-v="' + v[0] + '" aria-pressed="' + (estado.vis === v[0]) + '" aria-label="' + v[1] + '">' + ic(v[2] === 'view-grid' ? 'layout-grid' : v[2]) + '<span class="tx">' + v[1] + '</span></button>';
-    }).join('') + '</div><label class="filtro">' + ic('search') + '<input id="fq" placeholder="Filtrar demandas ( / )" value="' + esc(estado.q) + '" aria-label="Filtrar demandas" autocomplete="off"></label>' +
+    }).join('') + '</div><label class="filtro">' + ic('search') + '<input id="fq" placeholder="' + (estado.dev === 'phone' || estado.dev === 'tablet-v' ? 'Filtrar demandas' : 'Filtrar demandas ( / )') + '" value="' + esc(estado.q) + '" aria-label="Filtrar demandas" autocomplete="off"></label>' +
       '<button class="btn gl" data-act="atras" aria-pressed="' + estado.soAtras + '" aria-label="Só atrasadas">' + ic('clock') + '<span class="tx">Só atrasadas' + (nAt ? ' ' + nAt : '') + '</span></button>' +
       '<button class="btn gl" data-act="msg" data-m="Filtros: prazo, origem, tipo" aria-label="Filtros">' + ic('filter') + '<span class="tx">Filtros</span></button>' +
       '<button class="btn escuro" data-act="msg" data-m="Nova demanda" aria-label="Nova demanda">' + ic('plus') + '<span class="tx">Nova demanda</span></button></div><div id="vista">' + vista() + '</div>';
