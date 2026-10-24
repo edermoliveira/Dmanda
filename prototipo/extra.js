@@ -489,12 +489,12 @@ window.DM_EXTRA = function (DM) {
   // concluir e reabrir seguem as mesmas regras dos botões "Concluir demanda" e "Reabrir demanda" (app.js).
   DM.moverEtapa = function (id, et) {
     var d = real(id); if (!d || !et || d.etapa === et) return false;
-    var de = d.etapa;
+    var de = d.etapa, msg;
     if (de === 'Finalizado' && et !== 'Fazendo') { DM.toast('Para reabrir, mova a demanda para Fazendo.', 1); return false; }
-    if (et === 'Finalizado') { d.etapa = et; d.concluido = '21/10'; d.tarefas.forEach(function (x) { x.f = true; }); DM.toast('Demanda finalizada. As tarefas foram marcadas como concluídas.', 1); }
-    else if (de === 'Finalizado') { d.etapa = 'Fazendo'; d.concluido = null; DM.toast('Reaberta em Fazendo. O histórico foi mantido.', 1); }
-    else { d.etapa = et; if (et === 'Aguardando retorno' && !d.setor) { d.setor = 'Setor a informar'; d.diasAg = 0; d.acompanhar = '28/10'; } DM.toast('Movida para ' + et, 1); }
-    DM.trocar({ etapaSel: et });
+    if (et === 'Finalizado') { d.etapa = et; d.concluido = '21/10'; d.tarefas.forEach(function (x) { x.f = true; }); msg = 'Demanda finalizada. As tarefas foram marcadas como concluídas.'; }
+    else if (de === 'Finalizado') { d.etapa = 'Fazendo'; d.concluido = null; msg = 'Reaberta em Fazendo. O histórico foi mantido.'; }
+    else { d.etapa = et; msg = 'Movida para ' + et + (et === 'Aguardando retorno' && !d.setor ? '. Informe o setor e a data de acompanhamento em Editar.' : ''); } // sem setor nem datas inventados: só o destino escolhido
+    DM.trocar({ etapaSel: et }); DM.toast(msg, 1);
     return true;
   };
 

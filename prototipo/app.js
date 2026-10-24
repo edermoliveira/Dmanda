@@ -166,7 +166,7 @@
   }
   function cardHTML(d) {
     var fin = d.etapa === 'Finalizado', at = atrasada(d);
-    var etapaChip = fin ? '<span class="chip">Finalizada</span>' : '<span class="chip neutro">' + esc(d.etapa) + (d.etapa === 'Aguardando retorno' ? ' · ' + esc(d.setor) + ' ' + d.diasAg + ' d' : '') + '</span>';
+    var etapaChip = fin ? '<span class="chip">Finalizada</span>' : '<span class="chip neutro">' + esc(d.etapa) + (d.etapa === 'Aguardando retorno' && d.setor ? ' · ' + esc(d.setor) + ' ' + d.diasAg + ' d' : '') + '</span>';
     var frente = '<div class="face front' + corCard(d) + '"><div class="cab">' + origemP(d) + btnGirar(d, 'verso') + '</div>' +
       '<div class="tags">' + chipTipo(d) + '<span class="num mono">' + esc(d.num) + '</span>' + etapaChip + '</div>' +
       '<div class="assunto fit" data-act="abrir" data-id="' + d.id + '" tabindex="0" role="link">' + esc(d.assunto) + '</div>' + descHTML(d) +

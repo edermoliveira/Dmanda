@@ -81,6 +81,15 @@ await pg.click('.mv-menu button[data-et="Fazendo"]'); await pg.waitForTimeout(30
 const r3 = JSON.parse(await estadoDe(pg, 3));
 ok(r3.etapa === 'Fazendo' && r3.concluido === null, 'reabrir pelo menu: volta para Fazendo e limpa a data de conclusão');
 
+// Aguardando retorno: o destino é respeitado e nenhum setor, prazo ou data é inventado
+{
+  const antes = await pg.evaluate(() => { const d = window.DM.DEMANDAS.find((x) => x.id === 7); return JSON.stringify({ setor: d.setor, diasAg: d.diasAg, acompanhar: d.acompanhar, prazo: d.prazo }); });
+  await pg.click('.mini-card[data-id="7"] .mais'); await pg.click('.mv-menu button[data-et="Aguardando retorno"]'); await pg.waitForTimeout(300);
+  const dep = await pg.evaluate(() => { const d = window.DM.DEMANDAS.find((x) => x.id === 7); return { etapa: d.etapa, setor: d.setor, diasAg: d.diasAg, acompanhar: d.acompanhar, prazo: d.prazo, texto: document.querySelector('.quadro').innerText, aviso: document.querySelector('#toast').textContent }; });
+  ok(dep.etapa === 'Aguardando retorno' && JSON.stringify({ setor: dep.setor, diasAg: dep.diasAg, acompanhar: dep.acompanhar, prazo: dep.prazo }) === antes && !/undefined|NaN/.test(dep.texto), 'mover para Aguardando retorno respeita o destino sem inventar setor, dias nem data de acompanhamento, e a tela não mostra "undefined"');
+  ok(/Informe o setor e a data de acompanhamento/.test(dep.aviso), 'o aviso diz que setor e acompanhamento ficam para o usuário informar (' + dep.aviso + ')');
+}
+
 // ---------- 4) arraste por mouse ----------
 await abrir(pg, 'tema=claro&dev=desktop&tela=demandas&vis=quadro&menuAb=false&balao=nao&aviso=nao');
 const centro = async (sel) => { const b = await (await pg.$(sel)).boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2, b }; };

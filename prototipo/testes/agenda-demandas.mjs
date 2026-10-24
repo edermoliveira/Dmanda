@@ -80,6 +80,22 @@ for (const modo of ['claro', 'escuro']) {
   await pg.keyboard.press('Escape');
 }
 
+// várias demandas comuns no mesmo dia + um acompanhamento verdadeiro: prazo e acompanhamento nunca se confundem
+for (const modo of ['claro', 'escuro']) {
+  await abrir('tema=' + modo + '&dev=desktop&tela=agenda&ag=semana&balao=nao&aviso=nao');
+  await pg.evaluate(() => { const d = window.DM.DEMANDAS.find((x) => x.id === 2); [97, 98, 99].forEach((id) => window.DM.DEMANDAS.push(Object.assign({}, d, { id, assunto: 'Cópia ' + id, tarefas: [] }))); window.DM.trocar({}); });
+  await pg.waitForTimeout(300);
+  const dia = await pg.evaluate(() => [...document.querySelectorAll('.ag-col')].map((c) => ({ dia: c.querySelector('.ag-h b').textContent, itens: [...c.querySelectorAll('.ag-d')].map((b) => ({ id: +b.dataset.id, acomp: b.classList.contains('acomp'), nome: b.getAttribute('aria-label') })) })));
+  const d21 = dia.find((x) => x.dia === '21').itens, d24 = dia.find((x) => x.dia === '24').itens;
+  ok(d21.length === 4 && d21.every((i) => !i.acomp && /prazo 21\/10$/.test(i.nome) && !/acompanhamento/.test(i.nome)), modo + ', dia 21: ' + d21.length + ' demandas comuns, todas como prazo (nenhuma virou acompanhamento: ' + d21.map((i) => i.acomp).join(',') + ')');
+  ok(d24.length === 1 && d24[0].acomp && d24[0].id === 3 && /data de acompanhamento$/.test(d24[0].nome), modo + ', dia 24: um acompanhamento verdadeiro (demanda 3), nomeado como data de acompanhamento');
+  const abriu = [];
+  for (const id of [2, 97, 98, 99]) { await pg.click('.ag-col:nth-child(4) .ag-d[data-id="' + id + '"]'); await pg.waitForTimeout(220); abriu.push(await pg.evaluate(() => window.DM.estado.modal && window.DM.estado.modal.id)); await pg.keyboard.press('Escape'); await pg.waitForTimeout(120); if (await pg.evaluate(() => !!window.DM.estado.modal)) { const f = await pg.$('[data-act="fechar-modal"]'); if (f) await f.click(); } }
+  await pg.click('.ag-col:nth-child(7) .ag-d.acomp'); await pg.waitForTimeout(220); abriu.push(await pg.evaluate(() => window.DM.estado.modal && window.DM.estado.modal.id)); await pg.keyboard.press('Escape');
+  ok(abriu.join() === '2,97,98,99,3', modo + ', cada item abre a sua demanda pelo identificador interno (' + abriu.join(', ') + ')');
+  await pg.evaluate(() => { [97, 98, 99].forEach((id) => { const i = window.DM.DEMANDAS.findIndex((x) => x.id === id); if (i > -1) window.DM.DEMANDAS.splice(i, 1); }); });
+}
+
 // eventos continuam diferentes: horário, cor azul e sem círculo
 await abrir('tema=claro&dev=desktop&tela=agenda&ag=semana&balao=nao&aviso=nao');
 const ev = await pg.evaluate(() => [...document.querySelectorAll('.ag-e')].map((e) => ({ hora: !!e.querySelector('b'), sig: !!e.querySelector('.ag-sig'), act: e.dataset.act })));
