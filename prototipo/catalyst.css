@@ -307,3 +307,20 @@
   .app[data-dir="d"] .main { padding-inline: 14px; }
   .app[data-dir="d"] .pagehead h1 { font-size: 30px; }
 }
+
+/* ---------- Agenda: itens de demanda (botão inteiro, círculo da sigla do tipo à direita) ---------- */
+/* cor pela classificação da demanda (neutro, azul, verde, amarelo); vermelho para atraso. O círculo parte da cor do item escurecida 30% (marca d'água) */
+.app[data-dir="d"][data-tema="claro"] { --ag-escura: #0A0A0A; --ag-sig-tx: #0A0A0A; --ag-sig-venc: #FCFCFC; }
+.app[data-dir="d"][data-tema="escuro"] { --ag-escura: #0A0A0A; --ag-sig-tx: #FCFCFC; --ag-sig-venc: #FCFCFC; }
+.app[data-dir="d"] button.ag-d { --ag-base: var(--card); display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-height: 34px; border: 0; padding: 4px 6px 4px 8px; border-radius: 10px; text-align: left; cursor: pointer; font: inherit; font-family: var(--font-n); font-size: 12px; color: var(--text); background: var(--ag-base); box-shadow: 0 0 0 1px var(--card-brd); transition: filter .15s var(--rapido); }
+.app[data-dir="d"] button.ag-d:hover { filter: brightness(.97); }
+.app[data-dir="d"][data-tema="escuro"] button.ag-d:hover { filter: brightness(1.15); }
+.app[data-dir="d"] button.ag-d.cat-azul { --ag-base: var(--cat-azul); box-shadow: none; }
+.app[data-dir="d"] button.ag-d.cat-verde { --ag-base: var(--cat-verde); box-shadow: none; }
+.app[data-dir="d"] button.ag-d.cat-amar { --ag-base: var(--cat-amar); box-shadow: none; }
+.app[data-dir="d"] button.ag-d.venc { --ag-base: var(--z-venc-bg); color: var(--ag-sig-venc); font-weight: 700; box-shadow: none; }
+.app[data-dir="d"] button.ag-d.acomp { background: transparent; box-shadow: 0 0 0 1px var(--text2); font-family: var(--font); }
+.app[data-dir="d"] .ag-d .ag-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app[data-dir="d"] .ag-d .ag-sig { flex: none; width: 22px; height: 22px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font: 700 10px/1 var(--font-n); font-style: normal; letter-spacing: -.02em; background: color-mix(in srgb, var(--ag-base) 70%, var(--ag-escura) 30%); color: var(--ag-sig-tx); }
+.app[data-dir="d"] .ag-d.venc .ag-sig { color: var(--ag-sig-venc); }
+.app[data-dir="d"][data-dev="toque"] button.ag-d { min-height: 44px; }

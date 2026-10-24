@@ -261,25 +261,40 @@
   var DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   var EVENTOS = [[21, '14:00 a 15:00', 'Reunião com a Prefeita', 'reuniao'], [22, '15:00 a 16:00', 'Audiência pública na Câmara', 'compromisso'], [23, '10:00 a 11:00', 'Reunião de equipe', 'reuniao'], [27, '09:00 a 10:30', 'Visita à Secretaria de Saúde', 'compromisso'], [28, 'dia inteiro', 'Dia do Servidor Público', 'feriado', 'Ponto facultativo']];
   function demDia(dia) { return DEMANDAS.filter(function (d) { if (!d.prazo) return false; var m = d.prazo.split('/'); return +m[0] === dia && m[1] === '10' && d.etapa !== 'Finalizado'; }); }
-  function chipD(d) { return '<div class="ag-d' + (atrasada(d) ? ' venc' : '') + '" title="' + esc(d.assunto) + '">' + esc(d.num) + '</div>'; }
+  // sigla do tipo no círculo dos itens de demanda da Agenda. Vem só dos dados cadastrados (tipo, subtipo e órgão de origem), nunca do título nem do número.
+  // Protocolo tem sigla própria (PT) para não se confundir com Processo (P). MP só aparece quando o ofício está cadastrado como do Ministério Público.
+  var SIGLA_TIPO = { Processo: 'P', Protocolo: 'PT', Memorando: 'M', 'Ofício': 'O', 'Pedido de informação': 'I', Portaria: 'PO', 'Projeto de lei': 'PL' };
+  function siglaTipo(d) {
+    if (d.tipo === 'Ofício' && (d.subtipo === 'Ministério Público' || d.origem === 'Ministério Público')) return 'MP';
+    return SIGLA_TIPO[d.tipo] || String(d.tipo || '?').charAt(0).toUpperCase();
+  }
+  // item de demanda da Agenda: botão inteiro que abre a demanda pelo identificador interno (números de documentos podem se repetir);
+  // cor pela classificação (neutro, azul, verde, amarelo) e vermelho para atraso; o círculo da sigla é decorativo e o nome acessível traz tipo, número e assunto
+  function chipD(d, acomp) {
+    var at = atrasada(d), cor = at ? ' venc' : (corCard(d) || ' neutra');
+    var estado_ = acomp ? 'data de acompanhamento' : at ? 'prazo vencido' : 'prazo ' + d.prazo;
+    var nome = d.tipo + ' ' + d.num + ', ' + d.assunto + ', ' + estado_;
+    return '<button class="ag-d' + cor + (acomp ? ' acomp' : '') + '" data-act="abrir" data-id="' + d.id + '" title="' + esc(nome) + '" aria-label="' + esc(nome) + '"><span class="ag-n">' + (acomp ? 'acompanhar ' + esc(d.num.split('/')[0]) : esc(d.num)) + '</span><i class="ag-sig" aria-hidden="true">' + siglaTipo(d) + '</i></button>';
+  }
   function chipE(x) { return '<button class="ag-e' + (x[3] === 'feriado' ? ' dia' : '') + '" data-act="ed-ev" data-k="' + EVENTOS.indexOf(x) + '" title="Abrir e editar"><b class="mono">' + (x[3] === 'feriado' ? '' : x[1].split(' ')[0]) + '</b> ' + esc(x[2]) + '</button>'; }
   function evDoDia(dia) { return EVENTOS.filter(function (x) { return x[0] === dia; }).sort(function (a, b) { return a[1] < b[1] ? -1 : 1; }); }
   // "+" de cada dia: aparece ao passar o mouse (no toque, fica sempre à vista) e abre o cadastro já com a data
   function maisDia(dia) { return '<button class="dia-mais" data-act="ev-dia" data-dia="' + dia + '" aria-label="Novo evento em ' + dia + ' de outubro" title="Novo evento neste dia">' + ic('plus') + '</button>'; }
   function agenda() {
     var tabs = '<div class="filtros"><div class="tabs" role="group" aria-label="Visão da agenda">' + [['hoje', 'Hoje'], ['semana', 'Semana'], ['mes', 'Mês']].map(function (t) { return '<button data-act="ag" data-v="' + t[0] + '" aria-pressed="' + (estado.ag === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</div>' +
-      '<span class="chip neutro">' + (estado.ag === 'mes' ? 'outubro de 2026' : estado.ag === 'hoje' ? 'quarta-feira, 21' : '18 a 24 de outubro') + '</span><span class="chip amar">Demandas</span><span class="chip azul">Eventos</span></div>';
+      '<span class="chip neutro">' + (estado.ag === 'mes' ? 'outubro de 2026' : estado.ag === 'hoje' ? 'quarta-feira, 21' : '18 a 24 de outubro') + '</span><span class="chip neutro">Demandas</span><span class="chip azul">Eventos</span></div>';
     if (estado.ag === 'hoje') {
       return tabs + '<section class="sec"><h3>Compromissos de hoje <button class="btn mini" data-act="ev-dia" data-dia="21">' + ic('plus') + 'Novo evento hoje</button></h3>' + evDoDia(21).map(function (x) { return '<button class="ag-e grande" data-act="ed-ev" data-k="' + EVENTOS.indexOf(x) + '"><b class="mono">' + x[1] + '</b> ' + esc(x[2]) + '</button>'; }).join('') + '</section>' +
-        '<section class="sec"><h3>Vencem hoje</h3><div class="vazio-c">Nenhuma demanda vence hoje</div></section><section class="sec"><h3>Atrasadas</h3>' + chipD(DEMANDAS[0]) + '</section>';
+        '<section class="sec"><h3>Vencem hoje</h3>' + (demDia(21).filter(function (d) { return !atrasada(d); }).map(function (d) { return chipD(d); }).join('') || '<div class="vazio-c">Nenhuma demanda vence hoje</div>') + '</section>' +
+        '<section class="sec"><h3>Atrasadas</h3>' + (DEMANDAS.filter(atrasada).map(function (d) { return chipD(d); }).join('') || '<div class="vazio-c">Nenhuma demanda atrasada</div>') + '</section>';
     }
     if (estado.ag === 'semana') {
       var cols = '';
       for (var i = 0; i < 7; i++) {
         var dia = 18 + i, fim = i === 0 || i === 6;
         cols += '<div class="ag-col' + (fim ? ' fim' : '') + (dia === 21 ? ' hoje' : '') + '"><div class="ag-h"><span>' + DIAS[i] + '</span><b class="mono">' + dia + '</b>' + maisDia(dia) + '</div>' +
-          '<div class="ag-ev">' + evDoDia(dia).map(chipE).join('') + '</div><div class="ag-dm">' + demDia(dia).map(chipD).join('') +
-          (dia === 24 ? '<div class="ag-d acomp" title="Data de acompanhamento">acompanhar 311</div>' : '') + '</div></div>';
+          '<div class="ag-ev">' + evDoDia(dia).map(chipE).join('') + '</div><div class="ag-dm">' + demDia(dia).map(function (d) { return chipD(d); }).join('') +
+          DEMANDAS.filter(function (d) { return d.acompanhar === dia + '/10'; }).map(function (d) { return chipD(d, true); }).join('') + '</div></div>';
       }
       return tabs + '<div class="ag-sem">' + cols + '</div>';
     }
