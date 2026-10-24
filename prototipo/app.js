@@ -345,9 +345,9 @@
   function ajustar() {
     $$('.face.front').forEach(function (f) {
       $$('.oculto', f).forEach(function (x) { x.classList.remove('oculto'); });
-      // a descrição ocupa até 3 linhas conforme a largura; se faltar altura, perde linhas antes de qualquer outra coisa
+      // a descrição ocupa até 3 linhas conforme a largura (2 na apresentação compacta de 640 a 899 px, com cards em duas colunas); se faltar altura, perde linhas antes de qualquer outra coisa
       var ds = f.querySelector('.desc');
-      if (ds) { var n = 3; ds.style.webkitLineClamp = '3'; while (n > 1 && f.scrollHeight > f.clientHeight + 1) { n--; ds.style.webkitLineClamp = String(n); } if (f.scrollHeight > f.clientHeight + 1) ds.classList.add('oculto'); }
+      if (ds) { var cw = document.querySelector('.frame').clientWidth, n = cw >= 640 && cw < 900 ? 2 : 3; ds.style.webkitLineClamp = String(n); while (n > 1 && f.scrollHeight > f.clientHeight + 1) { n--; ds.style.webkitLineClamp = String(n); } if (f.scrollHeight > f.clientHeight + 1) ds.classList.add('oculto'); }
       ['.tempo', '.selo', '.prog', '.tags .chip'].forEach(function (q) { var x = f.querySelector(q); if (x && f.scrollHeight > f.clientHeight + 1) x.classList.add('oculto'); });
     });
     $$('.postit').forEach(function (p) { var t = p.querySelector('.p-tags'); if (t) t.classList.remove('oculto'); var x = p.querySelector('.fit'); if (t && x && x.clientHeight < 40) t.classList.add('oculto'); });

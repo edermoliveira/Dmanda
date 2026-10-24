@@ -287,6 +287,11 @@
   /* botões só com ícone (rótulo oculto até 899px pelo estilo.css, largura fixa de 44px): sem o padding lateral do Catalyst o ícone cabe na caixa */
   .app[data-dir="d"] .toolbar .btn.gl, .app[data-dir="d"] .toolbar .btn.escuro { padding: 0; }
 }
+/* iPad vertical (container de 640 a 899px): cards de demandas em duas colunas, em vez de esticados na largura toda. Abaixo de 640px os cards ficariam com menos de 280px e continuam em uma coluna (celular incluído).
+   Na apresentação compacta a descrição (só ela) fica em 2 linhas, definido em ajustar() no app.js, que também a oculta se faltar altura; a completa continua nos detalhes da demanda. */
+@container tela (min-width: 640px) and (max-width: 899px) {
+  .app[data-dir="d"] .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+}
 @container tela (max-width: 520px) {
   .app[data-dir="d"] { --blur: 18px; }
   /* barra de ferramentas de Demandas: abas na largura toda, depois filtro e três botões redondos */
