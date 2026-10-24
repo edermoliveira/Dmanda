@@ -15,9 +15,9 @@ window.DM_EXTRA = function (DM) {
   var CONJUNTOS = [['Manrope, Inter e IBM Plex Mono', 4, 0, 0], ['Sora, Inter e IBM Plex Mono', 0, 0, 0], ['Jakarta e JetBrains Mono', 1, 2, 1], ['DM Serif, DM Sans e DM Mono', 2, 1, 2], ['Fraunces, Inter e DM Mono', 3, 0, 2], ['Manrope, Inter e JetBrains Mono', 4, 0, 1]];
 
   // ---------- temas definitivos: cada um guarda suas próprias escolhas ----------
-  var KEYS = ['pal', 'fT', 'fS', 'fM', 'iconeEstilo', 'lib', 'fs', 'ico', 'cardh', 'anim'];
+  var KEYS = ['pal', 'fT', 'fS', 'fM', 'iconeEstilo', 'lib', 'fs', 'ico', 'cardh'];
   var PADRAO = { fT: 8, fS: 0, fM: 0, iconeEstilo: 'fino' };
-  function base() { return Object.assign({ pal: null, fT: 0, fS: 0, fM: 0, iconeEstilo: '', lib: 'iconoir', fs: 16, ico: 20, cardh: 340, anim: false }, PADRAO); }
+  function base() { return Object.assign({ pal: null, fT: 0, fS: 0, fM: 0, iconeEstilo: '', lib: 'iconoir', fs: 16, ico: 20, cardh: 340 }, PADRAO); }
   function snap() { var o = {}; KEYS.forEach(function (k) { o[k] = E[k]; }); return o; }
   E.perfilV = 'semana'; E.cidade = 'Taquara/RS'; E.sugestaoPrazo = 30; E.bH = null; E.bE = null; E.alertaParado = 7; E.baloes = 3; E.reduzir = false; E.modal = null; E.rascunho = {}; E.energia = 2; E.col = true; E.balaoAb = false; E.balaoVisto = false;
   E.nome = 'Secretário'; E.cargo = 'Secretário de Administração'; E.orgao = 'Prefeitura de Taquara/RS'; E.expIni = '08:00'; E.expFim = '17:00'; E.lapso = 7; E.ultimo = 8; E.avisos = []; E.perfilNovo = false;
@@ -33,15 +33,106 @@ window.DM_EXTRA = function (DM) {
     if (E.tela === 'perfil') { E.tela = 'inicio'; E.perfilAb = true; }
     if (h.get('balao') !== 'nao') setTimeout(function () { if (E.tela === 'inicio' && !E.balaoVisto && !E.modal) { E.balaoVisto = true; E.balaoAb = true; DM.trocar({}); } }, 2500);
     else E.balaoVisto = true;
+    DM.carregaFundo();
   };
   DM.estiloApp = function () { return DM.estiloBase() + ';--font:' + FS[E.fS][1] + ';--font-h:' + FT[E.fT][1] + ';--font-n:' + FM[E.fM][1] + ';--font-ui:' + FT[E.fT][1]; };
   DM.pos = function () {
     $$('#g-tema .seg').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.tema === E.tema); });
+    DM.aplicarFundo();
     var app = $('.app'); if (app) { app.dataset.col = 'true'; app.dataset.aberto = E.menuAb; app.dataset.reduzir = E.reduzir; }
     if (E.modal) guardar(E.modal);
     if (E.perfilNovo) { E.perfilNovo = false; var x = $('.dr .icbtn-s'); if (x) x.focus(); }
     if (E.modal && E.modal.foco) { E.modal.foco = false; var el = $('.modal input:not([type=checkbox]), .modal textarea'); if (el) el.focus(); }
   };
+
+  // ---------- Fundo: padrão do tema, cor ou imagem (preferência só deste navegador; sem backend nem sincronização) ----------
+  // Preferências pequenas (modo, cor de cada modo, desfoque) ficam no localStorage; o arquivo da imagem fica no IndexedDB, nunca em texto nem no Git.
+  var FUNDO_CHAVE = 'dmanda:fundo', IDB_NOME = 'dmanda', IDB_LOJA = 'arquivos', IMG_MAX = 15 * 1024 * 1024, fundoURL = null;
+  E.fundo = { modo: 'padrao', cor: { claro: null, escuro: null }, desfoque: 8, imagem: false }; E.fundoMsg = '';
+  (function () {
+    try {
+      var j = JSON.parse(localStorage.getItem(FUNDO_CHAVE) || 'null'); if (!j || typeof j !== 'object') return; var hex = /^#[0-9a-f]{6}$/i;
+      if (['padrao', 'cor', 'imagem'].indexOf(j.modo) > -1) E.fundo.modo = j.modo;
+      if (j.cor && hex.test(j.cor.claro)) E.fundo.cor.claro = j.cor.claro; if (j.cor && hex.test(j.cor.escuro)) E.fundo.cor.escuro = j.cor.escuro;
+      if (+j.desfoque >= 0 && +j.desfoque <= 24) E.fundo.desfoque = Math.round(+j.desfoque);
+      E.fundo.imagem = j.imagem === true;
+    } catch (x) { /* preferência ilegível: começa no padrão */ }
+  })();
+  function guardaFundo() { try { localStorage.setItem(FUNDO_CHAVE, JSON.stringify(E.fundo)); return true; } catch (x) { E.fundoMsg = 'Não foi possível guardar a preferência de fundo neste navegador. Ela vale só até recarregar a página.'; return false; } }
+  function idb(fn) {
+    return new Promise(function (ok, no) {
+      var r; try { r = indexedDB.open(IDB_NOME, 1); } catch (x) { return no(x); }
+      r.onupgradeneeded = function () { r.result.createObjectStore(IDB_LOJA); };
+      r.onerror = function () { no(r.error || new Error('indexedDB')); };
+      r.onsuccess = function () {
+        var db = r.result;
+        try { var t = db.transaction(IDB_LOJA, 'readwrite'), q = fn(t.objectStore(IDB_LOJA)); t.oncomplete = function () { db.close(); ok(q && q.result); }; t.onerror = t.onabort = function () { db.close(); no(t.error || new Error('transação')); }; }
+        catch (x) { db.close(); no(x); }
+      };
+    });
+  }
+  function trocaURL(blob) { if (fundoURL) URL.revokeObjectURL(fundoURL); fundoURL = blob ? URL.createObjectURL(blob) : null; }
+  function aplicarFundo() {
+    var app = $('.app'); if (!app) return; var f = E.fundo, cor = f.cor[E.tema];
+    app.dataset.fundo = f.modo === 'imagem' && fundoURL ? 'imagem' : f.modo === 'cor' && cor ? 'cor' : 'padrao';
+    app.style.setProperty('--fundo-desfoque', f.desfoque + 'px');
+    if (cor) app.style.setProperty('--fundo-cor', cor); else app.style.removeProperty('--fundo-cor');
+    if (fundoURL) app.style.setProperty('--fundo-img', 'url("' + fundoURL + '")'); else app.style.removeProperty('--fundo-img');
+    var bg = $('.bg', app); if (bg && !bg.firstChild) bg.innerHTML = '<i class="bg-img"></i>';
+    var ci = $('[data-fundo-cor]'); if (ci && !cor) ci.value = hexAtual(); // sem cor escolhida, o seletor começa na cor do fundo padrão do modo
+  }
+  DM.aplicarFundo = aplicarFundo;
+  function mensagemFundo(t) { E.fundoMsg = t; var p = $('#fundo-msg'); if (p) p.textContent = t; }
+  DM.carregaFundo = function () { // ao abrir: traz a imagem guardada, se houver
+    if (!E.fundo.imagem) return;
+    idb(function (s) { return s.get('fundo'); }).then(function (blob) {
+      if (blob) { trocaURL(blob); aplicarFundo(); if (E.tela === 'config') DM.trocar({}); }
+      else { E.fundo.imagem = false; guardaFundo(); mensagemFundo('A imagem de fundo guardada não foi encontrada. O fundo voltou ao padrão do tema.'); aplicarFundo(); }
+    }).catch(function () { mensagemFundo('Não foi possível ler a imagem de fundo guardada neste navegador. O fundo está no padrão do tema.'); aplicarFundo(); });
+  };
+  function hexAtual() { var h = (getComputedStyle($('.app')).getPropertyValue('--bgbase') || '').trim(); return /^#[0-9a-f]{6}$/i.test(h) ? h : '#F2F2F7'; }
+  DM.cfgFundo = function () {
+    var f = E.fundo, tem = !!fundoURL, cor = f.cor[E.tema] || '';
+    return '<section class="painel" id="cfg-fundo"><h3>Fundo</h3>' +
+      '<div class="seg-p" role="group" aria-label="Tipo de fundo">' + [['padrao', 'Padrão do tema'], ['cor', 'Cor'], ['imagem', 'Imagem']].map(function (x) { return '<button data-act="fundo-modo" data-v="' + x[0] + '" aria-pressed="' + (f.modo === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>' +
+      (f.modo === 'padrao' ? '<p class="data">Fundo neutro do Catalyst, conforme o modo claro ou escuro.</p>' : '') +
+      (f.modo === 'cor' ? '<label class="fld fundo-cor"><span>Cor do fundo no modo ' + E.tema + ' (cada modo guarda a sua)</span><input type="color" data-fundo-cor value="' + cor + '" aria-label="Cor do fundo no modo ' + E.tema + '"></label>' +
+        '<p class="data">Só o fundo muda. Cards, classificações, controles e textos continuam como estão.</p>' : '') +
+      (f.modo === 'imagem' ? '<div class="acoes"><button class="btn mini" data-act="fundo-escolher">' + (tem ? 'Substituir imagem' : 'Escolher imagem') + '</button>' + (tem ? '<button class="btn mini" data-act="fundo-remover">Remover imagem</button>' : '') + '</div>' +
+        '<input type="file" accept="image/*" data-fundo-arquivo hidden aria-label="Arquivo de imagem do fundo">' +
+        (tem ? '<label class="rng">Desfoque <b class="mono" id="fundo-desf-v">' + f.desfoque + ' px</b><input type="range" data-fundo-desf min="0" max="24" step="1" value="' + f.desfoque + '" aria-label="Desfoque da imagem de fundo"></label>' +
+          '<div class="fundo-previa" aria-hidden="true"><i style="background-image:url(\'' + fundoURL + '\');filter:blur(' + Math.round(f.desfoque / 2) + 'px)"></i></div>' : '<p class="data">Escolha uma imagem do seu computador. Ela fica só neste navegador e não é enviada a lugar nenhum.</p>') : '') +
+      '<p class="data" id="fundo-msg" role="status" aria-live="polite">' + esc(E.fundoMsg) + '</p></section>';
+  };
+  DM.acoes['fundo-modo'] = function (b) { E.fundo.modo = b.dataset.v; E.fundoMsg = ''; guardaFundo(); DM.trocar({}); };
+  DM.acoes['fundo-escolher'] = function () { var i = $('[data-fundo-arquivo]'); if (i) i.click(); };
+  DM.acoes['fundo-remover'] = function () {
+    idb(function (s) { return s.delete('fundo'); }).then(function () { trocaURL(null); E.fundo.imagem = false; E.fundo.modo = 'padrao'; E.fundoMsg = 'Imagem removida. O fundo voltou ao padrão do tema.'; guardaFundo(); DM.trocar({}); })
+      .catch(function () { mensagemFundo('Não foi possível remover a imagem guardada. Tente de novo.'); });
+  };
+  document.addEventListener('change', function (e) {
+    var t = e.target; if (!t.hasAttribute || !t.hasAttribute('data-fundo-arquivo')) return;
+    var arq = t.files && t.files[0]; t.value = ''; if (!arq) return;
+    if (!/^image\//.test(arq.type)) return mensagemFundo('Escolha um arquivo de imagem (JPG, PNG, WebP ou GIF).');
+    if (arq.size > IMG_MAX) return mensagemFundo('A imagem tem ' + (arq.size / 1048576).toFixed(1).replace('.', ',') + ' MB. O limite é 15 MB.');
+    var teste = new Image(), url = URL.createObjectURL(arq);
+    teste.onload = function () {
+      URL.revokeObjectURL(url);
+      idb(function (s) { return s.put(arq, 'fundo'); }).then(function () { trocaURL(arq); E.fundo.imagem = true; E.fundo.modo = 'imagem'; E.fundoMsg = 'Imagem aplicada.'; guardaFundo(); DM.trocar({}); })
+        .catch(function () { mensagemFundo('Não foi possível guardar a imagem neste navegador (o armazenamento pode estar bloqueado ou cheio). O fundo não foi alterado.'); });
+    };
+    teste.onerror = function () { URL.revokeObjectURL(url); mensagemFundo('Não foi possível abrir esse arquivo como imagem. Tente outro.'); };
+    teste.src = url;
+  });
+  document.addEventListener('input', function (e) {
+    var t = e.target; if (!t.hasAttribute) return;
+    if (t.hasAttribute('data-fundo-cor') && /^#[0-9a-f]{6}$/i.test(t.value)) { E.fundo.cor[E.tema] = t.value; guardaFundo(); aplicarFundo(); }
+    else if (t.hasAttribute('data-fundo-desf')) {
+      E.fundo.desfoque = Math.max(0, Math.min(24, Math.round(+t.value))); guardaFundo(); aplicarFundo();
+      var v = $('#fundo-desf-v'); if (v) v.textContent = E.fundo.desfoque + ' px';
+      var pv = $('.fundo-previa i'); if (pv) pv.style.filter = 'blur(' + Math.round(E.fundo.desfoque / 2) + 'px)';
+    }
+  });
 
   // ---------- emojis: humor em PNG e energia em SVG colorido, do usuário (sem reserva: se faltar, o erro aparece) ----------
   var EMO_TXT = ['🥴', '🫠', '🙂', '😄', '🥰'], ROT_H = ['Muito mal', 'Mal', 'Neutro', 'Bem', 'Muito bem'], ROT_E = ['Muito baixa', 'Baixa', 'Média', 'Alta', 'Muito alta'];
@@ -188,7 +279,7 @@ window.DM_EXTRA = function (DM) {
       '<section class="painel"><h3>Cores</h3><div class="pal">' + P.map(function (p, i) {
         return '<button class="sw" data-act="pal" data-i="' + i + '" aria-pressed="' + (E.pal === i || (E.pal === null && i === 0)) + '" aria-label="Paleta ' + p[0] + '" style="--sw1:' + DM.hsl(p[1], 72 * p[2], 48) + ';--sw2:' + DM.hsl(p[1] + 60, 70 * p[2], 80) + '"><i></i><span>' + p[0] + '</span></button>';
       }).join('') + '</div><div class="acoes"><button class="btn mini" data-act="surpreenda">' + ic('sparkles') + 'Surpreenda-me</button>' +
-      '<button class="btn mini" data-act="anim" aria-pressed="' + E.anim + '">Fundo animado: ' + (E.anim ? 'ligado' : 'desligado') + '</button></div></section>' +
+      '</div></section>' + DM.cfgFundo() +
       '<section class="painel"><h3>Fontes</h3><p class="data">Principal nos títulos, secundária nos subtítulos e textos, mono nos detalhes (números de processo, datas, contadores).</p>' +
       '<div class="acoes">' + CONJUNTOS.map(function (c, i) { return '<button class="btn mini" data-act="conjunto" data-i="' + i + '" aria-pressed="' + (E.fT === c[1] && E.fS === c[2] && E.fM === c[3]) + '">' + c[0] + '</button>'; }).join('') + '</div>' +
       sel('fT', FT, 'Principal (títulos)', FT[E.fT][1]) + sel('fS', FS, 'Secundária (subtítulos e textos)', FS[E.fS][1]) + sel('fM', FM, 'Mono (detalhes)', FM[E.fM][1]) + '</section>' +

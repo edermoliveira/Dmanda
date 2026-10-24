@@ -289,10 +289,7 @@ h1, h2, h3, h4 { font-family: var(--font-h); margin: 0; line-height: 1.2; }
 .rng { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin-bottom: 14px; font-weight: 600; font-size: 14px; }
 .rng input { grid-column: 1 / -1; width: 100%; min-height: 32px; accent-color: var(--acc); }
 
-/* ---------- fundo animado opcional ---------- */
-.app[data-anim="true"] .bg { background-size: 160% 160%, 160% 160%, 160% 160%; animation: flutua 18s ease-in-out infinite alternate; }
-@keyframes flutua { from { background-position: 0% 0%, 100% 0%, 50% 100%; } to { background-position: 40% 30%, 60% 40%, 20% 70%; } }
-@media (prefers-reduced-motion: reduce) { .app[data-anim="true"] .bg { animation: none; } .ag-cel { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .ag-cel { transition: none; } }
 
 /* agenda do mês e da semana em telas estreitas: sem rolagem lateral no mês */
 @container tela (max-width: 899px) {

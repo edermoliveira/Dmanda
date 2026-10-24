@@ -325,6 +325,19 @@
 .app[data-dir="d"] .ag-d.venc .ag-sig { color: var(--ag-sig-venc); }
 .app[data-dir="d"][data-dev="toque"] button.ag-d { min-height: 44px; }
 
+/* ---------- Fundo: padrão do tema, cor ou imagem (só a camada .bg; cards, janelas e controles ficam nítidos e clicáveis) ---------- */
+.app[data-dir="d"] .bg { pointer-events: none; }
+.app[data-dir="d"] .bg .bg-img { display: none; }
+.app[data-dir="d"][data-fundo="cor"] .bg { display: block; background: var(--fundo-cor); }
+.app[data-dir="d"][data-fundo="imagem"] .bg { display: block; overflow: hidden; background: var(--bgbase); }
+/* a imagem passa da caixa o dobro do desfoque: nenhuma borda vazia aparece nas margens */
+.app[data-dir="d"][data-fundo="imagem"] .bg .bg-img { display: block; position: absolute; inset: calc(var(--fundo-desfoque, 0px) * -2 - 4px); background: var(--fundo-img) center / cover no-repeat; filter: blur(var(--fundo-desfoque, 0px)); }
+/* véu leve na cor do modo, para os títulos sobre a imagem continuarem legíveis */
+.app[data-dir="d"][data-fundo="imagem"] .bg::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--bgbase) 50%, transparent); }
+.app[data-dir="d"] .fundo-cor input[type="color"] { width: 64px; height: 44px; padding: 2px; border: 0; border-radius: 12px; background: var(--btn-bg); cursor: pointer; }
+.app[data-dir="d"] .fundo-previa { height: 84px; border-radius: 14px; overflow: hidden; position: relative; box-shadow: 0 0 0 1px var(--card-brd); margin-top: 8px; }
+.app[data-dir="d"] .fundo-previa i { position: absolute; inset: -16px; background-size: cover; background-position: center; }
+
 /* ---------- Quadro: largura das colunas, rolagem dentro do Quadro, filtros sem corte, arraste e menu "Mover para" ---------- */
 /* a partir de 900px as etapas têm largura mínima legível e o Quadro rola na horizontal sozinho, sem alargar a página nem a barra de ferramentas */
 @container tela (min-width: 900px) {
