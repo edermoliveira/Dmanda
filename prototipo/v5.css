@@ -99,7 +99,6 @@ button.ag-mini:hover { transform: translateY(-1px); box-shadow: 0 6px 16px var(-
 /* ---------- tarefas editáveis: o círculo marca, o texto edita ---------- */
 .app .tarefas { gap: 0; }
 .t-item { display: flex; align-items: center; gap: 10px; min-height: 40px; min-width: 0; }
-.t-item > input[type="checkbox"] { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--acc); cursor: pointer; }
 .t-txt { flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; padding: 3px 6px; margin: 0 -6px; border-radius: 6px; cursor: text; overflow-wrap: anywhere; }
 .t-txt:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
 .t-txt:focus-visible { outline: 2px solid var(--foco, var(--acc)); outline-offset: 1px; }

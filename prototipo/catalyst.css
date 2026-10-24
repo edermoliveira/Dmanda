@@ -182,12 +182,18 @@
 .app[data-dir="d"] .etapas-tabs button[aria-pressed="true"], .app[data-dir="d"] .etapas-tabs button[aria-pressed="true"] .cnt { color: var(--text); }
 .app[data-dir="d"] .tema-c[aria-pressed="true"] b { color: var(--acc-text); }
 
-/* ---------- caixas de marcar: círculo do iOS (24 px visíveis, 44 px de toque, sem mexer no layout) ---------- */
-.app[data-dir="d"] input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; box-sizing: content-box; width: 24px; height: 24px; margin: -10px; padding: 10px; border: 0; border-radius: 50%; cursor: pointer;
-  background-clip: content-box; background-origin: content-box; background-color: transparent; background-image: radial-gradient(circle closest-side, var(--card) calc(100% - 2px), var(--text2) calc(100% - 2px)); background-repeat: no-repeat;
-  transition: transform .35s var(--mola), background-color .2s var(--rapido); }
-.app[data-dir="d"] input[type="checkbox"]:checked { background-color: var(--acc); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FCFCFC' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 12.5l4 4 7-8.5'/%3E%3C/svg%3E"); background-size: 100%; }
+/* ---------- caixas de marcar: círculo do iOS (22 px visíveis, 44 px de toque, sem mexer no layout) ----------
+   Um só componente para a frente e o verso dos cards, a próxima tarefa, o Quadro e as janelas. O círculo é o próprio fundo da caixa de 44 px
+   (borda transparente de 11 px + background-clip: padding-box) e o contorno é uma sombra interna vetorial: arestas alinhadas aos pixels do aparelho,
+   sem o serrilhado do degradê radial anterior (arredondado de 24 px, que caía em posições fracionárias). */
+.app[data-dir="d"] input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; box-sizing: border-box; width: 44px; height: 44px; margin: -11px; padding: 0; border: 11px solid transparent; border-radius: 50%; cursor: pointer;
+  background-color: var(--card); background-clip: padding-box; background-repeat: no-repeat; background-position: center; box-shadow: inset 0 0 0 2px var(--text2);
+  transition: transform .35s var(--mola), background-color .2s var(--rapido), box-shadow .2s var(--rapido); }
+.app[data-dir="d"] input[type="checkbox"]:hover:not(:checked) { box-shadow: inset 0 0 0 2px var(--acc); }
+.app[data-dir="d"] input[type="checkbox"]:checked { background-color: var(--acc); box-shadow: inset 0 0 0 2px var(--acc); background-size: 100%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FCFCFC' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 12.5l4 4 7-8.5'/%3E%3C/svg%3E"); }
 .app[data-dir="d"][data-tema="escuro"] input[type="checkbox"]:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2304152B' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 12.5l4 4 7-8.5'/%3E%3C/svg%3E"); }
+/* foco: anel rente ao círculo (o contorno padrão ficaria na caixa de toque de 44 px, bem afastado) */
+.app[data-dir="d"] input[type="checkbox"]:focus-visible { outline: 3px solid var(--foco); outline-offset: -9px; }
 .app[data-dir="d"] input[type="checkbox"]:active { transform: scale(.82); }
 
 /* ---------- cards e listas: tipografia de título grande, linhas finas ---------- */
