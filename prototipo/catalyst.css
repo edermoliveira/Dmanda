@@ -282,6 +282,8 @@
   .app[data-dir="d"] .modal { width: 100%; max-height: 92%; border-radius: 34px 34px 0 0; }
   .app[data-dir="d"] .modal .m-cols { grid-template-columns: minmax(0, 1fr); }
   .app[data-dir="d"] .dr { width: min(420px, 94%); }
+  /* botões só com ícone (rótulo oculto até 899px pelo estilo.css, largura fixa de 44px): sem o padding lateral do Catalyst o ícone cabe na caixa */
+  .app[data-dir="d"] .toolbar .btn.gl, .app[data-dir="d"] .toolbar .btn.escuro { padding: 0; }
 }
 @container tela (max-width: 520px) {
   .app[data-dir="d"] { --blur: 18px; }

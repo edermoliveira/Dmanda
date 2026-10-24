@@ -74,7 +74,7 @@ for (const chave of Object.keys(antes)) {
   if (!d || a.length !== d.length) { relata('quantidade de elementos ' + a.length + ' → ' + (d ? d.length : 'sem tela')); if (n) { telasDif++; difs += n; } continue; }
   for (let i = 0; i < a.length; i++) {
     const x = a[i], y = d[i];
-    const novoIcone = y.k.startsWith('svg.') && y.k.split('.').includes('ion');
+    const novoIcone = y.k.startsWith('svg.') && y.k.split('.').includes('ion') && !x.k.split('.').includes('ion'); // só vale quando a referência é anterior à migração
     const kNovo = novoIcone ? y.k.replace('.ion', '') : y.k;
     if (x.k !== kNovo) { relata('#' + i + ': ' + x.k + ' → ' + y.k); continue; }
     // posições relativas ao canto do aplicativo (a moldura do protótipo fora dele pode mudar sem afetar o Catalyst)

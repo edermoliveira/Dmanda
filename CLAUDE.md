@@ -25,6 +25,7 @@ node testes/clicar-tudo.mjs d claro desktop     (cliques, contraste e layout de 
 node testes/clicar-tudo.mjs                     (Catalyst, claro e escuro, computador e celular)
 node testes/menu.mjs                            (Mostrar menu: mostrar, navegar, voltar, recolher, recarregar)
 node testes/consolidacao.mjs                    (Catalyst único, endereços antigos, sete ícones de navegação, erros de recursos)
+node testes/ipad-botoes.mjs                     (botões só com ícone de Demandas no iPad vertical e nos limites 520/521 e 899/900 px)
 node testes/preservar-catalyst.mjs comparar <referência.json>  (78 telas contra uma referência gravada com `gravar`)
 node verificar-cores.mjs                        (nenhum branco ou preto absoluto)
 ```
@@ -41,6 +42,7 @@ Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `
 - ANALISE-FERRAMENTAS.md: avaliação de skills, plugins, MCPs e sites de componentes (o que entra e o que sai).
 - QUESTIONARIO.md: perguntas de alinhamento (já respondidas, ver DECISOES.md).
 - ANDAMENTO.md: cálculo do percentual de andamento.
+- INVENTARIO-ICONES.md: ícones que ainda vêm de Iconoir e Lucide, agrupados por função, para o usuário selecionar os próximos.
 - PENDENCIAS.md: o que aguarda o usuário.
 
 ## Regras

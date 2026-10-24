@@ -64,3 +64,9 @@ O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês
 - **Aprovar o protótipo atualizado** (http://127.0.0.1:7200).
 - **Catalyst (Figma):** o Figma foi conectado em 22/10/2026 (MCP `figma`, escopo local deste projeto; o outro computador precisa repetir `claude mcp add --transport http figma https://mcp.figma.com/mcp` e autenticar em `/mcp`). O arquivo "iOS and iPadOS 27 (Community)" (chave `VOqem67sPifvvgYa0MwyKh`) abre sem erro. **Feito em 22/10/2026:** tema "d" (Catalyst, estilo Mac e iPad) criado em `prototipo/catalyst.css`, testado em claro, escuro e celular; Aurora, Papel e Grafite intactos. **Refinado no mesmo dia:** Liquid Glass (barras flutuantes, menus, folhas e Perfil), abas e seleção em cápsula que deslizam com mola, botões redondos, caixas de marcar do iOS, movimento de entrada e saída (`prototipo/catalyst.js`). Testado: todos os botões das 9 telas em claro, escuro e celular, contraste de todos os textos e estouro de layout. **Aguarda o usuário avaliar** (http://127.0.0.1:7200, botão "D Catalyst"; se algo parecer antigo, Ctrl+F5). Cuidado: `get_metadata` em páginas grandes do Figma (Buttons) devolve retornos enormes, pedir nós pequenos.
 - **Ilustrações de energia:** salvar em `prototipo/emojis/` como `energia-1.png` a `energia-5.png` (quadrados, fundo transparente, 128 a 512 px).
+
+## Pendências do bloco de 24/10/2026
+
+- **Avaliação visual** do Catalyst único, dos sete ícones, do Mostrar menu e dos botões de Demandas no iPad vertical.
+- **Selecionar os símbolos Ionicons dos demais ícones**, a partir de `INVENTARIO-ICONES.md`. Só depois Iconoir e Lucide saem.
+- **PNGs de energia ausentes** (`prototipo/emojis/energia-1.png` a `energia-5.png`): pendência separada. Nada foi produzido no lugar e esses recursos não estão aprovados; os testes só ignoram o 404 desses arquivos.
