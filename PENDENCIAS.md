@@ -15,13 +15,13 @@ Nada abaixo foi decidido pelo Claude. O detalhe de cada item está em `SINCRONIZ
 6. **Figma:** guardar os PNGs exportados dentro do Git (recomendado, cerca de 10 MB) ou só em casa; e se inclui a lista B (5 páginas por causa de iPhone e iPad).
 7. **Concluir demanda:** manter o fundo azul claro (mais sutil) ou voltar ao azul cheio, já mais fino.
 8. **Avaliar a rodada 3 e o Catalyst** (http://127.0.0.1:7200): dizer o que ainda destoa. Ver `DECISOES.md`, rodada 3.
-9. **Escolher os padrões de cada tema:** par de fontes, estilo de ícones e paleta padrão de Aurora, Papel e Grafite (hoje há padrões provisórios).
+9. **Padrões do Catalyst:** par de fontes, estilo de ícones e paleta padrão (hoje há padrões provisórios).
 10. **Plano de blocos maiores e de modelos (Opus ou Sonnet, effort):** aprovar ou ajustar, `SINCRONIZA-PROJETINHO.md`, seção 7.
 
 **Novas, de 23/10/2026**
 13. **Ícones:** decidir a troca da biblioteca por uma família com contorno e cheio completos e proporção próxima à dos apps Apple (proposta a apresentar; nada foi adicionado).
 14. **Ferramentas:** aprovar a configuração proposta (Impeccable, Taste reservada, Ponytail, Transitions.dev, Playwright CLI), um item por vez.
-15. **Teste de cliques completo** (`node testes/clicar-tudo.mjs`): foi interrompido por falta de memória do computador. Feitos: Aurora claro e escuro no computador. Faltam Papel, Grafite e Catalyst no computador e o celular (Aurora e Catalyst). Rodar com poucos programas abertos.
+15. **Ícones restantes:** só os sete do menu estão em Ionicons. O usuário ainda precisa selecionar os símbolos dos demais (botões, busca, ações, formulários), depois removem-se Iconoir e Lucide.
 
 **Ações**
 11. **No Figma (navegador), exportar como PNG as páginas que faltam** (8 da lista A, mais as da lista B se aprovar), seguindo o passo a passo da seção 6 do `SINCRONIZA-PROJETINHO.md`. Salvar em `imagens\figma-kit\`.

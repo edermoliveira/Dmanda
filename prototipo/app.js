@@ -27,8 +27,8 @@
   ];
 
   var NAV = [
-    ['inicio', 'Início', 'house'], ['entradas', 'Entradas', 'inbox'], ['demandas', 'Demandas', 'square-kanban'],
-    ['agenda', 'Agenda', 'calendar'], ['documentos', 'Documentos', 'file-text'], ['ia', 'IA', 'sparkles'], ['config', 'Configurações', 'settings']
+    ['inicio', 'Início', 'nav-inicio'], ['entradas', 'Entradas', 'nav-entradas'], ['demandas', 'Demandas', 'nav-demandas'],
+    ['agenda', 'Agenda', 'nav-agenda'], ['documentos', 'Documentos', 'nav-documentos'], ['ia', 'IA', 'nav-ia'], ['config', 'Configurações', 'nav-config']
   ];
   var MAIS = [['plus-anot', 'Anotação', 'sticky-note', 1], ['plus-dem', 'Demanda', 'square-kanban', 1], ['plus-ev', 'Evento', 'calendar', 1], ['plus-tar', 'Tarefa', 'check', 0], ['plus-doc', 'Documento', 'file-text', 0], ['plus-chat', 'Chat com a IA', 'message-circle', 0]];
 
@@ -62,7 +62,10 @@
   var ETAPAS = ['Cadastro', 'Vistos', 'Fazendo', 'Aguardando retorno', 'Finalizado'];
   // ---------- ícones: Iconoir (padrão) ou Lucide; no Iconoir o item ativo usa a versão sólida ----------
   function ic(n, extra) {
-    var ex = extra || '', sol = / sol|^sol/.test(' ' + ex), corpo;
+    var ex = extra || '';
+    // ícones do menu de navegação: Ionicons outline, SVG original (traço e preenchimento próprios, cor por currentColor)
+    if (window.ICONES_NAV && window.ICONES_NAV[n]) return '<svg class="ic ion ' + ex.replace(/\bsol\b/, '').trim() + '" viewBox="0 0 512 512" aria-hidden="true">' + window.ICONES_NAV[n] + '</svg>';
+    var sol = / sol|^sol/.test(' ' + ex), corpo;
     if (estado.lib === 'iconoir') corpo = (sol && window.ICONOIR_SOLIDO[n]) || window.ICONOIR[n] || window.ICONES[n];
     else corpo = window.ICONES[n] || window.ICONOIR[n];
     return '<svg class="ic ' + ex.replace(/\bsol\b/, '').trim() + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (corpo || '') + '</svg>';
@@ -292,7 +295,7 @@
   // ---------- Documentos, IA, Perfil, Arquivo, Mais ----------
   function documentos() { return '<div class="vazio">' + ic('file-text', 'grande') + '<h3>Conecte o Google Drive</h3><p>Aqui ficarão os modelos e os arquivos ligados às demandas.</p><button class="btn pri" data-act="msg" data-m="Conectar ao Drive">Conectar o Drive</button></div>'; }
   function arquivo() { return '<div class="lista">' + [['Memorando 031/2026', 'Mudança do protocolo', 'Finalizada'], ['Ofício 198/2026', 'Resposta ao Ministério Público', 'Finalizada']].map(function (x) { return '<div class="linha"><div class="linha-c"><span class="mono num">' + x[0] + '</span><span class="ass">' + x[1] + '</span><span class="chip neutro">' + x[2] + '</span><button class="btn mini" data-act="msg" data-m="Desarquivar">Desarquivar</button></div></div>'; }).join('') + '</div>'; }
-  function mais() { return '<div class="lista">' + [['entradas', 'Entradas', 'inbox'], ['documentos', 'Documentos', 'file-text'], ['ia', 'IA', 'sparkles'], ['config', 'Configurações', 'settings'], ['arquivo', 'Arquivo', 'archive']].map(function (x) { return '<button class="navi grande" data-nav="' + x[0] + '"><span class="ico">' + ic(x[2], 'duo') + '</span><span>' + x[1] + '</span></button>'; }).join('') + '</div>'; }
+  function mais() { return '<div class="lista">' + [['entradas', 'Entradas', 'nav-entradas'], ['documentos', 'Documentos', 'nav-documentos'], ['ia', 'IA', 'nav-ia'], ['config', 'Configurações', 'nav-config'], ['arquivo', 'Arquivo', 'archive']].map(function (x) { return '<button class="navi grande" data-nav="' + x[0] + '"><span class="ico">' + ic(x[2], 'duo') + '</span><span>' + x[1] + '</span></button>'; }).join('') + '</div>'; }
 
   var TITULOS = { inicio: 'Início', entradas: 'Entradas', demandas: 'Demandas', agenda: 'Agenda', documentos: 'Documentos', ia: 'IA', config: 'Configurações', perfil: 'Perfil', arquivo: 'Arquivo', mais: 'Mais' };
   var TELAS_FN = { demandas: demandas, agenda: agenda, documentos: documentos, arquivo: arquivo, mais: mais };
@@ -303,14 +306,14 @@
     var f = $('#frame');
     var nav = NAV.filter(function (n) { return n[0] !== 'config'; }).map(function (n) { var at = n[0] === estado.tela; return '<button class="navi" data-nav="' + n[0] + '"' + (at ? ' aria-current="page"' : '') + ' title="' + n[1] + '" aria-label="' + n[1] + '"><span class="ico">' + ic(n[2], 'duo') + '</span><span class="tx">' + n[1] + '</span></button>'; }).join('');
     var cfgAt = estado.tela === 'config';
-    var cfgBtn = '<button class="navi" data-nav="config"' + (cfgAt ? ' aria-current="page"' : '') + ' title="Configurações" aria-label="Configurações"><span class="ico">' + ic('settings', 'duo') + '</span><span class="tx">Configurações</span></button>';
+    var cfgBtn = '<button class="navi" data-nav="config"' + (cfgAt ? ' aria-current="page"' : '') + ' title="Configurações" aria-label="Configurações"><span class="ico">' + ic('nav-config', 'duo') + '</span><span class="tx">Configurações</span></button>';
     var emMais = ['mais', 'entradas', 'documentos', 'ia', 'config', 'arquivo'].indexOf(estado.tela) > -1;
-    var bar = [['inicio', 'Início', 'house'], ['demandas', 'Demandas', 'square-kanban']].map(function (n) {
+    var bar = [['inicio', 'Início', 'nav-inicio'], ['demandas', 'Demandas', 'nav-demandas']].map(function (n) {
       var at = n[0] === estado.tela;
       return '<button class="bi" data-nav="' + n[0] + '"' + (at ? ' aria-current="page"' : '') + '>' + ic(n[2], 'duo') + n[1] + '</button>';
     }).join('') +
       '<button class="mais-c" data-act="plus" aria-label="Criar novo" aria-expanded="' + estado.plus + '">' + ic('plus') + '</button>' +
-      '<button class="bi" data-nav="agenda"' + (estado.tela === 'agenda' ? ' aria-current="page"' : '') + '>' + ic('calendar', 'duo') + 'Agenda</button>' +
+      '<button class="bi" data-nav="agenda"' + (estado.tela === 'agenda' ? ' aria-current="page"' : '') + '>' + ic('nav-agenda', 'duo') + 'Agenda</button>' +
       '<button class="bi" data-nav="mais"' + (emMais ? ' aria-current="page"' : '') + '>' + ic('ellipsis') + 'Mais</button>';
     var menu = MAIS.map(function (m, i) { return (i === 3 ? '<hr>' : '') + '<button class="' + (m[3] ? 'rapido' : '') + '" data-act="msg" data-m="Novo: ' + m[1] + '">' + ic(m[2]) + m[1] + '</button>'; }).join('');
     var sub = estado.tela === 'demandas' ? DEMANDAS.length + ' demandas, ' + DEMANDAS.filter(atrasada).length + ' atrasada. Do cadastro à conclusão.' : (SUBS[estado.tela] || '');

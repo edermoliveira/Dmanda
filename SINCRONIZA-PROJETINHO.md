@@ -2,13 +2,13 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 23/10/2026, no computador do trabalho, com um ponto de retomada na branch `checkpoint/2026-10-23-ajustes-a-d` (seção 0). A próxima sessão será em casa.
+**Última atualização:** 23/10/2026, no computador de casa, na branch `checkpoint/2026-10-23-ajustes-a-d` (seção 0). Sem merge na main e sem push.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
 ---
 
-## 0. PONTO DE RETOMADA (checkpoint de 23/10/2026, computador do trabalho)
+## 0. PONTO DE RETOMADA (23/10/2026, computador de casa)
 
 **Branch do checkpoint:** `checkpoint/2026-10-23-ajustes-a-d` (enviada ao GitHub com autorização expressa; **sem merge na main**). Para continuar em casa, **no PowerShell, dentro da pasta do projeto:** `git fetch` e `git checkout checkpoint/2026-10-23-ajustes-a-d`, depois `npm install`.
 
@@ -19,7 +19,7 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 - D. Menu lateral: ícone selecionado legível, mesmo desenho em todos os estados, seleção por forma, nome acessível.
 - Correções achadas pelo teste: contraste de "Concluir demanda", "Finalizada" e "Reabrir demanda" no modo escuro e claro; botão mini só com ícone no Catalyst. Detalhes em `DECISOES.md`, seção "Ajustes A a D".
 
-**ATUALIZAÇÃO (23/10/2026, computador de casa): os dois defeitos do Catalyst no celular foram corrigidos em `catalyst.css`.** Causas reais (não eram falsos positivos): (1) `padding: 0 18px` do `.buscabtn` no Catalyst vencia o `padding: 0` do celular e espremia o ícone dentro dos 44 px; corrigido só para telas estreitas (container `tela` abaixo de 900 px). (2) A aba selecionada das etapas ficava com fundo de card e texto na cor sobre o destaque (contraste 1:1); agora o texto usa a cor principal e a seleção é o anel. Nenhuma verificação foi alterada. Testes depois das correções, todos com 0 erros de JavaScript, 0 contraste, 0 estouros, 0 não clicáveis, 0 sem efeito, 0 alvos pequenos: `ajustes-a-d.mjs` (4 temas, claro e escuro) e `fluxos.mjs` (antes das correções; as regras novas só atuam abaixo de 900 px), e `clicar-tudo.mjs` no celular em Catalyst, Papel e Grafite, claro e escuro. **Aprovação visual de A a D: ainda pendente (testes aprovados não substituem a sua avaliação).** Texto abaixo é o registro anterior, já resolvido nos itens do celular.
+**ESTADO ATUAL (23/10/2026, casa):** ajustes A a D **aprovados visualmente**. Catalyst é a **única direção** (claro e escuro). **Mostrar menu** corrigido e testado (`testes/menu.mjs`; causa e correção em `DECISOES.md`). Ionicons outline escolhido; **só os 7 ícones de navegação** estão implementados (`prototipo/icones-nav/`); os demais ícones **aguardam a seleção do usuário**. Esta mudança de bloco **aguarda a avaliação visual do usuário**. Detalhes e testes em `DECISOES.md`, seção "Ajustes A a D aprovados; Catalyst único; Ionicons; Mostrar menu".
 
 **CONFIGURAÇÃO DE CASA (23/10/2026, mesma sessão):**
 - **Compartilhado pelo repositório:** `.claude/settings.json` (plugin `ui-ux-pro-max`), as três skills em `.claude/skills/` com licença, a Impeccable em `.claude/skills/impeccable/` e `.claude/agents/` (4 agentes dela), `.impeccable/config.json` (telemetria desligada) e a seção "Ferramentas" do `CLAUDE.md`. O binário do motor (`.claude/skills/impeccable/scripts/bin/`, 19 MB, por sistema) fica no `.gitignore`.
@@ -27,17 +27,16 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 - **`ui-ux-pro-max` em dois escopos:** o registro mostra usuário e projeto, mas a sessão lista um único conjunto de skills dele, então não está carregado em dobro. Nada foi desinstalado.
 - **`~/.claude.json`:** o arquivo é JSON válido. A falha era do leitor (PowerShell 5.1 trata chaves sem distinguir maiúsculas, e há duas entradas de projeto que diferem só por maiúsculas). Nada foi alterado.
 - **Computador do trabalho: sem confirmação.** Não sabemos quais plugins, MCPs e ajustes existem lá. Para reproduzir esta configuração lá, **no PowerShell, dentro da pasta do projeto:** `git pull`, `npm install` e `npx impeccable install --providers=claude --scope=project --no-hooks --yes` (reinstala o motor; confira que `.impeccable/config.json` veio do Git). Plugins do usuário precisam ser conferidos à mão.
-- **Comparação de ícones:** `prototipo/icones-comparacao/index.html` (gerada por `node gerar.mjs`, origem e licenças em `ORIGEM.md`). Recomendação: Phosphor. **Aguarda a sua escolha.**
 
-**Atividade interrompida (resolvida acima):** investigação de dois defeitos **antigos** do Catalyst no celular (existem também no commit `c314b53`, não vêm do trabalho de hoje): (1) o botão de busca do topo (`.icbtn.buscabtn`) é acusado de "texto maior que o botão" em todas as telas; (2) "Cadastro 0" no Quadro com contraste 1:1 (rótulo da aba selecionada some). Pistas: `catalyst.css` linhas 63, 80 e 176 a 178 e `v3.css` linhas 60 e 61 (aba selecionada com `--acc`/`--acc-ink` contra o fundo `var(--card)` do Catalyst). **Nada foi alterado para esses dois defeitos.**
+**Testes sobre a versão final deste bloco (23/10/2026, Catalyst; cada comando em sequência, resultado real):**
+- `consolidacao.mjs`: aprovado (endereços antigos, sem seletor de direções, 7 ícones Ionicons em claro e escuro, menu recolhido e aberto, iPad vertical e celular, sem erros de recurso).
+- `menu.mjs`: aprovado (mostrar, navegar, voltar, recarregar, recolher, janela média, iPad e celular).
+- `preservar-catalyst.mjs comparar`: 78 telas conferidas contra a referência anterior à consolidação, sem diferenças além das autorizadas (painel de tema da Config e desenho dos 7 ícones; cor, caixa e posição dos ícones iguais em 804 ocorrências).
+- `ajustes-a-d.mjs` (claro e escuro), `fluxos.mjs`: aprovados.
+- `clicar-tudo.mjs d` claro e escuro, computador (462 cliques) e celular (367 cliques): 0 erros, 0 contraste, 0 estouros, 0 não clicáveis. `verificar-cores.mjs`: ok.
+- **iPad vertical (820 px) acusa 18 "texto maior que o botão" em Demandas**, nos botões só com ícone da barra (Só atrasadas, Filtros, Nova demanda). **Já existiam antes** (idênticos no código anterior à consolidação). Causa: o `padding: 0` do Catalyst nesses botões só vale até 520 px, mas o rótulo some até 899 px, então entre 521 e 899 px o ícone de 18 px fica numa caixa de 44 px com 16 px de padding de cada lado. Visualmente o ícone fica centralizado (conferido por captura). Não foi corrigido por estar fora do escopo; correção proposta de uma linha em `catalyst.css` (padding 0 até 899 px). Aguarda decisão.
 
-**Testes concluídos (passaram, 0 problemas):** `ajustes-a-d.mjs` nos 4 temas, claro e escuro; `fluxos.mjs`; `clicar-tudo.mjs` no computador nos 4 temas, claro e escuro (8 combinações), e no celular Aurora claro e escuro, todos depois das últimas correções de CSS.
-
-**Verificações pendentes:** `clicar-tudo.mjs d claro phone` e `d escuro phone` **falham** pelos dois defeitos antigos acima. Papel e Grafite no celular nunca foram rodados. Não houve aprovação visual sua dos itens A a D.
-
-**Decisões suas pendentes:** (1) biblioteca de ícones (apresentar exemplos de normal e selecionado e a recomendação, sem adicionar dependência antes da sua decisão); (2) configuração das ferramentas, começando pela Impeccable, um item por vez (nada instalado); (3) avaliação visual de A a D; (4) autorização para o merge na main, se quiser.
-
-**Próxima ação em casa:** rodar `node testes/ajustes-a-d.mjs` e `node testes/fluxos.mjs` para confirmar o ambiente; corrigir os dois defeitos do Catalyst no celular e rodar `clicar-tudo.mjs d claro phone`; depois apresentar a proposta dos ícones.
+**Pendências do usuário:** (1) avaliar visualmente este bloco (Catalyst único, 7 ícones, Mostrar menu); (2) selecionar os símbolos Ionicons dos demais ícones; (3) decidir sobre o ajuste do iPad vertical; (4) ferramentas (Impeccable já instalada), um assunto por vez; (5) merge na main, se quiser.
 
 **Lembretes de máquina:** no trabalho o computador ficou com pouca memória (Chrome do usuário ocupa muita). O `clicar-tudo.mjs` agora usa flags que poupam memória; rodar uma combinação por vez. Não rodar a suíte inteira de uma vez.
 

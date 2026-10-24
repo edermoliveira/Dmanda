@@ -1,8 +1,8 @@
-// Verificação dos ajustes A a D de 23/10/2026 (descrição, vidro, cores dos processos, ícones). Uso: node testes/ajustes-a-d.mjs [tema] [claro|escuro]
+// Verificação dos ajustes A a D de 23/10/2026 (descrição, vidro, cores dos processos, ícones). Uso: node testes/ajustes-a-d.mjs [d] [claro|escuro]
 import { chromium } from 'playwright-core';
 import { servir } from './servidor.mjs';
 
-const temas = process.argv[2] ? [process.argv[2]] : ['a', 'b', 'c', 'd'];
+const temas = ['d'];
 const modos = process.argv[3] ? [process.argv[3]] : ['claro', 'escuro'];
 const srv = await servir();
 const b = await chromium.launch({ channel: 'msedge' });

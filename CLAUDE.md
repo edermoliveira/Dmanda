@@ -6,7 +6,7 @@ Painel pessoal do Secretário de Administração da Prefeitura de Taquara/RS, co
 
 Desenvolvido no computador e publicado na Vercel (com login Google) a partir da versão mínima de Demandas. Funciona no celular, iPad e computador (computador primeiro), instalável como PWA. O app nativo da App Store é uma etapa futura.
 
-**Em 21/10/2026 o escopo foi ampliado e o design system está sendo refeito do zero.** Em 22/10/2026 os temas Aurora, Papel e Grafite foram definidos (protótipo em `prototipo/`). A fonte mais recente das decisões é `DECISOES.md`.
+**Em 21/10/2026 o escopo foi ampliado e o design system está sendo refeito do zero.** Em 23/10/2026 o **Catalyst** passou a ser a única direção visual (claro e escuro); Aurora, Papel e Grafite foram retiradas (protótipo em `prototipo/`). A fonte mais recente das decisões é `DECISOES.md`.
 
 ## Como rodar
 
@@ -22,7 +22,10 @@ Testes do protótipo (dentro de `prototipo`, usam o Edge instalado, sem servidor
 ```
 node testes/fluxos.mjs                          (fluxos principais, cerca de 1 minuto)
 node testes/clicar-tudo.mjs d claro desktop     (cliques, contraste e layout de um tema, cerca de 5 minutos)
-node testes/clicar-tudo.mjs                     (os quatro temas, claro e escuro, computador e celular, cerca de 70 minutos)
+node testes/clicar-tudo.mjs                     (Catalyst, claro e escuro, computador e celular)
+node testes/menu.mjs                            (Mostrar menu: mostrar, navegar, voltar, recolher, recarregar)
+node testes/consolidacao.mjs                    (Catalyst único, endereços antigos, sete ícones de navegação, erros de recursos)
+node testes/preservar-catalyst.mjs comparar <referência.json>  (78 telas contra uma referência gravada com `gravar`)
 node verificar-cores.mjs                        (nenhum branco ou preto absoluto)
 ```
 
@@ -55,14 +58,14 @@ Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `
 
 ## Design system
 
-**Três temas definitivos** (decidido em 22/10/2026): **Aurora** (vidro estilo Apple), **Papel** (calmo, tom de papel) e **Grafite** (denso, bordas finas), mais o **Catalyst** (estilo Apple Mac e iPad, a partir do kit oficial do Figma, adicionado em 22/10/2026 como quarto tema experimental no protótipo, `prototipo/catalyst.css`), cada um com modo claro e escuro. O logo da Aurora vale para todos. Dentro de cada tema o usuário escolhe cores (10 paletas), ícones, tamanhos e fontes, e cada tema guarda as suas escolhas.
+**Uma só direção, o Catalyst** (decidido em 23/10/2026): estilo Apple Mac e iPad, a partir do kit oficial do Figma (`prototipo/catalyst.css`), com modo claro e escuro. Aurora, Papel e Grafite foram retiradas. O identificador interno continua `d` (`data-dir="d"`). Endereços e preferências antigas (`dir=a|b|c`) abrem o Catalyst. O usuário escolhe cores (10 paletas), ícones, tamanhos e fontes.
 
-O protótipo navegável está em `prototipo/` (HTML, CSS e JS puros, dados fictícios, isolado do `src/`). Abrir por um servidor local, por exemplo `python -m http.server 7200` dentro da pasta `prototipo`, e acessar http://127.0.0.1:7200. Hashes úteis na URL: `#dir=a|b|c|d&tema=claro|escuro&tela=demandas&vis=quadro&dev=phone&balao=nao`.
+O protótipo navegável está em `prototipo/` (HTML, CSS e JS puros, dados fictícios, isolado do `src/`). Abrir por um servidor local, por exemplo `python -m http.server 7200` dentro da pasta `prototipo`, e acessar http://127.0.0.1:7200. Hashes úteis na URL: `#tema=claro|escuro&tela=demandas&vis=quadro&dev=phone&balao=nao` (o app só lê o hash ao carregar: depois de mudar o endereço, recarregar).
 
 - **iPhone e iPad (decidido em 23/10/2026):** o mobile é pensado para o iPhone como PWA, mas **construído como app nativo**. O iPad segue a mesma regra e, no futuro, terá Entradas com Apple Pencil. Propostas técnicas aguardando aprovação em `DECISOES.md`.
 - **Vidro líquido** em quase todo o desenho (barras, menu, painéis, indicadores, botões, abas). Cards de demanda mais sólidos. **Caixas de preenchimento (janelas, busca, balões) quase opacas**: brancas no claro e escuras no escuro, com campos de alto contraste.
 - **Fontes em três papéis:** principal para títulos, secundária para subtítulos e textos, mono para detalhes pontuais (números de processo, datas, contadores) e, por exceção, a descrição resumida dos cards de demanda.
-- **Ícones:** Iconoir (padrão, MIT) ou Lucide, em pastilha, fino ou duotone, sempre por uma única função ou componente de ícone. Nada de emoji nos controles. Os emojis de humor são os PNGs do usuário em `prototipo/emojis/` (ver o `LEIA-ME.md` da pasta).
+- **Ícones:** a família escolhida é a **Ionicons outline** (MIT, 8.0.13). **Já implementados: só os sete do menu de navegação** (`prototipo/icones-nav/`, originais em `imagens/figma-kit/icones/`). Os demais ícones continuam com Iconoir e Lucide **até o usuário selecionar os símbolos**; não escolher substitutos por conta própria. Sempre por uma única função de ícone. Nada de emoji nos controles. Os emojis de humor são os PNGs do usuário em `prototipo/emojis/` (ver o `LEIA-ME.md` da pasta).
 - **Regras mantidas:** nenhuma cor solta no código (valores só nos arquivos de tokens), espaços e cantos por nome, alvo de toque de 44 px, funcionar nos dois modos, cinco estados por peça (normal, foco, desativado, carregando, erro), vermelho só para atrasado ou crítico.
 - **Exceções à regra do travessão:** o traço "—" aparece na interface como símbolo de "sem progresso" (decisão do usuário), e valem fora da regra o `AGENTS.md` (gerado pelo Next.js) e as skills de terceiros copiadas em `.claude/skills/`.
 

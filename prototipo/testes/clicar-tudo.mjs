@@ -2,12 +2,12 @@
 // de todo texto visível, procura estouro de layout e erros de JavaScript. Rodar a cada etapa.
 // Uso (dentro da pasta prototipo): node testes/clicar-tudo.mjs [temas] [modos] [telas-do-aparelho]
 //   exemplo: node testes/clicar-tudo.mjs d claro,escuro desktop,phone
-// Sem argumentos, testa os quatro temas, nos dois modos, no computador e no celular.
+// Sem argumentos, testa o Catalyst (d), nos dois modos, no computador e no celular.
 // Usa o Microsoft Edge já instalado (playwright-core não baixa navegador e não pede administrador).
 import { chromium } from 'playwright-core';
 import { servir } from './servidor.mjs';
 
-const [, , aTemas = 'a,b,c,d', aModos = 'claro,escuro', aDevs = 'desktop,phone'] = process.argv;
+const [, , aTemas = 'd', aModos = 'claro,escuro', aDevs = 'desktop,phone'] = process.argv;
 const TEMAS = aTemas.split(','), MODOS = aModos.split(','), DEVS = aDevs.split(',');
 const TELAS = ['inicio', 'entradas', 'demandas', 'agenda', 'documentos', 'ia', 'config', 'arquivo', 'mais'];
 const VISOES = { demandas: ['cards', 'quadro', 'tabela', 'lista'], agenda: ['hoje', 'semana', 'mes'] };
