@@ -26,6 +26,13 @@ node testes/clicar-tudo.mjs                     (Catalyst, claro e escuro, compu
 node testes/menu.mjs                            (Mostrar menu: mostrar, navegar, voltar, recolher, recarregar)
 node testes/consolidacao.mjs                    (Catalyst único, endereços antigos, sete ícones de navegação, erros de recursos)
 node testes/ipad-botoes.mjs                     (botões só com ícone de Demandas no iPad vertical e nos limites 520/521 e 899/900 px)
+node testes/energia.mjs                         (os cinco SVGs de energia: carregamento, nível certo, claro e escuro)
+node testes/perfil-pomodoro.mjs                 (avatar do Perfil e Pomodoro em cinco larguras)
+node testes/ipad-cards.mjs                      (duas colunas de cards de 640 a 899 px, uma coluna no celular)
+node testes/agenda-demandas.mjs                 (itens de demanda da Agenda: sigla, cor, abrir pelo identificador)
+node testes/quadro.mjs                          (Quadro: colunas, filtros, mover por menu, mouse e toque)
+node testes/fundo.mjs                           (fundo: cor, imagem, desfoque, persistência, falhas)
+node testes/checkbox.mjs                        (caixas de marcar das tarefas)
 node testes/preservar-catalyst.mjs comparar <referência.json>  (78 telas contra uma referência gravada com `gravar`)
 node verificar-cores.mjs                        (nenhum branco ou preto absoluto)
 ```
@@ -68,6 +75,7 @@ O protótipo navegável está em `prototipo/` (HTML, CSS e JS puros, dados fict�
 - **Vidro líquido** em quase todo o desenho (barras, menu, painéis, indicadores, botões, abas). Cards de demanda mais sólidos. **Caixas de preenchimento (janelas, busca, balões) quase opacas**: brancas no claro e escuras no escuro, com campos de alto contraste.
 - **Fontes em três papéis:** principal para títulos, secundária para subtítulos e textos, mono para detalhes pontuais (números de processo, datas, contadores) e, por exceção, a descrição resumida dos cards de demanda.
 - **Ícones:** a família escolhida é a **Ionicons outline** (MIT, 8.0.13). **Já implementados: só os sete do menu de navegação** (`prototipo/icones-nav/`, originais em `imagens/figma-kit/icones/`). Os demais ícones continuam com Iconoir e Lucide **até o usuário selecionar os símbolos**; não escolher substitutos por conta própria. Sempre por uma única função de ícone. Nada de emoji nos controles. Os emojis de humor são os PNGs do usuário em `prototipo/emojis/` (ver o `LEIA-ME.md` da pasta).
+- **Energia e fundo:** a energia são os SVGs coloridos do usuário (`prototipo/emojis/energia-1..5.svg`), nunca recoloridos. O fundo é Padrão do tema, Cor (uma por modo) ou Imagem local (IndexedDB), só neste navegador; não há mais fundo animado.
 - **Regras mantidas:** nenhuma cor solta no código (valores só nos arquivos de tokens), espaços e cantos por nome, alvo de toque de 44 px, funcionar nos dois modos, cinco estados por peça (normal, foco, desativado, carregando, erro), vermelho só para atrasado ou crítico.
 - **Exceções à regra do travessão:** o traço "—" aparece na interface como símbolo de "sem progresso" (decisão do usuário), e valem fora da regra o `AGENTS.md` (gerado pelo Next.js) e as skills de terceiros copiadas em `.claude/skills/`.
 

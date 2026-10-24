@@ -83,7 +83,7 @@ Todos os nomes abaixo vêm hoje do **Iconoir** (padrão). O Lucide é a alternat
 | Surpreenda-me, IA | `sparkles` | "Surpreenda-me", amostra de ícones | vários |
 | Banco de frases | `message-circle` | Configurações | 1 local |
 | Conta Google | `globe` | Configurações | 1 local |
-| Energia (5 níveis) | `bat0` a `bat4` (`battery`) | só como reserva quando o PNG de energia não carrega | **aguardam os PNGs do usuário** |
+| Energia (5 níveis) | `bat0` a `bat4` (`battery`) | **não são mais usados**: a energia agora é SVG colorido do usuário e o ícone de reserva foi retirado | nenhum |
 
 ## Só na amostra de Configurações
 

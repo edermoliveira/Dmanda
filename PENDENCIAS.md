@@ -25,7 +25,7 @@ Nada abaixo foi decidido pelo Claude. O detalhe de cada item está em `SINCRONIZ
 
 **Ações**
 11. **No Figma (navegador), exportar como PNG as páginas que faltam** (8 da lista A, mais as da lista B se aprovar), seguindo o passo a passo da seção 6 do `SINCRONIZA-PROJETINHO.md`. Salvar em `imagens\figma-kit\`.
-12. Sem pressa: **banco de 500 frases** da mensagem do dia e, opcional, `energia-1.png` a `energia-5.png` em `prototipo/emojis/`.
+12. Sem pressa: **banco de 500 frases** da mensagem do dia. (A energia já foi enviada em SVG.)
 
 **Resolvido em 23/10/2026:** a pasta duplicada `Dmanda\Dmanda` foi revisada e excluída (conteúdo idêntico ao commit `d6e8406`, nada exclusivo).
 
@@ -63,10 +63,14 @@ O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês
 
 - **Aprovar o protótipo atualizado** (http://127.0.0.1:7200).
 - **Catalyst (Figma):** o Figma foi conectado em 22/10/2026 (MCP `figma`, escopo local deste projeto; o outro computador precisa repetir `claude mcp add --transport http figma https://mcp.figma.com/mcp` e autenticar em `/mcp`). O arquivo "iOS and iPadOS 27 (Community)" (chave `VOqem67sPifvvgYa0MwyKh`) abre sem erro. **Feito em 22/10/2026:** tema "d" (Catalyst, estilo Mac e iPad) criado em `prototipo/catalyst.css`, testado em claro, escuro e celular; Aurora, Papel e Grafite intactos. **Refinado no mesmo dia:** Liquid Glass (barras flutuantes, menus, folhas e Perfil), abas e seleção em cápsula que deslizam com mola, botões redondos, caixas de marcar do iOS, movimento de entrada e saída (`prototipo/catalyst.js`). Testado: todos os botões das 9 telas em claro, escuro e celular, contraste de todos os textos e estouro de layout. **Aguarda o usuário avaliar** (http://127.0.0.1:7200, botão "D Catalyst"; se algo parecer antigo, Ctrl+F5). Cuidado: `get_metadata` em páginas grandes do Figma (Buttons) devolve retornos enormes, pedir nós pequenos.
-- **Ilustrações de energia:** salvar em `prototipo/emojis/` como `energia-1.png` a `energia-5.png` (quadrados, fundo transparente, 128 a 512 px).
+- **Ilustrações de energia:** enviadas em SVG (`energia-1.svg` a `energia-5.svg`) e integradas em 24/10/2026.
 
 ## Pendências do bloco de 24/10/2026
 
 - **Avaliação visual** do Catalyst único, dos sete ícones, do Mostrar menu e dos botões de Demandas no iPad vertical.
 - **Selecionar os símbolos Ionicons dos demais ícones**, a partir de `INVENTARIO-ICONES.md`. Só depois Iconoir e Lucide saem.
-- **PNGs de energia ausentes** (`prototipo/emojis/energia-1.png` a `energia-5.png`): pendência separada. Nada foi produzido no lugar e esses recursos não estão aprovados; os testes só ignoram o 404 desses arquivos.
+- **Energia:** os cinco SVGs foram integrados e conferidos (testes). Deixou de ser pendência, mas **aguarda a sua avaliação visual** junto com o resto da revisão de 24/10/2026.
+- **Avaliação visual da revisão de 24/10/2026:** avatar do Perfil, Pomodoro, duas colunas no iPad vertical, siglas e abertura na Agenda, Quadro (largura, filtros, mover por arraste e menu), fundo (cor e imagem) e caixas de marcar.
+- Decisões que tomei e que o usuário pode querer rever: breakpoint de 640 px para duas colunas; siglas PT, PO e PL; "MP" só com cadastro explícito (hoje não há campo para cadastrar); de Finalizado só se volta para Fazendo; véu de 50% sobre a imagem de fundo; cor de fundo guardada separadamente para claro e escuro.
+- Limitações reais: o texto sobre uma imagem muito colorida pode ficar pouco legível (use o desfoque ou outra imagem); o limite de 15 MB e o armazenamento do navegador valem só neste navegador, sem cópia em outro computador.
+- **Contraste do selo "Legal" no modo escuro com as paletas Índigo (3,66:1) e Violeta (4,27:1)**, na visão Tabela (mínimo 4,5). Já existia (a cor do texto de destaque do escuro, `--acc-text`, vem da paleta) e só aparece quando o teste de cliques sorteia essas paletas (o botão "Surpreenda-me" é aleatório). Não foi alterado neste bloco por estar fora do escopo; a correção natural é clarear o texto de destaque do escuro para esses matizes. Quer que eu corrija?
