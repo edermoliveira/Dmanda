@@ -48,7 +48,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 ### Demanda aberta
 - Editar **qualquer campo** (número, assunto, origem, tipo, prazo, tipo de prazo, data de chegada, etapa, tarefas). O sistema ajusta o que depende dele.
 - Tipo de documento com um clique, opcional. Criar tipo novo na hora.
-- Prazo legal ou próprio. Sem prazo, 30 dias automáticos (editáveis).
+- Prazo legal ou próprio. Sem prazo, nada é inventado: a demanda fica fora dos filtros de prazo e do Foco do dia (o formulário pode sugerir 30 dias, mas só vale se o usuário escolher; regra de `DECISOES.md`, item 6).
 - Tarefas: criar, marcar, ordenar.
 - Aguardando retorno: dizer o setor (ou "Prefeita"), registrar uma **data de acompanhamento** (cobrar, reiterar o pedido ou conferir; avisa no Início e aparece na Agenda), marcar o retorno (volta para Fazendo).
 - Concluir. **Reabrir** uma demanda finalizada ou arquivada: preserva o histórico e as tarefas cumpridas, permite novas tarefas sem perder as anteriores e volta para a etapa escolhida (padrão: Fazendo).
@@ -111,7 +111,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 ## 2. A jornada de uma demanda
 
 1. **Chega.** Processo, memorando, ofício ou pedido por papel, e-mail, WhatsApp ou reunião. Pode começar como uma **entrada** (nota rápida) e virar demanda.
-2. **Cadastro.** Registra-se número, prazo, assunto e origem, e o tipo de documento se quiser. Sem prazo, 30 dias automáticos. Prazo legal prevalece.
+2. **Cadastro.** Registra-se número, prazo, assunto e origem, e o tipo de documento se quiser. Sem prazo, nenhuma data é inventada (ver a regra em `DECISOES.md`). Prazo legal prevalece.
 3. **Vistos.** Você olhou, entendeu o que precisa ser feito e tocou em **"Já vi"**. Pode cadastrar tarefas (ou não, se for um passo só).
 4. **Fazendo.** Está em trabalho com você.
 5. **Aguardando retorno.** Enviou a outro setor externo à Secretaria, ou aguarda análise ou decisão da Prefeita. Mostra o setor e os dias parado.
@@ -122,30 +122,32 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 
 ---
 
-## 3. Etapas de construção (substituem as antigas "fatias")
+## 3. Etapas de construção (situação em 25/10/2026)
 
-1. **Design system novo e protótipo:** três temas definitivos (Aurora, Papel e Grafite) já no protótipo. Falta a página de peças com os cinco estados e a conferência de contraste.
-2. **Base técnica:** banco de dados, login Google, publicação na Vercel.
-3. **Versão mínima de Demandas + Início:** cadastro rápido, cards de dois lados, etapas, tarefas, prazos, concluir, quantitativos e alertas. Permite iniciar a carga inicial.
-4. **Demandas completas:** visões Quadro, Tabela e Lista, Arquivo, edição de qualquer campo, reativar, tipos de documento, rascunhos.
-5. **Entradas** e virar demanda.
-6. **Agenda local** (semana, mês, feriados, notificações).
-7. **Configurações** (paletas, fontes, tamanhos, fundo).
-8. **Busca global e botão "+".**
-9. **Perfil: humor, energia, produtividade, clima e mensagem do dia.**
-10. **Google Calendar e Drive.**
-11. **IA estagiária.**
-12. **Documentos.**
+Situação: **concluída e verificada**, **implementada, a validar**, **em andamento** ou **não iniciada**. Nada é marcado como concluído sem verificação.
 
-(Versão mínima de Demandas na etapa 3 já vai para a internet.)
+1. **Design system e protótipo:** concluída. Catalyst único, claro e escuro, aprovado visualmente em `cd7b03f`. Restam acabamentos agrupados (ícones restantes, teclado virtual em aparelho real) que não bloqueiam as funcionalidades.
+2. **Base técnica:** em andamento. Pronto e testado no banco local de teste: esquema, RLS, funções SQL, proxy de acesso, login Google no código, expiração após 6 h. **A validar no Supabase real e na Vercel:** projeto, autenticação com a conta autorizada, persistência real, publicação protegida. Rotina diária preparada (chamada manual validada no banco de teste), sem agendamento implantado.
+3. **Versão mínima de Demandas e Início:** implementada, a validar no Supabase real. Cadastro rápido, cards de dois lados, etapas, tarefas, prazos, concluir, reabrir, arquivar, excluir, quantitativos e Foco do dia, testados no banco de teste.
+4. **Demandas completas:** implementada, a validar no Supabase real. Quatro visões (Cards, Quadro, Tabela, Lista), Arquivo, edição de qualquer campo, mover por menu e arraste, rascunhos, busca, filtros e ordenação. Pendente dentro desta etapa: campo para cadastrar o selo MP, tipos de documento opcionais além dos atuais, se o usuário quiser.
+5. **Entradas** e virar demanda: não iniciada.
+6. **Agenda local** (semana, mês, feriados, notificações): não iniciada.
+7. **Configurações** (paletas, fontes, tamanhos, fundo): não iniciada na aplicação funcional (existe no protótipo).
+8. **Busca global e botão "+":** botão "+" funcional para nova demanda; busca global desativada com aviso. Busca e filtros de Demandas funcionam.
+9. **Perfil: humor, energia, produtividade, clima e mensagem do dia:** não iniciada na aplicação funcional (existe no protótipo). Cada registro de Humor e Energia terá a sua própria data.
+10. **Google Calendar e Drive:** não iniciada.
+11. **IA estagiária:** não iniciada (as operações de Demandas já estão em funções reutilizáveis).
+12. **Documentos:** não iniciada.
+
+Antes de iniciar Entradas, Agenda ou outro módulo grande: fechar a base real (etapas 2 a 4 validadas no Supabase) e obter a avaliação do usuário sobre a aplicação atual.
 
 ---
 
 ## 4. Decisões já tomadas
-Estão em `DECISOES.md`. Resumo das regras de negócio: Aguardando retorno é uma **coluna**. Sem prazo, 30 dias automáticos editáveis. Categoria é o **tipo de documento**, opcional. Arquivar é sempre manual e todo card tem esse botão. Excluir definitivamente pede segunda confirmação.
+Estão em `DECISOES.md`. Resumo das regras de negócio: Aguardando retorno é uma **coluna**. Sem prazo, nenhuma data é inventada (item 6 de `DECISOES.md`). Categoria é o **tipo de documento**, opcional. Arquivar é sempre manual e todo card tem esse botão. Excluir definitivamente pede segunda confirmação.
 
 ## 5. Pontos ainda em aberto
-- Padrões de cada tema (par de fontes, estilo de ícones e paleta de Aurora, Papel e Grafite). Direção e logo já decididos: três temas definitivos e logo da Aurora.
+- Padrões do Catalyst: par de fontes, estilo de ícones e paleta padrão (há padrões provisórios). Direção única já decidida.
 - Limites do plano gratuito do Postgres (Supabase) e da IA gratuita.
 - Nomes e textos exatos de botões, ficam para a etapa das telas.
-- Peças com os cinco estados e conferência de contraste nos três temas.
+- Peças com os cinco estados e conferência de contraste no Catalyst, claro e escuro.

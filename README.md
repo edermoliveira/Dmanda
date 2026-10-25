@@ -1,22 +1,29 @@
 # Dmanda
 
-Painel pessoal de demandas do Secretário de Administração da Prefeitura de Taquara/RS. Reúne Início, Entradas, Demandas, Agenda, Documentos, IA e Configurações, para não esquecer demandas, acompanhar o que está em outro setor e ver prazos.
+Painel pessoal de demandas do Secretário de Administração da Prefeitura de Taquara/RS. Reúne Início, Entradas, Demandas, Agenda, Documentos, IA e Configurações, para não esquecer demandas, acompanhar o que está em outro setor e ver prazos (legal e próprio) com poucos campos. Usuário único. Funciona no celular, iPad e computador.
 
-Feito com Next.js. Funciona no celular, iPad e computador.
+## Estado
+
+- **Design:** Catalyst único (claro e escuro), aprovado no protótipo em `prototipo/`.
+- **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: núcleo de Demandas e tarefas pronto e testado no banco local de teste, com rotina diária na nuvem preparada. As demais áreas ainda não foram construídas.
+- **Ainda não validado:** Supabase real, login Google, publicação na Vercel e a primeira execução automática da rotina.
 
 ## Como rodar
 
 ```
-npm install      (só na primeira vez)
-npm run dev
+npm install        (só na primeira vez)
+npm run dev:teste  (aplicação em http://localhost:7100 com banco local descartável, sem Supabase)
+npm run dev        (aplicação em http://localhost:7100 com o Supabase real, exige .env.local)
 ```
 
-Endereço: http://localhost:7100
+Protótipo de referência (HTML puro, dados fictícios): dentro de `prototipo`, `python -m http.server 7200 --bind 127.0.0.1` e http://127.0.0.1:7200.
 
-Protótipo visual dos três temas (Aurora, Papel e Grafite): dentro da pasta `prototipo`, rodar `python -m http.server 7200` e abrir http://127.0.0.1:7200. Não usa o Next.js.
+Variáveis: copiar `.env.example` para `.env.local` e preencher (nunca vai para o Git). Passos do Supabase e da Vercel em `supabase/LEIA-ME.md`.
 
-Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `.env.local` nunca vai para o Git.
+## Testes
+
+`npm run testar:banco`, `npm run testar:regras`, `npm run testar:app` (veja o `CLAUDE.md` para o que cada um cobre e as limitações).
 
 ## Documentos
 
-Comece por `CLAUDE.md` (regras do projeto) e `DECISOES.md` (decisões mais recentes). O restante está listado no `CLAUDE.md`. O que aguarda o usuário está em `PENDENCIAS.md`.
+Comece por `CLAUDE.md` (regras e estado do projeto) e `DECISOES.md` (decisões mais recentes). O que aguarda o usuário está em `PENDENCIAS.md` e a retomada em `SINCRONIZA-PROJETINHO.md`.

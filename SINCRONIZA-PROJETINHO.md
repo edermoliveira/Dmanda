@@ -2,40 +2,39 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 25/10/2026 03:10, no computador de casa, na branch `checkpoint/2026-10-23-ajustes-a-d` (ver "Retomada rápida" logo abaixo). Push autorizado pelo usuário durante o bloco funcional.
+**Última atualização:** 25/10/2026, no computador de casa, branch `checkpoint/2026-10-23-ajustes-a-d` (ver "Retomada rápida" logo abaixo). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
 ---
 
 
-## RETOMADA RÁPIDA (atualizada em 25/10/2026 03:10, computador de casa)
+## RETOMADA RÁPIDA (atualizada em 25/10/2026, computador de casa)
 
-**Situação: bloco funcional PARCIAL.** O núcleo de demandas e tarefas funciona de ponta a ponta no banco local de teste; **a persistência no Supabase real NÃO foi validada** (não há projeto nem credenciais).
-**Branch:** `checkpoint/2026-10-23-ajustes-a-d`. Remoto: https://github.com/edermoliveira/Dmanda.git. Push autorizado pelo usuário durante este bloco (nunca merge na main, force push nem rebase publicado). Último checkpoint enviado: ver `git log -1` (o hash enviado foi conferido com `git ls-remote`).
+**Situação: base funcional PARCIAL, aguardando o usuário.** O núcleo de Demandas e tarefas e a rotina diária funcionam no banco local de teste. **Supabase real, login Google, publicação na Vercel e agendamento NÃO foram validados** (não há projeto nem acesso neste computador; sem CLI nem MCP de Supabase ou Vercel). A aplicação está no ar para conferência do usuário.
+**Branch:** `checkpoint/2026-10-23-ajustes-a-d`. Remoto: https://github.com/edermoliveira/Dmanda.git. Push autorizado para esta branch durante o bloco (nunca main, nunca force push). O hash enviado é conferido com `git ls-remote origin refs/heads/checkpoint/2026-10-23-ajustes-a-d`; nunca comparar o backup com `origin/main`.
 
-**Feito e verificado (resultados reais):**
-- `npm run testar:banco`: 47 verificações, 0 falhas (SQL, RLS, regras no PGlite).
-- `npm run testar:regras`: 12 verificações, 0 falhas (datas, grupos do Início, sessão de 6 h, e-mail autorizado).
-- `npm run testar:app`: 50 verificações, 0 falhas, no Edge, com leitura direta do banco de teste no fim: cadastro, validações, tarefas (adicionar, editar, marcar, desmarcar), mudar etapa pelo menu e por arraste, concluir, reabrir, arquivar, desarquivar, excluir com confirmação, cancelar, Esc com rascunho, falha de rede sem aviso de sucesso, filtros, quatro visões, Início, celular, iPad vertical e horizontal e janela média, claro e escuro, sem erros de console.
-- `npx tsc --noEmit`, `npx eslint src scripts` e `npx next build`: limpos, sem avisos. Produção sem Supabase responde 503; `DMANDA_BANCO=teste` em produção é recusado.
-- Capturas conferidas a olho (computador, iPad, celular, claro e escuro): fiéis ao protótipo.
+**Para conferir agora:** aplicação React em http://localhost:7100 (banco de teste em `.dados-teste/visual`, com 5 demandas de teste, não é o Supabase); protótipo de referência em http://127.0.0.1:7200. Se não estiverem no ar: `DMANDA_PASTA_TESTE=./.dados-teste/visual node scripts/dev-teste.mjs` e `python -m http.server 7200 --bind 127.0.0.1` dentro de `prototipo`.
 
-**Últimas alterações (para não repetir):** data de hoje agora vem do contexto (`hoje`), nunca de `new Date()` na renderização; cápsula de seleção (`.thumb`) renderizada pelo React com `suppressHydrationWarning` (o DOM só muda o estilo, depois de 1,2 s); `/login` com a parte dinâmica em `Suspense`; regra `dataFiltro/grupoFiltro` do protótipo portada (Aguardando retorno só volta a 3 dias do acompanhamento; "próximos 7 dias" é de 1 a 7); `banco-teste-base.mjs` com `turbopackIgnore` para o build não rastrear o projeto.
+**Feito neste bloco (arquivos e comportamentos):**
+- `src/ui/Capsula.tsx` (novo): cápsula de seleção mede e anima em efeitos depois da hidratação. Removidos o efeito global, a espera de 1,2 s e o `suppressHydrationWarning`. Causa do aviso antigo: o efeito global mudava estilos antes de a parte sob Suspense hidratar.
+- `src/ui/contexto.tsx`: preferências do navegador (tema, visão, ordem, grupos) só são gravadas depois de lidas (`pronto` virou estado). Antes, no modo de desenvolvimento, eram sobrescritas pelos padrões.
+- Rotina diária: `supabase/migrations/20261025000200_rotina_diaria.sql` (resumos datados, execuções, gatilho de recálculo, funções só do papel de serviço), `src/nucleo/rotina.ts`, `src/app/api/cron/diaria/route.ts`, `chamarServico` em `src/servidor/banco.ts`, isenção em `src/proxy.ts`, linha de estado no Início, `vercel.json` (09:00 UTC, uma vez por dia).
+- Banco de teste: registra migrações aplicadas (`teste_infra.migracoes`) e ganha o papel `service_role`; um banco de teste existente recebe só as migrações novas.
+- Plugins: `taste-skill`, `ui-ux-pro-max` e `code-simplifier` desativados em `.claude/settings.json` (escopo do projeto); `context7` e `code-review` ativos no usuário (o /doctor os havia desativado, foram reativados); sem sobreposição local. Efeito completo na próxima sessão ou com `/reload-plugins`.
+- Documentos consolidados: `CLAUDE.md` (estado atual, comandos, portas, regras novas), `prototipo/CLAUDE.md` (testes do protótipo), `README.md`, `PRODUTO.md`, `FUNCIONALIDADES.md`, `ANDAMENTO.md` (fórmula preservada, total 18% mantido, critérios e evidências), `PENDENCIAS.md`, `supabase/LEIA-ME.md`.
 
-**Não implementado (continua no planejamento):** Entradas, Agenda, Documentos, IA, Configurações, busca global, sino, Perfil, humor/energia/produtividade, integrações Google, notificações, PWA/iPhone/iPad nativo, publicação na Vercel, backup. Busca global, sino e Perfil aparecem desativados com aviso.
+**Testes (resultados reais):** `testar:banco` 68/68; `testar:regras` 19/19; `testar:app` 58/58 (banco de teste); `tsc`, `eslint` e `next build` limpos. Produção local sem Supabase: `/demandas` 503, rota da rotina 401 sem segredo, 503 sem `CRON_SECRET`, 500 sem chave de serviço. Resultados anteriores (47, 12, 50, 52) são históricos.
 
-**Supabase (fatos):** sem projeto, sem `.env.local`. Migrações prontas em `supabase/migrations/` (duas). O `.env.example` não pôde ser editado pelo assistente: acrescente as três variáveis listadas em `supabase/LEIA-ME.md`. **Dependem do usuário:** criar o projeto, aplicar as migrações, Google OAuth, `.env.local`.
+**Não validado / limitações:** tudo que depende do Supabase e da Vercel reais; primeira execução automática; `.env.example` (o assistente não tem permissão de editar, modelo em `supabase/LEIA-ME.md`); cópia privada dos dados reais (ainda não existe); enquadramento do plano Hobby da Vercel (uso pessoal e não comercial) e pausa do Supabase gratuito (decisões e riscos do usuário); teclado virtual em aparelho real; ícones restantes; aprovação visual da aplicação (só o usuário).
 
-**Pendências preservadas:** teclado virtual em aparelho real; datas próprias de Humor/Energia; escolhas restantes de ícones (Quadro etc.); Quadro mantém `columns`; referência visual ampliada; o `.next/dev/lock` exige um só `next dev` por vez.
+**Próxima ação técnica após a resposta do usuário:** conferir o esquema remoto, aplicar as 3 migrações sem destruir nada, validar RLS, conta autorizada e rejeição de outras, fluxo completo com leitura direta, configurar Vercel (`CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`), chamada manual da rotina, observar a primeira execução automática, reavaliar `ANDAMENTO.md`. Não iniciar Entradas, Agenda ou outro módulo antes disso e da avaliação do usuário.
 
-**Comandos:** `npm run dev:teste` (http://localhost:7100, banco de teste descartável em `.dados-teste/`); `npm run testar:banco`, `testar:regras`, `testar:app` (esse sobe a porta 7103 e exige nenhum `next dev` ligado); protótipo: `cd prototipo` e `python -m http.server 7200`.
-
-**Primeira ação recomendada:** o usuário avalia o aplicativo (roteiro: `npm run dev:teste`, abrir /demandas, cadastrar, editar, mover, concluir, recarregar) e, se aprovar, cria o projeto Supabase seguindo `supabase/LEIA-ME.md`; com as credenciais, validar a persistência real e o login Google. Próximo bloco sugerido: Entradas e Agenda (ou o que o usuário priorizar).
+**Comandos:** `npm run dev:teste`, `npm run dev` (exige `.env.local`), `npm run testar:banco`, `testar:regras`, `testar:app` (sobe a 7103; encerrar antes qualquer `next dev`), `npx tsc --noEmit`, `npx eslint src scripts`, `npm run build`.
 
 ---
 
-## 0. PONTO DE RETOMADA (23/10/2026, computador de casa)
+## 0. PONTO DE RETOMADA (23/10/2026, computador de casa) [HISTÓRICO, superado pela Retomada rápida acima]
 
 **Branch do checkpoint:** `checkpoint/2026-10-23-ajustes-a-d` (enviada ao GitHub com autorização expressa; **sem merge na main**). Para continuar em casa, **no PowerShell, dentro da pasta do projeto:** `git fetch` e `git checkout checkpoint/2026-10-23-ajustes-a-d`, depois `npm install`.
 

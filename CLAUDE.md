@@ -4,137 +4,105 @@
 
 Painel pessoal do Secretário de Administração da Prefeitura de Taquara/RS, com sete áreas: Início, Entradas, Demandas, Agenda, Documentos, IA e Configurações (mais Arquivo, Perfil, busca global e botão "+"). O objetivo é não esquecer demandas, acompanhar o que está em outro setor e ver prazos (legal e próprio) com poucos campos. Há um único usuário, o admin, que é o próprio Secretário. Não existe equipe, convite nem comentário. Existe um Perfil pessoal e privado (humor, energia e produtividade).
 
-Desenvolvido no computador e publicado na Vercel (com login Google) a partir da versão mínima de Demandas. Funciona no celular, iPad e computador (computador primeiro), instalável como PWA. O app nativo da App Store é uma etapa futura.
+Desenvolvido no computador e publicado na Vercel (com login Google restrito à conta do Secretário). Funciona no celular, iPad e computador (computador primeiro), instalável como PWA. O app nativo da App Store é uma etapa futura.
 
-**Em 21/10/2026 o escopo foi ampliado e o design system está sendo refeito do zero.** Em 23/10/2026 o **Catalyst** passou a ser a única direção visual (claro e escuro); Aurora, Papel e Grafite foram retiradas (protótipo em `prototipo/`). A fonte mais recente das decisões é `DECISOES.md`.
+## Estado atual (25/10/2026)
+
+- **Design:** Catalyst único, claro e escuro. O protótipo (`prototipo/`, HTML, CSS e JS puros, dados fictícios) está aprovado visualmente desde o commit `cd7b03f` e é a referência. Aurora, Papel e Grafite foram retiradas. A fonte mais recente das decisões é `DECISOES.md`.
+- **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: núcleo de Demandas e tarefas pronto e testado no banco local de teste. Rotina diária na nuvem preparada. As demais áreas aparecem como "Em construção".
+- **Ainda não validado:** Supabase real, login Google, persistência real, publicação na Vercel e primeira execução automática da rotina. Sem isso, não declarar integração remota concluída.
+- **Ícones:** escolhidos e implementados (Ionicons outline 8.0.13): os sete do menu, Cards, Tabela, Lista, busca, filtros, ordenação e expansão. Os restantes ficam para uma revisão consolidada e não bloqueiam funcionalidades. O Quadro mantém `columns` como exceção provisória.
+- Retomada detalhada: seção "Retomada rápida" no topo de `SINCRONIZA-PROJETINHO.md`. Pendências do usuário: `PENDENCIAS.md`.
 
 ## Como rodar
 
-```
-npm install      (só na primeira vez)
-npm run dev
-```
+| Comando | O que faz | Banco |
+|---|---|---|
+| `npm run dev` | aplicação em http://localhost:7100 | **Supabase real** (exige `.env.local`; sem ele o proxy responde 503) |
+| `npm run dev:teste` | aplicação em http://localhost:7100 | **banco local descartável** (PGlite em `.dados-teste/`, `DMANDA_BANCO=teste`, só em desenvolvimento, recusado em produção) |
+| `npm run build` e `npm run start` | produção local na 7100 | Supabase real |
+| `cd prototipo` e `python -m http.server 7200 --bind 127.0.0.1` | protótipo de referência em http://127.0.0.1:7200 | nenhum (dados fictícios) |
 
-Endereço: http://localhost:7100 (a porta 7100 está fixada no package.json).
+Portas: 7100 aplicação (fixa no `package.json`), 7200 protótipo, 7103 usada pelo `testar:app` (sobe o próprio servidor). Só pode haver **um `next dev` por vez** neste projeto (a pasta `.next` tem trava): encerrar o da 7100 antes de rodar `testar:app`. O banco de teste tem pastas por finalidade em `.dados-teste/` (`pg` do `dev:teste`, `e2e` e `visual` dos testes e das conferências); são descartáveis, mas só apagar com autorização. As migrações novas são aplicadas sozinhas a um banco de teste que já existe.
 
-Testes do protótipo (dentro de `prototipo`, usam o Edge instalado, sem servidor à parte):
+Variáveis: copiar `.env.example` para `.env.local` e preencher (nunca vai para o Git; o assistente não lê arquivos `.env*`). Lista e passos do Supabase e da Vercel em `supabase/LEIA-ME.md`.
 
-```
-node testes/fluxos.mjs                          (fluxos principais, cerca de 1 minuto)
-node testes/clicar-tudo.mjs d claro desktop     (cliques, contraste e layout de um tema, cerca de 5 minutos)
-node testes/clicar-tudo.mjs                     (Catalyst, claro e escuro, computador e celular)
-node testes/menu.mjs                            (Mostrar menu: mostrar, navegar, voltar, recolher, recarregar)
-node testes/consolidacao.mjs                    (Catalyst único, endereços antigos, sete ícones de navegação, erros de recursos)
-node testes/ipad-botoes.mjs                     (botões só com ícone de Demandas no iPad vertical e nos limites 520/521 e 899/900 px)
-node testes/energia.mjs                         (os cinco SVGs de energia: carregamento, nível certo, claro e escuro)
-node testes/perfil-pomodoro.mjs                 (avatar do Perfil e Pomodoro em cinco larguras)
-node testes/ipad-cards.mjs                      (duas colunas de cards de 640 a 899 px, uma coluna no celular)
-node testes/agenda-demandas.mjs                 (itens de demanda da Agenda: sigla, cor, abrir pelo identificador)
-node testes/quadro.mjs                          (Quadro: colunas, filtros, mover por menu, mouse e toque)
-node testes/fundo.mjs                           (fundo: cor, imagem, desfoque, persistência, falhas)
-node testes/checkbox.mjs                        (caixas de marcar das tarefas)
-node testes/card-faixa.mjs                      (cards atrasados sem faixa lateral, com contorno e progresso)
-node testes/config-layout.mjs                   (Configurações: painéis em colunas, opções que aplicam)
-node testes/perfil-historico.mjs                (histórico do Perfil: colunas por dia, Humor e Energia)
-node testes/icones-busca-filtros.mjs            (ícones Ionicons de busca, filtros, ordenação e expansão)
-node testes/icones-visualizacoes.mjs             (ícones Ionicons das visualizações de Demandas)
-node testes/selo-legal.mjs                     (contraste do selo Legal nas dez paletas)
-node testes/form-demanda.mjs                    (cadastro e edição de demandas: grupos, rodapé, salvar, cancelar, rascunho)
-node testes/preservar-catalyst.mjs comparar testes/referencias/catalyst-cd7b03f.json.gz  (78 telas contra a referência aprovada; `gravar` cria outra)
-node verificar-cores.mjs                        (nenhum branco ou preto absoluto)
-```
+Testes da aplicação real (rodar só os dos componentes afetados):
 
-Variáveis de ambiente: copiar `.env.example` para `.env.local` e preencher. O `.env.local` nunca vai para o Git.
+- `npm run testar:banco`: SQL, RLS, rotina diária e privilégios no PGlite (68 verificações).
+- `npm run testar:regras`: datas, grupos do Início, sessão de 6 h, e-mail autorizado, segredo e falha da rotina (19).
+- `npm run testar:app`: navegador (Edge) e leitura direta do banco de teste: fluxos de demandas, tarefas, quatro visões, celular, iPad, claro e escuro, cápsula, rotina diária (57).
+- Também: `npx tsc --noEmit`, `npx eslint src scripts`, `npm run build`.
+- Testes do protótipo: ver `prototipo/CLAUDE.md`.
+
+Estes testes validam a lógica e a interface no banco de **teste**. Não substituem a validação no Supabase real.
 
 ## Documentos do projeto
 
-- DECISOES.md: **fonte mais recente.** Respostas do usuário ao questionário. Se algo divergir, vale este arquivo.
-- PESQUISA.md: as dores do usuário.
-- REFERENCIAS.md: prints de referência (todos de uma só ferramenta). Valem para a organização das informações, não para o visual.
-- PRODUTO.md: o que o sistema tem (sete áreas) e os cuidados gerais.
-- FUNCIONALIDADES.md: mapa por tela, jornada de uma demanda e etapas de construção. Seguir a ordem das etapas.
-- ANALISE-FERRAMENTAS.md: avaliação de skills, plugins, MCPs e sites de componentes (o que entra e o que sai).
-- QUESTIONARIO.md: perguntas de alinhamento (já respondidas, ver DECISOES.md).
-- ANDAMENTO.md: cálculo do percentual de andamento.
-- INVENTARIO-ICONES.md: ícones que ainda vêm de Iconoir e Lucide, agrupados por função, para o usuário selecionar os próximos.
-- PENDENCIAS.md: o que aguarda o usuário.
+- DECISOES.md: **fonte mais recente.** Se algo divergir, vale este arquivo.
+- PENDENCIAS.md: o que aguarda o usuário. SINCRONIZA-PROJETINHO.md: retomada e histórico das sessões.
+- PRODUTO.md (o que o sistema tem), FUNCIONALIDADES.md (mapa por tela e etapas de construção), ANDAMENTO.md (cálculo do percentual).
+- PESQUISA.md (dores do usuário), REFERENCIAS.md (organização das informações, não o visual), QUESTIONARIO.md (já respondido), ANALISE-FERRAMENTAS.md, INVENTARIO-ICONES.md.
+- supabase/LEIA-ME.md: Supabase, Vercel, rotina diária e proteção dos dados reais.
 
 ## Regras
 
 - Todos os textos em português do Brasil: interface, mensagens, commits, documentos e comentários.
 - Sem travessão (nem "—" nem "–") em nenhum texto. Usar vírgula, ponto, dois-pontos ou parênteses.
-- Fazer um commit a cada avanço, com mensagem em português.
-- Nunca colocar senha, chave, token ou dado real em arquivo que vá para o Git. Valores reais ficam só no `.env.local`.
+- Um commit a cada avanço, com mensagem em português.
+- Nunca colocar senha, chave, token ou dado real em arquivo que vá para o Git. Valores reais ficam só no `.env.local` e nas variáveis da Vercel. Chave de serviço do Supabase só no servidor, nunca em `NEXT_PUBLIC`.
+- Dados fictícios do protótipo nunca entram no banco real.
 - Cadastro rápido com poucos campos (número, prazo, assunto, origem). Poucas cores por tela, cor forte só para atrasado ou crítico. Exceções combinadas: post-its pastel em Entradas e cores de demanda (amarelo) e evento (azul) na Agenda.
-- O que o usuário digita é guardado automaticamente.
-- Não pagar nada além das assinaturas Claude Pro e ChatGPT Plus. Sem instaladores que peçam administrador (o computador não dá essa permissão). Ficam para o app nativo e foram aprovados para depois: conta Apple Developer, IA paga e Mobbin Pro.
+- O que o usuário digita é guardado automaticamente. Falha de gravação nunca mostra sucesso.
+- Prazos: as datas originais são a fonte de verdade; dias restantes são sempre derivados delas (America/Sao_Paulo), nunca de um contador que decai.
+- Custo: nada além das assinaturas Claude Pro e ChatGPT Plus. Contratar plano pago (por exemplo Vercel Pro) só por decisão do usuário. Sem instaladores que peçam administrador. Ficam para o app nativo e foram aprovados para depois: conta Apple Developer, IA paga e Mobbin Pro.
 - Nunca usar mensagem de cobrança, culpa ou alerta negativo dirigido ao usuário (vale principalmente em humor, energia e produtividade).
-- Decisões que dependem do usuário são perguntadas no chat (uma rodada curta por vez) e gravadas em `DECISOES.md`.
-- Instalar skills, plugins e MCPs só na hora em que forem usados, depois de ler o que eles escrevem. Avaliação em `ANALISE-FERRAMENTAS.md`.
 
 ## Design system
 
-**Uma só direção, o Catalyst** (decidido em 23/10/2026): estilo Apple Mac e iPad, a partir do kit oficial do Figma (`prototipo/catalyst.css`), com modo claro e escuro. Aurora, Papel e Grafite foram retiradas. O identificador interno continua `d` (`data-dir="d"`). Endereços e preferências antigas (`dir=a|b|c`) abrem o Catalyst. O usuário escolhe cores (10 paletas), ícones, tamanhos e fontes.
+**Uma só direção, o Catalyst:** estilo Apple Mac e iPad, a partir do kit oficial do Figma (`prototipo/catalyst.css`), com modo claro e escuro. O identificador interno continua `d` (`data-dir="d"`). O usuário escolhe cores (10 paletas), ícones, tamanhos e fontes. A aplicação em `src/` reaproveita os CSS do protótipo (`src/estilos/`) com as mesmas classes e marcação. Hashes úteis no protótipo: `#tema=claro|escuro&tela=demandas&vis=quadro&dev=phone&balao=nao` (só lidos ao carregar).
 
-O protótipo navegável está em `prototipo/` (HTML, CSS e JS puros, dados fictícios, isolado do `src/`). Abrir por um servidor local, por exemplo `python -m http.server 7200` dentro da pasta `prototipo`, e acessar http://127.0.0.1:7200. Hashes úteis na URL: `#tema=claro|escuro&tela=demandas&vis=quadro&dev=phone&balao=nao` (o app só lê o hash ao carregar: depois de mudar o endereço, recarregar).
-
-- **iPhone e iPad (decidido em 23/10/2026):** o mobile é pensado para o iPhone como PWA, mas **construído como app nativo**. O iPad segue a mesma regra e, no futuro, terá Entradas com Apple Pencil. Propostas técnicas aguardando aprovação em `DECISOES.md`.
-- **Vidro líquido** em quase todo o desenho (barras, menu, painéis, indicadores, botões, abas). Cards de demanda mais sólidos. **Caixas de preenchimento (janelas, busca, balões) quase opacas**: brancas no claro e escuras no escuro, com campos de alto contraste.
+- **iPhone e iPad:** o mobile é pensado para o iPhone como PWA, mas **construído como app nativo**. O iPad segue a mesma regra e, no futuro, terá Entradas com Apple Pencil. Propostas técnicas aguardando aprovação em `DECISOES.md`.
+- **Vidro líquido** em quase todo o desenho (barras, menu, painéis, indicadores, botões, abas). Cards de demanda mais sólidos. **Janelas, busca e balões quase opacos**: brancos no claro e escuros no escuro, com campos de alto contraste.
 - **Fontes em três papéis:** principal para títulos, secundária para subtítulos e textos, mono para detalhes pontuais (números de processo, datas, contadores) e, por exceção, a descrição resumida dos cards de demanda.
-- **Ícones:** a família escolhida é a **Ionicons outline** (MIT, 8.0.13). **Já implementados: os sete do menu de navegação Cards, Tabela e Lista das visualizações de Demandas e busca, filtros, ordenação e expansão** (`prototipo/icones-nav/`, originais em `imagens/figma-kit/icones/`). Os demais ícones continuam com Iconoir e Lucide **até o usuário selecionar os símbolos**; não escolher substitutos por conta própria. Sempre por uma única função de ícone. Nada de emoji nos controles. Os emojis de humor são os PNGs do usuário em `prototipo/emojis/` (ver o `LEIA-ME.md` da pasta).
-- **Energia e fundo:** a energia são os SVGs coloridos do usuário (`prototipo/emojis/energia-1..5.svg`), nunca recoloridos. O fundo é Padrão do tema, Cor (uma por modo) ou Imagem local (IndexedDB), só neste navegador; não há mais fundo animado.
+- **Ícones:** sempre por uma única função. Os ainda não escolhidos continuam em Iconoir e Lucide até o usuário selecionar os símbolos; não escolher substitutos por conta própria. Nada de emoji nos controles. Humor: PNGs do usuário em `prototipo/emojis/`. Energia: SVGs coloridos do usuário (`energia-1..5.svg`), nunca recoloridos.
+- **Fundo:** Padrão do tema, Cor (uma por modo) ou Imagem local (IndexedDB), só neste navegador.
 - **Regras mantidas:** nenhuma cor solta no código (valores só nos arquivos de tokens), espaços e cantos por nome, alvo de toque de 44 px, funcionar nos dois modos, cinco estados por peça (normal, foco, desativado, carregando, erro), vermelho só para atrasado ou crítico.
 - **Exceções à regra do travessão:** o traço "—" aparece na interface como símbolo de "sem progresso" (decisão do usuário), e valem fora da regra o `AGENTS.md` (gerado pelo Next.js) e as skills de terceiros copiadas em `.claude/skills/`.
 
-### Aplicação funcional (em `src/`, desde 25/10/2026)
+### Aplicação funcional (`src/`)
 
-Next.js 16 + React 19 + Supabase, construída sobre os CSS aprovados do protótipo (copiados para `src/estilos/`, mesmas classes e marcação). **Primeiro bloco: núcleo de demandas e tarefas** (cadastrar, editar, mover etapa, concluir, reabrir, arquivar, excluir com confirmação, tarefas, quatro visões, busca, filtros, ordenação, Início). As demais áreas aparecem como "Em construção", sem dados de exemplo.
+- `src/nucleo/` operações validadas (reutilizáveis pela futura IA) e lógica da rotina; `src/servidor/` transporte (Supabase real ou banco de teste) e ações do servidor; `src/lib/` regras puras e Supabase; `src/ui/` interface; `src/proxy.ts` porta de entrada (sessão Google, e-mail autorizado, expiração após 6 h sem uso); `src/app/api/cron/diaria` rotina diária (autenticação própria por `CRON_SECRET`, isenta do proxy e sem tocar na sessão).
+- Banco em `supabase/migrations/` (versionadas, em ordem). Operações como funções SQL com RLS por usuário.
+- O design antigo (20/10/2026) fica em `src/app/(antigo)` só como referência; não evoluir.
+- Hidratação: o servidor e o primeiro desenho do cliente devem ser iguais. Nada de `new Date()` na renderização (a data de hoje vem do contexto), nada de mexer no DOM antes da hidratação, e sem `suppressHydrationWarning` ou esperas fixas para esconder divergência. A cápsula de seleção é o componente `Capsula`.
 
-- `src/nucleo/operacoes.ts`: operações validadas (reutilizáveis pela futura IA). `src/servidor/`: transporte (Supabase real ou banco local de teste) e ações do servidor. `src/lib/demandas.ts`: regras puras (datas, grupos, filtros, ordenação). `src/ui/`: interface. `src/proxy.ts`: porta de entrada (sessão Google, e-mail autorizado, 6 h sem uso; sem Supabase configurado responde 503).
-- Banco: `supabase/migrations/` (tabelas, RLS e funções SQL) e `supabase/LEIA-ME.md` (passos do usuário e variáveis). **Nenhum projeto Supabase está configurado**: a persistência real e o login Google ainda não foram validados.
-- `npm run dev:teste` sobe http://localhost:7100 com banco local descartável (PGlite, `DMANDA_BANCO=teste`, só em desenvolvimento, recusado em produção). Testes: `npm run testar:banco` (47, SQL e RLS), `npm run testar:regras` (12), `npm run testar:app` (50, navegador e leitura direta do banco de teste). O `testar:app` sobe o próprio servidor na porta 7103: encerrar antes qualquer `next dev` ligado, porque a pasta `.next` só aceita um servidor de desenvolvimento por vez.
-- Design antigo (20/10/2026) fica em `src/app/(antigo)` só como referência (/pecas, /tokens, /marca); não evoluir.
+## Ferramentas (decidido em 25/10/2026)
 
-## Ferramentas (decidido em 23/10/2026)
+São regras de trabalho. A configuração de plugins do projeto está em `.claude/settings.json`.
 
-São regras de trabalho, não travas técnicas: os plugins instalados no escopo do usuário continuam disponíveis em qualquer sessão, então a disciplina é nossa.
-
-- **Impeccable** (instalada no projeto, versão 4.7.0, sem hooks, telemetria desligada em `.impeccable/config.json`): UX, responsividade, acessibilidade e acabamento. Serve para avaliar e refinar a direção já aprovada, nunca para gerar novas direções. `bolder` e `overdrive` ficam fora. As sugestões dela não substituem as decisões do usuário.
-- **Taste:** só para exploração artística pedida expressamente.
-- **ui-ux-pro-max:** uso excepcional, quando acrescentar algo que a Impeccable não cobre.
-- **Ponytail:** adiada para o Bloco C. **Vercel React Best Practices:** só na implementação real em React/Next.js.
-- **Transitions.dev:** só os recursos gratuitos, para microinterações concretas.
-- **Playwright:** manter os testes atuais com `playwright-core` e o Edge. Sem CLI nem troca da infraestrutura por ora.
-- **Context7:** consultar quando precisar de documentação externa.
-- **code-review e code-simplifier:** conforme a necessidade, nunca os dois automaticamente sobre o mesmo diff.
-- **Supabase** é o banco do projeto, mas nada de MCP, banco ou backend até a decisão de iniciar. A IA operacional é etapa futura (Open Notebook não serve).
-- Sem hooks automáticos de auditoria e sem pacotes de memória. Superpowers completo não será instalado (só as três skills copiadas em `.claude/skills/`).
-
-## Pendências
-
-Ler `PENDENCIAS.md` no início de cada sessão. Ali está o que aguarda aprovação do usuário.
+- **Mantidas:** Playwright (testes atuais com `playwright-core` e o Edge; sem CLI), Context7 (documentação externa), code-review (revisão concentrada, quando pertinente), Impeccable (instalada no projeto, sem hooks, telemetria desligada; avalia e refina a direção aprovada, nunca gera novas direções, `bolder` e `overdrive` fora), as skills `test-driven-development`, `systematic-debugging` e `verification-before-completion` (copiadas em `.claude/skills/`), e o Figma para consultas pontuais.
+- **Desativadas, sem desinstalar:** taste-skill, ui-ux-pro-max e code-simplifier.
+- **Não instalar** sem necessidade concreta: Superpowers completo, ferramentas de memória, Ponytail, Trail-code, Playwright CLI. Vercel React Best Practices só se for útil na implementação.
+- Instalar skills, plugins e MCPs só na hora em que forem usados, depois de ler o que escrevem. Avaliação em `ANALISE-FERRAMENTAS.md`.
+- Não alterar o modo auto, as permissões gerais nem as atualizações do Claude por conta própria.
 
 ## Andamento do projeto
 
-**Terminar toda resposta neste projeto com a linha: "Andamento do projeto: X%".** O cálculo e a data da última revisão ficam em `ANDAMENTO.md`. Reavaliar o percentual a cada avanço real (commit de funcionalidade, aprovação ou mudança de escopo) e atualizar o arquivo.
+**Terminar toda resposta neste projeto com a linha: "Andamento do projeto: X%".** O cálculo, os critérios e a data da última revisão ficam em `ANDAMENTO.md`. Só mudar o percentual com critério e evidência explícitos; não usar estimativas antigas como prova.
 
-## Regras aprendidas com as correções
+## Regras de trabalho
 
-Sempre que o usuário corrigir algo, acrescentar aqui a regra nova, em uma linha, logo após a correção.
-
-- Quando o usuário tiver que fazer algo fora do Claude Code (comando no PowerShell, ação no site do GitHub, outro programa), avisar sempre e destacar em negrito, dizendo onde fazer e o que fazer.
-- Nunca fazer `git push` (nem outro envio ao GitHub) sem autorização do usuário. O usuário quer conferir antes. Pedir autorização a cada rodada, a menos que ele a conceda de forma geral.
-- Janelas e caixas de preenchimento (cadastro, busca, balões) devem ser quase opacas: claras no modo claro e escuras no modo escuro. Vidro transparente demais deixa o campo pouco visível.
-- Telas novas precisam ser testadas no navegador de verdade (clicar nos botões, trocar tema e largura), não só conferidas em captura de imagem. Ao testar o protótipo, servir por http (o Playwright bloqueia `file://`).
-- Ao instalar plugins, skills ou MCPs a pedido do usuário, avisar o que ficou instalado e onde (usuário ou projeto), e que o outro computador precisa repetir a instalação.
-- Cards e post-its nunca têm barra de rolagem: se não couber, mostrar só o título e deixar o título preencher o espaço até onde couber.
+- **Autonomia:** decidir sozinho o que for rotina técnica dentro do escopo. Perguntar apenas quando depender de informação, escolha de produto, autenticação ou ação externa do usuário, e agrupar tudo em uma rodada curta. Decisões do usuário são gravadas em `DECISOES.md`. Não reabrir decisões encerradas nem reduzir escopo para terminar mais rápido.
+- **Blocos maiores:** início, fim e entrega verificada. No fim de cada bloco, informar o percentual, o que depende do usuário e sugerir modelo e effort do próximo (quem troca é o usuário).
+- **Verificação proporcional:** rodar só as verificações dos componentes afetados pela mudança (por exemplo, `testar:app` para a interface funcional, `testar:banco` para migrações, `prototipo/CLAUDE.md` para mudanças no protótipo). Repetir suíte extensa só com alteração ou dúvida que justifique. Não declarar concluído sem rodar a verificação e conferir o resultado.
+- **Navegador de verdade:** telas novas são testadas clicando, trocando tema e largura, não só por captura. Servir o protótipo por http (o Playwright bloqueia `file://`). Capturas minhas não valem como aprovação visual do usuário.
+- **Git:** `git push` só com autorização do usuário (vale para o bloco e a branch indicados; nunca na main, nunca force push, nunca reescrever histórico publicado). Para confirmar o backup, comparar o commit local com a **branch correspondente no remoto** (`git ls-remote origin refs/heads/<branch>`), nunca com `origin/main`. Revisar arquivos novos e segredos antes de commitar. Ao encerrar uma sessão, atualizar a retomada em `SINCRONIZA-PROJETINHO.md`, a memória local e fazer o commit.
+- **Ação do usuário fora do Claude Code** (comando no PowerShell, site do Supabase, da Vercel, do GitHub, outro programa): avisar sempre, em negrito, dizendo onde e o que fazer. Não pedir senha, token privado nem conteúdo do `.env.local` no chat.
+- Ao instalar plugins, skills ou MCPs a pedido do usuário, informar o que ficou instalado, o escopo (usuário ou projeto) e que o outro computador precisa repetir a instalação.
+- Antes de excluir qualquer pasta ou arquivo, olhar o alvo e conferir que nada exclusivo se perde. Excluir só com pedido ou autorização. Não apagar dados locais do usuário.
+- Cards e post-its nunca têm barra de rolagem: se não couber, mostrar só o título.
 - Texto digitado nunca se perde: clicar fora de uma janela com texto não fecha, Esc e X guardam rascunho, só Cancelar descarta.
-- Tom dos textos: simpático e direto, sem bajulação, com tom de alerta quando necessário.
-- Botões no estilo Apple: chatos, levemente arredondados, sem borda nem relevo. Sem prazo, nada é mostrado (nem "Chegou há N d").
-- Botões numa escala única e harmônica (40 px padrão, 32 px mini, 44 px só nas barras), área de toque sempre de 44 px. Nada de tamanho solto.
 - Toda informação incluída pelo usuário (tarefa, nota, evento, demanda, perfil) precisa ser alterável de forma fácil, de preferência no próprio lugar.
-- Nenhuma decisão é tomada pelo Claude sem o conhecimento e a autorização prévios do usuário: dúvida vira pergunta no chat e a resposta é gravada em `DECISOES.md`.
-- Trabalhar em blocos maiores (início, fim e entrega testada). No fim de cada bloco, informar o percentual do projeto, o que ficou pendente do usuário e **sugerir o modelo (Opus ou Sonnet) e o effort do próximo bloco**. É sempre sugestão: quem troca é o usuário. Plano em `SINCRONIZA-PROJETINHO.md`, seção 7.
-- Ao encerrar uma sessão, atualizar `SINCRONIZA-PROJETINHO.md` (estado, histórico, pendências e prompt de retomada), fazer o commit e, só com autorização, o push.
-- Antes de excluir qualquer pasta ou arquivo, olhar o alvo e conferir que nada exclusivo se perde (por exemplo, comparar o hash da árvore do Git). Excluir só com pedido ou autorização do usuário.
-- A cada etapa, rodar o teste de cliques (`node testes/clicar-tudo.mjs` em `prototipo`) e corrigir o que ele achar antes de dizer que está pronto.
+- Tom dos textos: simpático e direto, sem bajulação, com tom de alerta quando necessário.
+- Botões no estilo Apple: chatos, levemente arredondados, sem borda nem relevo. Escala única: 40 px padrão, 32 px mini, 44 px só nas barras, área de toque sempre de 44 px. Sem prazo, nada é mostrado (nem "Chegou há N d").

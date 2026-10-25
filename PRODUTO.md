@@ -21,7 +21,7 @@ Mais: **Arquivo** (página à parte), **Perfil** (avatar no topo), **botão "+"*
 
 ## Regras de negócio que continuam
 - Cadastro rápido com **número, prazo, assunto e origem**, e tipo de documento opcional (processo, memorando, ofício, reunião, pedido pessoal; ampliável).
-- Prazo **legal** (TCE, Câmara, MP, Judiciário) prevalece sobre o **próprio**. Sem prazo, o sistema põe 30 dias automáticos, editáveis.
+- Prazo **legal** (TCE, Câmara, MP, Judiciário) prevalece sobre o **próprio**. Sem prazo, o sistema não inventa data: a demanda fica fora dos filtros de prazo (o formulário pode sugerir 30 dias, que só valem se o usuário escolher).
 - Em **Aguardando retorno** aparecem o setor e os dias parado.
 - Todo campo é editável e o sistema se ajusta à mudança.
 - Remover uma demanda: **arquivar** (vai para o Arquivo) ou **excluir definitivamente** (segunda confirmação). Arquivar é sempre manual.
@@ -45,5 +45,5 @@ Desenvolvido local e publicado na **Vercel com login Google** assim que existir 
 - Cadastro rápido nunca pode virar formulário grande, senão vira outra planilha abandonada.
 - Funcionar bem no celular, no iPad e no computador, com computador primeiro.
 - Texto sobre vidro precisa ser legível. Cards de demanda mais sólidos. Janelas e caixas de preenchimento quase opacas (claras no modo claro, escuras no escuro).
-- Três temas definitivos (Aurora, Papel e Grafite), cada um com claro e escuro e com cores, fontes, ícones e tamanhos ajustáveis.
+- Uma só direção visual, o Catalyst (estilo Apple Mac e iPad), com claro e escuro e com cores (10 paletas), fontes, ícones e tamanhos ajustáveis. As direções Aurora, Papel e Grafite foram retiradas em 23/10/2026.
 - Nada de mensagem de cobrança, culpa ou alerta negativo sobre o próprio usuário.

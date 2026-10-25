@@ -85,7 +85,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [janela, setJanela] = useState<Janela>(null);
   const [menuMover, setMenuMover] = useState<{ id: string; x: number; y: number } | null>(null);
   const [rascunhos, setRascunhos] = useState<Record<string, Rascunho>>({});
-  const pronto = useRef(false);
+  // só depois de ler as preferências do navegador é que elas podem ser gravadas (senão os padrões sobrescrevem o que estava salvo)
+  const [pronto, setPronto] = useState(false);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const avisar = useCallback((msg: string, erro = false) => {
@@ -106,11 +107,11 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (ui.ordem) setOrdem(ui.ordem);
     if (ui.grupos) setGrupos(ui.grupos);
     setRascunhos(lerLS<Record<string, Rascunho>>('dmanda:rascunhos', {}));
-    pronto.current = true;
+    setPronto(true);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
-  useEffect(() => { if (pronto.current) gravarLS('dmanda:ui', { visao, ordem, grupos: gruposFechados }); }, [visao, ordem, gruposFechados]);
-  useEffect(() => { if (pronto.current) gravarLS('dmanda-tema', tema); }, [tema]);
+  useEffect(() => { if (pronto) gravarLS('dmanda:ui', { visao, ordem, grupos: gruposFechados }); }, [pronto, visao, ordem, gruposFechados]);
+  useEffect(() => { if (pronto) gravarLS('dmanda-tema', tema); }, [pronto, tema]);
 
   const aplicar = useCallback((d: Demanda) => {
     if (d.arquivada_em) {

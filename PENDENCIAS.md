@@ -1,10 +1,40 @@
 # Pendências do Dmanda
 
-Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador.
+Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 25/10/2026. O que está depois de "Histórico" é anterior a esta data e pode estar superado pelas decisões em `DECISOES.md` e pelo estado descrito no `CLAUDE.md`.
 
-## Aguardando o usuário
+## Aguardando o usuário (uma rodada)
 
-**Supabase real (25/10/2026, bloqueia a validação da persistência):** criar o projeto no Supabase, aplicar as duas migrações de `supabase/migrations/`, configurar o Google OAuth, criar o `.env.local` e dizer ao Claude. Passo a passo em `supabase/LEIA-ME.md`. Até lá o aplicativo só roda no banco local de teste.
+Nada abaixo bloqueia a conferência da aplicação; os itens 2 a 5 bloqueiam só a validação real.
+
+1. **Conferir a aplicação funcional** (já no ar, banco de teste com dados de teste): http://localhost:7100 (aplicação React) e, só para comparar, http://127.0.0.1:7200 (protótipo). Roteiro curto: Início, as quatro visões de Demandas, abrir e editar uma demanda, tarefas, o menu Mover, celular e iPad. A aprovação visual do protótipo continua válida; esta conferência verifica a fidelidade e os fluxos.
+2. **Supabase:** informar se já existe um projeto Dmanda (nome e organização) ou se é para criar um; qual **conta Google** poderá entrar; e se autoriza o uso das CLIs oficiais pelo assistente (login feito por você). Passo a passo em `supabase/LEIA-ME.md`.
+3. **Vercel:** confirmar se o plano **Hobby** serve para este uso (ele é restrito a uso pessoal e não comercial; a documentação inclui "funcionário pago que escreve o código" como uso comercial) ou se prefere outra solução. **Nada será contratado sem a sua decisão.** E criar ou indicar o projeto ligado ao repositório do GitHub.
+4. **`.env.example`:** o assistente não tem permissão para editá-lo. Conferir se contém as variáveis listadas em `supabase/LEIA-ME.md` (modelo com valores fictícios) ou liberar a edição.
+5. **Cópia privada dos dados reais** (o GitHub não guarda dados e o plano gratuito do Supabase não deixa baixar backup): decidir como e onde guardar (proposta no `supabase/LEIA-ME.md`).
+
+## Próximo passo técnico após a sua resposta
+
+Conferir o esquema remoto antes de aplicar as migrações; aplicar sem alterações destrutivas; validar RLS, acesso só da conta autorizada, rejeição de outras contas, login, cadastro, tarefas, edição, etapas, conclusão, recarga e leitura direta; configurar a Vercel e o `CRON_SECRET`; chamar a rotina manualmente e observar a primeira execução automática; só então reavaliar o `ANDAMENTO.md`.
+
+## Em aberto, sem bloquear
+
+- **Ícones restantes** (revisão consolidada, `INVENTARIO-ICONES.md`). O Quadro mantém `columns` como exceção provisória.
+- **Teclado virtual em aparelho real:** o rodapé do formulário no celular só foi testado em emulação.
+- **Humor e Energia:** cada registro terá a sua própria data, preservada ao editar (requisito da implementação funcional).
+- **Referência visual ampliada** do protótipo e comparação de telas da aplicação real, depois da sua avaliação.
+- **Itens de decisão antigos** (GitHub Issues, Open Notebook, direção iPhone e iPad, PNGs do Figma, padrões do Catalyst): seguem sem resposta. Ver o histórico abaixo e `SINCRONIZA-PROJETINHO.md`, seção 3.
+- **Fora desta etapa, continuam no planejamento:** Entradas, Agenda, Documentos, IA, Configurações, Perfil, busca global, Google Calendar e Drive, notificações, PWA e app nativo. Não iniciar antes da base real validada e da sua avaliação.
+
+## Como continuar em outro computador
+
+1. `git clone https://github.com/edermoliveira/Dmanda.git` (ou `git pull` na branch de trabalho, `checkpoint/2026-10-23-ajustes-a-d`).
+2. `npm install` (só na primeira vez).
+3. `npm run dev:teste` (banco de teste, sem credenciais) ou `npm run dev` (Supabase real, exige `.env.local`). Protótipo: `python -m http.server 7200 --bind 127.0.0.1` dentro de `prototipo`.
+4. O `.env.local`, o banco de teste (`.dados-teste/`) e os dados reais **não** vão para o GitHub.
+5. Plugins e MCPs não vêm pelo Git: a configuração de plugins do projeto está em `.claude/settings.json`; os plugins (Playwright, Context7, code-review) e o MCP do Figma (`claude mcp add --transport http figma https://mcp.figma.com/mcp`, depois autenticar em `/mcp`) precisam ser instalados de novo em outro computador.
+6. A memória do Claude é local de cada computador: recriar a partir da seção "Retomada rápida" de `SINCRONIZA-PROJETINHO.md`.
+
+## Histórico (anterior a 25/10/2026)
 
 Nada abaixo foi decidido pelo Claude. O detalhe de cada item está em `SINCRONIZA-PROJETINHO.md`, seção 3.
 
@@ -31,18 +61,18 @@ Nada abaixo foi decidido pelo Claude. O detalhe de cada item está em `SINCRONIZ
 
 **Resolvido em 23/10/2026:** a pasta duplicada `Dmanda\Dmanda` foi revisada e excluída (conteúdo idêntico ao commit `d6e8406`, nada exclusivo).
 
-## Limite do Figma
+### Limite do Figma
 
 O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês**, e escrever não conta. As 20 foram usadas em 21 e 22/10/2026. A documentação não informa quando renova: o Claude tenta de novo em novembro. Plano pago está fora das regras de custo. **Para não depender do limite, o plano é exportar as páginas que faltam como PNG (ação 11).** Páginas que faltam: Steppers, Progress Indicators, Popovers, Alerts, Empty States, Contextual Menus, Date and Time Pickers e Examples.
 
-## Próximo passo do Claude
+### Próximo passo do Claude
 
 - **Blocos maiores** daqui em diante. No fim de cada bloco: percentual do projeto e sugestão de modelo e effort para o próximo (plano em `SINCRONIZA-PROJETINHO.md`, seção 7).
 - Página de **peças com os cinco estados** (normal, foco, desativado, carregando, erro) para os três temas, e conferência de contraste (`inspect.mjs` da taste-skill e verificação por código).
 - Depois, começar a **construção real** (ordem em `DECISOES.md`, seção 1): base técnica (banco, login Google, publicação na Vercel) e versão mínima de Demandas e Início, sobre os três temas.
 - O código de `src/` ainda é o design antigo e será substituído (ver `CLAUDE.md`).
 
-## Pontos em aberto técnicos (não dependem do usuário)
+### Pontos em aberto técnicos (não dependem do usuário)
 
 - Confirmar os limites atuais do plano gratuito do Postgres do Supabase (escolha do projeto) antes de configurar.
 - Confirmar os limites da IA gratuita (Gemini ou Groq) na hora da etapa de IA.
@@ -52,7 +82,7 @@ O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês
 - `npm audit` mostrou avisos de dependências em 21/10/2026; reavaliar sem usar `--force` (o serviço de auditoria estava fora do ar em 22/10/2026).
 - Opcional: apagar `imagens/aprovacao` (prints do design antigo, 2 MB, sem uso) e trocar a descrição do repositório no GitHub ("Sistema pessoal de demandas em quadros") por algo atual.
 
-## Como continuar em outro computador
+### Como continuar em outro computador (versão antiga)
 
 1. Baixar o projeto: `git clone https://github.com/edermoliveira/Dmanda.git` (ou `git pull`, se já existir).
 2. Na pasta do projeto: `npm install` (só na primeira vez).
@@ -61,13 +91,13 @@ O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês
 5. Plugins, skills e MCPs **não** vêm pelo Git (exceto as três skills do Superpowers em `.claude/skills/`). Instalar de novo no outro computador, se quiser: `taste-skill` (marketplace `Leonxlnx/taste-skill`), `ui-ux-pro-max` (marketplace `nextlevelbuilder/ui-ux-pro-max-skill`) e o plugin `context7`. O `.claude/settings.json` do projeto já marca o `ui-ux-pro-max` como ativo, mas ele só funciona depois de instalado.
 6. A memória do Claude é local de cada computador: ela foi recriada aqui a partir destes documentos.
 
-## Rodada 2 (22/10/2026)
+### Rodada 2 (22/10/2026)
 
 - **Aprovar o protótipo atualizado** (http://127.0.0.1:7200).
 - **Catalyst (Figma):** o Figma foi conectado em 22/10/2026 (MCP `figma`, escopo local deste projeto; o outro computador precisa repetir `claude mcp add --transport http figma https://mcp.figma.com/mcp` e autenticar em `/mcp`). O arquivo "iOS and iPadOS 27 (Community)" (chave `VOqem67sPifvvgYa0MwyKh`) abre sem erro. **Feito em 22/10/2026:** tema "d" (Catalyst, estilo Mac e iPad) criado em `prototipo/catalyst.css`, testado em claro, escuro e celular; Aurora, Papel e Grafite intactos. **Refinado no mesmo dia:** Liquid Glass (barras flutuantes, menus, folhas e Perfil), abas e seleção em cápsula que deslizam com mola, botões redondos, caixas de marcar do iOS, movimento de entrada e saída (`prototipo/catalyst.js`). Testado: todos os botões das 9 telas em claro, escuro e celular, contraste de todos os textos e estouro de layout. **Aguarda o usuário avaliar** (http://127.0.0.1:7200, botão "D Catalyst"; se algo parecer antigo, Ctrl+F5). Cuidado: `get_metadata` em páginas grandes do Figma (Buttons) devolve retornos enormes, pedir nós pequenos.
 - **Ilustrações de energia:** enviadas em SVG (`energia-1.svg` a `energia-5.svg`) e integradas em 24/10/2026.
 
-## Pendências do bloco de 24/10/2026
+### Pendências do bloco de 24/10/2026
 
 - **Avaliação visual** do Catalyst único, dos sete ícones, do Mostrar menu e dos botões de Demandas no iPad vertical.
 - **Selecionar os símbolos Ionicons dos demais ícones**, a partir de `INVENTARIO-ICONES.md`. Só depois Iconoir e Lucide saem.

@@ -95,6 +95,12 @@ await pg.click('.tabela th button >> text=Assunto'); await pg.waitForTimeout(200
 const ordem2 = await pg.$$eval('.tabela tbody tr td:nth-child(2)', (e) => e.map((x) => x.textContent.trim()));
 ok(ordem1.length === 2 && ordem1[0] !== ordem2[0] && ordem1[0] === ordem2[1], 'ordenar a Tabela inverte o sentido pelo cabeçalho (' + ordem1[0].slice(0, 12) + ' / ' + ordem2[0].slice(0, 12) + ')');
 
+// preferências do navegador (visão e tema) sobrevivem ao recarregar
+await pg.click('.toolbar .tabs button[data-v="lista"]'); await pg.click('.icbtn[aria-label^="Alternar tema"]'); await pg.waitForTimeout(300);
+await ir('/demandas');
+ok((await pg.getAttribute('.toolbar .tabs button[aria-pressed="true"]', 'data-v')) === 'lista' && (await pg.getAttribute('.app', 'data-tema')) === 'escuro' && await sobre('.tabs', 'button[aria-pressed="true"]'), 'depois de recarregar a visão Lista e o tema escuro continuam, com a cápsula no lugar');
+await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.click('.icbtn[aria-label^="Alternar tema"]'); await pg.waitForTimeout(300);
+
 // 5) mover etapa pelo menu e pelo arraste (Quadro) com a mesma lógica
 await pg.click('.toolbar .tabs button[data-v="quadro"]'); await pg.waitForTimeout(400);
 await pg.click('.mini-card:has-text("Revisão do contrato") .mais'); await pg.waitForSelector('.mv-menu');
