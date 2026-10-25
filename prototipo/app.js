@@ -221,7 +221,7 @@
     var cols = [['num', 'Número'], ['assunto', 'Assunto'], ['origem', 'Origem'], ['prazo', 'Prazo'], ['etapa', 'Etapa'], ['pct', 'Andamento']];
     return '<div class="tabela-w"><table class="tabela"><thead><tr>' + cols.map(function (c) {
       var at = estado.ord === c[0];
-      return '<th scope="col" aria-sort="' + (at ? (estado.ordDir > 0 ? 'ascending' : 'descending') : 'none') + '"><button data-act="ordenar" data-k="' + c[0] + '">' + c[1] + (at ? ic(estado.ordDir > 0 ? 'arrow-up' : 'arrow-down') : '') + '</button></th>';
+      return '<th scope="col" aria-sort="' + (at ? (estado.ordDir > 0 ? 'ascending' : 'descending') : 'none') + '"><button data-act="ordenar" data-k="' + c[0] + '">' + c[1] + (at ? ic(estado.ordDir > 0 ? 'ordem-sobe' : 'ordem-desce') : '') + '</button></th>';
     }).join('') + '</tr></thead><tbody>' + ordenadas().map(function (d) {
       return '<tr class="' + (atrasada(d) ? 'atrasada' : '') + '"><td class="mono">' + chipTipo(d) + ' ' + esc(d.num) + '</td><td><b>' + esc(d.assunto) + '</b></td><td>' + origemP(d) + '</td><td>' + chipPrazo(d) + ' ' + chipSelo(d) + '</td><td><span class="et-p" style="--et:' + ETAPA_COR[d.etapa] + '"><i class="dot"></i>' + esc(d.etapa) + '</span></td><td style="min-width:150px">' + barraProg(d) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
@@ -230,7 +230,7 @@
     var l = filtradas();
     return '<div class="lista">' + ETAPAS.map(function (et) {
       var itens = l.filter(function (d) { return d.etapa === et; }), fechado = estado.grupos[et];
-      return '<section class="grupo" style="--et:' + ETAPA_COR[et] + '"><button class="grupo-h" data-act="grupo" data-e="' + et + '" aria-expanded="' + !fechado + '">' + ic('chevron-down', fechado ? 'fechado' : '') + '<i class="dot"></i><b>' + et + '</b><span class="cnt">' + itens.length + '</span></button>' +
+      return '<section class="grupo" style="--et:' + ETAPA_COR[et] + '"><button class="grupo-h" data-act="grupo" data-e="' + et + '" aria-expanded="' + !fechado + '">' + ic('expandir-grupo', fechado ? 'fechado' : '') + '<i class="dot"></i><b>' + et + '</b><span class="cnt">' + itens.length + '</span></button>' +
         (fechado ? '' : (itens.map(function (d) {
           var ab = estado.aberto[d.id], fin = d.etapa === 'Finalizado';
           var tar = d.tarefas.length ? '<ul class="tarefas">' + d.tarefas.map(function (t, i) { return itemTarefa(d, t, i); }).join('') + '</ul>'
@@ -243,7 +243,7 @@
   }
   function vista() {
     var l = filtradas();
-    if (!l.length) return '<div class="vazio">' + ic('search', 'grande') + '<h3>Nenhuma demanda encontrada</h3><p>Ajuste o filtro para ver mais.</p></div>';
+    if (!l.length) return '<div class="vazio">' + ic('busca', 'grande') + '<h3>Nenhuma demanda encontrada</h3><p>Ajuste o filtro para ver mais.</p></div>';
     return estado.vis === 'cards' ? '<div class="cards">' + l.map(cardHTML).join('') + '</div>' : estado.vis === 'quadro' ? quadro() : estado.vis === 'tabela' ? tabela() : lista();
   }
   function demandas() {
@@ -251,9 +251,9 @@
     var nAt = DEMANDAS.filter(atrasada).length;
     return '<div class="toolbar"><div class="tabs" role="group" aria-label="Visão">' + V.map(function (v) {
       return '<button data-act="vis" data-v="' + v[0] + '" aria-pressed="' + (estado.vis === v[0]) + '" aria-label="' + v[1] + '">' + ic(v[2]) + '<span class="tx">' + v[1] + '</span></button>';
-    }).join('') + '</div><label class="filtro">' + ic('search') + '<input id="fq" placeholder="' + (estado.dev === 'phone' || estado.dev === 'tablet-v' ? 'Filtrar demandas' : 'Filtrar demandas ( / )') + '" value="' + esc(estado.q) + '" aria-label="Filtrar demandas" autocomplete="off"></label>' +
+    }).join('') + '</div><label class="filtro">' + ic('busca') + '<input id="fq" placeholder="' + (estado.dev === 'phone' || estado.dev === 'tablet-v' ? 'Filtrar demandas' : 'Filtrar demandas ( / )') + '" value="' + esc(estado.q) + '" aria-label="Filtrar demandas" autocomplete="off"></label>' +
       '<button class="btn gl" data-act="atras" aria-pressed="' + estado.soAtras + '" aria-label="Só atrasadas">' + ic('clock') + '<span class="tx">Só atrasadas' + (nAt ? ' ' + nAt : '') + '</span></button>' +
-      '<button class="btn gl" data-act="msg" data-m="Filtros: prazo, origem, tipo" aria-label="Filtros">' + ic('filter') + '<span class="tx">Filtros</span></button>' +
+      '<button class="btn gl" data-act="msg" data-m="Filtros: prazo, origem, tipo" aria-label="Filtros">' + ic('filtro') + '<span class="tx">Filtros</span></button>' +
       '<button class="btn escuro" data-act="msg" data-m="Nova demanda" aria-label="Nova demanda">' + ic('plus') + '<span class="tx">Nova demanda</span></button></div><div id="vista">' + vista() + '</div>';
   }
 
@@ -337,7 +337,7 @@
       '<div class="bg"></div>' +
       '<aside class="side" aria-label="Menu"><div class="logo">' + LOGO + '<span>Dmanda</span></div>' + nav + '<div class="esp"></div>' + cfgBtn + '<button class="navi col-b" data-act="colapsar" aria-expanded="' + estado.menuAb + '" aria-label="' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '" title="' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '"><span class="ico">' + ic(estado.menuAb ? 'recolher' : 'expandir') + '</span><span class="tx">' + (estado.menuAb ? 'Recolher menu' : 'Mostrar menu') + '</span></button><div class="rodape">' + esc(estado.cidade || 'Taquara/RS') + '</div></aside>' +
       '<header class="top"><div class="top-logo">' + LOGO + '<span>Dmanda</span></div>' +
-      '<button class="icbtn buscabtn" data-act="busca" aria-label="Buscar em tudo">' + ic('search') + '<span class="tx">Buscar demanda, entrada, evento ou documento</span><kbd>Ctrl K</kbd></button>' +
+      '<button class="icbtn buscabtn" data-act="busca" aria-label="Buscar em tudo">' + ic('busca') + '<span class="tx">Buscar demanda, entrada, evento ou documento</span><kbd>Ctrl K</kbd></button>' +
       '<button class="icbtn sino" data-act="msg" data-m="Avisos de compromissos" aria-label="Avisos, 2 novos">' + ic('bell') + '<span class="badge">2</span></button>' +
       '<button class="icbtn" data-act="tema" aria-label="Alternar tema claro e escuro">' + ic(estado.tema === 'claro' ? 'moon' : 'sun') + '</button>' +
       '<button class="perfil-b" data-act="perfil" aria-label="Abrir o Perfil"><span class="avatar">' + esc((estado.nome || 'S').charAt(0).toUpperCase()) + '</span><span class="tx">' + esc(estado.nome || 'Secretário') + '</span></button></header>' +

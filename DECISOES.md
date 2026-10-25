@@ -266,3 +266,9 @@ Esta avaliação acrescenta alterações específicas; não é aprovação integ
 - A referência visual de `cd7b03f` não foi regravada; a troca destes três desenhos é alteração autorizada quando ela for usada em comparação.
 
 - **Aprovação visual das três trocas, vinculada ao commit `dd1b340`:** Cards (`albums-outline`), Tabela (`grid-outline`) e Lista (`list-outline`). É aprovação visual, não resultado de teste. **Exceção provisória:** o Quadro mantém `columns` (Iconoir); a migração dele continua pendente e **não bloqueia** a seleção dos demais grupos. Não haverá nova busca para o Quadro por ora. A referência `cd7b03f` permanece e **não** foi regravada: as três trocas são alterações visuais autorizadas nas comparações futuras.
+
+## Ícones: busca, filtros, ordenação e expansão (25/10/2026)
+
+- **Escolhas do usuário (Ionicons 8.0.13, outline), implementadas com os SVGs oficiais sem alteração** (`prototipo/icones-nav/originais/`): busca = `search-outline` (botão do topo, campo "Filtrar demandas" e estado vazio grande), Filtros = `funnel-outline`, ordenação = `arrow-up-outline` (crescente) e `arrow-down-outline` (decrescente), expansão da Lista = `chevron-down-outline` (o giro de -90° ao recolher e `aria-expanded` não mudaram). Iguais com Iconoir ou Lucide.
+- **Distinção preservada:** o botão Mostrar menu usa a chave `expandir` (Iconoir), outra função; por isso o chevron da Lista recebeu a chave própria `expandir-grupo`. Uma primeira versão usou `expandir` e o `consolidacao.mjs` acusou a troca indevida do ícone do Mostrar menu; foi corrigido antes do commit.
+- Quadro segue com `columns` (exceção provisória). A referência `cd7b03f` não foi regravada: estas substituições são alterações visuais autorizadas nas comparações futuras.

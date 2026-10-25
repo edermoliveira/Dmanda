@@ -8,7 +8,7 @@ Todos os nomes abaixo vêm hoje do **Iconoir** (padrão). O Lucide é a alternat
 
 ## Visualização e filtros de Demandas
 
-**Andamento da seleção:** feitos e **aprovados em `dd1b340`** Cards, Tabela e Lista (SVGs oficiais em `prototipo/icones-nav/originais/`, chaves `vis-cards`, `vis-tabela`, `vis-lista`, iguais com Iconoir ou Lucide). Quadro pendente (exceção provisória: mantém `columns`, sem bloquear os outros grupos). **Os demais grupos abaixo (filtros e busca, ações, prazo e tempo, tipos de evento, topo e menu, conteúdo, IA e Perfil) ainda aguardam escolha.**
+**Andamento da seleção:** feitos e **aprovados em `dd1b340`** Cards, Tabela e Lista; feitos em 25/10/2026, aguardando avaliação visual: busca, filtros, ordenação (subir e descer) e expansão de grupo (a chave `expandir`, do botão Mostrar menu, continua em Iconoir: a do chevron chama-se `expandir-grupo`) (SVGs oficiais em `prototipo/icones-nav/originais/`, chaves `vis-cards`, `vis-tabela`, `vis-lista`, iguais com Iconoir ou Lucide). Quadro pendente (exceção provisória: mantém `columns`, sem bloquear os outros grupos). **Os demais grupos abaixo (ações, prazo e tempo, tipos de evento, topo e menu, conteúdo, IA e Perfil) ainda aguardam escolha.**
 
 | Função | Nome atual | Onde aparece | Reuso |
 |---|---|---|---|
@@ -16,11 +16,11 @@ Todos os nomes abaixo vêm hoje do **Iconoir** (padrão). O Lucide é a alternat
 | Visão em quadro | `columns` (Iconoir, **pendente**: o Ionicons não tem ícone de colunas ou Kanban; escolha do usuário aguardada) | aba "Quadro" | 1 local |
 | Visão em tabela | **`grid-outline` (Ionicons, feito em 24/10/2026)**; antes `table` | aba "Tabela" | 1 local |
 | Visão em lista | **`list-outline` (Ionicons, feito em 24/10/2026)**; antes `list` | aba "Lista" | 1 local |
-| Filtros | `filter` | botão "Filtros" de Demandas | 1 local |
+| Filtros | **`funnel-outline` (Ionicons, feito em 25/10/2026)**; antes `filter` | botão "Filtros" de Demandas | 1 local |
 | Só atrasadas | `clock` | botão "Só atrasadas" | vários (ver Prazo e tempo) |
-| Buscar | `search` | botão "Buscar em tudo" do topo, campo "Filtrar demandas", campos de busca | vários |
-| Ordenar crescente e decrescente | `arrow-up`, `arrow-down` | cabeçalho da coluna ordenada na Tabela | 1 local (2 estados) |
-| Expandir e recolher grupo | `chevron-down` | etapas da visão Lista | 1 local |
+| Buscar | **`search-outline` (Ionicons, feito em 25/10/2026)**; antes `search` | botão "Buscar em tudo" do topo, campo "Filtrar demandas", campos de busca | vários |
+| Ordenar crescente e decrescente | **`arrow-up-outline` e `arrow-down-outline` (Ionicons, feitos em 25/10/2026)**; antes `arrow-up`, `arrow-down` | cabeçalho da coluna ordenada na Tabela | 1 local (2 estados) |
+| Expandir e recolher grupo | **`chevron-down-outline` (Ionicons, feito em 25/10/2026)**; antes `chevron-down` | etapas da visão Lista | 1 local |
 
 ## Ações em cards, tarefas e janelas
 
