@@ -80,6 +80,12 @@ for (const v of ['quadro', 'tabela', 'lista', 'cards']) {
   nomesPorVisao[v] = await pg.textContent('#vista');
 }
 ok(['quadro', 'tabela', 'lista', 'cards'].every((v) => /Resposta ao TCE/.test(nomesPorVisao[v]) && /Revisão do contrato/.test(nomesPorVisao[v])), 'as quatro visões mostram as mesmas demandas');
+// a cápsula de seleção fica exatamente sobre o item marcado (abas das visões e menu lateral) e se move quando a seleção muda
+const sobre = (cont, sel) => pg.evaluate(([c, s]) => { const t = document.querySelector(c + ' > .thumb'), b = document.querySelector(c + ' ' + s); return !!t && !!b && parseFloat(t.style.width) > 0 && Math.abs(parseFloat(t.style.left) - b.offsetLeft) <= 1 && Math.abs(parseFloat(t.style.top) - b.offsetTop) <= 1 && Math.abs(parseFloat(t.style.width) - b.offsetWidth) <= 1; }, [cont, sel]);
+ok(await sobre('.tabs', 'button[aria-pressed="true"]') && await sobre('.side', '.navi[aria-current="page"]'), 'a cápsula de seleção está sobre a aba da visão e sobre o item do menu');
+await pg.click('.toolbar .tabs button[data-v="tabela"]'); await pg.waitForTimeout(150);
+ok(await sobre('.tabs', 'button[aria-pressed="true"]'), 'ao trocar de visão a cápsula acompanha a nova aba');
+await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.waitForTimeout(150);
 await pg.click('.toolbar .tabs button[data-v="tabela"]');
 ok(/Prazo vencido/.test(await pg.textContent('#vista')) && (await pg.$$('.tabela tr.atrasada')).length === 1, 'a Tabela marca a demanda atrasada');
 await pg.click('.tabela th button >> text=Assunto'); await pg.waitForTimeout(200);

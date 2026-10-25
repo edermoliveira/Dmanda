@@ -2,6 +2,7 @@
 // Moldura do aplicativo: menu lateral, barra do topo, barra inferior do celular, botão "+", avisos e janelas. Mesmo desenho e mesmas classes do protótipo aprovado.
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { Capsula } from './Capsula';
 import { Icone, LOGO } from './Icone';
 import { ProvedorApp, useApp } from './contexto';
 import { Janelas } from './janelas';
@@ -13,49 +14,6 @@ const NAV: [string, string, string, string][] = [
 ];
 const EM_MAIS = ['/mais', '/entradas', '/documentos', '/ia', '/config', '/arquivo'];
 const ativo = (caminho: string, rota: string) => (rota === '/' ? caminho === '/' : caminho === rota || caminho.startsWith(rota + '/'));
-
-// ---------- cápsula de seleção que desliza entre abas (mesma técnica do protótipo, sem substituir o app inteiro a cada ação) ----------
-type Ret = { l: number; t: number; w: number; h: number };
-const GRUPOS: [string, string][] = [['.tabs', 'button[aria-pressed="true"]'], ['.side', '.navi[aria-current="page"]'], ['.bar', '.bi[aria-current="page"]']];
-function Capsulas() {
-  useEffect(() => {
-    const app = () => document.querySelector<HTMLElement>('.app');
-    const anterior: Record<string, Ret> = {};
-    const reduzido = () => matchMedia('(prefers-reduced-motion: reduce)').matches || app()?.dataset.reduzir === 'true';
-    const atualizar = (animar: boolean) => {
-      const a = app(); if (!a) return;
-      GRUPOS.forEach(([cont, sel]) => a.querySelectorAll<HTMLElement>(cont).forEach((c, i) => {
-        const chave = cont + i, s = c.querySelector<HTMLElement>(sel);
-        const t = c.querySelector<HTMLElement>(':scope > .thumb');
-        if (!s) { delete anterior[chave]; return; }
-        if (!t) return; // a cápsula é desenhada pelo React (não criar elementos aqui: isso quebraria a hidratação)
-        const n: Ret = { l: s.offsetLeft, t: s.offsetTop, w: s.offsetWidth, h: s.offsetHeight }, ant = anterior[chave];
-        const pos = { left: `${n.l}px`, top: `${n.t}px`, width: `${n.w}px`, height: `${n.h}px` };
-        Object.assign(t.style, pos);
-        if (animar && ant && !reduzido() && (ant.l !== n.l || ant.t !== n.t || ant.w !== n.w || ant.h !== n.h) && t.animate) {
-          t.animate([{ left: `${ant.l}px`, top: `${ant.t}px`, width: `${ant.w}px`, height: `${ant.h}px` }, pos], { duration: 520, easing: 'cubic-bezier(.32,1.25,.5,1)' });
-        }
-        anterior[chave] = n;
-      }));
-    };
-    let quadro = 0;
-    const agendar = (animar: boolean) => { cancelAnimationFrame(quadro); quadro = requestAnimationFrame(() => { atualizar(animar); obs.takeRecords(); }); };
-    const obs = new MutationObserver((muts) => { if (muts.some((m) => !(m.target as HTMLElement).classList?.contains('thumb') && ![...m.addedNodes, ...m.removedNodes].every((n) => (n as HTMLElement).classList?.contains('thumb')))) agendar(true); });
-    // só começa depois da hidratação (mexer no DOM antes disso quebra a hidratação das peças que ainda não ficaram prontas)
-    let rz: ResizeObserver | null = null;
-    const iniciar = () => {
-    const raiz = app();
-    if (raiz) obs.observe(raiz, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-pressed', 'aria-current'] });
-    rz = new ResizeObserver(() => agendar(false));
-    const frame = document.getElementById('frame'); if (frame) rz.observe(frame);
-    void document.fonts?.ready.then(() => agendar(false));
-    atualizar(false);
-    };
-    const espera = setTimeout(iniciar, 1200);
-    return () => { clearTimeout(espera); obs.disconnect(); rz?.disconnect(); cancelAnimationFrame(quadro); };
-  }, []);
-  return null;
-}
 
 function useToque() {
   const [toque, setToque] = useState(false);
@@ -98,7 +56,7 @@ function Interior({ children }: { children: ReactNode }) {
         style={{ '--fs': '16px', '--icn': '20px', '--cardh': '340px', '--font': 'var(--f-inter), system-ui, sans-serif', '--font-h': 'var(--f-inter), system-ui, sans-serif', '--font-ui': 'var(--f-inter), system-ui, sans-serif', '--font-n': 'var(--f-mono), ui-monospace, monospace' } as CSSProperties} suppressHydrationWarning>
         <div className="bg"><i className="bg-img" /></div>
         <aside className="side" aria-label="Menu">
-          <i className="thumb" aria-hidden="true" suppressHydrationWarning />
+          <Capsula sel=".navi[aria-current='page']" chave={caminho} />
           <div className="logo">{LOGO}<span>Dmanda</span></div>
           {NAV.filter((n) => n[0] !== '/config').map(tbtn)}
           <div className="esp" />
@@ -118,7 +76,7 @@ function Interior({ children }: { children: ReactNode }) {
           {children}
         </main>
         <nav className="bar glass" aria-label="Navegação">
-          <i className="thumb" aria-hidden="true" suppressHydrationWarning />
+          <Capsula sel=".bi[aria-current='page']" chave={caminho} />
           {[NAV[0], NAV[2]].map((n) => <button key={n[0]} className="bi" data-nav={n[3]} aria-current={ativo(caminho, n[0]) ? 'page' : undefined} onClick={ir(n[0])}><Icone nome={n[2]} extra="duo" />{n[1]}</button>)}
           <button className="mais-c" aria-label="Criar novo" aria-expanded={plus} onClick={() => setPlus((v) => !v)}><Icone nome="plus" /></button>
           <button className="bi" data-nav="agenda" aria-current={ativo(caminho, '/agenda') ? 'page' : undefined} onClick={ir('/agenda')}><Icone nome="nav-agenda" extra="duo" />Agenda</button>
@@ -137,7 +95,6 @@ function Interior({ children }: { children: ReactNode }) {
         <MenuMover />
         <div className={`toast${aviso ? ' on' : ''}${aviso?.erro ? ' erro' : ''}`} id="toast" role={aviso?.erro ? 'alert' : 'status'}>{aviso?.msg}</div>
       </div>
-      <Capsulas />
     </div>
   );
 }
