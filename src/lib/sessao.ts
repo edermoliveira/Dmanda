@@ -15,3 +15,14 @@ export function emailAutorizado(email: string | undefined | null, configurado: s
   if (!email || !configurado) return false;
   return email.trim().toLowerCase() === configurado.trim().toLowerCase();
 }
+
+/**
+ * Conta autorizada de verdade: e-mail igual ao configurado E identidade vinda do Google. O provedor é lido de app_metadata, que só o servidor de
+ * Auth define (user_metadata e o nome de exibição podem ser editados pelo usuário e nunca entram nesta decisão).
+ */
+export function contaAutorizada(
+  user: { email?: string | null; app_metadata?: { provider?: string } } | null | undefined,
+  configurado: string | undefined = process.env.DMANDA_EMAIL_AUTORIZADO,
+): boolean {
+  return !!user && user.app_metadata?.provider === 'google' && emailAutorizado(user.email, configurado);
+}

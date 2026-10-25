@@ -1,20 +1,22 @@
 # Pendências do Dmanda
 
-Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 25/10/2026. O que está depois de "Histórico" é anterior a esta data e pode estar superado pelas decisões em `DECISOES.md` e pelo estado descrito no `CLAUDE.md`.
+Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 25/10/2026 (Supabase real criado e migrado). O que está depois de "Histórico" é anterior a esta data e pode estar superado pelas decisões em `DECISOES.md` e pelo estado descrito no `CLAUDE.md`.
 
 ## Aguardando o usuário (uma rodada)
 
-Nada abaixo bloqueia a conferência da aplicação; os itens 2 a 5 bloqueiam só a validação real.
+O projeto Supabase **Dmanda** existe, está vinculado e migrado (5 migrações aplicadas e validadas no banco real). O que falta para validar o login de verdade depende de você, nesta ordem (passo a passo com os endereços exatos em `supabase/LEIA-ME.md`, seção "Passo a passo do login Google"):
 
-1. **Conferir a aplicação funcional** (já no ar, banco de teste com dados de teste): http://localhost:7100 (aplicação React) e, só para comparar, http://127.0.0.1:7200 (protótipo). Roteiro curto: Início, as quatro visões de Demandas, abrir e editar uma demanda, tarefas, o menu Mover, celular e iPad. A aprovação visual do protótipo continua válida; esta conferência verifica a fidelidade e os fluxos.
-2. **Supabase:** informar se já existe um projeto Dmanda (nome e organização) ou se é para criar um; qual **conta Google** poderá entrar; e se autoriza o uso das CLIs oficiais pelo assistente (login feito por você). Passo a passo em `supabase/LEIA-ME.md`.
-3. **Vercel:** confirmar se o plano **Hobby** serve para este uso (ele é restrito a uso pessoal e não comercial; a documentação inclui "funcionário pago que escreve o código" como uso comercial) ou se prefere outra solução. **Nada será contratado sem a sua decisão.** E criar ou indicar o projeto ligado ao repositório do GitHub.
-4. **`.env.example`:** o assistente não tem permissão para editá-lo. Conferir se contém as variáveis listadas em `supabase/LEIA-ME.md` (modelo com valores fictícios) ou liberar a edição.
-5. **Cópia privada dos dados reais** (o GitHub não guarda dados e o plano gratuito do Supabase não deixa baixar backup): decidir como e onde guardar (proposta no `supabase/LEIA-ME.md`).
+1. **No Google Cloud (navegador):** criar o ID de cliente OAuth do tipo "Aplicativo da Web" com origem `http://localhost:7100` e redirecionamento `https://gmxoosvgfcydccyeudej.supabase.co/auth/v1/callback`, com a conta autorizada como usuário de teste e só os escopos básicos.
+2. **No painel do Supabase (navegador):** ativar o provedor Google com o ID e a chave secreta, desativar o provedor Email, configurar Site URL e Redirect URL, **ativar o hook Before User Created** (`public.hook_antes_criar_usuario`) e copiar a chave secreta (Project Settings > API Keys) para o `SUPABASE_SERVICE_ROLE_KEY=` do `.env.local` (arquivo local, nunca no chat).
+3. **Depois, avisar o assistente.** Ele sobe `npm run dev` e valida com você o primeiro login, o segundo acesso e a rejeição de outra conta.
+4. **Conferir a aplicação** (hoje no ar em modo de teste, não é o Supabase): http://localhost:7100 e, só para comparar, http://127.0.0.1:7200. Roteiro curto: Início, as quatro visões de Demandas, abrir e editar uma demanda, tarefas, o menu Mover, celular e iPad. A aprovação visual do protótipo continua válida; esta conferência verifica a fidelidade e os fluxos. Ainda não há aprovação visual da aplicação React.
+5. **`.env.example`:** o assistente não tem permissão para editá-lo. O modelo (valores fictícios) está em `supabase/LEIA-ME.md`; conferir o arquivo ou liberar a edição.
+6. **Cópia privada dos dados reais (pendência explícita):** o GitHub não guarda dados e o plano gratuito do Supabase não tem os backups gerenciados dos planos pagos, mas permite exportação lógica. Falta decidir mecanismo e destino (proposta no `supabase/LEIA-ME.md`).
+7. **Vercel (fora deste bloco):** confirmar se o plano **Hobby** serve (uso pessoal e não comercial; a documentação inclui "funcionário pago que escreve o código" como uso comercial) e criar ou indicar o projeto ligado ao GitHub. **Nada será contratado sem a sua decisão.**
 
 ## Próximo passo técnico após a sua resposta
 
-Conferir o esquema remoto antes de aplicar as migrações; aplicar sem alterações destrutivas; validar RLS, acesso só da conta autorizada, rejeição de outras contas, login, cadastro, tarefas, edição, etapas, conclusão, recarga e leitura direta; configurar a Vercel e o `CRON_SECRET`; chamar a rotina manualmente e observar a primeira execução automática; só então reavaliar o `ANDAMENTO.md`.
+Validar com login Google real: primeiro acesso (usuário interno criado no primeiro login autorizado), acessos seguintes, rejeição de outra conta, expiração de 6 h, cadastro e edição de demandas e tarefas, mudança de etapa, persistência depois de recarregar, consistência das quatro visões e leitura direta do banco; chamada manual autenticada da rotina diária com leitura do resultado gravado. Depois, na fase da Vercel: `CRON_SECRET` e chave de serviço nas variáveis, agendamento e primeira execução automática. Só então reavaliar o `ANDAMENTO.md`.
 
 ## Em aberto, sem bloquear
 

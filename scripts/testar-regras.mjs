@@ -1,5 +1,5 @@
 // Regras puras de datas e grupos do Início (src/lib/demandas.ts), sem navegador nem banco. Uso: node scripts/testar-regras.mjs
-import { sessaoExpirou, emailAutorizado, LIMITE_SEM_USO_MS } from '../src/lib/sessao.ts';
+import { sessaoExpirou, emailAutorizado, contaAutorizada, LIMITE_SEM_USO_MS } from '../src/lib/sessao.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
 import { dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte } from '../src/lib/demandas.ts';
 let falhas = 0, total = 0;
@@ -28,6 +28,8 @@ ok(!sessaoExpirou(String(agora - LIMITE_SEM_USO_MS + 1000), agora) && sessaoExpi
 ok(!sessaoExpirou(undefined, agora) && !sessaoExpirou('lixo', agora), 'sessão: sem marca de último uso (primeiro acesso) não expira');
 ok(emailAutorizado('Secretario@Exemplo.com', 'secretario@exemplo.com') && !emailAutorizado('outro@exemplo.com', 'secretario@exemplo.com') && !emailAutorizado('a@b.c', undefined) && !emailAutorizado(null, 'a@b.c'), 'e-mail autorizado: confere sem diferenciar maiúsculas; sem configuração ninguém entra');
 ok(grupoFiltro(lista[0], hoje) === 'atrasadas' && grupoFiltro(lista[1], hoje) === 'hoje' && grupoFiltro(lista[2], hoje) === 'sete' && grupoFiltro(lista[3], hoje) === null && grupoFiltro(lista[4], hoje) === null, 'grupoFiltro: atrasadas, hoje, próximos 7 dias; depois disso e sem prazo ficam fora');
+ok(contaAutorizada({ email: 'Eu@Exemplo.com', app_metadata: { provider: 'google' } }, 'eu@exemplo.com'), 'conta autorizada: e-mail certo entrando pelo Google');
+ok(!contaAutorizada({ email: 'eu@exemplo.com', app_metadata: { provider: 'email' } }, 'eu@exemplo.com') && !contaAutorizada({ email: 'eu@exemplo.com' }, 'eu@exemplo.com') && !contaAutorizada({ email: 'outro@exemplo.com', app_metadata: { provider: 'google' } }, 'eu@exemplo.com') && !contaAutorizada(null, 'eu@exemplo.com') && !contaAutorizada({ email: 'eu@exemplo.com', app_metadata: { provider: 'google' } }, undefined), 'conta autorizada: outro provedor, sem provedor, outro e-mail, sem usuário ou sem configuração são recusados');
 
 // rotina diária: segredo e tratamento de falha
 const seg = 'segredo-de-teste-com-mais-de-16';

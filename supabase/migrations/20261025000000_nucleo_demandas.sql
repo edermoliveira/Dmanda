@@ -59,7 +59,9 @@ create policy demandas_dono on public.demandas for all to authenticated
   using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy tarefas_dono on public.tarefas for all to authenticated
   using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
-revoke all on public.demandas, public.tarefas from anon, public;
+-- Privilégios explícitos (no Supabase, tabelas novas já nascem com truncate, references, trigger e maintain para anon, authenticated e service_role,
+-- e sem select, insert, update nem delete). Tira tudo e devolve só o necessário ao usuário logado.
+revoke all on public.demandas, public.tarefas from public, anon, authenticated;
 grant select, insert, update, delete on public.demandas, public.tarefas to authenticated;
 
 -- ---------- funções auxiliares ----------
@@ -225,6 +227,20 @@ begin
   return public.demanda_json(v_d);
 end $$;
 
--- Só usuários autenticados executam as funções; nada para anônimos.
-revoke all on all functions in schema public from public, anon;
-grant execute on all functions in schema public to authenticated;
+-- Só usuários autenticados executam as funções; nada para anônimos. Lista explícita (nunca "all functions"): o esquema public do Supabase já
+-- tem funções da própria plataforma, e funções novas nascem executáveis por qualquer papel (public) até serem revogadas.
+revoke all on function
+  public.hoje(), public.tocar_atualizado_em(), public.demanda_json(uuid), public.erro_dmanda(text), public.listar_demandas(boolean),
+  public.buscar_demanda(uuid), public.criar_demanda(jsonb), public.atualizar_demanda(uuid, jsonb), public.mover_etapa(uuid, text),
+  public.concluir_demanda(uuid), public.reabrir_demanda(uuid, text), public.arquivar_demanda(uuid), public.desarquivar_demanda(uuid),
+  public.excluir_demanda(uuid, boolean), public.adicionar_tarefa(uuid, text), public.editar_tarefa(uuid, text),
+  public.marcar_tarefa(uuid, boolean), public.excluir_tarefa(uuid)
+  from public, anon, authenticated;
+-- tocar_atualizado_em é função de gatilho: ninguém a chama. As demais são operações do usuário logado (e hoje(), usada nos padrões das colunas).
+grant execute on function
+  public.hoje(), public.demanda_json(uuid), public.erro_dmanda(text), public.listar_demandas(boolean),
+  public.buscar_demanda(uuid), public.criar_demanda(jsonb), public.atualizar_demanda(uuid, jsonb), public.mover_etapa(uuid, text),
+  public.concluir_demanda(uuid), public.reabrir_demanda(uuid, text), public.arquivar_demanda(uuid), public.desarquivar_demanda(uuid),
+  public.excluir_demanda(uuid, boolean), public.adicionar_tarefa(uuid, text), public.editar_tarefa(uuid, text),
+  public.marcar_tarefa(uuid, boolean), public.excluir_tarefa(uuid)
+  to authenticated;

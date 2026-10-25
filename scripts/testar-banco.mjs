@@ -1,13 +1,15 @@
 // Testa as migrações e as funções SQL do núcleo de demandas e tarefas, com a RLS valendo, num Postgres local de teste (PGlite).
 // Valida a lógica SQL e o isolamento por usuário. NÃO valida o Supabase real (plataforma, Auth, chaves, rede).
 // Uso: node scripts/testar-banco.mjs
-import { abrirBancoTeste, chamarComoUsuario, chamarComoServico } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, chamarComoServico, entrarComo } from '../src/servidor/banco-teste-base.mjs';
 
 const A = '11111111-1111-4111-8111-111111111111', B = '22222222-2222-4222-8222-222222222222';
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const db = await abrirBancoTeste();
 await db.exec(`insert into auth.users (id, email) values ('${A}', 'a@teste'), ('${B}', 'b@teste')`);
+// lista protegida de contas autorizadas (no Supabase real é preenchida à parte, com o e-mail do Secretário; aqui são contas de teste)
+await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('a@teste'), ('b@teste'), ('r@teste'), ('s@teste')");
 const c = (u, f, a) => chamarComoUsuario(db, u, f, a);
 const erro = async (u, f, a) => { try { await c(u, f, a); return null; } catch (e) { return e.message || String(e); } };
 
@@ -55,7 +57,7 @@ ok(/Só uma demanda finalizada/.test(await erro(A, 'reabrir_demanda', { p_id: d1
 await c(A, 'concluir_demanda', { p_id: d1.id }); m = await c(A, 'mover_etapa', { p_id: d1.id, p_etapa: 'Cadastro' }); ok(m.etapa === 'Cadastro' && m.concluida_em === null, 'mover de Finalizado para outra etapa equivale a reabrir na etapa escolhida');
 ok(/Etapa desconhecida/.test(await erro(A, 'mover_etapa', { p_id: d1.id, p_etapa: 'Qualquer' })), 'etapa inválida é recusada');
 ok((await c(A, 'mover_etapa', { p_id: d1.id, p_etapa: 'Cadastro' })).etapa === 'Cadastro', 'mover para a mesma etapa não faz nada');
-const direto = await db.transaction(async (tx) => { try { await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [A]); await tx.exec('set local role authenticated'); await tx.query("update public.demandas set etapa = 'Finalizado' where id = $1", [d1.id]); return null; } catch (e) { return e.message; } });
+const direto = await db.transaction(async (tx) => { try { await entrarComo(tx, A); await tx.query("update public.demandas set etapa = 'Finalizado' where id = $1", [d1.id]); return null; } catch (e) { return e.message; } });
 ok(/concluida_so_finalizada/.test(direto || ''), 'a restrição do banco impede Finalizado sem data de conclusão mesmo por escrita direta');
 
 // atualizar
@@ -137,7 +139,7 @@ ok(/permission denied/i.test(await erro(R, 'rotina_diaria', {})) && /permission 
 ok(/permission denied/i.test(await erro(R, 'calcular_resumo', { p_user: R, p_data: hojeSql })) && /permission denied/i.test(await erro(R, 'recalcular_resumo_usuario', { p_user: S, p_data: hojeSql, p_origem: 'rotina' })), 'rotina: funções internas não são chamáveis por usuário logado');
 const comoAnon = async (q) => db.transaction(async (tx) => { await tx.exec('set local role anon'); try { await tx.query(q); return null; } catch (e) { return e.message; } });
 ok(/permission denied/i.test(await comoAnon('select public.rotina_diaria()')) && /permission denied/i.test(await comoAnon('select * from public.resumos_operacionais')) && /permission denied/i.test(await comoAnon('select * from public.execucoes_rotina')), 'rotina: visitante sem login não executa nem lê nada');
-const comoUsuarioSql = async (q) => db.transaction(async (tx) => { await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [R]); await tx.exec('set local role authenticated'); try { await tx.query(q); return null; } catch (e) { return e.message; } });
+const comoUsuarioSql = async (q) => db.transaction(async (tx) => { await entrarComo(tx, R); try { await tx.query(q); return null; } catch (e) { return e.message; } });
 ok(/permission denied|row-level/i.test(await comoUsuarioSql("insert into public.execucoes_rotina (data_ref, ok) values (public.hoje(), true)")) && /permission denied|row-level/i.test(await comoUsuarioSql("update public.resumos_operacionais set dados = '{}'")) && /permission denied|row-level/i.test(await comoUsuarioSql('delete from public.execucoes_rotina')), 'rotina: usuário logado não escreve nos resumos nem no registro de execuções');
 
 // execução pelo papel de serviço: não altera demandas, é repetível e registra
@@ -156,7 +158,7 @@ ok(ex.length === 2 && ex.every((x) => x.ok && x.usuarios === n1 && x.erro === nu
 // RLS: cada usuário vê só o próprio resumo; o registro de execuções não tem dado pessoal
 await c(S, 'criar_demanda', { p: { assunto: 'Outro usuário', prazo: await mais(-1) } });
 await serv('rotina_diaria', {});
-const veR = await db.transaction(async (tx) => { await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [R]); await tx.exec('set local role authenticated'); return (await tx.query('select user_id from public.resumos_operacionais')).rows; });
+const veR = await db.transaction(async (tx) => { await entrarComo(tx, R); return (await tx.query('select user_id from public.resumos_operacionais')).rows; });
 ok(veR.length === 1 && veR[0].user_id === R, 'rotina: RLS, cada usuário vê só o próprio resumo');
 
 // dias restantes derivados das datas: mudar o prazo muda o resumo na hora, sem esperar o dia seguinte
@@ -189,6 +191,57 @@ await db.exec('alter table public.demandas rename to demandas_x');
 const eFalha = await errServ('rotina_diaria', {});
 await db.exec('alter table public.demandas_x rename to demandas');
 ok(!!eFalha && (await sql('select count(*)::int as n from public.execucoes_rotina'))[0].n === nExAntes, 'rotina: com o banco em falha a execução termina com erro e não registra sucesso falso');
+
+// ---------- acesso exclusivo à conta autorizada (hook de cadastro, RLS por e-mail do JWT, privilégios explícitos) ----------
+const X = '55555555-5555-4555-8555-555555555555', Z = '66666666-6666-4666-8666-666666666666';
+await db.exec(`insert into auth.users (id, email) values ('${X}', 'intruso@teste'), ('${Z}', null)`);   // usuários que NÃO estão na lista (e um sem e-mail)
+const doUsuario = async (id, opcoes, q, p = []) => db.transaction(async (tx) => { await entrarComo(tx, id, opcoes); try { return { rows: (await tx.query(q, p)).rows }; } catch (e) { return { erro: e.message }; } });
+// RLS: um usuário fora da lista não lê, não grava e não executa nada, mesmo com sessão válida e user_id dele
+ok((await doUsuario(X, {}, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: usuário fora da lista autorizada não enxerga nenhuma demanda (RLS)');
+ok(/row-level security/i.test((await doUsuario(X, {}, "insert into public.demandas (assunto) values ('invasão')")).erro || ''), 'acesso: usuário fora da lista não consegue gravar demanda (RLS recusa)');
+ok(/row-level/i.test(await erro(X, 'criar_demanda', { p: { assunto: 'invasão' } })), 'acesso: usuário fora da lista não cria demanda pelas funções');
+ok((await doUsuario(X, {}, 'select count(*)::int as n from public.execucoes_rotina')).rows?.[0].n === 0, 'acesso: usuário fora da lista não lê nem o registro de execuções da rotina');
+// provedor e e-mail vêm do JWT assinado: só o Google, com e-mail da lista
+ok((await doUsuario(A, { provedor: 'email' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: conta da lista entrando por outro provedor (não Google) não lê nada');
+ok((await doUsuario(A, { email: 'outro@teste' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: JWT com e-mail diferente do autorizado não lê nada');
+ok((await doUsuario(A, { email: '  A@Teste ' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0, 'acesso: o e-mail é comparado sem diferenciar maiúsculas nem espaços');
+ok((await doUsuario(Z, { email: null }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: JWT sem e-mail não lê nada');
+ok((await doUsuario(A, { email: '' }, 'select dmanda_privado.conta_autorizada() as r')).rows?.[0].r === false && (await doUsuario(A, {}, 'select dmanda_privado.conta_autorizada() as r')).rows?.[0].r === true, 'acesso: conta_autorizada() é falsa sem e-mail e verdadeira para a conta da lista com Google');
+// a lista é protegida
+ok(/permission denied/i.test((await doUsuario(A, {}, 'select * from dmanda_privado.acesso_autorizado')).erro || '') && /permission denied/i.test((await doUsuario(A, {}, "insert into dmanda_privado.acesso_autorizado (email) values ('x@y.z')")).erro || ''), 'acesso: usuário logado, mesmo autorizado, não lê nem grava a lista protegida');
+ok(/permission denied/i.test(await comoAnon('select * from dmanda_privado.acesso_autorizado')) && /permission denied/i.test(await comoAnon('select dmanda_privado.conta_autorizada()')), 'acesso: visitante sem login não lê a lista nem consulta a função');
+// hook Before User Created
+const hook = async (email, provedor, papel = 'supabase_auth_admin') => db.transaction(async (tx) => {
+  await tx.exec(`set local role ${papel}`);
+  try { return (await tx.query('select public.hook_antes_criar_usuario($1::jsonb) as r', [JSON.stringify({ metadata: { name: 'before-user-created' }, user: { email, app_metadata: { provider: provedor, providers: [provedor] }, user_metadata: { email: 'a@teste' } } })])).rows[0].r; } catch (e) { return { falha: e.message }; }
+});
+ok(JSON.stringify(await hook('a@teste', 'google')) === '{}' && JSON.stringify(await hook(' A@TESTE ', 'google')) === '{}', 'hook: a conta autorizada entrando pelo Google é permitida (resposta vazia), sem diferenciar maiúsculas');
+const negado = await hook('intruso@teste', 'google');
+ok(negado.error?.http_code === 403 && /não tem acesso/.test(negado.error.message), 'hook: outra conta do Google é recusada com 403 e mensagem em português');
+ok((await hook('a@teste', 'email')).error?.http_code === 403 && (await hook('a@teste', 'anonymous')).error?.http_code === 403 && (await hook('', 'google')).error?.http_code === 403 && (await hook(null, 'google')).error?.http_code === 403, 'hook: mesmo e-mail por outro provedor (e-mail e senha, anônimo) ou sem e-mail é recusado');
+ok((await hook('b@teste', 'google', 'postgres')).error === undefined && /permission denied/i.test((await hook('a@teste', 'google', 'authenticated')).falha || '') && /permission denied/i.test((await hook('a@teste', 'google', 'anon')).falha || ''), 'hook: só o papel do Auth (supabase_auth_admin) executa o hook; usuário logado e visitante não');
+// lista vazia fecha tudo
+const guardada = (await sql('select email from dmanda_privado.acesso_autorizado')).length;
+const vazia = await db.transaction(async (tx) => {
+  await tx.exec('delete from dmanda_privado.acesso_autorizado');
+  await tx.exec('set local role supabase_auth_admin');
+  const h = (await tx.query("select public.hook_antes_criar_usuario('{\"user\":{\"email\":\"a@teste\",\"app_metadata\":{\"provider\":\"google\"}}}'::jsonb) as r")).rows[0].r;
+  await tx.exec('reset role');
+  await entrarComo(tx, A);
+  const n = (await tx.query('select count(*)::int as n from public.demandas')).rows[0].n;
+  throw Object.assign(new Error('desfazer'), { r: { h, n } });
+
+}).catch((e) => e.r ?? null);
+const nAposVazia = (await sql('select count(*)::int as n from dmanda_privado.acesso_autorizado'))[0].n;
+ok(vazia && vazia.h.error?.http_code === 403 && vazia.n === 0 && guardada === 4 && nAposVazia === 4, 'acesso: com a lista vazia ninguém entra, nem no cadastro nem no banco (o padrão é fechado); a lista volta intacta');
+
+// privilégios do Supabase com a exposição automática desligada: o que as migrações não declaram não existe
+const privTab = await sql("select has_table_privilege('authenticated', 'public.demandas', 'select, insert, update, delete') as crud, has_table_privilege('authenticated', 'public.demandas', 'truncate') as trunc, has_table_privilege('anon', 'public.demandas', 'select') as anon_sel, has_table_privilege('service_role', 'public.demandas', 'select') as svc_sel");
+ok(privTab[0].crud && !privTab[0].trunc && !privTab[0].anon_sel && !privTab[0].svc_sel, 'privilégios: usuário logado tem só select, insert, update e delete (sem truncate); visitante e papel de serviço não tocam as demandas');
+const privFn = await sql("select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))");
+ok(privFn.length === 0, 'privilégios: nenhuma função do Dmanda é executável por visitante nem por "public" (' + privFn.map((x) => x.proname).join(',') + ')');
+const privSvc = await sql("select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and has_function_privilege('service_role', p.oid, 'execute') order by 1");
+ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diaria', 'privilégios: o papel de serviço executa somente rotina_diaria e registrar_falha_rotina');
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);

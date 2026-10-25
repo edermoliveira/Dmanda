@@ -34,7 +34,7 @@ const assuntos = (sel = '.dcard .assunto') => pg.$$eval(sel, (e) => e.map((x) =>
 // 1) estado vazio e cadastro
 await ir('/demandas');
 ok(/Nenhuma demanda cadastrada/.test(await pg.textContent('#vista')) && /0 demandas, 0 atrasadas/.test(await pg.textContent('.pagehead')), 'estado vazio honesto (sem dados de exemplo) e contagem zerada');
-ok(!!(await pg.$('.faixa-teste')), 'o banner avisa que é o banco local de teste');
+ok(await pg.waitForSelector('.faixa-teste', { timeout: 8000 }).then(() => true, () => false), 'o banner avisa que é o banco local de teste');
 await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('.modal');
 await pg.click('.modal .btn.pri'); await pg.waitForTimeout(300);
 ok(/Informe o assunto/.test(await pg.textContent('.modal')), 'cadastrar sem assunto mostra a validação e não grava');
@@ -98,6 +98,7 @@ ok(ordem1.length === 2 && ordem1[0] !== ordem2[0] && ordem1[0] === ordem2[1], 'o
 // preferências do navegador (visão e tema) sobrevivem ao recarregar
 await pg.click('.toolbar .tabs button[data-v="lista"]'); await pg.click('.icbtn[aria-label^="Alternar tema"]'); await pg.waitForTimeout(300);
 await ir('/demandas');
+await pg.waitForFunction(() => document.querySelector('.toolbar .tabs button[aria-pressed="true"]')?.getAttribute('data-v') === 'lista' && document.querySelector('.app')?.getAttribute('data-tema') === 'escuro', null, { timeout: 8000 }).catch(() => {});
 ok((await pg.getAttribute('.toolbar .tabs button[aria-pressed="true"]', 'data-v')) === 'lista' && (await pg.getAttribute('.app', 'data-tema')) === 'escuro' && await sobre('.tabs', 'button[aria-pressed="true"]'), 'depois de recarregar a visão Lista e o tema escuro continuam, com a cápsula no lugar');
 await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.click('.icbtn[aria-label^="Alternar tema"]'); await pg.waitForTimeout(300);
 
@@ -168,6 +169,7 @@ await ir('/demandas'); ok((await assuntos()).length === 2, 'desarquivar devolve 
 
 // 10) Início: resumos ligados aos mesmos dados
 await ir('/');
+await pg.waitForFunction(() => [...document.querySelectorAll('.stat .n')].map((x) => x.textContent).join() === '1,0,0', null, { timeout: 8000 }).catch(() => {});
 ok(/Atrasadas/.test(await pg.textContent('.stats')) && (await pg.$$eval('.stat .n', (e) => e.map((x) => x.textContent))).join() === '1,0,0' && /Resposta ao TCE/.test(await pg.textContent('.main')), 'o Início conta 1 atrasada e mostra a demanda no Foco do dia');
 
 // 11) celular e iPad, claro e escuro (a mesma operação funciona e nada fica cortado)

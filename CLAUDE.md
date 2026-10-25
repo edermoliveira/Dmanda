@@ -10,7 +10,8 @@ Desenvolvido no computador e publicado na Vercel (com login Google restrito à c
 
 - **Design:** Catalyst único, claro e escuro. O protótipo (`prototipo/`, HTML, CSS e JS puros, dados fictícios) está aprovado visualmente desde o commit `cd7b03f` e é a referência. Aurora, Papel e Grafite foram retiradas. A fonte mais recente das decisões é `DECISOES.md`.
 - **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: núcleo de Demandas e tarefas pronto e testado no banco local de teste. Rotina diária na nuvem preparada. As demais áreas aparecem como "Em construção".
-- **Ainda não validado:** Supabase real, login Google, persistência real, publicação na Vercel e primeira execução automática da rotina. Sem isso, não declarar integração remota concluída.
+- **Supabase real:** projeto Dmanda (`gmxoosvgfcydccyeudej`, São Paulo) criado, vinculado, com as 5 migrações aplicadas e a segurança do banco validada nele (RLS, privilégios, conta única, rotina só do papel de serviço, hook). Acesso exclusivo à conta autorizada em três camadas (hook de cadastro, servidor, RLS). Detalhes em `supabase/LEIA-ME.md`.
+- **Ainda não validado:** login Google real (Google Cloud e painel do Supabase são ações do usuário), hook ativo no painel, persistência pela interface com sessão real, publicação na Vercel e primeira execução automática da rotina. Sem isso, não declarar integração remota concluída; testes só do PGlite nunca substituem o Supabase real.
 - **Ícones:** escolhidos e implementados (Ionicons outline 8.0.13): os sete do menu, Cards, Tabela, Lista, busca, filtros, ordenação e expansão. Os restantes ficam para uma revisão consolidada e não bloqueiam funcionalidades. O Quadro mantém `columns` como exceção provisória.
 - Retomada detalhada: seção "Retomada rápida" no topo de `SINCRONIZA-PROJETINHO.md`. Pendências do usuário: `PENDENCIAS.md`.
 
@@ -18,24 +19,24 @@ Desenvolvido no computador e publicado na Vercel (com login Google restrito à c
 
 | Comando | O que faz | Banco |
 |---|---|---|
-| `npm run dev` | aplicação em http://localhost:7100 | **Supabase real** (exige `.env.local`; sem ele o proxy responde 503) |
+| `npm run dev` | aplicação em http://localhost:7100 | **Supabase real** (exige `.env.local`, que já existe neste computador e falta só a chave secreta do Supabase; sem ele o proxy responde 503) |
 | `npm run dev:teste` | aplicação em http://localhost:7100 | **banco local descartável** (PGlite em `.dados-teste/`, `DMANDA_BANCO=teste`, só em desenvolvimento, recusado em produção) |
 | `npm run build` e `npm run start` | produção local na 7100 | Supabase real |
 | `cd prototipo` e `python -m http.server 7200 --bind 127.0.0.1` | protótipo de referência em http://127.0.0.1:7200 | nenhum (dados fictícios) |
 
 Portas: 7100 aplicação (fixa no `package.json`), 7200 protótipo, 7103 usada pelo `testar:app` (sobe o próprio servidor). Só pode haver **um `next dev` por vez** neste projeto (a pasta `.next` tem trava): encerrar o da 7100 antes de rodar `testar:app`. O banco de teste tem pastas por finalidade em `.dados-teste/` (`pg` do `dev:teste`, `e2e` e `visual` dos testes e das conferências); são descartáveis, mas só apagar com autorização. As migrações novas são aplicadas sozinhas a um banco de teste que já existe.
 
-Variáveis: copiar `.env.example` para `.env.local` e preencher (nunca vai para o Git; o assistente não lê arquivos `.env*`). Lista e passos do Supabase e da Vercel em `supabase/LEIA-ME.md`.
+Variáveis: `.env.local` (nunca vai para o Git; o assistente não lê nem imprime arquivos `.env*`; para conferir sem revelar, ver `supabase/LEIA-ME.md`). O modelo está em `.env.example` e em `supabase/LEIA-ME.md`. Lista e passos do Supabase e da Vercel em `supabase/LEIA-ME.md`.
 
 Testes da aplicação real (rodar só os dos componentes afetados):
 
-- `npm run testar:banco`: SQL, RLS, rotina diária e privilégios no PGlite (68 verificações).
-- `npm run testar:regras`: datas, grupos do Início, sessão de 6 h, e-mail autorizado, segredo e falha da rotina (19).
+- `npm run testar:banco`: SQL, RLS, rotina diária, acesso exclusivo, hook e privilégios no PGlite, que imita a exposição automática desligada do Supabase (87 verificações).
+- `npm run testar:regras`: datas, grupos do Início, sessão de 6 h, conta autorizada (e-mail e provedor Google), segredo e falha da rotina (21).
 - `npm run testar:app`: navegador (Edge) e leitura direta do banco de teste: fluxos de demandas, tarefas, quatro visões, celular, iPad, claro e escuro, cápsula, rotina diária (57).
 - Também: `npx tsc --noEmit`, `npx eslint src scripts`, `npm run build`.
 - Testes do protótipo: ver `prototipo/CLAUDE.md`.
 
-Estes testes validam a lógica e a interface no banco de **teste**. Não substituem a validação no Supabase real.
+Estes testes validam a lógica e a interface no banco de **teste**. Não substituem a validação no Supabase real, que se faz com a CLI oficial (`npx supabase db query --linked`, `db push --linked --dry-run`, `db advisors --linked`), sempre só neste projeto, sem `db reset`, e com transações desfeitas para testes que não podem deixar dados.
 
 ## Documentos do projeto
 

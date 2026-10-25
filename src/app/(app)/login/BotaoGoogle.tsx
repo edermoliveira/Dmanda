@@ -8,7 +8,7 @@ export function BotaoGoogle() {
   const entrar = async () => {
     setEntrando(true); setErro('');
     try {
-      const { error } = await criarClienteNavegador().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${location.origin}/auth/callback` } });
+      const { error } = await criarClienteNavegador().auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${location.origin}/auth/callback`, queryParams: { prompt: 'select_account' } } });
       if (error) throw error;
     } catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao iniciar o login.'); setEntrando(false); }
   };

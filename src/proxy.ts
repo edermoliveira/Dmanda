@@ -3,7 +3,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { configSupabase, modoTeste } from '@/lib/supabase/config';
-import { COOKIE_ULTIMO_USO, emailAutorizado, sessaoExpirou } from '@/lib/sessao';
+import { COOKIE_ULTIMO_USO, contaAutorizada, sessaoExpirou } from '@/lib/sessao';
 
 function clienteCom(request: NextRequest, resposta: NextResponse) {
   const c = configSupabase()!;
@@ -38,11 +38,11 @@ export async function proxy(request: NextRequest) {
     return r;
   };
   if (user && !publico) {
-    if (!emailAutorizado(user.email)) return sair('negado');
+    if (!contaAutorizada(user)) return sair('negado');
     if (sessaoExpirou(request.cookies.get(COOKIE_ULTIMO_USO)?.value)) return sair('expirou');
   }
   if (!user && !publico) return NextResponse.redirect(new URL('/login', request.url));
-  if (user && pathname.startsWith('/login') && emailAutorizado(user.email)) return NextResponse.redirect(new URL('/', request.url));
+  if (user && pathname.startsWith('/login') && contaAutorizada(user)) return NextResponse.redirect(new URL('/', request.url));
   if (user) resposta.cookies.set(COOKIE_ULTIMO_USO, String(Date.now()), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 60 * 60 * 24 * 30, path: '/' });
   return resposta;
 }

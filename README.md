@@ -6,7 +6,7 @@ Painel pessoal de demandas do Secretário de Administração da Prefeitura de Ta
 
 - **Design:** Catalyst único (claro e escuro), aprovado no protótipo em `prototipo/`.
 - **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: núcleo de Demandas e tarefas pronto e testado no banco local de teste, com rotina diária na nuvem preparada. As demais áreas ainda não foram construídas.
-- **Ainda não validado:** Supabase real, login Google, publicação na Vercel e a primeira execução automática da rotina.
+- **Supabase real:** projeto criado, vinculado e migrado (5 migrações), com a segurança do banco validada. **Ainda não validado:** login Google real, publicação na Vercel e a primeira execução automática da rotina.
 
 ## Como rodar
 

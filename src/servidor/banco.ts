@@ -3,7 +3,7 @@
 import { criarClienteServidor } from '@/lib/supabase/servidor';
 import { createClient } from '@supabase/supabase-js';
 import { configSupabase, modoTeste } from '@/lib/supabase/config';
-import { emailAutorizado } from '@/lib/sessao';
+import { contaAutorizada } from '@/lib/sessao';
 import { ErroDmanda, type Chamar } from '@/nucleo/operacoes';
 
 export const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
@@ -16,6 +16,7 @@ async function bancoTeste(): Promise<Banco> {
     const { abrirBancoTeste } = await import('./banco-teste-base.mjs');
     const db = await abrirBancoTeste({ pasta: process.env.DMANDA_PASTA_TESTE ?? './.dados-teste/pg' });
     await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO_TESTE]);
+    await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
     return { db };
   })();
   return g.__dmandaBancoTeste;
@@ -42,7 +43,7 @@ const chamarSupabase: Chamar = async (funcao, args) => {
   const sb = await criarClienteServidor();
   const { data: { user }, error: erroUser } = await sb.auth.getUser();
   if (erroUser || !user) throw new ErroDmanda('Sua sessão terminou. Entre de novo.');
-  if (!emailAutorizado(user.email)) throw new ErroDmanda('Esta conta não tem acesso ao Dmanda.');
+  if (!contaAutorizada(user)) throw new ErroDmanda('Esta conta não tem acesso ao Dmanda.');
   const { data, error } = await sb.rpc(funcao, args);
   if (error) throw traduzir(error);
   return data;

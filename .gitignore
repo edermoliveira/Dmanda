@@ -63,3 +63,6 @@ next-env.d.ts
 
 # banco local de teste (descartável)
 /.dados-teste/
+
+# metadados da CLI do Supabase (vinculação local)
+supabase/.temp/
