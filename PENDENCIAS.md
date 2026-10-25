@@ -4,6 +4,8 @@ Arquivo lido no início de cada sessão. Fica no repositório para valer em qual
 
 ## Aguardando o usuário
 
+**Supabase real (25/10/2026, bloqueia a validação da persistência):** criar o projeto no Supabase, aplicar as duas migrações de `supabase/migrations/`, configurar o Google OAuth, criar o `.env.local` e dizer ao Claude. Passo a passo em `supabase/LEIA-ME.md`. Até lá o aplicativo só roda no banco local de teste.
+
 Nada abaixo foi decidido pelo Claude. O detalhe de cada item está em `SINCRONIZA-PROJETINHO.md`, seção 3.
 
 **Decisões**

@@ -86,14 +86,14 @@ O protótipo navegável está em `prototipo/` (HTML, CSS e JS puros, dados fict�
 - **Regras mantidas:** nenhuma cor solta no código (valores só nos arquivos de tokens), espaços e cantos por nome, alvo de toque de 44 px, funcionar nos dois modos, cinco estados por peça (normal, foco, desativado, carregando, erro), vermelho só para atrasado ou crítico.
 - **Exceções à regra do travessão:** o traço "—" aparece na interface como símbolo de "sem progresso" (decisão do usuário), e valem fora da regra o `AGENTS.md` (gerado pelo Next.js) e as skills de terceiros copiadas em `.claude/skills/`.
 
-### Design antigo (código atual em `src/`)
+### Aplicação funcional (em `src/`, desde 25/10/2026)
 
-O que está em `src/` ainda é o design de 20/10/2026 (verde-água, Averia Serif Livre, Lucide, peças Botao, Campo, Janela, Menu, Avatar e Etiqueta, páginas /pecas, /tokens e /marca). Compila, passa no lint e na checagem de cores, e será **substituído** quando a construção real começar, sobre os três temas. Até lá, vale para ele:
+Next.js 16 + React 19 + Supabase, construída sobre os CSS aprovados do protótipo (copiados para `src/estilos/`, mesmas classes e marcação). **Primeiro bloco: núcleo de demandas e tarefas** (cadastrar, editar, mover etapa, concluir, reabrir, arquivar, excluir com confirmação, tarefas, quatro visões, busca, filtros, ordenação, Início). As demais áreas aparecem como "Em construção", sem dados de exemplo.
 
-- Tokens em `src/app/globals.css` (único lugar com valores de cor), vistos em http://localhost:7100/tokens. Conferir com `npm run verificar:cores`.
-- Usar sempre o nome (`bg-superficie`, `text-texto`, `bg-destaque`, `text-perigo`), cantos `rounded-card`, `rounded-medio`, `rounded-pilula` e espaços da escala nomeada (`p-grande`, `gap-normal`).
-- Peças em `src/components`, vistas em http://localhost:7100/pecas. Ícones pelo componente `Icone` (20 px).
-- Logo: `npm run gerar:logo` (não editar `public/marca`, `src/app/icon.svg` e `src/components/logo-dados.ts` à mão). Prints das páginas: `npm run capturar` (precisa do sistema ligado).
+- `src/nucleo/operacoes.ts`: operações validadas (reutilizáveis pela futura IA). `src/servidor/`: transporte (Supabase real ou banco local de teste) e ações do servidor. `src/lib/demandas.ts`: regras puras (datas, grupos, filtros, ordenação). `src/ui/`: interface. `src/proxy.ts`: porta de entrada (sessão Google, e-mail autorizado, 6 h sem uso; sem Supabase configurado responde 503).
+- Banco: `supabase/migrations/` (tabelas, RLS e funções SQL) e `supabase/LEIA-ME.md` (passos do usuário e variáveis). **Nenhum projeto Supabase está configurado**: a persistência real e o login Google ainda não foram validados.
+- `npm run dev:teste` sobe http://localhost:7100 com banco local descartável (PGlite, `DMANDA_BANCO=teste`, só em desenvolvimento, recusado em produção). Testes: `npm run testar:banco` (47, SQL e RLS), `npm run testar:regras` (12), `npm run testar:app` (50, navegador e leitura direta do banco de teste). O `testar:app` sobe o próprio servidor na porta 7103: encerrar antes qualquer `next dev` ligado, porque a pasta `.next` só aceita um servidor de desenvolvimento por vez.
+- Design antigo (20/10/2026) fica em `src/app/(antigo)` só como referência (/pecas, /tokens, /marca); não evoluir.
 
 ## Ferramentas (decidido em 23/10/2026)
 

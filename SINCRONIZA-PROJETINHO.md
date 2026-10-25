@@ -2,33 +2,36 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 25/10/2026 02:20, no computador de casa, na branch `checkpoint/2026-10-23-ajustes-a-d` (ver "Retomada rápida" logo abaixo). Push autorizado pelo usuário durante o bloco funcional.
+**Última atualização:** 25/10/2026 03:10, no computador de casa, na branch `checkpoint/2026-10-23-ajustes-a-d` (ver "Retomada rápida" logo abaixo). Push autorizado pelo usuário durante o bloco funcional.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
 ---
 
 
-## RETOMADA RÁPIDA (atualizada em 25/10/2026 02:20, computador de casa)
+## RETOMADA RÁPIDA (atualizada em 25/10/2026 03:10, computador de casa)
 
-**Branch:** `checkpoint/2026-10-23-ajustes-a-d`. Remoto: https://github.com/edermoliveira/Dmanda.git (o usuário autorizou push durante o bloco; nunca merge na main, force push nem rebase publicado).
-**Último commit de implementação do protótipo:** `54c3d3f` (ícones). **Etapa atual:** primeiro bloco da aplicação funcional (React/Next.js + Supabase): núcleo de demandas e tarefas. Estado: CHECKPOINT DE PRESERVAÇÃO (trabalho em andamento, não é entrega).
+**Situação: bloco funcional PARCIAL.** O núcleo de demandas e tarefas funciona de ponta a ponta no banco local de teste; **a persistência no Supabase real NÃO foi validada** (não há projeto nem credenciais).
+**Branch:** `checkpoint/2026-10-23-ajustes-a-d`. Remoto: https://github.com/edermoliveira/Dmanda.git. Push autorizado pelo usuário durante este bloco (nunca merge na main, force push nem rebase publicado). Último checkpoint enviado: ver `git log -1` (o hash enviado foi conferido com `git ls-remote`).
 
-**Protótipo de referência (`prototipo/`, aprovado visualmente em `cd7b03f`)** não muda; a aplicação funcional reaproveita seus CSS (copiados para `src/estilos/`) e o desenho.
+**Feito e verificado (resultados reais):**
+- `npm run testar:banco`: 47 verificações, 0 falhas (SQL, RLS, regras no PGlite).
+- `npm run testar:regras`: 12 verificações, 0 falhas (datas, grupos do Início, sessão de 6 h, e-mail autorizado).
+- `npm run testar:app`: 50 verificações, 0 falhas, no Edge, com leitura direta do banco de teste no fim: cadastro, validações, tarefas (adicionar, editar, marcar, desmarcar), mudar etapa pelo menu e por arraste, concluir, reabrir, arquivar, desarquivar, excluir com confirmação, cancelar, Esc com rascunho, falha de rede sem aviso de sucesso, filtros, quatro visões, Início, celular, iPad vertical e horizontal e janela média, claro e escuro, sem erros de console.
+- `npx tsc --noEmit`, `npx eslint src scripts` e `npx next build`: limpos, sem avisos. Produção sem Supabase responde 503; `DMANDA_BANCO=teste` em produção é recusado.
+- Capturas conferidas a olho (computador, iPad, celular, claro e escuro): fiéis ao protótipo.
 
-**Feito neste bloco (arquivos):**
-- `supabase/migrations/20261025000000_nucleo_demandas.sql` e `...000100_salvar_demanda.sql`: tabelas `demandas` e `tarefas`, RLS por dono, funções SQL de todas as operações (criar, atualizar, salvar atômico, mover etapa, concluir, reabrir, arquivar, excluir com confirmação, tarefas). Testadas no Postgres local PGlite (`npm run testar:banco`, 47 verificações, 0 falhas). **Isso valida a lógica SQL e a RLS, NÃO o Supabase real.**
-- `src/nucleo/operacoes.ts` (operações validadas, reutilizáveis pela IA), `src/servidor/` (transporte: Supabase real ou banco local de teste, ações do servidor), `src/proxy.ts` (porta de entrada: sessão, e-mail autorizado, 6 h sem uso), `src/app/auth/callback`, `src/app/(app)/login`.
-- Interface: `src/ui/` (Casca, contexto, cartoes, visoes, janelas, paginas) com as mesmas classes do protótipo; rotas em `src/app/(app)/(painel)`. Design antigo movido para `src/app/(antigo)` (só referência).
-- Dependências novas: `@supabase/supabase-js`, `@supabase/ssr`, `@electric-sql/pglite` (dev, só testes e modo de teste).
+**Últimas alterações (para não repetir):** data de hoje agora vem do contexto (`hoje`), nunca de `new Date()` na renderização; cápsula de seleção (`.thumb`) renderizada pelo React com `suppressHydrationWarning` (o DOM só muda o estilo, depois de 1,2 s); `/login` com a parte dinâmica em `Suspense`; regra `dataFiltro/grupoFiltro` do protótipo portada (Aguardando retorno só volta a 3 dias do acompanhamento; "próximos 7 dias" é de 1 a 7); `banco-teste-base.mjs` com `turbopackIgnore` para o build não rastrear o projeto.
 
-**Parcial / não validado:** a interface acabou de compilar (tsc e lint limpos) e ainda falta o teste de ponta a ponta no navegador; ajustes de hidratação (data de hoje agora vem do contexto) acabaram de ser feitos e não foram reconferidos; build de produção não rodado; telas Entradas, Agenda, Documentos, IA e Configurações são só "Em construção" (honestas, sem dados falsos); busca global, avisos e Perfil estão desativados com aviso.
+**Não implementado (continua no planejamento):** Entradas, Agenda, Documentos, IA, Configurações, busca global, sino, Perfil, humor/energia/produtividade, integrações Google, notificações, PWA/iPhone/iPad nativo, publicação na Vercel, backup. Busca global, sino e Perfil aparecem desativados com aviso.
 
-**Supabase (fatos):** NÃO existe projeto Supabase configurado nem credenciais neste computador (sem `.env.local`). Sem isso a persistência real, o login Google e a RLS na plataforma **não foram validados**. Variáveis esperadas (o `.env.example` não pôde ser editado por mim, acrescente): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`. Passos que dependem do usuário em `supabase/LEIA-ME.md`.
+**Supabase (fatos):** sem projeto, sem `.env.local`. Migrações prontas em `supabase/migrations/` (duas). O `.env.example` não pôde ser editado pelo assistente: acrescente as três variáveis listadas em `supabase/LEIA-ME.md`. **Dependem do usuário:** criar o projeto, aplicar as migrações, Google OAuth, `.env.local`.
 
-**Comandos:** `npm run dev:teste` (aplicativo em http://localhost:7100 com banco local de teste descartável em `.dados-teste/`, não é o Supabase); `npm run testar:banco`; `npx tsc --noEmit`; `npx eslint src scripts`; protótipo: `cd prototipo` e `python -m http.server 7200`.
+**Pendências preservadas:** teclado virtual em aparelho real; datas próprias de Humor/Energia; escolhas restantes de ícones (Quadro etc.); Quadro mantém `columns`; referência visual ampliada; o `.next/dev/lock` exige um só `next dev` por vez.
 
-**Próxima ação concreta:** rodar o aplicativo em modo de teste, escrever e rodar `scripts/testar-app.mjs` (criar demanda, tarefas, editar, mover etapa, marcar, recarregar, cancelar, falha de gravação), corrigir o que aparecer, `npm run build`, capturas em cinco larguras e dois modos, documentar e commitar. Depois, com credenciais do usuário, validar no Supabase real.
+**Comandos:** `npm run dev:teste` (http://localhost:7100, banco de teste descartável em `.dados-teste/`); `npm run testar:banco`, `testar:regras`, `testar:app` (esse sobe a porta 7103 e exige nenhum `next dev` ligado); protótipo: `cd prototipo` e `python -m http.server 7200`.
+
+**Primeira ação recomendada:** o usuário avalia o aplicativo (roteiro: `npm run dev:teste`, abrir /demandas, cadastrar, editar, mover, concluir, recarregar) e, se aprovar, cria o projeto Supabase seguindo `supabase/LEIA-ME.md`; com as credenciais, validar a persistência real e o login Google. Próximo bloco sugerido: Entradas e Agenda (ou o que o usuário priorizar).
 
 ---
 
