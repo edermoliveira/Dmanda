@@ -416,8 +416,8 @@
 .app[data-dir="d"] .modal .add-t { margin: 10px 0 0; align-items: center; }
 .app[data-dir="d"] .modal .add-t .btn { flex: none; }
 /* cabeçalho (fechar) e rodapé (salvar, cancelar) ficam à vista enquanto o formulário rola; o conteúdo termina acima do rodapé */
-.app[data-dir="d"] .modal .m-h { position: sticky; top: -26px; z-index: 4; margin: -26px -24px 12px; padding: 22px 24px 8px; background: var(--grp-bg); }
-.app[data-dir="d"] .modal .m-f { position: sticky; bottom: -22px; z-index: 4; margin: 16px -24px -22px; padding: 12px 24px 18px; background: var(--grp-bg); border-top: 1px solid var(--brd); }
+.app[data-dir="d"] .modal .m-h { position: sticky; top: -26px; z-index: 4; margin: -26px -24px 12px; padding: 22px 24px 8px; background: var(--grp-bg); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.app[data-dir="d"] .modal .m-f { position: sticky; bottom: -22px; z-index: 4; margin: 16px -24px -22px; padding: 12px 24px 18px; background: var(--grp-bg); border-top: 1px solid var(--brd); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 @container tela (max-width: 899px) {
   .app[data-dir="d"] .modal .m-cols { grid-template-columns: minmax(0, 1fr); gap: 0; }
 }

@@ -103,7 +103,7 @@ for (const tema of temas) for (const modo of modos) {
     await ir({ tela: 'demandas', vis, etapaSel: 'Vistos', menuAb: false });
     return p.evaluate((vis) => {
       const sonda = (v) => { const d = document.createElement('div'); d.style.cssText = 'background-color:' + v; document.querySelector('.app').appendChild(d); const c = getComputedStyle(d).backgroundColor; d.remove(); return c; };
-      const T = { azul: sonda('var(--cat-azul)'), verde: sonda('var(--cat-verde)'), amar: sonda('var(--cat-amar)'), venc: sonda('var(--cat-venc)'), card: sonda('var(--card)'), bAzul: sonda('var(--cat-azul-barra)') };
+      const T = { azul: sonda('var(--cat-azul)'), verde: sonda('var(--cat-verde)'), amar: sonda('var(--cat-amar)'), venc: sonda('var(--cat-venc)'), card: sonda('var(--card)') };
       const face = (id) => { const c = document.querySelector((vis === 'cards' ? '.dcard' : '.mini-card') + '[data-id="' + id + '"]'); return c && (vis === 'cards' ? c.querySelector('.face.front') : c); };
       const bg = (id) => { const f = face(id); return f ? getComputedStyle(f).backgroundColor : null; };
       if (vis === 'quadro') { /* o quadro mostra uma etapa por vez no celular; no computador mostra todas */ }
@@ -116,7 +116,8 @@ for (const tema of temas) for (const modo of modos) {
     conferir(rot + 'C [' + vis + ']: Processo de compras em amarelo pastel', r.amar === r.T.amar, [r.amar, r.T.amar]);
     conferir(rot + 'C [' + vis + ']: Processo geral em azul pastel', r.azul === r.T.azul, [r.azul, r.T.azul]);
     conferir(rot + 'C [' + vis + ']: memorando segue neutro', r.neutro === r.T.card, [r.neutro, r.T.card]);
-    conferir(rot + 'C [' + vis + ']: atrasado mantém o vermelho pastel e a faixa do tipo', r.venc === r.T.venc && r.sombra.includes(r.T.bAzul), [r.venc, r.sombra]);
+    // regra de 24/10/2026: a faixa lateral na cor do tipo foi retirada; o vermelho pastel e o contorno vermelho regular continuam
+    conferir(rot + 'C [' + vis + ']: atrasado mantém o vermelho pastel e o contorno, sem faixa lateral do tipo', r.venc === r.T.venc && !/(d+)px 0px 0px 0px inset/.test(r.sombra) && /0px 0px 0px 1px/.test(r.sombra), [r.venc, r.sombra]);
   }
   // o verso continua neutro
   await ir({ tela: 'demandas', vis: 'cards' });

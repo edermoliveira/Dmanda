@@ -33,6 +33,10 @@ node testes/agenda-demandas.mjs                 (itens de demanda da Agenda: sig
 node testes/quadro.mjs                          (Quadro: colunas, filtros, mover por menu, mouse e toque)
 node testes/fundo.mjs                           (fundo: cor, imagem, desfoque, persistência, falhas)
 node testes/checkbox.mjs                        (caixas de marcar das tarefas)
+node testes/card-faixa.mjs                      (cards atrasados sem faixa lateral, com contorno e progresso)
+node testes/config-layout.mjs                   (Configurações: painéis em colunas, opções que aplicam)
+node testes/perfil-historico.mjs                (histórico do Perfil: colunas por dia, Humor e Energia)
+node testes/form-demanda.mjs                    (cadastro e edição de demandas: grupos, rodapé, salvar, cancelar, rascunho)
 node testes/preservar-catalyst.mjs comparar <referência.json>  (78 telas contra uma referência gravada com `gravar`)
 node verificar-cores.mjs                        (nenhum branco ou preto absoluto)
 ```
