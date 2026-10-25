@@ -9,15 +9,22 @@
     "lint": "eslint",
     "verificar:cores": "node scripts/verificar-cores.mjs",
     "gerar:logo": "node scripts/gerar-logo.mjs",
-    "capturar": "node scripts/capturar.mjs"
+    "capturar": "node scripts/capturar.mjs",
+    "dev:teste": "node scripts/dev-teste.mjs",
+    "testar:banco": "node scripts/testar-banco.mjs",
+    "testar:sessao": "node scripts/testar-sessao.mjs",
+    "testar:app": "node scripts/testar-app.mjs"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
     "lucide-react": "^1.60.0",
     "next": "16.4.2",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

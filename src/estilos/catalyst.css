@@ -1,0 +1,436 @@
+/* =====================================================================
+   Tema D: Catalyst (22/10/2026). Estilo nativo Apple (iOS e iPadOS 27) a partir do kit do Figma:
+   Liquid Glass nas barras, menus, folhas e botões (blur, saturação, brilho de borda e lente),
+   cinza agrupado do sistema por baixo, cards sólidos, azul de sistema e movimento com mola.
+   Vermelho só para atraso ou crítico. Branco = #FCFCFC, preto = #0A0A0A (nunca absolutos).
+   Só vale para .app[data-dir="d"], o identificador interno do Catalyst.
+   O movimento é feito por catalyst.js (observa a troca de tela e anima entrada, saída e seleção).
+   ===================================================================== */
+
+.app[data-dir="d"] {
+  --font: "Inter", -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; --font-h: var(--font); --font-n: var(--font);
+  --r-card: 22px; --r-field: 14px; --r-btn: 999px; --sw: 1.75; --pad: 16px; --blur: 24px;
+  --mola: cubic-bezier(.32, 1.25, .5, 1); --suave: cubic-bezier(.22, 1, .36, 1); --rapido: cubic-bezier(.4, 0, .2, 1);
+  --verde: #248A3D; --verde-vivo: #30D158;
+}
+.app[data-dir="d"][data-tema="claro"] {
+  --bgbase: #F2F2F7; --bg1: #F2F2F7; --bg2: #F2F2F7; --bg3: #F2F2F7;
+  --card: #FCFCFC; --card-brd: rgba(60,60,67,.1); --panel: #F7F7FA; --glass: rgba(246,246,248,calc(.7 * var(--vidro))); --glass-brd: rgba(60,60,67,.14);
+  --text: #0A0A0A; --text2: #5F5F66; --brd: rgba(60,60,67,.2); --track: rgba(118,118,128,.14);
+  --acc: #0071E3; --acc-ink: #FCFCFC; --acc-soft: rgba(0,113,227,.12); --acc-text: #0062C4; --foco: #0071E3;
+  --perigo: #C4001A; --perigo-soft: rgba(196,0,26,.09); --on-perigo: #FCFCFC;
+  --shadow: none; --solido: rgba(254,254,254,.98);
+  --btn-bg: rgba(118,118,128,.14); --btn-hov: rgba(118,118,128,.22); --sel: rgba(118,118,128,.18);
+  --grp-bg: rgba(242,242,247,.97); --grp-campo: #FCFCFC; --sw-on: #34C759; --r-tile: 12px;
+  /* Liquid Glass */
+  --lq-fill: rgba(252,252,252,calc(.46 * var(--vidro))); --lq-fill-forte: rgba(250,250,252,.94);
+  --lq-edge: rgba(252,252,252,.95); --lq-edge2: rgba(252,252,252,.45); --lq-rim: rgba(10,10,10,.07);
+  --lq-glow: rgba(252,252,252,.55); --lq-sh: 0 10px 34px rgba(10,10,10,.12), 0 1px 3px rgba(10,10,10,.08);
+}
+.app[data-dir="d"][data-tema="escuro"] {
+  --bgbase: #0A0A0A; --bg1: #0A0A0A; --bg2: #0A0A0A; --bg3: #0A0A0A;
+  --card: #1C1C1E; --card-brd: rgba(84,84,88,.45); --panel: #141416; --glass: rgba(28,28,30,calc(.7 * var(--vidro))); --glass-brd: rgba(84,84,88,.5);
+  --text: #FCFCFC; --text2: #A1A1A8; --brd: rgba(84,84,88,.6); --track: rgba(118,118,128,.26);
+  --acc: #3D9BFF; --acc-ink: #04152B; --acc-soft: rgba(61,155,255,.2); --acc-text: #6DB3FF; --foco: #6DB3FF;
+  --perigo: #FF6961; --perigo-soft: rgba(255,105,97,.16); --on-perigo: #2B0705;
+  --shadow: none; --solido: rgba(28,28,30,.98);
+  --btn-bg: rgba(118,118,128,.26); --btn-hov: rgba(118,118,128,.36); --sel: rgba(118,118,128,.3);
+  --grp-bg: rgba(28,28,30,.97); --grp-campo: #2C2C2E; --sw-on: #30D158; --r-tile: 12px;
+  --lq-fill: rgba(70,70,76,calc(.4 * var(--vidro))); --lq-fill-forte: rgba(40,40,44,.95);
+  --lq-edge: rgba(252,252,252,.32); --lq-edge2: rgba(252,252,252,.1); --lq-rim: rgba(252,252,252,.06);
+  --lq-glow: rgba(252,252,252,.12); --lq-sh: 0 12px 38px rgba(10,10,10,.55), 0 1px 3px rgba(10,10,10,.4);
+}
+.app[data-dir="d"][data-tema="escuro"] { --z-amar-bg: hsl(46 85% 26%); --z-lar-bg: hsl(26 80% 30%); --z-verm-bg: hsl(4 70% 32%); }
+.app[data-dir="d"] .tag { background: hsl(var(--h) 62% 31%); }
+.app[data-dir="d"][data-tema="escuro"] .tag { background: hsl(var(--h) 52% 32%); }
+.app[data-dir="d"] .bg { display: none; }
+.app[data-dir="d"][data-tema="claro"] { --bgbase: #F2F2F7 !important; }
+.app[data-dir="d"][data-tema="escuro"] { --bgbase: #0A0A0A !important; }
+
+/* ---------- Liquid Glass: receita única (borda de luz, brilho interno, sombra suave) ---------- */
+.app[data-dir="d"] :is(.side, .top .buscabtn, .top .icbtn, .top .perfil-b, .bar, .menuplus, .busca-box, .toast, .balao, .modal, .dr, .tabs, .btn.gl) {
+  background: var(--lq-fill);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.9) brightness(1.04); backdrop-filter: blur(var(--blur)) saturate(1.9) brightness(1.04);
+  border: 0;
+  box-shadow: inset 1.5px 1.5px 1px -1px var(--lq-edge), inset -1px -1px 1px -1px var(--lq-edge2), inset 0 0 0 1px var(--lq-rim), inset 0 0 22px -8px var(--lq-glow), var(--lq-sh);
+}
+.app[data-dir="d"][data-tema] :is(.menuplus, .busca-box, .modal, .dr, .balao) { background: var(--lq-fill-forte); -webkit-backdrop-filter: blur(34px) saturate(2) brightness(1.04); backdrop-filter: blur(34px) saturate(2) brightness(1.04); }
+.app[data-dir="d"][data-tema] .toast { background: var(--lq-fill-forte); color: var(--text); border-radius: 999px; padding: 12px 20px; font-weight: 600; }
+
+/* ---------- superfícies de conteúdo: sólidas, sem vidro (como nos apps nativos) ---------- */
+/* cards: :where() zera a especificidade, para a cor do tipo de processo (cat-azul, cat-verde, cat-amar) e a de atrasado sempre vencerem */
+.app[data-dir="d"] :where(.face, .mini-card) { background: var(--card); border: 0; box-shadow: 0 0 0 1px var(--card-brd), 0 1px 2px rgba(10,10,10,.04); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.app[data-dir="d"] :is(.painel, .stat, .alerta-l, .filtro, .etapas-tabs button, .sw, .tema-c, .pend, .linha, .tabela-w, .ag-col, .ag-cel, .bolha.ia, .coluna, .grupo, .emo) {
+  background: var(--card); border: 0; box-shadow: 0 0 0 1px var(--card-brd), 0 1px 2px rgba(10,10,10,.04);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.app[data-dir="d"] :is(.painel, .stat, .face, .mini-card, .coluna, .grupo, .tabela-w, .linha) { border-radius: var(--r-card); }
+.app[data-dir="d"] .coluna, .app[data-dir="d"] .grupo { background: var(--panel); }
+.app[data-dir="d"] .chat-f input { background: var(--card); border: 0; box-shadow: 0 0 0 1px var(--brd); border-radius: 999px; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ---------- estrutura: barras flutuantes e conteúdo passando por baixo ---------- */
+.app[data-dir="d"] .side { grid-area: auto; grid-row: 1 / -1; grid-column: 1; margin: 10px; border-radius: 34px; z-index: 8; }
+.app[data-dir="d"] .main { grid-area: auto; grid-row: 1 / -1; grid-column: 2; padding-top: 84px; scroll-padding-top: 84px; }
+.app[data-dir="d"] .top { grid-area: auto; grid-row: 1; grid-column: 2; align-self: start; margin: 10px 12px 0 0; padding: 0; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0; z-index: 7; pointer-events: none; gap: 10px; }
+.app[data-dir="d"] .top > * { pointer-events: auto; }
+/* borda de rolagem: o conteúdo desfoca e some sob os botões flutuantes */
+.app[data-dir="d"] .top::before { content: ""; position: absolute; left: -14px; right: -12px; top: -10px; height: 92px; z-index: -1; pointer-events: none;
+  background: linear-gradient(to bottom, var(--bgbase) 12%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(to bottom, #0A0A0A 45%, transparent); mask-image: linear-gradient(to bottom, #0A0A0A 45%, transparent); }
+.app[data-dir="d"] .buscabtn { border-radius: 999px; min-height: var(--bt-l); padding: 0 18px; }
+/* celular: o botão de busca vira só o ícone (44 px); sem isto o padding de 18 px acima sobrava e o ícone ficava espremido */
+@container tela (max-width: 899px) { .app[data-dir="d"] .buscabtn { padding: 0; } }
+.app[data-dir="d"] .top .icbtn:not(.buscabtn) { width: var(--bt-l); height: var(--bt-l); padding: 0; border-radius: 50%; display: grid; place-items: center; position: relative; }
+.app[data-dir="d"] .perfil-b { border-radius: 999px; min-height: var(--bt-l); padding: 0 14px 0 4px; gap: 10px; font-weight: 600; }
+.app[data-dir="d"] .perfil-b .avatar { width: 36px; height: 36px; flex: none; aspect-ratio: 1; display: grid; place-items: center; line-height: 1; /* círculo fixo: nunca encolhe nem estica com o botão */ }
+.app[data-dir="d"] .avatar { background: var(--acc); color: var(--acc-ink); }
+.app[data-dir="d"] .badge { background: var(--perigo); color: var(--on-perigo); }
+.app[data-dir="d"] .logo { padding-inline: 4px; }
+
+/* ---------- barra lateral (iPad): seleção em cápsula cinza e ícone azul, a cápsula desliza ---------- */
+.app[data-dir="d"] .navi { min-height: 46px; border-radius: 999px; transition: background .2s var(--rapido), transform .35s var(--mola); position: relative; z-index: 1; }
+.app[data-dir="d"] .navi .ico { width: 30px; height: 30px; border-radius: 50%; background: transparent !important; color: var(--acc-text); }
+.app[data-dir="d"] .navi:hover { background: var(--btn-bg); }
+.app[data-dir="d"] .navi[aria-current="page"] { background: transparent; }
+.app[data-dir="d"] .navi[aria-current="page"] .ico { color: var(--acc-text); }
+.app[data-dir="d"] .navi:active { transform: scale(.94); }
+.app[data-dir="d"] .side .thumb, .app[data-dir="d"] .bar .thumb { position: absolute; z-index: 0; border-radius: 999px; background: var(--sel); box-shadow: inset 0 1px 0 var(--lq-edge2); pointer-events: none; }
+
+.app[data-dir="d"] .main .navi.grande { border-radius: var(--r-card); box-shadow: 0 0 0 1px var(--card-brd); min-height: 60px; }
+.app[data-dir="d"] .main .navi.grande .ico { background: var(--acc-soft) !important; }
+
+/* ---------- botões (Bordered, Prominent e Glass do kit): cápsulas, sem borda, com mola ao toque ---------- */
+.app[data-dir="d"] :is(.btn, .icbtn-s, .cor-b) { transition: transform .35s var(--mola), background .2s var(--rapido), filter .2s var(--rapido), box-shadow .25s var(--rapido); }
+.app[data-dir="d"] .btn { background: var(--btn-bg); border: 0; box-shadow: none; border-radius: 999px; min-height: var(--bt-m); padding: 0 var(--bt-px-m); font-weight: 600; color: var(--acc-text); }
+.app[data-dir="d"] .btn.mini { min-height: var(--bt-s); padding: 0 var(--bt-px-s); }
+.app[data-dir="d"] .btn:hover { background: var(--btn-hov); }
+.app[data-dir="d"] .btn:active, .app[data-dir="d"] .icbtn:active, .app[data-dir="d"] .perfil-b:active, .app[data-dir="d"] .fab:active, .app[data-dir="d"] .bar .mais-c:active { transform: scale(.95); }
+.app[data-dir="d"] :is(.btn.pri, .btn.escuro, .modal .btn.pri) { background: var(--acc); color: var(--acc-ink); box-shadow: inset 0 1px 0 rgba(252,252,252,.35), 0 4px 14px color-mix(in srgb, var(--acc) 35%, transparent); }
+.app[data-dir="d"] :is(.btn.pri, .btn.escuro, .modal .btn.pri):hover { background: var(--acc); filter: brightness(1.08); }
+.app[data-dir="d"] .btn.gl { color: var(--text); }
+.app[data-dir="d"] .btn[aria-pressed="true"] { background: var(--acc-soft); color: var(--acc-text); box-shadow: inset 0 0 0 1.5px var(--acc); }
+.app[data-dir="d"] .btn:disabled { opacity: .4; }
+.app[data-dir="d"] :is(.icbtn, .perfil-b, .buscabtn) { transition: transform .35s var(--mola), filter .2s var(--rapido); }
+.app[data-dir="d"] :is(.icbtn, .perfil-b):hover { filter: brightness(1.05); }
+.app[data-dir="d"] .fab, .app[data-dir="d"] .bar .mais-c { background: var(--acc); color: var(--acc-ink); border: 0; border-radius: 50%; transition: transform .45s var(--mola);
+  box-shadow: inset 1.5px 1.5px 1px -1px rgba(252,252,252,.7), inset 0 0 20px -6px rgba(252,252,252,.35), 0 8px 24px color-mix(in srgb, var(--acc) 40%, transparent), 0 2px 6px rgba(10,10,10,.18); }
+.app[data-dir="d"] .fab { right: 24px; bottom: 24px; }
+.app[data-dir="d"] .fab[aria-expanded="true"], .app[data-dir="d"] .bar .mais-c[aria-expanded="true"] { transform: rotate(135deg); }
+.app[data-dir="d"] .icbtn-s { position: relative; border-radius: 50%; width: var(--bt-s); height: var(--bt-s); min-height: var(--bt-s); min-width: var(--bt-s); margin: 0; background: var(--btn-bg); border: 0; display: grid; place-items: center; }
+.app[data-dir="d"] .icbtn-s::after { content: ""; position: absolute; inset: -6px; }
+.app[data-dir="d"] .icbtn-s .ic { width: 16px; height: 16px; }
+.app[data-dir="d"] .coluna header { gap: 6px; }
+.app[data-dir="d"] .coluna header h4 { min-width: 0; }
+.app[data-dir="d"] .icbtn-s:hover { background: var(--btn-hov); }
+
+/* ---------- controle segmentado (kit: trilho cinza, cápsula branca que desliza) ---------- */
+.app[data-dir="d"] .tabs { position: relative; background: var(--track); padding: 3px; border-radius: 999px; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 0 0 1px var(--lq-rim); }
+.app[data-dir="d"] .tabs button { position: relative; z-index: 1; border-radius: 999px; background: transparent !important; box-shadow: none !important; min-height: calc(var(--bt-m) - 6px); transition: color .2s var(--rapido), transform .35s var(--mola); }
+.app[data-dir="d"] .tabs button[aria-pressed="true"] { color: var(--text); font-weight: 700; }
+.app[data-dir="d"] .tabs button:active { transform: scale(.94); }
+.app[data-dir="d"] .tabs .thumb { position: absolute; z-index: 0; border-radius: 999px; background: var(--card); box-shadow: 0 1px 4px rgba(10,10,10,.2), inset 0 1px 0 var(--lq-edge2); pointer-events: none; }
+.app[data-dir="d"][data-tema="escuro"] .tabs .thumb { background: #5A5A60; }
+
+/* ---------- barra de abas flutuante (celular): cápsula de vidro, aba atual em cápsula cinza ---------- */
+.app[data-dir="d"] .bar { left: 14px; right: 14px; bottom: 14px; border-radius: 999px; padding: 6px; }
+.app[data-dir="d"] .bar .bi { border-radius: 999px; min-height: 54px; position: relative; z-index: 1; color: var(--text2); background: transparent !important; transition: color .2s var(--rapido), transform .35s var(--mola); }
+.app[data-dir="d"] .bar .bi[aria-current="page"] { color: var(--acc-text); }
+.app[data-dir="d"] .bar .bi:active { transform: scale(.92); }
+.app[data-dir="d"] .bar .mais-c { width: 54px; height: 54px; margin-top: 0; }
+
+/* ---------- menus e popovers (kit Menus): vidro, cantos grandes, linhas de 44 px ---------- */
+.app[data-dir="d"] .menuplus { border-radius: 26px; padding: 8px; width: 280px; bottom: 96px; right: 24px; transform-origin: bottom right; }
+.app[data-dir="d"] .menuplus button { border-radius: 16px; min-height: 46px; padding: 0 14px; transition: background .15s var(--rapido), transform .3s var(--mola); }
+.app[data-dir="d"] .menuplus button:hover { background: var(--sel); }
+.app[data-dir="d"] .menuplus button:active { transform: scale(.97); }
+.app[data-dir="d"] .menuplus hr { border-top: 1px solid var(--brd); margin: 6px 14px; }
+.app[data-dir="d"] .busca-box { border-radius: 30px; padding: 14px; }
+.app[data-dir="d"] .busca-box input { border: 0; background: var(--btn-bg); border-radius: 999px; padding: 0 20px; }
+.app[data-dir="d"] .busca-ov, .app[data-dir="d"] .modal-ov, .app[data-dir="d"] .dr-ov { background: rgba(10,10,10,.28); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.app[data-dir="d"][data-tema="escuro"] :is(.busca-ov, .modal-ov, .dr-ov) { background: rgba(10,10,10,.5); }
+
+/* ---------- folhas (kit Sheets): cantos de 34 px, alça no topo, fechar redondo à esquerda ---------- */
+.app[data-dir="d"] .modal { border-radius: 34px; padding: 26px 24px 22px; position: relative; }
+.app[data-dir="d"] .modal::before { content: ""; position: absolute; top: 8px; left: 50%; width: 38px; height: 5px; margin-left: -19px; border-radius: 3px; background: var(--track); }
+.app[data-dir="d"] .m-h { display: flex; align-items: center; flex-direction: row-reverse; justify-content: flex-end; gap: 12px; }
+.app[data-dir="d"] .m-h h3 { flex: 1; text-align: center; font-size: 17px; font-weight: 700; margin-right: 36px; }
+.app[data-dir="d"] .m-f { gap: 10px; }
+.app[data-dir="d"][data-tema] .modal { background: var(--grp-bg); }
+.app[data-dir="d"] .modal .fld > label, .app[data-dir="d"] .modal .fld > span:first-child { font-size: 13px; font-weight: 500; color: var(--text2); padding-left: 14px; }
+.app[data-dir="d"] .modal .fld :is(input, select, textarea), .app[data-dir="d"] .modal .add-t input { background: var(--grp-campo); border: 0; border-radius: 12px; min-height: 44px; padding: 0 14px; transition: box-shadow .2s var(--rapido); }
+.app[data-dir="d"] .modal .fld textarea { padding: 12px 14px; }
+.app[data-dir="d"] .modal .fld :is(input, select, textarea):focus, .app[data-dir="d"] .modal .add-t input:focus { box-shadow: 0 0 0 2px var(--acc); outline: 0; }
+.app[data-dir="d"] .modal :is(.tarefas.ed, .meta) { background: var(--grp-campo); border-radius: 12px; padding: 4px 12px; }
+.app[data-dir="d"] .modal .tarefas.ed .t-item + .t-item { border-top: 1px solid var(--brd); }
+.app[data-dir="d"] .modal .tarefas.ed .t-campo { border-bottom: 0; }
+.app[data-dir="d"] .modal .opcoes button { background: var(--grp-campo); }
+.app[data-dir="d"] .modal .btn:not(.pri):not(.perigo) { background: var(--grp-campo); }
+.app[data-dir="d"] .modal .opcoes button { border-radius: 999px; border: 0; }
+.app[data-dir="d"] .modal .opcoes button[aria-pressed="true"] { background: var(--acc); color: var(--acc-ink); }
+.app[data-dir="d"] .modal { overflow-x: hidden; }
+.app[data-dir="d"] .modal :is(.m-cols, .dois, .fld) > * , .app[data-dir="d"] .modal .m-cols { min-width: 0; }
+.app[data-dir="d"] .modal .add-t { flex-wrap: wrap; }
+.app[data-dir="d"] .modal .add-t input { flex: 1 1 140px; min-width: 0; }
+.app[data-dir="d"] .modal .btn.mini { padding: 0 var(--bt-px-s); min-height: var(--bt-s); }
+.app[data-dir="d"] .dr { border-radius: 34px 0 0 34px; margin: 10px 0 10px 10px; height: auto; }
+
+/* ---------- itens selecionáveis: contorno azul de sistema no escolhido ---------- */
+.app[data-dir="d"] :is(.tema-c, .sw, .emo, .etapas-tabs button) { border-radius: 20px; transition: box-shadow .25s var(--rapido), transform .35s var(--mola); }
+.app[data-dir="d"] :is(.tema-c, .sw, .emo, .etapas-tabs button):active { transform: scale(.96); }
+.app[data-dir="d"] :is(.tema-c, .sw, .emo, .etapas-tabs button, .filtro)[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--acc), 0 6px 18px color-mix(in srgb, var(--acc) 25%, transparent); }
+/* aba selecionada das etapas: aqui o fundo é o do card (a seleção é o anel), então o texto fica na cor principal e não na cor sobre o destaque */
+.app[data-dir="d"] .etapas-tabs button[aria-pressed="true"], .app[data-dir="d"] .etapas-tabs button[aria-pressed="true"] .cnt { color: var(--text); }
+.app[data-dir="d"] .tema-c[aria-pressed="true"] b { color: var(--acc-text); }
+
+/* ---------- caixas de marcar: círculo do iOS (22 px visíveis, 44 px de toque, sem mexer no layout) ----------
+   Um só componente para a frente e o verso dos cards, a próxima tarefa, o Quadro e as janelas. O círculo é o próprio fundo da caixa de 44 px
+   (borda transparente de 11 px + background-clip: padding-box) e o contorno é uma sombra interna vetorial: arestas alinhadas aos pixels do aparelho,
+   sem o serrilhado do degradê radial anterior (arredondado de 24 px, que caía em posições fracionárias). */
+.app[data-dir="d"] input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; box-sizing: border-box; width: 44px; height: 44px; margin: -11px; padding: 0; border: 11px solid transparent; border-radius: 50%; cursor: pointer;
+  background-color: var(--card); background-clip: padding-box; background-repeat: no-repeat; background-position: center; box-shadow: inset 0 0 0 2px var(--text2);
+  transition: transform .35s var(--mola), background-color .2s var(--rapido), box-shadow .2s var(--rapido); }
+.app[data-dir="d"] input[type="checkbox"]:hover:not(:checked) { box-shadow: inset 0 0 0 2px var(--acc); }
+.app[data-dir="d"] input[type="checkbox"]:checked { background-color: var(--acc); box-shadow: inset 0 0 0 2px var(--acc); background-size: 100%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FCFCFC' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 12.5l4 4 7-8.5'/%3E%3C/svg%3E"); }
+.app[data-dir="d"][data-tema="escuro"] input[type="checkbox"]:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2304152B' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 12.5l4 4 7-8.5'/%3E%3C/svg%3E"); }
+/* foco: anel rente ao círculo (o contorno padrão ficaria na caixa de toque de 44 px, bem afastado) */
+.app[data-dir="d"] input[type="checkbox"]:focus-visible { outline: 3px solid var(--foco); outline-offset: -9px; }
+.app[data-dir="d"] input[type="checkbox"]:active { transform: scale(.82); }
+
+/* ---------- cards e listas: tipografia de título grande, linhas finas ---------- */
+.app[data-dir="d"] .pagehead h1 { font-size: 34px; font-weight: 800; letter-spacing: -.02em; }
+.app[data-dir="d"] .frase-dia { font-size: 26px; font-weight: 700; letter-spacing: -.015em; }
+.app[data-dir="d"] .stats { gap: 12px; }
+.app[data-dir="d"] .stat { border-radius: var(--r-tile); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); transition: background .2s var(--rapido), box-shadow .2s var(--rapido), transform .35s var(--mola); }
+.app[data-dir="d"] .stat:hover { box-shadow: 0 0 0 1px var(--card-brd), 0 6px 18px rgba(10,10,10,.07); }
+.app[data-dir="d"] .stat[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--acc); }
+.app[data-dir="d"] .stat:active { transform: scale(.98); }
+.app[data-dir="d"] .stat .n { font-weight: 700; }
+.app[data-dir="d"] :is(.face, .mini-card) { transition: transform .4s var(--mola), box-shadow .3s var(--rapido); }
+.app[data-dir="d"] .mini-card:hover, .app[data-dir="d"] .face:hover { box-shadow: 0 0 0 1px var(--card-brd), 0 10px 28px rgba(10,10,10,.1); }
+.app[data-dir="d"] .mini-card:active { transform: scale(.985); }
+.app[data-dir="d"] .chip, .app[data-dir="d"] .selo, .app[data-dir="d"] .pz { border-radius: 999px; }
+.app[data-dir="d"] :focus-visible { outline: 3px solid color-mix(in srgb, var(--acc) 55%, transparent); outline-offset: 2px; }
+.app[data-dir="d"] .filtro { border-radius: 999px; }
+.app[data-dir="d"] .alerta-l { border-radius: 22px; }
+.app[data-dir="d"] .stats .stat .n, .app[data-dir="d"] .frase { letter-spacing: -.01em; }
+
+/* ---------- widgets (kit Widgets): quadrado e retângulo 2:1, cantos contínuos de 22 px ---------- */
+.app[data-dir="d"] .wg { border-radius: 22px; padding: 16px; box-shadow: 0 1px 2px rgba(10,10,10,.04), 0 8px 24px rgba(10,10,10,.06); }
+.app[data-dir="d"][data-tema="escuro"] .wg { box-shadow: 0 0 0 1px var(--card-brd); }
+.app[data-dir="d"] .wg-dia { letter-spacing: .02em; }
+.app[data-dir="d"] .seg-p { border-radius: 999px; }
+.app[data-dir="d"] .seg-p button { border-radius: 999px; }
+.app[data-dir="d"] .dia-mais { box-shadow: inset 1px 1px 1px -1px rgba(252,252,252,.7), 0 4px 12px color-mix(in srgb, var(--acc) 40%, transparent); }
+
+/* ---------- movimento (catalyst.js marca o .app com data-t-*; só anima na mudança) ---------- */
+@keyframes cat-pagina { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes cat-cartao { from { opacity: 0; transform: translateY(22px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes cat-folha { from { opacity: 0; transform: translateY(46px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes cat-folha-sai { to { opacity: 0; transform: translateY(30px) scale(.96); } }
+@keyframes cat-fundo { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cat-fundo-sai { to { opacity: 0; } }
+@keyframes cat-menu { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: none; } }
+@keyframes cat-menu-m { from { opacity: 0; transform: translateX(50%) scale(.55); } to { opacity: 1; transform: translateX(50%); } }
+@keyframes cat-menu-sai { to { opacity: 0; transform: scale(.6); } }
+@keyframes cat-gaveta { from { transform: translateX(105%); } to { transform: none; } }
+@keyframes cat-gaveta-sai { to { transform: translateX(105%); } }
+@keyframes cat-balao { from { opacity: 0; transform: translateY(-14px) scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes cat-toast { from { opacity: 0; transform: translateX(-50%) translateY(26px) scale(.85); } to { opacity: 1; transform: translateX(-50%); } }
+.app[data-dir="d"][data-t-tela] .main > * { animation: cat-pagina .5s var(--suave) both; }
+.app[data-dir="d"][data-t-tela] .main > *:nth-child(2) { animation-delay: .04s; }
+.app[data-dir="d"][data-t-tela] .main > *:nth-child(3) { animation-delay: .08s; }
+.app[data-dir="d"][data-t-tela] .main > *:nth-child(n+4) { animation-delay: .12s; }
+.app[data-dir="d"][data-t-tela] :is(.cards, .stats, .postits, .lista-a, .widgets) > * { animation: cat-cartao .55s var(--mola) both; }
+.app[data-dir="d"][data-t-tela] :is(.cards, .stats, .postits, .lista-a) > *:nth-child(2) { animation-delay: .04s; }
+.app[data-dir="d"][data-t-tela] :is(.cards, .stats, .postits, .lista-a) > *:nth-child(3) { animation-delay: .08s; }
+.app[data-dir="d"][data-t-tela] :is(.cards, .stats, .postits, .lista-a) > *:nth-child(4) { animation-delay: .12s; }
+.app[data-dir="d"][data-t-tela] :is(.cards, .stats, .postits, .lista-a) > *:nth-child(n+5) { animation-delay: .16s; }
+.app[data-dir="d"][data-t-modal] .modal-ov { animation: cat-fundo .25s var(--rapido) both; }
+.app[data-dir="d"][data-t-modal] .modal { animation: cat-folha .5s var(--mola) both; }
+.app[data-dir="d"][data-t-busca] .busca-ov { animation: cat-fundo .22s var(--rapido) both; }
+.app[data-dir="d"][data-t-busca] .busca-box { animation: cat-folha .45s var(--mola) both; }
+.app[data-dir="d"][data-t-plus] .menuplus { animation: cat-menu .42s var(--mola) backwards; }
+.app[data-dir="d"][data-t-perfil] .dr-ov { animation: cat-fundo .25s var(--rapido) both; }
+.app[data-dir="d"][data-t-perfil] .dr { animation: cat-gaveta .5s var(--suave) both; }
+.app[data-dir="d"][data-t-balao] .balao { animation: cat-balao .5s var(--mola) both; }
+.app[data-dir="d"] .toast.on { animation: cat-toast .45s var(--mola) both; }
+/* clones de saída (catalyst.js) */
+.app[data-dir="d"] .saindo { pointer-events: none; }
+.app[data-dir="d"] .modal-ov.saindo { animation: cat-fundo-sai .22s var(--rapido) forwards; }
+.app[data-dir="d"] .modal-ov.saindo .modal { animation: cat-folha-sai .22s var(--rapido) forwards; }
+.app[data-dir="d"] .busca-ov.saindo { animation: cat-fundo-sai .2s var(--rapido) forwards; }
+.app[data-dir="d"] .dr-ov.saindo { animation: cat-fundo-sai .25s var(--rapido) forwards; }
+.app[data-dir="d"] .dr-ov.saindo .dr { animation: cat-gaveta-sai .28s var(--rapido) forwards; }
+.app[data-dir="d"] .menuplus.saindo { display: block; animation: cat-menu-sai .2s var(--rapido) forwards; }
+.app[data-dir="d"] .balao.saindo { animation: cat-fundo-sai .18s var(--rapido) forwards; }
+@media (prefers-reduced-motion: reduce) { .app[data-dir="d"] *, .app[data-dir="d"] *::before { animation-duration: .01s !important; transition-duration: .01s !important; animation-delay: 0s !important; } }
+.app[data-dir="d"][data-reduzir="true"] *, .app[data-dir="d"][data-reduzir="true"] *::before { animation-duration: .01s !important; transition-duration: .01s !important; animation-delay: 0s !important; }
+
+/* menu aberto pelo botão (a partir de 1100 px): a coluna cresce e o conteúdo não fica coberto de forma permanente */
+@container tela (min-width: 1100px) {
+  .app[data-dir="d"][data-col="true"][data-aberto="true"] { --col: 268px; }
+}
+
+/* ---------- larguras menores ---------- */
+@container tela (max-width: 1099px) {
+  /* Perfil sem nome (rótulo oculto de 900 a 1099px por estilo.css e abaixo de 900px): o botão é só a área de toque de 44px e o círculo de 36px fica centrado, sem o padding do Catalyst espremendo-o */
+  .app[data-dir="d"] .perfil-b { padding: 0; justify-content: center; }
+  .app[data-dir="d"] .stats:not(.tres) .stat:last-child { grid-column: span 2; }
+}
+@container tela (max-width: 899px) {
+  .app[data-dir="d"] { --col: 0px; }
+  .app[data-dir="d"] .side { display: none; }
+  .app[data-dir="d"] .main { grid-row: 1 / -1; grid-column: 1; padding: 78px 16px 120px; scroll-padding-top: 78px; }
+  .app[data-dir="d"] .top { grid-column: 1; margin: 8px 12px 0; border: 0; }
+  .app[data-dir="d"] .top::before { left: -12px; right: -12px; }
+  .app[data-dir="d"] .top-logo { display: flex; background: var(--lq-fill); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.9); backdrop-filter: blur(var(--blur)) saturate(1.9); border-radius: 999px; padding: 6px 14px 6px 8px; min-height: 48px; box-shadow: inset 1.5px 1.5px 1px -1px var(--lq-edge), inset 0 0 0 1px var(--lq-rim), var(--lq-sh); }
+  .app[data-dir="d"] .menuplus { right: 50%; transform: translateX(50%); transform-origin: bottom center; bottom: 92px; }
+  .app[data-dir="d"][data-t-plus] .menuplus { animation-name: cat-menu-m; }
+  .app[data-dir="d"] .modal-ov { align-items: end; padding: 0; }
+  .app[data-dir="d"] .modal { width: 100%; max-height: 92%; border-radius: 34px 34px 0 0; }
+  .app[data-dir="d"] .modal .m-cols { grid-template-columns: minmax(0, 1fr); }
+  .app[data-dir="d"] .dr { width: min(420px, 94%); }
+  /* botões só com ícone (rótulo oculto até 899px pelo estilo.css, largura fixa de 44px): sem o padding lateral do Catalyst o ícone cabe na caixa */
+  .app[data-dir="d"] .toolbar .btn.gl, .app[data-dir="d"] .toolbar .btn.escuro { padding: 0; }
+}
+/* iPad vertical (container de 640 a 899px): cards de demandas em duas colunas, em vez de esticados na largura toda. Abaixo de 640px os cards ficariam com menos de 280px e continuam em uma coluna (celular incluído).
+   Na apresentação compacta a descrição (só ela) fica em 2 linhas, definido em ajustar() no app.js, que também a oculta se faltar altura; a completa continua nos detalhes da demanda. */
+@container tela (min-width: 640px) and (max-width: 899px) {
+  .app[data-dir="d"] .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+}
+@container tela (max-width: 520px) {
+  .app[data-dir="d"] { --blur: 18px; }
+  /* barra de ferramentas de Demandas: abas na largura toda, depois filtro e três botões redondos */
+  .app[data-dir="d"] .toolbar { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center; }
+  .app[data-dir="d"] .toolbar .tabs { grid-column: 1 / -1; grid-row: 1; display: flex; }
+  .app[data-dir="d"] .toolbar > .btn { grid-row: 2; }
+  .app[data-dir="d"] .toolbar > .btn:nth-of-type(1) { grid-column: 2; }
+  .app[data-dir="d"] .toolbar > .btn:nth-of-type(2) { grid-column: 3; }
+  .app[data-dir="d"] .toolbar > .btn:nth-of-type(3) { grid-column: 4; }
+  .app[data-dir="d"] .toolbar .tabs button { flex: 1; justify-content: center; }
+  .app[data-dir="d"] .toolbar .filtro { grid-column: 1; grid-row: 2; min-width: 0; }
+  .app[data-dir="d"] .toolbar .btn { width: var(--bt-m); height: var(--bt-m); padding: 0; justify-content: center; }
+  .app[data-dir="d"] .main { padding-inline: 14px; }
+  .app[data-dir="d"] .pagehead h1 { font-size: 30px; }
+}
+
+/* ---------- Agenda: itens de demanda (botão inteiro, círculo da sigla do tipo à direita) ---------- */
+/* cor pela classificação da demanda (neutro, azul, verde, amarelo); vermelho para atraso. O círculo parte da cor do item escurecida 30% (marca d'água) */
+.app[data-dir="d"][data-tema="claro"] { --ag-escura: #0A0A0A; --ag-sig-tx: #0A0A0A; --ag-sig-venc: #FCFCFC; }
+.app[data-dir="d"][data-tema="escuro"] { --ag-escura: #0A0A0A; --ag-sig-tx: #FCFCFC; --ag-sig-venc: #FCFCFC; }
+.app[data-dir="d"] button.ag-d { --ag-base: var(--card); display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-height: 34px; border: 0; padding: 4px 6px 4px 8px; border-radius: 10px; text-align: left; cursor: pointer; font: inherit; font-family: var(--font-n); font-size: 12px; color: var(--text); background: var(--ag-base); box-shadow: 0 0 0 1px var(--card-brd); transition: filter .15s var(--rapido); }
+.app[data-dir="d"] button.ag-d:hover { filter: brightness(.97); }
+.app[data-dir="d"][data-tema="escuro"] button.ag-d:hover { filter: brightness(1.15); }
+.app[data-dir="d"] button.ag-d.cat-azul { --ag-base: var(--cat-azul); box-shadow: none; }
+.app[data-dir="d"] button.ag-d.cat-verde { --ag-base: var(--cat-verde); box-shadow: none; }
+.app[data-dir="d"] button.ag-d.cat-amar { --ag-base: var(--cat-amar); box-shadow: none; }
+.app[data-dir="d"] button.ag-d.venc { --ag-base: var(--z-venc-bg); color: var(--ag-sig-venc); font-weight: 700; box-shadow: none; }
+.app[data-dir="d"] button.ag-d.acomp { background: transparent; box-shadow: 0 0 0 1px var(--text2); font-family: var(--font); }
+.app[data-dir="d"] .ag-d .ag-n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app[data-dir="d"] .ag-d .ag-sig { flex: none; width: 22px; height: 22px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font: 700 10px/1 var(--font-n); font-style: normal; letter-spacing: -.02em; background: color-mix(in srgb, var(--ag-base) 70%, var(--ag-escura) 30%); color: var(--ag-sig-tx); }
+.app[data-dir="d"] .ag-d.venc .ag-sig { color: var(--ag-sig-venc); }
+.app[data-dir="d"][data-dev="toque"] button.ag-d { min-height: 44px; }
+
+/* ---------- Fundo: padrão do tema, cor ou imagem (só a camada .bg; cards, janelas e controles ficam nítidos e clicáveis) ---------- */
+.app[data-dir="d"] .bg { pointer-events: none; }
+.app[data-dir="d"] .bg .bg-img { display: none; }
+.app[data-dir="d"][data-fundo="cor"] .bg { display: block; background: var(--fundo-cor); }
+.app[data-dir="d"][data-fundo="imagem"] .bg { display: block; overflow: hidden; background: var(--bgbase); }
+/* a imagem passa da caixa o dobro do desfoque: nenhuma borda vazia aparece nas margens */
+.app[data-dir="d"][data-fundo="imagem"] .bg .bg-img { display: block; position: absolute; inset: calc(var(--fundo-desfoque, 0px) * -2 - 4px); background: var(--fundo-img) center / cover no-repeat; filter: blur(var(--fundo-desfoque, 0px)); }
+/* véu leve na cor do modo, para os títulos sobre a imagem continuarem legíveis */
+.app[data-dir="d"][data-fundo="imagem"] .bg::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--bgbase) 50%, transparent); }
+.app[data-dir="d"] .fundo-cor input[type="color"] { width: 64px; height: 44px; padding: 2px; border: 0; border-radius: 12px; background: var(--btn-bg); cursor: pointer; }
+.app[data-dir="d"] .fundo-previa { height: 84px; border-radius: 14px; overflow: hidden; position: relative; box-shadow: 0 0 0 1px var(--card-brd); margin-top: 8px; }
+.app[data-dir="d"] .fundo-previa i { position: absolute; inset: -16px; background-size: cover; background-position: center; }
+
+/* ---------- Quadro: largura das colunas, rolagem dentro do Quadro, filtros sem corte, arraste e menu "Mover para" ---------- */
+/* a partir de 900px as etapas têm largura mínima legível e o Quadro rola na horizontal sozinho, sem alargar a página nem a barra de ferramentas */
+@container tela (min-width: 900px) {
+  .app[data-dir="d"] .quadro { grid-auto-columns: minmax(300px, 1fr); gap: 14px; padding: 4px 4px 16px; max-width: 100%; scrollbar-width: thin; overscroll-behavior-x: contain; }
+}
+/* abaixo de 900px só uma etapa aparece por vez e as abas rolam na horizontal: espaço para a borda de seleção e o foco, e primeiro e último chip alcançáveis */
+@container tela (max-width: 899px) {
+  .app[data-dir="d"] .etapas-tabs { padding: 8px 10px 12px; margin-inline: -10px; scroll-padding-inline: 10px; scrollbar-width: none; }
+  .app[data-dir="d"] .etapas-tabs button { flex: none; }
+}
+.app[data-dir="d"] .mini-card { -webkit-touch-callout: none; }
+.app[data-dir="d"] .quadro .mini-card.segurando { transform: scale(.985); }
+.app[data-dir="d"] .mini-card.arrastando { opacity: .35; }
+.app[data-dir="d"] .fantasma { position: absolute; z-index: 90; margin: 0; pointer-events: none; transform: scale(1.03) rotate(1.2deg); transform-origin: 30% 20%; box-shadow: 0 0 0 2px var(--acc), 0 18px 44px rgba(10, 10, 10, .28); opacity: .96; }
+.app.arrastando-ativo, .app.arrastando-ativo * { cursor: grabbing; -webkit-user-select: none; user-select: none; }
+.app[data-dir="d"] .coluna.alvo { outline: 2px dashed var(--acc); outline-offset: -4px; background: color-mix(in srgb, var(--acc) 8%, var(--panel)); }
+.app[data-dir="d"] .etapas-tabs button.alvo { box-shadow: 0 0 0 3px var(--acc); transform: scale(1.04); }
+.app[data-dir="d"] .mv-menu { position: absolute; z-index: 80; min-width: 220px; padding: 6px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd), 0 18px 44px rgba(10, 10, 10, .22); display: grid; gap: 2px; }
+.app[data-dir="d"] .mv-menu .mv-t { padding: 8px 12px 4px; font-size: 12px; font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .mv-menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.app[data-dir="d"] .mv-menu button:hover:not([aria-disabled="true"]) { background: var(--btn-hov); }
+.app[data-dir="d"] .mv-menu button[aria-disabled="true"] { opacity: .5; cursor: default; }
+.app[data-dir="d"] .mv-menu button small { margin-left: auto; color: var(--text2); font-weight: 400; }
+.app[data-dir="d"] .mv-menu .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: hsl(var(--et) 80% 55%); }
+
+/* ---------- Configurações: painéis em colunas que se acomodam (sem vazios sob os painéis menores) ---------- */
+/* Aparência (modo e cores de destaque) ocupa a largura toda, com as amostras em uma grade larga; os demais painéis fluem em até 3 colunas na ordem do documento */
+.app[data-dir="d"] .cfg { display: block; columns: 3 300px; column-gap: 16px; }
+.app[data-dir="d"] .cfg > section { break-inside: avoid; margin: 0 0 16px; }
+.app[data-dir="d"] .cfg > .cfg-topo { column-span: all; }
+.app[data-dir="d"] .cfg-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 4px; }
+.app[data-dir="d"] .cfg-cab h3 { margin: 0; }
+.app[data-dir="d"] .cfg-cab .acoes { margin: 0; }
+.app[data-dir="d"] .cfg-sub { margin: 10px 0 8px; font-size: 13px; font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .cfg-topo .pal { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+@container tela (min-width: 900px) { .app[data-dir="d"] .cfg-topo .pal { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@container tela (max-width: 520px) { .app[data-dir="d"] .cfg-topo .pal { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- Perfil: histórico dos últimos dias (uma coluna por dia, linhas de Humor e Energia, rolagem só aqui) ---------- */
+.app[data-dir="d"] .hist-w { display: flex; align-items: flex-start; gap: 4px; margin-top: 4px; }
+.app[data-dir="d"] .hist-lab { flex: none; display: grid; grid-auto-rows: 44px; gap: 6px; padding-top: 10px; min-width: 64px; }
+.app[data-dir="d"] .hist-lab b { display: flex; align-items: center; font-size: 13px; font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .hist-rol { flex: 1; min-width: 0; overflow-x: auto; padding: 4px 16px 10px 4px; scroll-padding-inline: 4px 16px; scrollbar-width: thin; overscroll-behavior-x: contain; }
+.app[data-dir="d"] .hist-t { border-collapse: separate; border-spacing: 6px 6px; width: max-content; }
+.app[data-dir="d"] .hist-t th, .app[data-dir="d"] .hist-t td { padding: 0; font-weight: 400; text-align: center; }
+.app[data-dir="d"] .hist-t .hd { display: grid; gap: 1px; width: 52px; min-height: 44px; padding: 4px 0; border: 0; border-radius: 12px; background: transparent; color: var(--text2); font: inherit; cursor: pointer; }
+.app[data-dir="d"] .hist-t .hd b { font-size: 12px; font-weight: 600; text-transform: uppercase; }
+.app[data-dir="d"] .hist-t .hd span { font-size: 11px; font-family: var(--font-n); }
+.app[data-dir="d"] .hist-t .hd:hover { background: var(--btn-hov); }
+.app[data-dir="d"] .hist-t .hd[aria-pressed="true"] { background: var(--btn-bg); color: var(--text); }
+.app[data-dir="d"] .hist-t .hoje .hd b { color: var(--acc-text); }
+.app[data-dir="d"] .hist-t .hc2 { width: 52px; height: 44px; border-radius: 12px; background: var(--track); }
+.app[data-dir="d"] .hist-t .hc2 .emo-img { display: block; width: 28px; height: 28px; margin: auto; }
+.app[data-dir="d"] .hist-t .hc2.vazio { background: transparent; box-shadow: inset 0 0 0 1px var(--card-brd); color: var(--text2); opacity: .7; }
+
+/* ---------- formulários de demanda (cadastro e edição): grupos, duas colunas equilibradas, cabeçalho e rodapé sempre à vista ---------- */
+.app[data-dir="d"] .m-grp { margin: 0 0 20px; }
+.app[data-dir="d"] .m-grp:last-child { margin-bottom: 4px; }
+.app[data-dir="d"] .m-grp > h4 { margin: 0 0 10px; padding: 0 0 6px 14px; font-size: 13px; font-weight: 700; letter-spacing: .02em; color: var(--text2); border-bottom: 1px solid var(--brd); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.app[data-dir="d"] .m-grp > h4 small { font-weight: 400; letter-spacing: 0; }
+.app[data-dir="d"] .modal .m-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
+.app[data-dir="d"] .modal .fld textarea { min-height: 120px; line-height: 1.45; }
+.app[data-dir="d"] .modal .meta.calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 16px; margin: 4px 0 0; }
+.app[data-dir="d"] .modal .meta.calc b { display: block; margin-top: 2px; }
+.app[data-dir="d"] .modal .m-prog { margin: 8px 0 0; }
+/* tarefas: caixa, texto e lixeira alinhados na mesma linha; nova tarefa e Adicionar como um conjunto */
+.app[data-dir="d"] .modal .tarefas.ed .t-item { display: flex; align-items: center; gap: 12px; min-height: 48px; }
+.app[data-dir="d"] .modal .tarefas.ed .t-campo { flex: 1 1 auto; min-width: 0; }
+.app[data-dir="d"] .modal .tarefas.ed .t-lapis { flex: none; }
+.app[data-dir="d"] .modal .add-t { margin: 10px 0 0; align-items: center; }
+.app[data-dir="d"] .modal .add-t .btn { flex: none; }
+/* cabeçalho (fechar) e rodapé (salvar, cancelar) ficam à vista enquanto o formulário rola; o conteúdo termina acima do rodapé */
+.app[data-dir="d"] .modal .m-h { position: sticky; top: -26px; z-index: 4; margin: -26px -24px 12px; padding: 22px 24px 8px; background: var(--grp-bg); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.app[data-dir="d"] .modal .m-f { position: sticky; bottom: -22px; z-index: 4; margin: 16px -24px -22px; padding: 12px 24px 18px; background: var(--grp-bg); border-top: 1px solid var(--brd); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+@container tela (max-width: 899px) {
+  .app[data-dir="d"] .modal .m-cols { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+/* ---------- formulário no celular: Arquivar e Excluir vão para o menu do cabeçalho; o rodapé fica numa linha (Cancelar, Concluir, Salvar) ---------- */
+.app[data-dir="d"] .modal .m-mais { display: none; }
+.app[data-dir="d"] .mv-menu button.perigo { color: var(--perigo); }
+.app[data-dir="d"] .mv-menu button .ic { width: 18px; height: 18px; flex: none; }
+@container tela (max-width: 520px) {
+  .app[data-dir="d"] .modal .m-mais { display: grid; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); margin: 0; z-index: 5; }
+  .app[data-dir="d"] .modal .m-f .m-sec { display: none; }
+  .app[data-dir="d"] .modal .m-f { gap: 8px; margin: 12px -24px -22px; padding: 10px 16px 14px; flex-wrap: nowrap; }
+  .app[data-dir="d"] .modal .m-f .esp { display: none; }
+  .app[data-dir="d"] .modal .m-f .btn { flex: 1 1 auto; justify-content: center; padding: 0 10px; white-space: nowrap; min-width: 0; }
+  .app[data-dir="d"] .modal .m-f .btn.pri { flex: 1.2 1 auto; }
+  .app[data-dir="d"] .modal .m-f .rot-ext { display: none; }
+}

@@ -1,0 +1,158 @@
+/* =====================================================================
+   Camada final do protótipo: fontes em três papéis, vidro líquido em todo
+   o desenho, menu recolhido, janelas, energia, Perfil e Configurações.
+   ===================================================================== */
+
+/* ---------- fontes: principal (títulos), secundária (subtítulos e textos), mono (detalhes) ---------- */
+h1, h2, .logo, .top-logo, .frase, .stat .n, .clima b, .assunto, .grande-n { font-family: var(--font-h); }
+h3, h4, .grupo-h, .coluna header h4, .pagehead p, .sec > h3 { font-family: var(--font); }
+h3, h4 { font-weight: 700; }
+.mono, .pz, .tags .num, .cnt, .badge, kbd, .prog b, .linha-c .num, .quando, .ag-h b, .ag-d, .meta b, .tabela td.mono, .rng b { font-family: var(--font-n); }
+
+/* ---------- vidro líquido ---------- */
+/* --vidro: fator da transparência do preenchimento do vidro (1 = antes; .7 = cerca de 30% mais transparente). Vale para barras, menu, painéis e botões; não vale para cards, janelas e caixas de preenchimento. Bordas e realces ficam como estavam. */
+.app { --vidro: .7; }
+.app[data-tema="claro"] { --lg-top: hsl(0 0% 98.8% / calc(.68 * var(--vidro))); --lg-bot: hsl(0 0% 98.8% / calc(.26 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .5); --lg-edge: hsl(0 0% 98.8% / .95); --lg-edge2: hsl(0 0% 98.8% / .5); --lg-sh: hsl(215 40% 30% / .14); }
+.app[data-tema="escuro"] { --lg-top: hsl(0 0% 98.8% / calc(.14 * var(--vidro))); --lg-bot: hsl(0 0% 98.8% / calc(.04 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .16); --lg-edge: hsl(0 0% 98.8% / .30); --lg-edge2: hsl(0 0% 98.8% / .10); --lg-sh: hsl(0 0% 3.9% / .5); }
+
+.app .painel, .app .stat, .app .alerta-l, .app .tabs, .app .filtro, .app .btn.gl, .app .icbtn, .app .perfil-b, .app .menuplus, .app .bar, .app .busca-box, .app .modal, .app .balao,
+.app .etapas-tabs button, .app .sw, .app .tema-c, .app .pend, .app .chat-f input, .app .linha, .app .tabela-w, .app .ag-col, .app .ag-cel, .app .bolha.ia, .app .toast {
+  background: radial-gradient(130% 80% at 12% 0%, var(--lg-hi), transparent 55%), linear-gradient(150deg, var(--lg-top), var(--lg-bot));
+  border: 1px solid var(--lg-edge2);
+  box-shadow: inset 0 1px 0 var(--lg-edge), inset 0 -1px 0 var(--lg-edge2), 0 10px 30px var(--lg-sh);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.7); backdrop-filter: blur(var(--blur)) saturate(1.7);
+}
+.app .toast { color: var(--text); }
+.app[data-dir] .side, .app[data-dir] .top {
+  background: radial-gradient(130% 70% at 10% 0%, var(--lg-hi), transparent 55%), linear-gradient(150deg, var(--lg-top), var(--lg-bot));
+  border: 1px solid var(--lg-edge2); box-shadow: inset 0 1px 0 var(--lg-edge), 0 10px 30px var(--lg-sh);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.7); backdrop-filter: blur(var(--blur)) saturate(1.7);
+}
+/* cards de demanda: mais sólidos, com borda de vidro */
+.app .face, .app .mini-card { background: linear-gradient(160deg, hsl(0 0% 98.8% / .12), transparent 40%), var(--card); box-shadow: inset 0 1px 0 var(--lg-edge2), 0 8px 24px var(--lg-sh); }
+.app .coluna, .app .grupo { box-shadow: inset 0 1px 0 var(--lg-edge), inset 0 0 0 1px var(--lg-edge2), 0 12px 32px var(--lg-sh); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.5); backdrop-filter: blur(var(--blur)) saturate(1.5); }
+/* botão "+" em vidro com a cor de destaque */
+.app .fab, .app .bar .mais-c {
+  background: radial-gradient(120% 90% at 25% 5%, hsl(0 0% 98.8% / .55), transparent 55%), var(--acc);
+  box-shadow: inset 0 1px 0 hsl(0 0% 98.8% / .75), inset 0 -3px 8px hsl(0 0% 3.9% / .12), 0 14px 32px var(--lg-sh);
+}
+.app .btn.pri { background: radial-gradient(130% 100% at 20% 0%, hsl(0 0% 98.8% / .4), transparent 60%), var(--acc); box-shadow: inset 0 1px 0 hsl(0 0% 98.8% / .6); }
+.app .chip.neutro, .app .pz, .app .selo { box-shadow: inset 0 1px 0 var(--lg-edge2); }
+.app .tabs button[aria-pressed="true"] { background: radial-gradient(130% 90% at 20% 0%, var(--lg-hi), transparent 60%), var(--card); }
+.app .emo { background: radial-gradient(120% 90% at 25% 0%, var(--lg-hi), transparent 60%), var(--card); box-shadow: inset 0 1px 0 var(--lg-edge2); }
+.app .emo[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--acc), 0 6px 16px var(--lg-sh); }
+.app .busca-ov, .app .modal-ov { -webkit-backdrop-filter: blur(8px) saturate(1.2); backdrop-filter: blur(8px) saturate(1.2); }
+
+/* ---------- menu lateral recolhido (só ícones), como nos prints ---------- */
+.app[data-col="true"] { --col: 96px; }
+.app[data-col="true"] .side { align-items: center; padding: 16px 8px; }
+.app[data-col="true"] .navi { justify-content: center; padding: 4px; width: 52px; }
+.app[data-col="true"] .navi .tx, .app[data-col="true"] .logo span, .app[data-col="true"] .rodape { display: none; }
+.app[data-col="true"] .logo { padding: 4px 0 16px; }
+.col-b { margin-top: 4px; color: var(--text2); }
+@container tela (max-width: 1099px) { .col-b { display: none; } }
+@container tela (max-width: 899px) { .col-b { display: none; } }
+
+/* ---------- registro de humor e energia ---------- */
+.emo-img { width: 30px; height: 30px; }
+.emo.en { border-radius: 14px; }
+.registro { display: grid; gap: 10px; margin-bottom: 16px; padding: 14px 16px; }
+.reg-l { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.reg-l > span { color: var(--text2); font-size: 14px; min-width: 170px; }
+.emos { display: flex; gap: 8px; flex-wrap: wrap; }
+.emos.mini { margin-top: 6px; }
+.pend { min-height: 44px; display: flex; align-items: center; gap: 10px; border-radius: var(--r-field); padding: 0 14px; color: var(--text2); font-size: 14px; text-align: left; }
+.pend span { flex: 1; }
+.pend:hover { color: var(--text); border-color: var(--acc); }
+.balao { position: absolute; right: 20px; top: 92px; z-index: 12; width: min(330px, calc(100% - 24px)); border-radius: var(--r-card); padding: 14px 16px; }
+.balao .icbtn-s { position: absolute; top: 4px; right: 4px; margin: 0; }
+.balao p { margin: 2px 0 4px; }
+
+/* ---------- janelas ---------- */
+.modal-ov { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: hsl(0 0% 3.9% / .35); padding: 12px; }
+.modal { width: min(600px, 100%); max-height: 100%; overflow: auto; border-radius: var(--r-card); padding: 20px; background-color: var(--card); }
+.modal.larga { width: min(920px, 100%); }
+.m-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.m-h h3 { font-size: 20px; }
+.m-h .icbtn-s { margin: 0; }
+.m-f { display: flex; align-items: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.m-cols { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; }
+.dois { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fld { display: grid; gap: 6px; margin-bottom: 12px; }
+.fld > label, .fld > span:first-child { font-size: 12px; font-weight: 700; color: var(--text2); }
+.fld input, .fld select, .fld textarea, .add-t input { min-height: 44px; border-radius: var(--r-field); border: 1px solid var(--brd); background: var(--card); color: var(--text); padding: 0 12px; font: inherit; width: 100%; }
+.fld textarea { padding: 10px 12px; resize: vertical; }
+.fld input:focus, .fld select:focus, .fld textarea:focus, .add-t input:focus { outline: none; border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc-soft); }
+.fld .amostra { font-size: 14px; color: var(--text2); }
+.opcoes { display: flex; flex-wrap: wrap; gap: 6px; }
+.opcoes button { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--brd); background: var(--card); font-weight: 600; font-size: 13px; }
+.opcoes button[aria-pressed="true"] { border-color: var(--acc); background: var(--acc-soft); color: var(--acc-text); box-shadow: 0 0 0 1px var(--acc); }
+.add-t { display: flex; gap: 8px; margin: 10px 0; }
+.btn.perigo { background: var(--perigo); color: var(--on-perigo); border-color: transparent; }
+.dia-l { display: grid; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--brd); }
+
+/* ---------- Perfil ---------- */
+.ind3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+.ind-v { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.ind-v .emo-img { width: 44px; height: 44px; }
+.grande-n { font-size: 44px; line-height: 1; }
+.painel + .painel, .ind3 + .painel { margin-top: 16px; }
+.ph { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.grafico { display: flex; align-items: flex-end; gap: 10px; height: 150px; padding-top: 30px; }
+.grafico.mes { gap: 4px; }
+.gcol { position: relative; }
+.gcol.fina i { max-width: 14px; }
+.tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bgbase); padding: 6px 10px; border-radius: 10px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 3; }
+.gcol:hover .tip, .gcol:focus-visible .tip { opacity: 1; }
+
+/* ---------- Configurações ---------- */
+.cfg .fld { margin-top: 12px; }
+
+/* ---------- reduzir movimento ---------- */
+.app[data-reduzir="true"] *, .app[data-reduzir="true"] *::before { animation: none !important; transition: none !important; }
+
+@container tela (max-width: 899px) {
+  .ind3 { grid-template-columns: 1fr; }
+  .m-cols { grid-template-columns: 1fr; }
+  .reg-l > span { min-width: 0; flex-basis: 100%; }
+  .balao { top: 76px; right: 12px; }
+}
+
+/* arrastar cards no Quadro */
+.mini-card[draggable="true"] { cursor: grab; }
+.mini-card.arrastando { opacity: .45; }
+.coluna.alvo { outline: 2px dashed var(--acc); outline-offset: -4px; }
+.main { overflow-x: hidden; }
+
+/* caixas de preenchimento: quase opacas, claras no modo claro e escuras no modo escuro */
+.app[data-tema="claro"] { --solido: hsl(0 0% 98.8% / .98); --solido-brd: hsl(215 25% 82%); }
+.app[data-tema="escuro"] { --solido: hsl(220 18% 12% / .98); --solido-brd: hsl(0 0% 98.8% / .18); }
+.app .modal, .app .busca-box, .app .balao {
+  background: var(--solido);
+  border: 1px solid var(--solido-brd);
+  box-shadow: inset 0 1px 0 var(--lg-edge), 0 24px 70px hsl(0 0% 3.9% / .35);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.app .modal-ov { background: hsl(0 0% 3.9% / .28); }
+.app .modal .fld input, .app .modal .fld select, .app .modal .fld textarea, .app .modal .add-t input, .app .busca-box input {
+  background: var(--bgbase); border: 1px solid var(--solido-brd); color: var(--text);
+}
+.app[data-tema="claro"] .modal .fld input, .app[data-tema="claro"] .modal .fld select, .app[data-tema="claro"] .modal .fld textarea, .app[data-tema="claro"] .modal .add-t input { background: hsl(0 0% 98.8%); }
+.app[data-tema="escuro"] .modal .fld input, .app[data-tema="escuro"] .modal .fld select, .app[data-tema="escuro"] .modal .fld textarea, .app[data-tema="escuro"] .modal .add-t input { background: hsl(220 16% 8%); }
+.app .modal .opcoes button { background: var(--solido); border-color: var(--solido-brd); }
+.app .modal .opcoes button[aria-pressed="true"] { background: var(--acc-soft); border-color: var(--acc); }
+.app .modal .btn { background: var(--solido); border-color: var(--solido-brd); }
+.app .modal .btn.pri { background: var(--acc); border-color: transparent; }
+.app .modal .btn.perigo { background: var(--perigo); border-color: transparent; }
+
+/* correções da varredura automática */
+.icbtn-s, .mais { flex: none; min-width: 44px; }
+.lista, .grupo, .linha, .linha-c, .linha-m, .coluna, .mini-card, .painel, .cfg > section { min-width: 0; }
+.linha-m .ass { min-width: 0; }
+.tip { white-space: normal; width: max-content; max-width: 190px; text-align: center; }
+.gcol:first-child .tip { left: 0; transform: none; text-align: left; }
+.gcol:last-child .tip { left: auto; right: 0; transform: none; text-align: right; }
+@container tela (max-width: 899px) {
+  .app[data-dir] .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ind3, .ind3 > * { min-width: 0; }
+}

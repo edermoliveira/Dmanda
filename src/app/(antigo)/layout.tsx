@@ -23,7 +23,8 @@ export const metadata: Metadata = {
 // Usa a escolha guardada ou, na primeira vez, a do sistema do usuário.
 const scriptTema = `(function(){try{var t=localStorage.getItem("dmanda-tema");if(t!=="claro"&&t!=="escuro"){t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro"}document.documentElement.dataset.tema=t}catch(e){document.documentElement.dataset.tema="claro"}})()`;
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// Design antigo (20/10/2026), mantido só como referência em /pecas, /tokens e /marca. O aplicativo novo está em (app) e usa o Catalyst.
+export default function LayoutAntigo({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="pt-BR"

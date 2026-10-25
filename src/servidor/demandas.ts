@@ -1,0 +1,62 @@
+'use server';
+// Ações do servidor chamadas pela interface. Cada uma devolve { ok, dados | erro }: a tela só mostra sucesso quando o banco confirmou.
+import { chamar } from './banco';
+import { criarOperacoes, executar, type TarefaEdicao } from '@/nucleo/operacoes';
+import type { DadosDemanda, Etapa } from '@/lib/demandas';
+import { modoTeste } from '@/lib/supabase/config';
+import { criarClienteServidor } from '@/lib/supabase/servidor';
+
+const op = () => criarOperacoes(chamar);
+
+export async function ambiente() {
+  if (modoTeste()) return { teste: true, nome: 'Teste' };
+  try {
+    const sb = await criarClienteServidor();
+    const { data: { user } } = await sb.auth.getUser();
+    return { teste: false, nome: String(user?.user_metadata?.full_name ?? user?.email ?? '') };
+  } catch {
+    return { teste: false, nome: '' };
+  }
+}
+export async function listarDemandas(arquivadas = false) {
+  return executar(() => op().listar(arquivadas));
+}
+export async function criarDemanda(dados: DadosDemanda) {
+  return executar(() => op().criar(dados));
+}
+export async function atualizarDemanda(id: string, dados: DadosDemanda) {
+  return executar(() => op().atualizar(id, dados));
+}
+export async function salvarDemanda(id: string, dados: DadosDemanda, tarefas: TarefaEdicao[] | null) {
+  return executar(() => op().salvar(id, dados, tarefas));
+}
+export async function moverEtapa(id: string, etapa: Etapa) {
+  return executar(() => op().moverEtapa(id, etapa));
+}
+export async function concluirDemanda(id: string) {
+  return executar(() => op().concluir(id));
+}
+export async function reabrirDemanda(id: string, etapa: Etapa = 'Fazendo') {
+  return executar(() => op().reabrir(id, etapa));
+}
+export async function arquivarDemanda(id: string) {
+  return executar(() => op().arquivar(id));
+}
+export async function desarquivarDemanda(id: string) {
+  return executar(() => op().desarquivar(id));
+}
+export async function excluirDemanda(id: string, confirmado: boolean) {
+  return executar(() => op().excluir(id, confirmado));
+}
+export async function adicionarTarefa(demandaId: string, texto: string) {
+  return executar(() => op().adicionarTarefa(demandaId, texto));
+}
+export async function editarTarefa(tarefaId: string, texto: string) {
+  return executar(() => op().editarTarefa(tarefaId, texto));
+}
+export async function marcarTarefa(tarefaId: string, concluida: boolean) {
+  return executar(() => op().marcarTarefa(tarefaId, concluida));
+}
+export async function excluirTarefa(tarefaId: string) {
+  return executar(() => op().excluirTarefa(tarefaId));
+}
