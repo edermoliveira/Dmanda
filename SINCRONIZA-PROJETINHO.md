@@ -52,6 +52,8 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 **Acabamento de 24/10/2026 (depois do segundo bloco):** selo "Legal" corrigido no escuro, rodapé do formulário compactado no celular com menu de ações no cabeçalho, datas do histórico marcadas como demonstrativas e estado da comparação visual registrado em `PENDENCIAS.md`. Testes: `selo-legal` 6 ok, `form-demanda` 69 ok, `quadro` 38 ok (a espera da rolagem automática foi tornada robusta: dependia dos quadros por segundo), `fluxos`, `consolidacao`, `agenda-demandas`, `perfil-historico`, `checkbox` ok.
 
+**Aprovação visual e referência (24/10/2026):** o usuário aprovou visualmente o commit `cd7b03f` (ver DECISOES.md). Nova referência: `prototipo/testes/referencias/catalyst-cd7b03f.json.gz`, 78 cenários (claro e escuro, Computador, iPad vertical e Celular, 13 telas), conferida contra o próprio commit: 78 telas sem diferenças. O `preservar-catalyst.mjs` agora lê e grava arquivos `.gz`.
+
 **Pendências do usuário:** (1) avaliar visualmente este bloco (Catalyst único, 7 ícones, Mostrar menu); (2) selecionar os símbolos Ionicons dos demais ícones; (3) ajuste do iPad vertical corrigido em 24/10/2026 e revisão visual do mesmo dia implementada (ver bloco acima), ambos só aguardam a sua avaliação; (4) ferramentas (Impeccable já instalada), um assunto por vez; (5) merge na main, se quiser.
 
 **Lembretes de máquina:** no trabalho o computador ficou com pouca memória (Chrome do usuário ocupa muita). O `clicar-tudo.mjs` agora usa flags que poupam memória; rodar uma combinação por vez. Não rodar a suíte inteira de uma vez.

@@ -1,5 +1,6 @@
 // Garante que uma mudança de código não altera a aparência do Catalyst: grava o estilo calculado e a caixa de
 // cada elemento de cada tela (claro e escuro; computador, iPad vertical e celular) e depois compara.
+// Referências versionadas ficam compactadas (nome terminado em .gz) em testes/referencias.
 // Uso (dentro da pasta prototipo):
 //   node testes/preservar-catalyst.mjs gravar <arquivo.json>
 //   node testes/preservar-catalyst.mjs comparar <arquivo.json>
@@ -9,6 +10,7 @@
 //   - Config: o painel de tema (cartões de direção) saiu; a referência é gravada com essa única remoção.
 import { chromium } from 'playwright-core';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { gzipSync, gunzipSync } from 'node:zlib';
 import { servir } from './servidor.mjs';
 
 const [, , modo, arquivo] = process.argv;
@@ -63,9 +65,9 @@ await nav.close(); srv.fechar();
 console.log('Cenários medidos e confirmados (tela, visualização, aparelho, modo e largura): ' + Object.keys(resultado).length);
 if (erros.length) console.log('Erros de JavaScript ou de recursos:', [...new Set(erros)].slice(0, 8));
 
-if (modo === 'gravar') { writeFileSync(arquivo, JSON.stringify(resultado)); console.log('Gravado:', Object.keys(resultado).length, 'telas em', arquivo); process.exit(erros.length ? 1 : 0); }
+if (modo === 'gravar') { writeFileSync(arquivo, arquivo.endsWith('.gz') ? gzipSync(JSON.stringify(resultado)) : JSON.stringify(resultado)); console.log('Gravado:', Object.keys(resultado).length, 'telas em', arquivo); process.exit(erros.length ? 1 : 0); }
 
-const antes = JSON.parse(readFileSync(arquivo, 'utf8'));
+const antes = JSON.parse(arquivo.endsWith('.gz') ? gunzipSync(readFileSync(arquivo)).toString('utf8') : readFileSync(arquivo, 'utf8'));
 let difs = 0, telasDif = 0, iconesNav = 0, iconesCor = 0; const exemplos = [];
 const rel = (r, o, j) => r[j] - (j < 2 ? o[j] : 0);
 for (const chave of Object.keys(antes)) {

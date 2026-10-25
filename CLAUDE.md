@@ -38,7 +38,7 @@ node testes/config-layout.mjs                   (Configurações: painéis em co
 node testes/perfil-historico.mjs                (histórico do Perfil: colunas por dia, Humor e Energia)
 node testes/selo-legal.mjs                     (contraste do selo Legal nas dez paletas)
 node testes/form-demanda.mjs                    (cadastro e edição de demandas: grupos, rodapé, salvar, cancelar, rascunho)
-node testes/preservar-catalyst.mjs comparar <referência.json>  (78 telas contra uma referência gravada com `gravar`)
+node testes/preservar-catalyst.mjs comparar testes/referencias/catalyst-cd7b03f.json.gz  (78 telas contra a referência aprovada; `gravar` cria outra)
 node verificar-cores.mjs                        (nenhum branco ou preto absoluto)
 ```
 
