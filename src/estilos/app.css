@@ -15,3 +15,4 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .login-caixa p { margin: 0; color: var(--text2, #555); }
 .login-caixa .btn { justify-content: center; }
 .login-aviso { color: var(--perigo, #C4001A) !important; font-weight: 600; }
+.rotina-estado { margin: 20px 0 8px; font-size: 13px; color: var(--text2); }

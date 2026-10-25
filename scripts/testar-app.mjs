@@ -6,9 +6,10 @@ import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
 
+const SEGREDO = 'segredo-de-teste-1234567890';
 const PORTA = process.env.PORTA_TESTE || '7103', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/e2e';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
+const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: SEGREDO }, stdio: 'ignore' });
 const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
 process.on('exit', parar);
 let falhas = 0, total = 0;
@@ -180,6 +181,17 @@ await pg.setViewportSize({ width: 1360, height: 780 });
 
 // 12) entradas ainda não construídas dizem a verdade
 await ir('/agenda'); ok(/Em construção/.test(await pg.textContent('.main')) && !/Reunião|Audiência/.test(await pg.textContent('.main')), 'áreas ainda não construídas mostram "Em construção" e nenhum dado de exemplo');
+// 12b) rotina diária: autenticação própria, repetível, sem cookie, sem dado pessoal, e o Início mostra o estado
+const rota = BASE + '/api/cron/diaria';
+const semAuth = await fetch(rota), errada = await fetch(rota, { headers: { authorization: 'Bearer segredo-errado-0123456789' } });
+ok(semAuth.status === 401 && errada.status === 401, 'rotina diária: sem o segredo, ou com segredo errado, a resposta é 401');
+const certa = await fetch(rota, { headers: { authorization: 'Bearer ' + SEGREDO } }), corpo = await certa.json();
+ok(certa.status === 200 && corpo.ok === true && Object.keys(corpo).sort().join() === 'data_ref,ok,usuarios' && !certa.headers.get('set-cookie'), 'rotina diária: com o segredo certo responde 200, só com data e contagem, e não define cookie nem sessão');
+const certa2 = await fetch(rota, { headers: { authorization: 'Bearer ' + SEGREDO } });
+ok(certa2.status === 200 && !JSON.stringify(corpo).includes('Resposta ao TCE'), 'rotina diária: repetir a chamada é aceito e a resposta não traz texto das demandas');
+await ir('/');
+await pg.waitForFunction(() => /Rotina diária na nuvem: última execução/.test(document.querySelector('.rotina-estado')?.textContent || ''), null, { timeout: 15000 }).then(() => ok(true, 'o Início mostra a última execução da rotina diária'), () => ok(false, 'o Início mostra a última execução da rotina diária'));
+
 ok(erros.length === 0, 'sem erros de JavaScript nem de console durante o fluxo' + (erros.length ? ': ' + [...new Set(erros)].slice(0, 1).join(' | ').replace(/\s+/g, ' ') : ''));
 await nav.close(); parar();
 await new Promise((r) => setTimeout(r, 2500));
@@ -191,6 +203,9 @@ console.log('Banco (leitura direta):', JSON.stringify(linhas));
 const tcee = linhas.find((l) => /Resposta ao TCE/.test(l.assunto)), contrato = linhas.find((l) => /contrato/.test(l.assunto));
 ok(linhas.length === 2 && tcee.etapa === 'Fazendo' && tcee.n_tarefas === 3 && tcee.n_feitas === 3 && tcee.concluida_em === null && !tcee.arquivada, 'banco: a demanda do TCE está em Fazendo com 3 tarefas, 3 feitas, sem data de conclusão (foi reaberta)');
 ok(contrato.etapa === 'Finalizado' && contrato.concluida_em !== null && !contrato.arquivada && !linhas.some((l) => /Não deve gravar|CANCELADA/.test(l.assunto)), 'banco: o contrato está Finalizado com data de conclusão, nada da falha nem do cancelado foi gravado');
+const rotinaBanco = (await db.query("select (select count(*)::int from public.resumos_operacionais where data_ref = public.hoje()) as resumos, (select count(*)::int from public.execucoes_rotina where ok) as execs, (select dados from public.resumos_operacionais where data_ref = public.hoje() limit 1) as dados")).rows[0];
+console.log('Banco (rotina):', JSON.stringify({ resumos: rotinaBanco.resumos, execs: rotinaBanco.execs, atrasadas: rotinaBanco.dados?.atrasadas, abertas: rotinaBanco.dados?.abertas }));
+ok(rotinaBanco.resumos === 1 && rotinaBanco.execs === 2 && rotinaBanco.dados.abertas === 1 && rotinaBanco.dados.finalizadas === 1 && rotinaBanco.dados.atrasadas === 1, 'banco: um resumo de hoje (repetição não duplica), duas execuções registradas e contagens iguais às demandas');
 await db.close();
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);

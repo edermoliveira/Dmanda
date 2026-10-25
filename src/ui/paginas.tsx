@@ -5,7 +5,7 @@ import { Capsula } from './Capsula';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Icone } from './Icone';
-import { useApp } from './contexto';
+import { useApp, type EstadoRotina } from './contexto';
 import { CardDemanda, ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
 import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { atrasada, filtrar, focoDoDia, FILTRO_VAZIO, plural, porGrupo, TIPOS, type Demanda, type Tipo } from '@/lib/demandas';
@@ -15,8 +15,17 @@ function Carregando() { return <div className="vazio-c" role="status">Carregando
 
 // ---------- Início ----------
 const GRUPOS_INICIO = [['atrasadas', 'Atrasadas', 'clock', true], ['hoje', 'Para hoje', 'target', false], ['sete', 'Próximos 7 dias', 'calendar', false]] as const;
+const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+// Os prazos da tela vêm sempre das datas das demandas; esta linha só informa a rotina diária na nuvem.
+function textoRotina(r: EstadoRotina | null) {
+  if (!r) return '';
+  const falhouDepois = r.ultima_falha && (!r.ultima_ok || r.ultima_falha > r.ultima_ok);
+  if (falhouDepois) return `A última tentativa da rotina diária não terminou (${quando(r.ultima_falha!)}). Os prazos acima continuam corretos.`;
+  return r.ultima_ok ? `Rotina diária na nuvem: última execução em ${quando(r.ultima_ok)}.` : 'A rotina diária na nuvem ainda não rodou. Os prazos acima já são calculados pelas datas das demandas.';
+}
+
 export function PaginaInicio() {
-  const { demandas, carregando, abrirJanela, hoje } = useApp();
+  const { demandas, carregando, abrirJanela, hoje, rotina } = useApp();
   const [sel, setSel] = useState<'atrasadas' | 'hoje' | 'sete' | null>(null);
   const foco = focoDoDia(demandas, hoje);
   useAjustar(`${demandas.length}${sel}`);
@@ -51,6 +60,7 @@ export function PaginaInicio() {
           </section>
         </>
       ) : null}
+      <p className="rotina-estado">{textoRotina(rotina)}</p>
     </>
   );
 }

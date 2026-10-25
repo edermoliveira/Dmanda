@@ -1,7 +1,8 @@
 // Transporte das operações para o banco. Há dois: o Supabase real (padrão) e, só em desenvolvimento e sob DMANDA_BANCO=teste,
 // um Postgres local descartável com as mesmas migrações. Os dois executam exatamente as mesmas funções SQL.
 import { criarClienteServidor } from '@/lib/supabase/servidor';
-import { modoTeste } from '@/lib/supabase/config';
+import { createClient } from '@supabase/supabase-js';
+import { configSupabase, modoTeste } from '@/lib/supabase/config';
 import { emailAutorizado } from '@/lib/sessao';
 import { ErroDmanda, type Chamar } from '@/nucleo/operacoes';
 
@@ -44,6 +45,25 @@ const chamarSupabase: Chamar = async (funcao, args) => {
   if (!emailAutorizado(user.email)) throw new ErroDmanda('Esta conta não tem acesso ao Dmanda.');
   const { data, error } = await sb.rpc(funcao, args);
   if (error) throw traduzir(error);
+  return data;
+};
+
+/**
+ * Chamada com o papel de serviço (chave de serviço do Supabase, só no servidor, nunca em NEXT_PUBLIC). Uso exclusivo da rotina diária:
+ * ela só chama as funções rotina_diaria e registrar_falha_rotina, que são as únicas liberadas para esse papel.
+ */
+export const chamarServico = async (funcao: string, args: Record<string, unknown> = {}): Promise<unknown> => {
+  if (modoTeste()) {
+    const { chamarComoServico } = await import('./banco-teste-base.mjs');
+    const { db } = await bancoTeste();
+    return chamarComoServico(db, funcao, args);
+  }
+  const c = configSupabase();
+  const chaveServico = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!c || !chaveServico) throw Object.assign(new Error('Supabase ou chave de serviço não configurados.'), { code: 'sem-config' });
+  const sb = createClient(c.url, chaveServico, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await sb.rpc(funcao, args);
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
   return data;
 };
 

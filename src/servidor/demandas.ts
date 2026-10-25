@@ -60,3 +60,8 @@ export async function marcarTarefa(tarefaId: string, concluida: boolean) {
 export async function excluirTarefa(tarefaId: string) {
   return executar(() => op().excluirTarefa(tarefaId));
 }
+
+/** Estado da rotina diária para a tela (última execução bem-sucedida, última falha, data do resumo). Sem dado pessoal. */
+export async function estadoRotina() {
+  return executar(() => chamar('estado_rotina', {}) as Promise<{ ultima_ok: string | null; ultima_falha: string | null; resumo_data: string | null; resumo_calculado_em: string | null }>);
+}

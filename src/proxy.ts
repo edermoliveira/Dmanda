@@ -19,6 +19,8 @@ function clienteCom(request: NextRequest, resposta: NextResponse) {
 }
 
 export async function proxy(request: NextRequest) {
+  // A rotina diária se autentica sozinha (CRON_SECRET) e não pode renovar nem exigir sessão: passa direto, sem tocar em cookies.
+  if (request.nextUrl.pathname.startsWith('/api/cron/')) return NextResponse.next();
   if (modoTeste()) return NextResponse.next();
   if (!configSupabase()) {
     return new NextResponse('Dmanda: o Supabase ainda não está configurado neste ambiente (faltam as variáveis do .env.local, veja .env.example).', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });

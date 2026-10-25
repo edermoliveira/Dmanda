@@ -1,5 +1,6 @@
 // Regras puras de datas e grupos do Início (src/lib/demandas.ts), sem navegador nem banco. Uso: node scripts/testar-regras.mjs
 import { sessaoExpirou, emailAutorizado, LIMITE_SEM_USO_MS } from '../src/lib/sessao.ts';
+import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
 import { dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte } from '../src/lib/demandas.ts';
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
@@ -26,5 +27,25 @@ const agora = 1_000_000_000_000;
 ok(!sessaoExpirou(String(agora - LIMITE_SEM_USO_MS + 1000), agora) && sessaoExpirou(String(agora - LIMITE_SEM_USO_MS - 1000), agora), 'sessão: expira só depois de 6 horas sem uso');
 ok(!sessaoExpirou(undefined, agora) && !sessaoExpirou('lixo', agora), 'sessão: sem marca de último uso (primeiro acesso) não expira');
 ok(emailAutorizado('Secretario@Exemplo.com', 'secretario@exemplo.com') && !emailAutorizado('outro@exemplo.com', 'secretario@exemplo.com') && !emailAutorizado('a@b.c', undefined) && !emailAutorizado(null, 'a@b.c'), 'e-mail autorizado: confere sem diferenciar maiúsculas; sem configuração ninguém entra');
+ok(grupoFiltro(lista[0], hoje) === 'atrasadas' && grupoFiltro(lista[1], hoje) === 'hoje' && grupoFiltro(lista[2], hoje) === 'sete' && grupoFiltro(lista[3], hoje) === null && grupoFiltro(lista[4], hoje) === null, 'grupoFiltro: atrasadas, hoje, próximos 7 dias; depois disso e sem prazo ficam fora');
+
+// rotina diária: segredo e tratamento de falha
+const seg = 'segredo-de-teste-com-mais-de-16';
+ok(segredoConfere('Bearer ' + seg, seg), 'rotina: o segredo correto confere');
+ok(!segredoConfere('Bearer outro-segredo-qualquer-xx', seg) && !segredoConfere(seg, seg) && !segredoConfere(null, seg) && !segredoConfere('', seg), 'rotina: segredo errado, sem "Bearer" ou ausente não confere');
+ok(!segredoConfere('Bearer ', '') && !segredoConfere('Bearer ', undefined) && !segredoConfere('Bearer curto', 'curto'), 'rotina: sem segredo configurado, ou com segredo curto demais, nada confere');
+{
+  const chamadas = [];
+  const bom = async (f, a) => { chamadas.push([f, a]); return { data_ref: '2026-10-25', usuarios: 1 }; };
+  const r1 = await executarRotinaDiaria(bom);
+  ok(r1.usuarios === 1 && chamadas.length === 1 && chamadas[0][0] === 'rotina_diaria', 'rotina: sucesso chama só a função da rotina, sem registrar falha');
+  const log = [];
+  const ruim = async (f, a) => { log.push([f, a]); if (f === 'rotina_diaria') throw Object.assign(new Error('boom: dado pessoal Fulano 123'), { code: 'XX000' }); return null; };
+  let erro = null; try { await executarRotinaDiaria(ruim); } catch (e) { erro = e; }
+  ok(erro && log.length === 2 && log[1][0] === 'registrar_falha_rotina' && /XX000/.test(log[1][1].p_erro) && !/Fulano|boom/.test(log[1][1].p_erro), 'rotina: a falha é registrada com mensagem curta, sem o texto do erro, e o erro sobe ao agendador');
+  const fora = async () => { throw new Error('banco fora do ar'); };
+  let erro2 = null; try { await executarRotinaDiaria(fora); } catch (e) { erro2 = e; }
+  ok(erro2 && /banco fora do ar/.test(erro2.message), 'rotina: se nem o registro da falha for possível, o erro original sobe');
+}
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);

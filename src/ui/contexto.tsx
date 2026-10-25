@@ -11,6 +11,8 @@ export type Janela = { t: 'nova'; etapa?: Etapa } | { t: 'editar'; id: string } 
 export type Rascunho = { dados: DadosDemanda; tarefas?: TarefaEdicao[]; nt?: string };
 type Aviso = { n: number; msg: string; erro: boolean } | null;
 
+export type EstadoRotina = { ultima_ok: string | null; ultima_falha: string | null; resumo_data: string | null; resumo_calculado_em: string | null };
+
 type Ctx = {
   demandas: Demanda[];
   arquivadas: Demanda[] | null;
@@ -22,6 +24,7 @@ type Ctx = {
   aviso: Aviso;
   avisar: (msg: string, erro?: boolean) => void;
   ambiente: { teste: boolean; nome: string } | null;
+  rotina: EstadoRotina | null;
   tema: 'claro' | 'escuro';
   alternarTema: () => void;
   menuAberto: boolean;
@@ -72,6 +75,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [erroCarga, setErroCarga] = useState<string | null>(null);
   const [aviso, setAviso] = useState<Aviso>(null);
   const [ambiente, setAmbiente] = useState<Ctx['ambiente']>(null);
+  const [rotina, setRotina] = useState<Ctx['rotina']>(null);
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro');
   const [menuAberto, setMenuAberto] = useState(false);
   const [visao, setVisaoE] = useState<Visao>('cards');
@@ -136,6 +140,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     const virada = setInterval(() => setHoje(hojeISO()), 60_000);
     void recarregar();
     void srv.ambiente().then(setAmbiente);
+    void srv.estadoRotina().then((x) => { if (x.ok) setRotina(x.dados); });
     return () => clearInterval(virada);
   }, [recarregar]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -149,7 +154,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   }, [aplicar, avisar]);
 
   const valor = useMemo<Ctx>(() => ({
-    demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, tema,
+    demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema,
     alternarTema: () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')),
     menuAberto,
     alternarMenu: () => setMenuAberto((v) => { gravarLS('dmanda:menu-aberto', !v); return !v; }),
@@ -180,7 +185,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, rodar]);
+  }), [demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, rodar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }
