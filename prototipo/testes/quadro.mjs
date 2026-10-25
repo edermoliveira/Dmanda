@@ -131,10 +131,13 @@ const alvoCol = async (nome) => { const b = await (await pg.$('.coluna[aria-labe
   await pg.mouse.move(qb.x + qb.width - 20, c.y, { steps: 10 }); await pg.waitForTimeout(900);
   const sl = await pg.evaluate(() => document.querySelector('.quadro').scrollLeft);
   ok(q.sw > q.cw && sl > 100, 'arraste junto à borda direita rola o Quadro e revela colunas fora da área visível (rolou ' + sl + ' px de ' + (q.sw - q.cw) + ')');
+  await pg.waitForFunction(() => { const e = document.querySelector('.quadro'); return e.scrollLeft >= e.scrollWidth - e.clientWidth - 2; }, null, { timeout: 8000 }); // segura na borda até o fim da rolagem, como uma pessoa faria; a velocidade depende dos quadros por segundo
   await pg.mouse.move(qb.x + qb.width - 60, qb.y + 200, { steps: 4 });
   const t = await pg.evaluate(() => { const c = document.querySelector('.coluna[aria-label="Finalizado"]').getBoundingClientRect(); return { x: c.left + c.width / 2, y: c.top + 80 }; });
-  await pg.mouse.move(t.x, t.y, { steps: 6 }); await pg.mouse.up(); await pg.waitForTimeout(300);
-  ok((await etapaDe(pg, 9)) === 'Finalizado', 'soltar sobre a coluna Finalizado, que estava fora da tela, conclui a demanda');
+  await pg.mouse.move(t.x, t.y, { steps: 6 }); await pg.waitForTimeout(500); // a rolagem automática da borda precisa assentar, como quando uma pessoa mira a coluna
+  const alvoNo = await pg.evaluate(() => (document.querySelector('.coluna.alvo') || { getAttribute: () => null }).getAttribute('aria-label'));
+  await pg.mouse.up(); await pg.waitForTimeout(300);
+  ok((await etapaDe(pg, 9)) === 'Finalizado', 'soltar sobre a coluna Finalizado, que estava fora da tela, conclui a demanda (alvo ' + alvoNo + ', etapa ' + (await etapaDe(pg, 9)) + ', t ' + JSON.stringify(t) + ')');
   const tar = await pg.evaluate(() => window.DM.DEMANDAS.find((d) => d.id === 9).tarefas.every((t) => t.f));
   ok(tar, 'a conclusão por arraste usa a mesma regra de "Concluir demanda" (tarefas marcadas)');
 }

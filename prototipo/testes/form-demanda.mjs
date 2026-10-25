@@ -98,6 +98,29 @@ for (const dev of ['desktop', 'phone']) {
   const nova = await pg.evaluate(() => window.DM.DEMANDAS[window.DM.DEMANDAS.length - 1]);
   ok((await pg.evaluate(() => window.DM.DEMANDAS.length)) === antes + 1 && nova.assunto === 'Cadastro do teste ' + dev && nova.num === '777/2026' && nova.area === 'Pessoal' && nova.descricao === 'Descrição do cadastro' && !!nova.prazo, dev + ': cadastrar grava assunto, número, origem, descrição, área e o prazo sugerido');
 }
+// ---------- 4) celular: Arquivar e Excluir no menu do cabeçalho, rodapé de uma linha ----------
+for (const [dev, cel] of [['phone', true], ['desktop', false]]) {
+  await abrir('tema=claro&dev=' + dev + '&tela=demandas&vis=cards&menuAb=false&balao=nao&aviso=nao'); await abrirEdicao(2);
+  const g = await pg.evaluate(() => { const f = document.querySelector('.m-f'), vis = (e) => !!e && e.getBoundingClientRect().width > 0; const bt = [...f.querySelectorAll('.btn')].filter(vis); return { alt: Math.round(f.getBoundingClientRect().height), botoes: bt.map((b) => b.textContent.trim() + ':' + Math.round(b.getBoundingClientRect().height) + 'x' + Math.round(b.getBoundingClientRect().width)), arq: vis(f.querySelector('.m-sec')), mais: vis(document.querySelector('.m-mais')), lateral: f.scrollWidth > f.clientWidth + 1, toque: [...f.querySelectorAll('.btn')].filter(vis).every((b) => { const a = getComputedStyle(b, '::after'); return a.content !== 'none' && parseFloat(a.top) <= -2; }) }; });
+  if (cel) ok(g.alt <= 80 && g.botoes.length === 3 && !g.arq && g.mais && !g.lateral && g.botoes.every((b) => +b.split(':')[1].split('x')[0] >= 40) && g.toque, 'celular: rodapé de ' + g.alt + ' px em uma linha com ' + g.botoes.join(', ') + ' (40 px visíveis com área de toque de 44 px, como o resto do app), Arquivar e Excluir fora do rodapé e menu no cabeçalho');
+  else ok(g.arq && !g.mais && g.botoes.length >= 5, 'computador: rodapé completo preservado (' + g.botoes.length + ' botões) e sem menu extra');
+  if (!cel) { await fechaTudo(); continue; }
+  await pg.focus('.m-mais'); await pg.keyboard.press('Enter'); await pg.waitForTimeout(200);
+  const mn = await pg.evaluate(() => { const m = document.querySelector('.mv-menu'); return m && { papel: m.getAttribute('role'), itens: [...m.querySelectorAll('button')].map((b) => b.textContent.trim() + (b.classList.contains('perigo') ? '!' : '')), foco: document.activeElement.textContent.trim() }; });
+  ok(mn && mn.papel === 'menu' && mn.itens.join() === 'Arquivar,Excluir!' && mn.foco === 'Arquivar', 'teclado: Enter abre o menu com Arquivar e Excluir (destrutivo identificado) e o foco vai ao primeiro item');
+  await pg.keyboard.press('Escape'); await pg.waitForTimeout(150);
+  ok(await pg.evaluate(() => !document.querySelector('.mv-menu') && document.activeElement.classList.contains('m-mais') && !!document.querySelector('.modal')), 'Esc fecha só o menu, devolve o foco ao botão e mantém o formulário aberto');
+  await pg.click('.m-mais'); await pg.click('.mv-menu button.perigo'); await pg.waitForTimeout(250);
+  const cf = await pg.evaluate(() => ({ conf: /Excluir de vez/.test(document.querySelector('.m-f').innerText), conf2: !!document.querySelector('[data-act="excluir-ok"]'), existe: window.DM.DEMANDAS.some((d) => d.id === 2) }));
+  ok(cf.conf && cf.conf2 && cf.existe, 'Excluir pelo menu leva à mesma confirmação do rodapé ("Excluir de vez?") e não apaga sem confirmar');
+  await pg.keyboard.press('Escape'); await pg.waitForTimeout(300);
+  await abrirEdicao(2); await pg.click('.m-mais'); await pg.click('.mv-menu button:not(.perigo)'); await pg.waitForTimeout(250);
+  ok(/Arquivar/.test(await pg.textContent('#toast')), 'Arquivar pelo menu aciona a mesma ação do rodapé');
+  await pg.fill('#d-assunto', 'Salvo no celular'); await pg.click('[data-act="salvar-edicao"]'); await pg.waitForTimeout(450);
+  ok((await dem(2)).assunto === 'Salvo no celular', 'Salvar no celular continua gravando');
+  await abrirEdicao(2); await pg.fill('#d-assunto', 'Outro'); await pg.click('[data-act="cancelar-modal"]'); await pg.waitForTimeout(350);
+  ok((await dem(2)).assunto === 'Salvo no celular', 'Cancelar no celular continua descartando');
+}
 ok(erros.length === 0, 'sem erros de JavaScript, de console nem de recursos' + (erros.length ? ': ' + [...new Set(erros)].join(' | ') : ''));
 await nav.close(); srv.fechar();
 console.log(falhas ? '\n' + falhas + ' verificação(ões) falharam.' : '\nTudo certo.');

@@ -275,7 +275,7 @@ window.DM_EXTRA = function (DM) {
       '<section class="painel"><div class="ph"><h3>Seu ritmo</h3><div class="tabs" role="group" aria-label="Período">' +
       '<button data-act="perfilv" data-v="semana" aria-pressed="' + !mes + '">Semana</button><button data-act="perfilv" data-v="mes" aria-pressed="' + mes + '">Mês</button></div></div>' +
       '<div class="grafico' + (mes ? ' mes' : '') + '">' + cols + '</div><p class="data">Passe o mouse ou foque numa coluna para ver o resumo do dia. Dia com zero é um dia normal.</p></section>' +
-      '<section class="painel"><h3>Histórico dos últimos dias</h3>' + historicoHTML() +
+      '<section class="painel"><h3>Histórico dos últimos dias</h3><p class="data">Dados de exemplo do protótipo: as datas são demonstrativas.</p>' + historicoHTML() +
       '<div class="acoes"><button class="btn mini" data-act="completar">' + ic('clock') + 'Completar últimos dias</button></div></section>' +
       '<section class="painel"><p class="frase">Hoje: 1 demanda finalizada. Dia com zero também acontece e não desfaz o resto da semana.</p>' +
       '<p class="data">Humor e energia são privados e nunca vão para a IA sem a sua permissão. Este espaço não substitui acompanhamento profissional.</p></section>';
@@ -350,7 +350,7 @@ window.DM_EXTRA = function (DM) {
   DM.abrirJanela = abrir; DM.norm = norm; DM.corNota = corNota; DM.corAuto = corAuto; DM.tagsDe = tagsDe;
   function fim(o) { if (E.modal && E.modal.key) delete E.rascunho[E.modal.key]; DM.trocar(o); }
   function campo(rot, nome, tipo, v, extra) { return '<div class="fld"><label for="m-' + nome + '">' + rot + '</label><input id="m-' + nome + '" data-v="' + nome + '" type="' + (tipo || 'text') + '" value="' + esc(v || '') + '" ' + (extra || '') + ' autocomplete="off"></div>'; }
-  function cab(t) { var m = E.modal; return '<header class="m-h"><h3 id="m-tit">' + t + '</h3><button class="icbtn-s" data-act="fechar-modal" aria-label="Fechar">' + ic('x') + '</button></header>' + (m && m.rec && m.t !== 'demanda' ? '<p class="data rec">Rascunho recuperado. Cancelar descarta o texto.</p>' : ''); }
+  function cab(t, extra) { var m = E.modal; return '<header class="m-h"><h3 id="m-tit">' + t + '</h3><button class="icbtn-s" data-act="fechar-modal" aria-label="Fechar">' + ic('x') + '</button>' + (extra || '') + '</header>' + (m && m.rec && m.t !== 'demanda' ? '<p class="data rec">Rascunho recuperado. Cancelar descarta o texto.</p>' : ''); }
   function opcoes(k, lista, atual) { return '<div class="opcoes" role="group">' + lista.map(function (o) { return '<button type="button" data-act="m-set" data-k="' + k + '" data-val="' + o + '" aria-pressed="' + (atual === o) + '">' + o + '</button>'; }).join('') + '</div>'; }
 
   // grupo de campos com título (Identificação, Descrição, Datas e prazo...), usado nos formulários de demanda
@@ -413,7 +413,9 @@ window.DM_EXTRA = function (DM) {
         '<button class="t-lapis" data-act="del-tarefa-m" data-i="' + i + '" aria-label="Remover a tarefa ' + (i + 1) + '" title="Remover">' + ic('trash') + '</button></li>';
     }).join('') + '</ul>' : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span></div>';
     var desde = DM.diasDesde(d.chegou), cont = !d.prazo ? 'Sem prazo cadastrado' : (function () { var n = DM.diasAte(d.prazo); return n < 0 ? 'Atrasada há ' + DM.plural(-n, 'dia') : n === 0 ? 'Vence hoje' : 'Faltam ' + DM.plural(n, 'dia'); })();
-    return cab(esc(d.tipo + ' ' + d.num)) + (m.rec ? '<p class="data rec">Rascunho recuperado. Cancelar descarta as alterações.</p>' : '') + '<div class="m-cols"><div>' +
+    // no celular Arquivar e Excluir saem do rodapé fixo e ficam neste menu do cabeçalho (os botões do rodapé continuam, só ocultos nessa largura)
+    var maisAcoes = m.conf ? '' : '<button type="button" class="icbtn-s m-mais" data-act="m-acoes" aria-haspopup="menu" aria-label="Mais ações da demanda: arquivar ou excluir" title="Mais ações">' + ic('ellipsis') + '</button>';
+    return cab(esc(d.tipo + ' ' + d.num), maisAcoes) + (m.rec ? '<p class="data rec">Rascunho recuperado. Cancelar descarta as alterações.</p>' : '') + '<div class="m-cols"><div>' +
       grp('Identificação', '<div class="fld"><label for="d-assunto">Assunto</label><input id="d-assunto" data-d="assunto" value="' + esc(d.assunto) + '"></div>' +
         '<div class="dois"><div class="fld"><label for="d-num">Número</label><input id="d-num" data-d="num" value="' + esc(d.num) + '"></div><div class="fld"><label for="d-origem">Origem</label><input id="d-origem" data-d="origem" value="' + esc(d.origem) + '"></div></div>' +
         '<div class="fld"><label>Tipo de documento</label>' + opcoes('tipoDem', TIPOS, d.tipo) + '</div>' +
@@ -429,10 +431,10 @@ window.DM_EXTRA = function (DM) {
       grp('Tarefas', tar + '<div class="add-t"><input id="m-nt" data-v="nt" placeholder="Nova tarefa" aria-label="Nova tarefa" value="' + esc(m.v.nt || '') + '"><button class="btn mini" data-act="add-tarefa-m">' + ic('plus') + 'Adicionar</button></div>' +
         '<p class="data m-prog">' + (d.tarefas.length ? d.tarefas.filter(function (t) { return t.f; }).length + ' de ' + d.tarefas.length + ' concluídas (' + Math.round(100 * d.tarefas.filter(function (t) { return t.f; }).length / d.tarefas.length) + '%). ' : 'Nenhuma tarefa ainda. ') + 'O percentual mede só as tarefas. Concluir todas não muda a etapa sozinho.</p>', 'toque no texto para alterar') +
       '</div></div>' +
-      '<footer class="m-f">' + (m.conf ? '<span class="data">Excluir de vez? Não dá para desfazer.</span><button class="btn perigo" data-act="excluir-ok" data-id="' + d.id + '">' + ic('trash') + 'Confirmar exclusão</button>' : '<button class="btn mini" data-act="msg" data-m="Arquivar">' + ic('archive') + 'Arquivar</button><button class="btn mini" data-act="excluir" data-id="' + d.id + '">' + ic('trash') + 'Excluir</button>') +
+      '<footer class="m-f">' + (m.conf ? '<span class="data">Excluir de vez? Não dá para desfazer.</span><button class="btn perigo" data-act="excluir-ok" data-id="' + d.id + '">' + ic('trash') + 'Confirmar exclusão</button>' : '<button class="btn mini m-sec" data-act="msg" data-m="Arquivar">' + ic('archive') + 'Arquivar</button><button class="btn mini m-sec" data-act="excluir" data-id="' + d.id + '">' + ic('trash') + 'Excluir</button>') +
       '<span class="esp"></span><button class="btn" data-act="cancelar-modal">Cancelar</button>' +
       (fin ? '<button class="btn" data-act="reabrir-m">Reabrir (volta para Fazendo)</button>' : '<button class="btn" data-act="concluir-m">' + ic('check') + 'Concluir demanda</button>') +
-      '<button class="btn pri" data-act="salvar-edicao">Salvar alterações</button></footer>';
+      '<button class="btn pri" data-act="salvar-edicao" aria-label="Salvar alterações">Salvar<span class="rot-ext"> alterações</span></button></footer>';
   }
   function mDias() {
     var dias = [['Terça, 20', 'ter'], ['Segunda, 19', 'seg']];
@@ -601,7 +603,7 @@ window.DM_EXTRA = function (DM) {
     else if (!e.shiftKey && document.activeElement === u) { e.preventDefault(); p.focus(); }
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Escape') return;
+    if (e.key !== 'Escape' || $('.mv-menu')) return; // com um menu aberto, o Esc fecha só o menu
     if (E.modal) { e.stopImmediatePropagation(); fechar(); }
     else if (E.perfilAb) { e.stopImmediatePropagation(); DM.trocar({ perfilAb: false }); }
   }, true);
@@ -624,6 +626,17 @@ window.DM_EXTRA = function (DM) {
   // menu "Mover para": botão do card (Mais ações ou Mover de etapa) abre a lista de etapas; Esc fecha e devolve o foco
   var COR_ETAPA = { Cadastro: 48, Vistos: 205, Fazendo: 262, 'Aguardando retorno': 330, Finalizado: 150 };
   function fechaMenuMover(volta) { var m = $('.mv-menu'); if (!m) return; var g = m._gatilho; m.remove(); if (volta && g && g.isConnected) g.focus(); }
+  // menu de ações do formulário (celular): cada item aciona o botão original do rodapé, então confirmações e regras são as mesmas
+  A['m-acoes'] = function (b) {
+    var ja = $('.mv-menu'); if (ja) { var igual = ja._gatilho === b; fechaMenuMover(false); if (igual) return; }
+    var origem = $$('.modal .m-f .m-sec'); if (!origem.length) return;
+    var fr = $('.app'), rf = fr.getBoundingClientRect(), rb = b.getBoundingClientRect(), m = document.createElement('div');
+    m.className = 'mv-menu'; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Ações da demanda'); m._gatilho = b;
+    m.innerHTML = origem.map(function (o, i) { var destrutivo = o.dataset.act === 'excluir'; return '<button type="button" role="menuitem" data-orig="' + i + '"' + (destrutivo ? ' class="perigo"' : '') + '>' + o.innerHTML + '</button>'; }).join('');
+    fr.appendChild(m); var w = m.offsetWidth;
+    m.style.left = Math.min(Math.max(8, rb.right - rf.left - w), rf.width - w - 8) + 'px'; m.style.top = (rb.bottom - rf.top + 6) + 'px';
+    m._origem = origem; var it = $$('button', m); if (it[0]) it[0].focus();
+  };
   A['mover-menu'] = function (b) {
     var ja = $('.mv-menu'); if (ja) { var igual = ja._gatilho === b; fechaMenuMover(false); if (igual) return; }
     var d = real(+b.dataset.id); if (!d) return;
@@ -640,9 +653,11 @@ window.DM_EXTRA = function (DM) {
     var itens = $$('button:not([aria-disabled="true"])', m); (itens.filter(function (i) { return i.getAttribute('aria-checked') !== 'true'; })[0] || itens[0] || m).focus();
   };
   document.addEventListener('click', function (e) {
+    var oi = e.target.closest && e.target.closest('.mv-menu button[data-orig]');
+    if (oi) { e.stopPropagation(); var mm = oi.closest('.mv-menu'), alvo = mm._origem[+oi.dataset.orig]; mm.remove(); alvo.click(); return; }
     var it = e.target.closest && e.target.closest('.mv-menu button[data-et]');
     if (it) { e.stopPropagation(); if (it.getAttribute('aria-disabled') === 'true') return; var m = it.closest('.mv-menu'), id = +m._gatilho.dataset.id; m.remove(); DM.moverEtapa(id, it.dataset.et); return; }
-    if ($('.mv-menu') && !(e.target.closest && e.target.closest('.mv-menu, [data-act="mover-menu"]'))) fechaMenuMover(false);
+    if ($('.mv-menu') && !(e.target.closest && e.target.closest('.mv-menu, [data-act="mover-menu"], [data-act="m-acoes"]'))) fechaMenuMover(false);
   }, true);
   document.addEventListener('keydown', function (e) {
     var m = $('.mv-menu'); if (!m) return;

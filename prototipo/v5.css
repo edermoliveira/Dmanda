@@ -284,5 +284,7 @@ button.wg:active { transform: scale(.97); }
 
 /* ---------- contraste no modo escuro (achado pelo teste de cliques no Grafite): o acento claro não bastava sobre card colorido ---------- */
 .app[data-tema="escuro"] :is(.face.front[class*="cat-"], .dcard.atrasada .face.front, .mini-card[class*="cat-"], .mini-card.atrasada) .btn.fino.pri.bloco { color: var(--cc-chip-tx); }
+/* selo Legal fora de card colorido (Tabela, Lista, Início): o texto de destaque do escuro de algumas paletas (Índigo, Violeta) ficava abaixo de 4,5:1 sobre o fundo suave; clareia só aqui, sem mexer na paleta */
+.app[data-tema="escuro"] .selo.legal { color: color-mix(in srgb, var(--acc-text) 70%, var(--text)); }
 .app[data-tema="escuro"] .chip:not(.neutro):not(.perigo) { color: color-mix(in srgb, var(--acc-text) 75%, var(--text)); }
 .app .btn.fino.bloco:not(.pri) { color: color-mix(in srgb, var(--acc-text) 80%, var(--text)); }

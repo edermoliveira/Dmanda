@@ -421,3 +421,16 @@
 @container tela (max-width: 899px) {
   .app[data-dir="d"] .modal .m-cols { grid-template-columns: minmax(0, 1fr); gap: 0; }
 }
+/* ---------- formulário no celular: Arquivar e Excluir vão para o menu do cabeçalho; o rodapé fica numa linha (Cancelar, Concluir, Salvar) ---------- */
+.app[data-dir="d"] .modal .m-mais { display: none; }
+.app[data-dir="d"] .mv-menu button.perigo { color: var(--perigo); }
+.app[data-dir="d"] .mv-menu button .ic { width: 18px; height: 18px; flex: none; }
+@container tela (max-width: 520px) {
+  .app[data-dir="d"] .modal .m-mais { display: grid; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); margin: 0; z-index: 5; }
+  .app[data-dir="d"] .modal .m-f .m-sec { display: none; }
+  .app[data-dir="d"] .modal .m-f { gap: 8px; margin: 12px -24px -22px; padding: 10px 16px 14px; flex-wrap: nowrap; }
+  .app[data-dir="d"] .modal .m-f .esp { display: none; }
+  .app[data-dir="d"] .modal .m-f .btn { flex: 1 1 auto; justify-content: center; padding: 0 10px; white-space: nowrap; min-width: 0; }
+  .app[data-dir="d"] .modal .m-f .btn.pri { flex: 1.2 1 auto; }
+  .app[data-dir="d"] .modal .m-f .rot-ext { display: none; }
+}
