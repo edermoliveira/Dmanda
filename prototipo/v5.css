@@ -278,10 +278,8 @@ button.wg:active { transform: scale(.97); }
 .app .side .navi:hover .ico { color: var(--text); }
 .app[data-dir="d"] .side .navi[aria-current="page"] .tx { font-weight: 700; }
 
-/* ---------- processo atrasado: fundo vermelho pastel (regra de atraso) e faixa lateral na cor do tipo ---------- */
-.app .dcard.atrasada .face.front.cat-azul, .app .mini-card.atrasada.cat-azul { box-shadow: inset 6px 0 0 var(--cat-azul-barra), 0 0 0 1px var(--anel-atraso, transparent), 0 8px 24px var(--lg-sh); }
-.app .dcard.atrasada .face.front.cat-verde, .app .mini-card.atrasada.cat-verde { box-shadow: inset 6px 0 0 var(--cat-verde-barra), 0 0 0 1px var(--anel-atraso, transparent), 0 8px 24px var(--lg-sh); }
-.app .dcard.atrasada .face.front.cat-amar, .app .mini-card.atrasada.cat-amar { box-shadow: inset 6px 0 0 var(--cat-amar-barra), 0 0 0 1px var(--anel-atraso, transparent), 0 8px 24px var(--lg-sh); }
+/* ---------- processo atrasado: fundo vermelho pastel (regra de atraso) e contorno vermelho regular; a faixa lateral na cor do tipo foi retirada em 24/10/2026 ---------- */
+.app .dcard.atrasada .face.front:is(.cat-azul, .cat-verde, .cat-amar), .app .mini-card.atrasada:is(.cat-azul, .cat-verde, .cat-amar) { box-shadow: 0 0 0 1px var(--anel-atraso, transparent), 0 8px 24px var(--lg-sh); }
 .app[data-dir="d"] { --anel-atraso: var(--perigo); }
 
 /* ---------- contraste no modo escuro (achado pelo teste de cliques no Grafite): o acento claro não bastava sobre card colorido ---------- */

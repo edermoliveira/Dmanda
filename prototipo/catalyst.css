@@ -368,3 +368,56 @@
 .app[data-dir="d"] .mv-menu button[aria-disabled="true"] { opacity: .5; cursor: default; }
 .app[data-dir="d"] .mv-menu button small { margin-left: auto; color: var(--text2); font-weight: 400; }
 .app[data-dir="d"] .mv-menu .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: hsl(var(--et) 80% 55%); }
+
+/* ---------- Configurações: painéis em colunas que se acomodam (sem vazios sob os painéis menores) ---------- */
+/* Aparência (modo e cores de destaque) ocupa a largura toda, com as amostras em uma grade larga; os demais painéis fluem em até 3 colunas na ordem do documento */
+.app[data-dir="d"] .cfg { display: block; columns: 3 300px; column-gap: 16px; }
+.app[data-dir="d"] .cfg > section { break-inside: avoid; margin: 0 0 16px; }
+.app[data-dir="d"] .cfg > .cfg-topo { column-span: all; }
+.app[data-dir="d"] .cfg-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 4px; }
+.app[data-dir="d"] .cfg-cab h3 { margin: 0; }
+.app[data-dir="d"] .cfg-cab .acoes { margin: 0; }
+.app[data-dir="d"] .cfg-sub { margin: 10px 0 8px; font-size: 13px; font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .cfg-topo .pal { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+@container tela (min-width: 900px) { .app[data-dir="d"] .cfg-topo .pal { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@container tela (max-width: 520px) { .app[data-dir="d"] .cfg-topo .pal { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- Perfil: histórico dos últimos dias (uma coluna por dia, linhas de Humor e Energia, rolagem só aqui) ---------- */
+.app[data-dir="d"] .hist-w { display: flex; align-items: flex-start; gap: 4px; margin-top: 4px; }
+.app[data-dir="d"] .hist-lab { flex: none; display: grid; grid-auto-rows: 44px; gap: 6px; padding-top: 10px; min-width: 64px; }
+.app[data-dir="d"] .hist-lab b { display: flex; align-items: center; font-size: 13px; font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .hist-rol { flex: 1; min-width: 0; overflow-x: auto; padding: 4px 16px 10px 4px; scroll-padding-inline: 4px 16px; scrollbar-width: thin; overscroll-behavior-x: contain; }
+.app[data-dir="d"] .hist-t { border-collapse: separate; border-spacing: 6px 6px; width: max-content; }
+.app[data-dir="d"] .hist-t th, .app[data-dir="d"] .hist-t td { padding: 0; font-weight: 400; text-align: center; }
+.app[data-dir="d"] .hist-t .hd { display: grid; gap: 1px; width: 52px; min-height: 44px; padding: 4px 0; border: 0; border-radius: 12px; background: transparent; color: var(--text2); font: inherit; cursor: pointer; }
+.app[data-dir="d"] .hist-t .hd b { font-size: 12px; font-weight: 600; text-transform: uppercase; }
+.app[data-dir="d"] .hist-t .hd span { font-size: 11px; font-family: var(--font-n); }
+.app[data-dir="d"] .hist-t .hd:hover { background: var(--btn-hov); }
+.app[data-dir="d"] .hist-t .hd[aria-pressed="true"] { background: var(--btn-bg); color: var(--text); }
+.app[data-dir="d"] .hist-t .hoje .hd b { color: var(--acc-text); }
+.app[data-dir="d"] .hist-t .hc2 { width: 52px; height: 44px; border-radius: 12px; background: var(--track); }
+.app[data-dir="d"] .hist-t .hc2 .emo-img { display: block; width: 28px; height: 28px; margin: auto; }
+.app[data-dir="d"] .hist-t .hc2.vazio { background: transparent; box-shadow: inset 0 0 0 1px var(--card-brd); color: var(--text2); opacity: .7; }
+
+/* ---------- formulários de demanda (cadastro e edição): grupos, duas colunas equilibradas, cabeçalho e rodapé sempre à vista ---------- */
+.app[data-dir="d"] .m-grp { margin: 0 0 20px; }
+.app[data-dir="d"] .m-grp:last-child { margin-bottom: 4px; }
+.app[data-dir="d"] .m-grp > h4 { margin: 0 0 10px; padding: 0 0 6px 14px; font-size: 13px; font-weight: 700; letter-spacing: .02em; color: var(--text2); border-bottom: 1px solid var(--brd); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.app[data-dir="d"] .m-grp > h4 small { font-weight: 400; letter-spacing: 0; }
+.app[data-dir="d"] .modal .m-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
+.app[data-dir="d"] .modal .fld textarea { min-height: 120px; line-height: 1.45; }
+.app[data-dir="d"] .modal .meta.calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 16px; margin: 4px 0 0; }
+.app[data-dir="d"] .modal .meta.calc b { display: block; margin-top: 2px; }
+.app[data-dir="d"] .modal .m-prog { margin: 8px 0 0; }
+/* tarefas: caixa, texto e lixeira alinhados na mesma linha; nova tarefa e Adicionar como um conjunto */
+.app[data-dir="d"] .modal .tarefas.ed .t-item { display: flex; align-items: center; gap: 12px; min-height: 48px; }
+.app[data-dir="d"] .modal .tarefas.ed .t-campo { flex: 1 1 auto; min-width: 0; }
+.app[data-dir="d"] .modal .tarefas.ed .t-lapis { flex: none; }
+.app[data-dir="d"] .modal .add-t { margin: 10px 0 0; align-items: center; }
+.app[data-dir="d"] .modal .add-t .btn { flex: none; }
+/* cabeçalho (fechar) e rodapé (salvar, cancelar) ficam à vista enquanto o formulário rola; o conteúdo termina acima do rodapé */
+.app[data-dir="d"] .modal .m-h { position: sticky; top: -26px; z-index: 4; margin: -26px -24px 12px; padding: 22px 24px 8px; background: var(--grp-bg); }
+.app[data-dir="d"] .modal .m-f { position: sticky; bottom: -22px; z-index: 4; margin: 16px -24px -22px; padding: 12px 24px 18px; background: var(--grp-bg); border-top: 1px solid var(--brd); }
+@container tela (max-width: 899px) {
+  .app[data-dir="d"] .modal .m-cols { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}

@@ -39,6 +39,7 @@ window.DM_EXTRA = function (DM) {
   DM.pos = function () {
     $$('#g-tema .seg').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.tema === E.tema); });
     DM.aplicarFundo();
+    var hr = $('.hist-rol'); if (hr) hr.scrollLeft = hr.scrollWidth; // abre no dia mais recente
     var app = $('.app'); if (app) { app.dataset.col = 'true'; app.dataset.aberto = E.menuAb; app.dataset.reduzir = E.reduzir; }
     if (E.modal) guardar(E.modal);
     if (E.perfilNovo) { E.perfilNovo = false; var x = $('.dr .icbtn-s'); if (x) x.focus(); }
@@ -231,14 +232,42 @@ window.DM_EXTRA = function (DM) {
   // ---------- Perfil ----------
   function dadosDia(i) { return { h: (i * 3 + 1) % 5, e: (i * 2 + 1) % 5, c: (i * 5) % 4, sem: i % 7 === 0 || i % 7 === 6 }; }
   var DIAS7 = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+  // Histórico dos últimos 28 dias: uma coluna por dia (data no cabeçalho) e uma linha para Humor e outra para Energia, com rolagem só dentro do histórico.
+  // Os valores continuam os de dadosDia (dados do protótipo); a data de cada coluna conta de hoje (21/10/2026) para trás. Dia sem registro aparece discreto.
+  var SEM_ABR = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'], SEM_COMPLETO = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  var MES_COMPLETO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  function diaHist(j) { var d = new Date(2026, 9, 21 - (27 - j)), x = dadosDia(j + 1); return { d: d, x: x, curto: ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2), abr: SEM_ABR[d.getDay()], completo: SEM_COMPLETO[d.getDay()] + ', ' + d.getDate() + ' de ' + MES_COMPLETO[d.getMonth()] }; }
+  function textoDiaHist(h) { return h.completo + (h.x.sem ? ': sem registro' : ': humor ' + ROT_H[h.x.h].toLowerCase() + ', energia ' + ROT_E[h.x.e].toLowerCase()); }
+  function historicoHTML() {
+    var th = '', lh = '', le = '';
+    for (var j = 0; j < 28; j++) {
+      var h = diaHist(j), hoje = j === 27;
+      th += '<th scope="col"' + (hoje ? ' class="hoje"' : '') + '><button type="button" class="hd" tabindex="' + (hoje ? 0 : -1) + '" data-act="hist-dia" data-i="' + j + '" aria-pressed="' + hoje + '" aria-label="' + textoDiaHist(h) + '" title="' + textoDiaHist(h) + '"><b>' + (hoje ? 'hoje' : h.abr) + '</b><span>' + h.curto + '</span></button></th>';
+      lh += '<td class="hc2' + (h.x.sem ? ' vazio' : '') + '">' + (h.x.sem ? '<span title="Sem registro" aria-label="Sem registro">—</span>' : img('humor', h.x.h, 'Humor: ' + ROT_H[h.x.h])) + '</td>';
+      le += '<td class="hc2' + (h.x.sem ? ' vazio' : '') + '">' + (h.x.sem ? '<span title="Sem registro" aria-label="Sem registro">—</span>' : img('energia', h.x.e, 'Energia: ' + ROT_E[h.x.e])) + '</td>';
+    }
+    // os nomes das linhas ficam numa coluna fixa ao lado (visual) e como cabeçalhos de linha ocultos na tabela (leitores de tela)
+    return '<div class="hist-w"><div class="hist-lab" aria-hidden="true"><i></i><b>Humor</b><b>Energia</b></div><div class="hist-rol" role="region" aria-label="Histórico dos últimos 28 dias; role para os lados para ver os dias anteriores"><table class="hist-t"><thead><tr><td class="sr">Registro</td>' + th + '</tr></thead>' +
+      '<tbody><tr><th scope="row" class="sr">Humor</th>' + lh + '</tr><tr><th scope="row" class="sr">Energia</th>' + le + '</tr></tbody></table></div></div>' +
+      '<p class="data" id="hist-det" role="status" aria-live="polite">' + textoDiaHist(diaHist(27)) + '</p>';
+  }
+  DM.acoes['hist-dia'] = function (b) {
+    $$('.hd').forEach(function (x) { var on = x === b; x.setAttribute('aria-pressed', on); x.tabIndex = on ? 0 : -1; });
+    var det = $('#hist-det'); if (det) det.textContent = textoDiaHist(diaHist(+b.dataset.i));
+  };
+  document.addEventListener('keydown', function (e) {
+    var b = e.target.closest && e.target.closest('.hd'); if (!b) return;
+    var k = { ArrowRight: 1, ArrowLeft: -1 }[e.key], hs = $$('.hd'), i = hs.indexOf(b);
+    if (e.key === 'Home') k = -i; else if (e.key === 'End') k = hs.length - 1 - i;
+    if (k === undefined || k === 0) return; e.preventDefault();
+    var n = hs[Math.max(0, Math.min(hs.length - 1, i + k))]; n.focus(); DM.acoes['hist-dia'](n);
+  });
   function corpoPerfil() {
     var mes = E.perfilV === 'mes', n = mes ? 30 : 7, cols = '';
     for (var i = 0; i < n; i++) {
       var d = dadosDia(i + 3);
       cols += '<div class="gcol' + (mes ? ' fina' : '') + '" tabindex="0"><span class="tip">' + (mes ? 'dia ' + (i + 1) : DIAS7[i]) + ': ' + d.c + ' finalizadas' + (d.sem ? '' : ', humor ' + ROT_H[d.h].toLowerCase() + ', energia ' + ROT_E[d.e].toLowerCase()) + '</span><i style="height:' + (8 + d.c * 26) + 'px"></i>' + (mes ? '' : '<span>' + DIAS7[i] + '</span>') + '</div>';
     }
-    var hist = '';
-    for (var j = 0; j < 28; j++) { var x = dadosDia(j + 1); hist += '<div class="hc" title="' + (x.sem ? 'Sem registro' : ROT_H[x.h]) + '">' + (x.sem ? '<span>—</span>' : img('humor', x.h)) + '</div>'; }
     return '<div class="ind3">' +
       '<section class="painel ind"><h3>Humor</h3><div class="ind-v">' + img('humor', E.humor) + '<b>' + ROT_H[E.humor] + '</b></div><p class="data">Último registro de hoje. Só seu.</p></section>' +
       '<section class="painel ind"><h3>Energia</h3><div class="ind-v">' + img('energia', E.energia) + '<b>' + ROT_E[E.energia] + '</b></div><p class="data">Último registro de hoje. Só seu.</p></section>' +
@@ -246,7 +275,7 @@ window.DM_EXTRA = function (DM) {
       '<section class="painel"><div class="ph"><h3>Seu ritmo</h3><div class="tabs" role="group" aria-label="Período">' +
       '<button data-act="perfilv" data-v="semana" aria-pressed="' + !mes + '">Semana</button><button data-act="perfilv" data-v="mes" aria-pressed="' + mes + '">Mês</button></div></div>' +
       '<div class="grafico' + (mes ? ' mes' : '') + '">' + cols + '</div><p class="data">Passe o mouse ou foque numa coluna para ver o resumo do dia. Dia com zero é um dia normal.</p></section>' +
-      '<section class="painel"><h3>Histórico dos últimos dias</h3><div class="hist">' + hist + '</div>' +
+      '<section class="painel"><h3>Histórico dos últimos dias</h3>' + historicoHTML() +
       '<div class="acoes"><button class="btn mini" data-act="completar">' + ic('clock') + 'Completar últimos dias</button></div></section>' +
       '<section class="painel"><p class="frase">Hoje: 1 demanda finalizada. Dia com zero também acontece e não desfaz o resto da semana.</p>' +
       '<p class="data">Humor e energia são privados e nunca vão para a IA sem a sua permissão. Este espaço não substitui acompanhamento profissional.</p></section>';
@@ -274,12 +303,12 @@ window.DM_EXTRA = function (DM) {
   TELAS.config = function () {
     var P = DM.PALETAS;
     return '<div class="cfg">' +
-      '<section class="painel"><h3>Aparência</h3>' +
-      '<div class="acoes"><button class="btn mini" data-act="tema">' + ic(E.tema === 'claro' ? 'moon' : 'sun') + 'Modo ' + (E.tema === 'claro' ? 'escuro' : 'claro') + '</button></div></section>' +
-      '<section class="painel"><h3>Cores</h3><div class="pal">' + P.map(function (p, i) {
+      // Aparência e Cores num só painel largo (modo, cor de destaque da interface); o fundo vem logo depois e os demais painéis se acomodam em colunas
+      '<section class="painel cfg-topo"><div class="cfg-cab"><h3>Aparência</h3><div class="acoes"><button class="btn mini" data-act="tema">' + ic(E.tema === 'claro' ? 'moon' : 'sun') + 'Modo ' + (E.tema === 'claro' ? 'escuro' : 'claro') + '</button>' +
+      '<button class="btn mini" data-act="surpreenda">' + ic('sparkles') + 'Surpreenda-me</button></div></div>' +
+      '<h4 class="cfg-sub">Cor de destaque da interface</h4><div class="pal">' + P.map(function (p, i) {
         return '<button class="sw" data-act="pal" data-i="' + i + '" aria-pressed="' + (E.pal === i || (E.pal === null && i === 0)) + '" aria-label="Paleta ' + p[0] + '" style="--sw1:' + DM.hsl(p[1], 72 * p[2], 48) + ';--sw2:' + DM.hsl(p[1] + 60, 70 * p[2], 80) + '"><i></i><span>' + p[0] + '</span></button>';
-      }).join('') + '</div><div class="acoes"><button class="btn mini" data-act="surpreenda">' + ic('sparkles') + 'Surpreenda-me</button>' +
-      '</div></section>' + DM.cfgFundo() +
+      }).join('') + '</div></section>' + DM.cfgFundo() +
       '<section class="painel"><h3>Fontes</h3><p class="data">Principal nos títulos, secundária nos subtítulos e textos, mono nos detalhes (números de processo, datas, contadores).</p>' +
       '<div class="acoes">' + CONJUNTOS.map(function (c, i) { return '<button class="btn mini" data-act="conjunto" data-i="' + i + '" aria-pressed="' + (E.fT === c[1] && E.fS === c[2] && E.fM === c[3]) + '">' + c[0] + '</button>'; }).join('') + '</div>' +
       sel('fT', FT, 'Principal (títulos)', FT[E.fT][1]) + sel('fS', FS, 'Secundária (subtítulos e textos)', FS[E.fS][1]) + sel('fM', FM, 'Mono (detalhes)', FM[E.fM][1]) + '</section>' +
@@ -324,19 +353,20 @@ window.DM_EXTRA = function (DM) {
   function cab(t) { var m = E.modal; return '<header class="m-h"><h3 id="m-tit">' + t + '</h3><button class="icbtn-s" data-act="fechar-modal" aria-label="Fechar">' + ic('x') + '</button></header>' + (m && m.rec && m.t !== 'demanda' ? '<p class="data rec">Rascunho recuperado. Cancelar descarta o texto.</p>' : ''); }
   function opcoes(k, lista, atual) { return '<div class="opcoes" role="group">' + lista.map(function (o) { return '<button type="button" data-act="m-set" data-k="' + k + '" data-val="' + o + '" aria-pressed="' + (atual === o) + '">' + o + '</button>'; }).join('') + '</div>'; }
 
+  // grupo de campos com título (Identificação, Descrição, Datas e prazo...), usado nos formulários de demanda
+  function grp(titulo, corpo, dica) { return '<section class="m-grp"><h4>' + titulo + (dica ? ' <small class="data">' + dica + '</small>' : '') + '</h4>' + corpo + '</section>'; }
   function mNovaDem(m) {
     var v = m.v, cheg = v.chegada || '2026-10-21', tipo = v.tipo || 'Processo', temArea = tipo === 'Processo' || tipo === 'Protocolo';
     var areas = tipo === 'Protocolo' ? ['Geral', 'Pessoal'] : ['Geral', 'Pessoal', 'Compras'];
     return cab('Nova demanda') + '<p class="data">Cadastro rápido. Só o assunto é obrigatório.</p>' +
-      campo('Número do processo ou memorando', 'num', 'text', v.num, 'placeholder="Ex.: 2310/2026"') + campo('Assunto', 'assunto', 'text', v.assunto, 'placeholder="Do que se trata?"') +
-      campo('Origem', 'origem', 'text', v.origem, 'placeholder="Quem pediu ou de onde veio"') +
-      '<div class="fld"><label for="m-descricao">Descrição (opcional)</label><textarea id="m-descricao" data-v="descricao" rows="3" placeholder="Explique do que se trata, sem sobrecarregar o assunto">' + esc(v.descricao || '') + '</textarea></div>' +
-      '<div class="fld"><label>Tipo de documento</label>' + opcoes('tipo', TIPOS, tipo) + '</div>' +
-      (temArea ? '<div class="fld"><label>Área (define a cor do card)</label>' + opcoes('area', areas, areas.indexOf(v.area) > -1 ? v.area : 'Geral') + '<span class="data">' + (tipo === 'Protocolo' ? 'Protocolo geral é azul e de pessoal é verde. Amarelo (compras) só em processo aberto pelo setor de compras.' : 'Azul: geral. Verde: pessoal. Amarelo: compras.') + '</span></div>' : '') +
-      '<div class="dois">' + campo('Chegou em', 'chegada', 'date', cheg) + '<div class="fld"><label>Tipo de prazo</label>' + opcoes('prazoTipo', ['Legal', 'Próprio'], v.prazoTipo || 'Próprio') + '</div></div>' +
-      '<div class="fld"><label for="m-prazo">Prazo (opcional)</label><div class="add-t"><input id="m-prazo" data-v="prazo" type="date" value="' + esc(v.prazo || '') + '">' +
-      '<button class="btn mini" type="button" data-act="sugerir-prazo">Sugerir ' + E.sugestaoPrazo + ' dias</button>' + (v.prazo ? '<button class="btn mini" type="button" data-act="limpar-prazo">Sem prazo</button>' : '') + '</div>' +
-      '<span class="data">' + (v.prazo ? 'Terá contagem regressiva até a data escolhida.' : 'Sem prazo: nada é inventado. Fica só a contagem do tempo desde a chegada.') + '</span></div>' +
+      grp('Identificação', campo('Assunto', 'assunto', 'text', v.assunto, 'placeholder="Do que se trata?"') + '<div class="dois">' + campo('Número do processo ou memorando', 'num', 'text', v.num, 'placeholder="Ex.: 2310/2026"') + campo('Origem', 'origem', 'text', v.origem, 'placeholder="Quem pediu ou de onde veio"') + '</div>' +
+        '<div class="fld"><label>Tipo de documento</label>' + opcoes('tipo', TIPOS, tipo) + '</div>' +
+        (temArea ? '<div class="fld"><label>Área (define a cor do card)</label>' + opcoes('area', areas, areas.indexOf(v.area) > -1 ? v.area : 'Geral') + '<span class="data">' + (tipo === 'Protocolo' ? 'Protocolo geral é azul e de pessoal é verde. Amarelo (compras) só em processo aberto pelo setor de compras.' : 'Azul: geral. Verde: pessoal. Amarelo: compras.') + '</span></div>' : '')) +
+      grp('Descrição', '<div class="fld"><label class="sr" for="m-descricao">Descrição (opcional)</label><textarea id="m-descricao" data-v="descricao" rows="4" placeholder="Explique do que se trata, sem sobrecarregar o assunto">' + esc(v.descricao || '') + '</textarea></div>', 'opcional') +
+      grp('Datas e prazo', '<div class="dois">' + campo('Chegou em', 'chegada', 'date', cheg) + '<div class="fld"><label>Tipo de prazo</label>' + opcoes('prazoTipo', ['Legal', 'Próprio'], v.prazoTipo || 'Próprio') + '</div></div>' +
+        '<div class="fld"><label for="m-prazo">Prazo (opcional)</label><div class="add-t"><input id="m-prazo" data-v="prazo" type="date" value="' + esc(v.prazo || '') + '">' +
+        '<button class="btn mini" type="button" data-act="sugerir-prazo">Sugerir ' + E.sugestaoPrazo + ' dias</button>' + (v.prazo ? '<button class="btn mini" type="button" data-act="limpar-prazo">Sem prazo</button>' : '') + '</div>' +
+        '<span class="data">' + (v.prazo ? 'Terá contagem regressiva até a data escolhida.' : 'Sem prazo: nada é inventado. Fica só a contagem do tempo desde a chegada.') + '</span></div>') +
       '<footer class="m-f"><span class="data">Rascunho guardado automaticamente</span><span class="esp"></span><button class="btn" data-act="cancelar-modal">Cancelar</button><button class="btn pri" data-act="salvar-dem">Cadastrar</button></footer>';
   }
   function mNota(m) {
@@ -384,19 +414,21 @@ window.DM_EXTRA = function (DM) {
     }).join('') + '</ul>' : '<div class="proxima vazia"><span>Nenhuma tarefa cadastrada</span></div>';
     var desde = DM.diasDesde(d.chegou), cont = !d.prazo ? 'Sem prazo cadastrado' : (function () { var n = DM.diasAte(d.prazo); return n < 0 ? 'Atrasada há ' + DM.plural(-n, 'dia') : n === 0 ? 'Vence hoje' : 'Faltam ' + DM.plural(n, 'dia'); })();
     return cab(esc(d.tipo + ' ' + d.num)) + (m.rec ? '<p class="data rec">Rascunho recuperado. Cancelar descarta as alterações.</p>' : '') + '<div class="m-cols"><div>' +
-      '<div class="fld"><label for="d-assunto">Assunto</label><input id="d-assunto" data-d="assunto" value="' + esc(d.assunto) + '"></div>' +
-      '<div class="dois"><div class="fld"><label for="d-num">Número</label><input id="d-num" data-d="num" value="' + esc(d.num) + '"></div><div class="fld"><label for="d-origem">Origem</label><input id="d-origem" data-d="origem" value="' + esc(d.origem) + '"></div></div>' +
-      '<div class="fld"><label for="d-descricao">Descrição (opcional)</label><textarea id="d-descricao" data-d="descricao" rows="4" placeholder="Explique do que se trata, sem sobrecarregar o assunto">' + esc(d.descricao || '') + '</textarea></div>' +
-      '<div class="fld"><label>Tipo de documento</label>' + opcoes('tipoDem', TIPOS, d.tipo) + '</div>' +
-      (temArea ? '<div class="fld"><label>Área (define a cor do card)</label>' + opcoes('areaDem', areas, areas.indexOf(d.area) > -1 ? d.area : 'Geral') + '</div>' : '') +
-      '<div class="dois"><div class="fld"><label for="d-chegou">Chegou em</label><input id="d-chegou" data-d="chegou" type="date" value="' + curtoParaIso(d.chegou) + '"></div><div class="fld"><label>Tipo de prazo</label>' + opcoes('prazoTipoDem', ['Legal', 'Próprio'], d.prazoTipo) + '</div></div>' +
-      '<div class="fld"><label for="d-prazo">Prazo (opcional)</label><div class="add-t"><input id="d-prazo" data-d="prazo" type="date" value="' + (d.prazo ? curtoParaIso(d.prazo) : '') + '">' +
-      '<button class="btn mini" type="button" data-act="sugerir-prazo-d">Sugerir ' + E.sugestaoPrazo + ' dias</button>' + (d.prazo ? '<button class="btn mini" type="button" data-act="limpar-prazo-d">Sem prazo</button>' : '') + '</div><span class="data">' + cont + '</span></div>' +
-      '<div class="fld"><label for="d-etapa">Etapa</label><select id="d-etapa" data-d="etapa">' + DM.ETAPAS.map(function (e) { return '<option' + (e === d.etapa ? ' selected' : '') + '>' + e + '</option>'; }).join('') + '</select></div>' +
-      (d.etapa === 'Aguardando retorno' ? '<div class="dois"><div class="fld"><label for="d-setor">Setor</label><input id="d-setor" data-d="setor" value="' + esc(d.setor || '') + '"></div><div class="fld"><label for="d-ac">Acompanhar em</label><input id="d-ac" data-d="acompanhar" type="date" value="' + curtoParaIso(d.acompanhar || '24/10') + '"></div></div>' : '') +
-      '</div><div><h4>Tarefas <small class="data">toque no texto para alterar</small></h4>' + tar + '<div class="add-t"><input id="m-nt" data-v="nt" placeholder="Nova tarefa" aria-label="Nova tarefa" value="' + esc(m.v.nt || '') + '"><button class="btn mini" data-act="add-tarefa-m">' + ic('plus') + 'Adicionar</button></div>' +
-      '<div class="meta"><div>Chegou em<b>' + d.chegou + '</b></div><div>' + (fin && d.concluido ? 'Resolvida em' : 'Desde a chegada') + '<b>' + (fin && d.concluido ? Math.max(0, desde - DM.diasDesde(d.concluido)) : desde) + ' d</b></div></div>' +
-      '<p class="data">O percentual mede só as tarefas. Concluir todas não muda a etapa sozinho.</p></div></div>' +
+      grp('Identificação', '<div class="fld"><label for="d-assunto">Assunto</label><input id="d-assunto" data-d="assunto" value="' + esc(d.assunto) + '"></div>' +
+        '<div class="dois"><div class="fld"><label for="d-num">Número</label><input id="d-num" data-d="num" value="' + esc(d.num) + '"></div><div class="fld"><label for="d-origem">Origem</label><input id="d-origem" data-d="origem" value="' + esc(d.origem) + '"></div></div>' +
+        '<div class="fld"><label>Tipo de documento</label>' + opcoes('tipoDem', TIPOS, d.tipo) + '</div>' +
+        (temArea ? '<div class="fld"><label>Área (define a cor do card)</label>' + opcoes('areaDem', areas, areas.indexOf(d.area) > -1 ? d.area : 'Geral') + '</div>' : '')) +
+      grp('Descrição', '<div class="fld"><label class="sr" for="d-descricao">Descrição (opcional)</label><textarea id="d-descricao" data-d="descricao" rows="5" placeholder="Explique do que se trata, sem sobrecarregar o assunto">' + esc(d.descricao || '') + '</textarea></div>', 'opcional') +
+      grp('Andamento', '<div class="fld"><label for="d-etapa">Etapa</label><select id="d-etapa" data-d="etapa">' + DM.ETAPAS.map(function (e) { return '<option' + (e === d.etapa ? ' selected' : '') + '>' + e + '</option>'; }).join('') + '</select></div>' +
+        (d.etapa === 'Aguardando retorno' ? '<div class="dois"><div class="fld"><label for="d-setor">Setor</label><input id="d-setor" data-d="setor" value="' + esc(d.setor || '') + '"></div><div class="fld"><label for="d-ac">Acompanhar em</label><input id="d-ac" data-d="acompanhar" type="date" value="' + curtoParaIso(d.acompanhar || '24/10') + '"></div></div>' : '')) +
+      '</div><div>' +
+      grp('Datas e prazo', '<div class="dois"><div class="fld"><label for="d-chegou">Chegou em</label><input id="d-chegou" data-d="chegou" type="date" value="' + curtoParaIso(d.chegou) + '"></div><div class="fld"><label>Tipo de prazo</label>' + opcoes('prazoTipoDem', ['Legal', 'Próprio'], d.prazoTipo) + '</div></div>' +
+        '<div class="fld"><label for="d-prazo">Prazo (opcional)</label><div class="add-t"><input id="d-prazo" data-d="prazo" type="date" value="' + (d.prazo ? curtoParaIso(d.prazo) : '') + '">' +
+        '<button class="btn mini" type="button" data-act="sugerir-prazo-d">Sugerir ' + E.sugestaoPrazo + ' dias</button>' + (d.prazo ? '<button class="btn mini" type="button" data-act="limpar-prazo-d">Sem prazo</button>' : '') + '</div></div>' +
+        '<div class="meta calc" role="group" aria-label="Calculado automaticamente"><div>Prazo<b>' + cont + '</b></div><div>' + (fin && d.concluido ? 'Resolvida em' : 'Desde a chegada') + '<b>' + (fin && d.concluido ? Math.max(0, desde - DM.diasDesde(d.concluido)) : desde) + ' d</b></div></div>') +
+      grp('Tarefas', tar + '<div class="add-t"><input id="m-nt" data-v="nt" placeholder="Nova tarefa" aria-label="Nova tarefa" value="' + esc(m.v.nt || '') + '"><button class="btn mini" data-act="add-tarefa-m">' + ic('plus') + 'Adicionar</button></div>' +
+        '<p class="data m-prog">' + (d.tarefas.length ? d.tarefas.filter(function (t) { return t.f; }).length + ' de ' + d.tarefas.length + ' concluídas (' + Math.round(100 * d.tarefas.filter(function (t) { return t.f; }).length / d.tarefas.length) + '%). ' : 'Nenhuma tarefa ainda. ') + 'O percentual mede só as tarefas. Concluir todas não muda a etapa sozinho.</p>', 'toque no texto para alterar') +
+      '</div></div>' +
       '<footer class="m-f">' + (m.conf ? '<span class="data">Excluir de vez? Não dá para desfazer.</span><button class="btn perigo" data-act="excluir-ok" data-id="' + d.id + '">' + ic('trash') + 'Confirmar exclusão</button>' : '<button class="btn mini" data-act="msg" data-m="Arquivar">' + ic('archive') + 'Arquivar</button><button class="btn mini" data-act="excluir" data-id="' + d.id + '">' + ic('trash') + 'Excluir</button>') +
       '<span class="esp"></span><button class="btn" data-act="cancelar-modal">Cancelar</button>' +
       (fin ? '<button class="btn" data-act="reabrir-m">Reabrir (volta para Fazendo)</button>' : '<button class="btn" data-act="concluir-m">' + ic('check') + 'Concluir demanda</button>') +

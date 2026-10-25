@@ -74,9 +74,7 @@
 /* ---------- cores por tipo: documentos neutros; processos e protocolos em tom pastel ---------- */
 .app[data-tema="claro"] { --cat-azul: hsl(212 80% 92%); --cat-verde: hsl(145 50% 89%); --cat-amar: hsl(48 92% 87%); }
 .app[data-tema="escuro"] { --cat-azul: hsl(212 28% 21%); --cat-verde: hsl(150 24% 19%); --cat-amar: hsl(46 34% 20%); }
-/* faixa do tipo: aparece só no card atrasado (fundo vermelho pastel), para o tipo continuar identificável */
-.app[data-tema="claro"] { --cat-azul-barra: hsl(212 75% 52%); --cat-verde-barra: hsl(145 55% 38%); --cat-amar-barra: hsl(44 90% 46%); }
-.app[data-tema="escuro"] { --cat-azul-barra: hsl(212 70% 62%); --cat-verde-barra: hsl(150 50% 52%); --cat-amar-barra: hsl(46 85% 56%); }
+/* fundo pastel do tipo de processo (no card atrasado vale o vermelho pastel, sem faixa lateral) */
 .app .face.front.cat-azul, .app .mini-card.cat-azul { background: linear-gradient(160deg, hsl(0 0% 98.8% / .14), transparent 40%), var(--cat-azul); }
 .app .face.front.cat-verde, .app .mini-card.cat-verde { background: linear-gradient(160deg, hsl(0 0% 98.8% / .14), transparent 40%), var(--cat-verde); }
 .app .face.front.cat-amar, .app .mini-card.cat-amar { background: linear-gradient(160deg, hsl(0 0% 98.8% / .14), transparent 40%), var(--cat-amar); }
