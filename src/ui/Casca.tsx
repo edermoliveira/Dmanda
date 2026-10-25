@@ -26,9 +26,9 @@ function Capsulas() {
       const a = app(); if (!a) return;
       GRUPOS.forEach(([cont, sel]) => a.querySelectorAll<HTMLElement>(cont).forEach((c, i) => {
         const chave = cont + i, s = c.querySelector<HTMLElement>(sel);
-        let t = c.querySelector<HTMLElement>(':scope > .thumb');
-        if (!s) { t?.remove(); delete anterior[chave]; return; }
-        if (!t) { t = document.createElement('i'); t.className = 'thumb'; c.insertBefore(t, c.firstChild); }
+        const t = c.querySelector<HTMLElement>(':scope > .thumb');
+        if (!s) { delete anterior[chave]; return; }
+        if (!t) return; // a cápsula é desenhada pelo React (não criar elementos aqui: isso quebraria a hidratação)
         const n: Ret = { l: s.offsetLeft, t: s.offsetTop, w: s.offsetWidth, h: s.offsetHeight }, ant = anterior[chave];
         const pos = { left: `${n.l}px`, top: `${n.t}px`, width: `${n.w}px`, height: `${n.h}px` };
         Object.assign(t.style, pos);
@@ -41,13 +41,18 @@ function Capsulas() {
     let quadro = 0;
     const agendar = (animar: boolean) => { cancelAnimationFrame(quadro); quadro = requestAnimationFrame(() => { atualizar(animar); obs.takeRecords(); }); };
     const obs = new MutationObserver((muts) => { if (muts.some((m) => !(m.target as HTMLElement).classList?.contains('thumb') && ![...m.addedNodes, ...m.removedNodes].every((n) => (n as HTMLElement).classList?.contains('thumb')))) agendar(true); });
+    // só começa depois da hidratação (mexer no DOM antes disso quebra a hidratação das peças que ainda não ficaram prontas)
+    let rz: ResizeObserver | null = null;
+    const iniciar = () => {
     const raiz = app();
     if (raiz) obs.observe(raiz, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-pressed', 'aria-current'] });
-    const rz = new ResizeObserver(() => agendar(false));
+    rz = new ResizeObserver(() => agendar(false));
     const frame = document.getElementById('frame'); if (frame) rz.observe(frame);
     void document.fonts?.ready.then(() => agendar(false));
     atualizar(false);
-    return () => { obs.disconnect(); rz.disconnect(); cancelAnimationFrame(quadro); };
+    };
+    const espera = setTimeout(iniciar, 1200);
+    return () => { clearTimeout(espera); obs.disconnect(); rz?.disconnect(); cancelAnimationFrame(quadro); };
   }, []);
   return null;
 }
@@ -93,6 +98,7 @@ function Interior({ children }: { children: ReactNode }) {
         style={{ '--fs': '16px', '--icn': '20px', '--cardh': '340px', '--font': 'var(--f-inter), system-ui, sans-serif', '--font-h': 'var(--f-inter), system-ui, sans-serif', '--font-ui': 'var(--f-inter), system-ui, sans-serif', '--font-n': 'var(--f-mono), ui-monospace, monospace' } as CSSProperties} suppressHydrationWarning>
         <div className="bg"><i className="bg-img" /></div>
         <aside className="side" aria-label="Menu">
+          <i className="thumb" aria-hidden="true" suppressHydrationWarning />
           <div className="logo">{LOGO}<span>Dmanda</span></div>
           {NAV.filter((n) => n[0] !== '/config').map(tbtn)}
           <div className="esp" />
@@ -112,6 +118,7 @@ function Interior({ children }: { children: ReactNode }) {
           {children}
         </main>
         <nav className="bar glass" aria-label="Navegação">
+          <i className="thumb" aria-hidden="true" suppressHydrationWarning />
           {[NAV[0], NAV[2]].map((n) => <button key={n[0]} className="bi" data-nav={n[3]} aria-current={ativo(caminho, n[0]) ? 'page' : undefined} onClick={ir(n[0])}><Icone nome={n[2]} extra="duo" />{n[1]}</button>)}
           <button className="mais-c" aria-label="Criar novo" aria-expanded={plus} onClick={() => setPlus((v) => !v)}><Icone nome="plus" /></button>
           <button className="bi" data-nav="agenda" aria-current={ativo(caminho, '/agenda') ? 'page' : undefined} onClick={ir('/agenda')}><Icone nome="nav-agenda" extra="duo" />Agenda</button>

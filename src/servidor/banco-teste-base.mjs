@@ -17,13 +17,13 @@ alter default privileges in schema public grant all on tables to anon, authentic
 alter default privileges in schema public grant execute on functions to anon, authenticated;
 `;
 
-export async function abrirBancoTeste({ pasta, raizMigracoes = join(process.cwd(), 'supabase', 'migrations') } = {}) {
+export async function abrirBancoTeste({ pasta, raizMigracoes = join(/*turbopackIgnore: true*/ process.cwd(), 'supabase', 'migrations') } = {}) {
   const db = pasta ? new PGlite(pasta) : new PGlite();
   await db.waitReady;
   const ja = await db.query("select to_regnamespace('auth') as a");
   if (!ja.rows[0].a) {
     await db.exec(PALCO);
-    for (const f of readdirSync(raizMigracoes).filter((x) => x.endsWith('.sql')).sort()) await db.exec(readFileSync(join(raizMigracoes, f), 'utf8'));
+    for (const f of readdirSync(/*turbopackIgnore: true*/ raizMigracoes).filter((x) => x.endsWith('.sql')).sort()) await db.exec(readFileSync(join(/*turbopackIgnore: true*/ raizMigracoes, f), 'utf8'));
   }
   return db;
 }

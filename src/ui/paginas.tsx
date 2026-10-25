@@ -95,6 +95,7 @@ export function PaginaDemandas() {
       <CabecaPagina titulo="Demandas" sub={`${plural(demandas.length, 'demanda')}, ${plural(nAt, 'atrasada')}. Do cadastro à conclusão.`} />
       <div className="toolbar">
         <div className="tabs" role="group" aria-label="Visão">
+          <i className="thumb" aria-hidden="true" suppressHydrationWarning />
           {VISOES.map(([v, nome, icone]) => <button key={v} data-v={v} aria-pressed={visao === v} aria-label={nome} onClick={() => setVisao(v)}><Icone nome={icone} /><span className="tx">{nome}</span></button>)}
         </div>
         <label className="filtro"><Icone nome="busca" /><input id="fq" placeholder={toque ? 'Filtrar demandas' : 'Filtrar demandas ( / )'} value={filtro.texto} aria-label="Filtrar demandas" autoComplete="off" onChange={(e) => setFiltro({ texto: e.target.value })} /></label>

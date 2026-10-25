@@ -12,7 +12,7 @@
     "capturar": "node scripts/capturar.mjs",
     "dev:teste": "node scripts/dev-teste.mjs",
     "testar:banco": "node scripts/testar-banco.mjs",
-    "testar:sessao": "node scripts/testar-sessao.mjs",
+    "testar:regras": "node scripts/testar-regras.mjs",
     "testar:app": "node scripts/testar-app.mjs"
   },
   "dependencies": {

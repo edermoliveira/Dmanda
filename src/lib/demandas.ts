@@ -93,18 +93,28 @@ export function ordenar(lista: Demanda[], coluna: Coluna, sentido: 1 | -1): Dema
   return [...lista].sort((a, b) => { const x = chave(a), y = chave(b); return (x < y ? -1 : x > y ? 1 : a.criado_em.localeCompare(b.criado_em)) * (x === y ? 1 : sentido); });
 }
 
-export const porGrupo = (lista: Demanda[], grupo: 'atrasadas' | 'hoje' | 'sete', hoje: string) =>
-  lista.filter((d) => {
-    if (d.etapa === 'Finalizado' || !d.prazo) return false;
-    const n = diasAte(d.prazo, hoje);
-    return grupo === 'atrasadas' ? n < 0 : grupo === 'hoje' ? n === 0 : n >= 0 && n <= 7;
-  });
-
-/** Foco do dia: até 3 demandas, atrasadas primeiro, depois hoje, depois os próximos 7 dias; prazo legal antes do próprio em cada faixa. */
-export function focoDoDia(lista: Demanda[], hoje: string): Demanda[] {
-  const ordem = (a: Demanda, b: Demanda) => (a.prazo_tipo === b.prazo_tipo ? (a.prazo ?? '').localeCompare(b.prazo ?? '') : a.prazo_tipo === 'Legal' ? -1 : 1);
-  const vistos = new Set<string>();
-  const out: Demanda[] = [];
-  for (const g of ['atrasadas', 'hoje', 'sete'] as const) for (const d of porGrupo(lista, g, hoje).sort(ordem)) if (!vistos.has(d.id) && out.length < 3) { vistos.add(d.id); out.push(d); }
-  return out;
+/** Data que conta para os filtros do Início: quem aguarda retorno só volta quando faltarem 3 dias (ou menos) para o acompanhamento; finalizada nunca conta; sem data, não é inventada. */
+export function dataFiltro(d: Demanda, hoje: string): string | null {
+  if (d.etapa === 'Finalizado') return null;
+  if (d.etapa === 'Aguardando retorno') return d.acompanhar_em && diasAte(d.acompanhar_em, hoje) <= 3 ? d.acompanhar_em : null;
+  return d.prazo ?? null;
 }
+
+export type GrupoInicio = 'atrasadas' | 'hoje' | 'sete';
+
+export function grupoFiltro(d: Demanda, hoje: string): GrupoInicio | null {
+  const c = dataFiltro(d, hoje);
+  if (!c) return null;
+  const n = diasAte(c, hoje);
+  return n < 0 ? 'atrasadas' : n === 0 ? 'hoje' : n <= 7 ? 'sete' : null;
+}
+
+/** Demandas de um grupo do Início, da data mais próxima para a mais distante; em empate, a que chegou há mais tempo primeiro. */
+export const porGrupo = (lista: Demanda[], grupo: GrupoInicio, hoje: string) =>
+  lista
+    .filter((d) => grupoFiltro(d, hoje) === grupo)
+    .sort((a, b) => diasAte(dataFiltro(a, hoje)!, hoje) - diasAte(dataFiltro(b, hoje)!, hoje) || diasDesde(b.chegou_em, hoje) - diasDesde(a.chegou_em, hoje));
+
+/** Foco do dia: até 3 demandas, atrasadas primeiro, depois hoje, depois os próximos 7 dias. */
+export const focoDoDia = (lista: Demanda[], hoje: string): Demanda[] =>
+  (['atrasadas', 'hoje', 'sete'] as const).flatMap((g) => porGrupo(lista, g, hoje)).slice(0, 3);
