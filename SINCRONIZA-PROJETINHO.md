@@ -56,6 +56,8 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 **Fechamento do design (24/10/2026):** design do protótipo aprovado pelo usuário, vinculado a `cd7b03f` (versão servida idêntica nos arquivos do protótipo); referência `catalyst-cd7b03f.json.gz` reutilizada. Pendências reais: teclado virtual em aparelho real, data própria por registro de Humor e Energia na implementação funcional, seleção dos demais ícones.
 
+**Ícones, primeiro grupo (24/10/2026):** Cards (`albums-outline`), Tabela (`grid-outline`) e Lista (`list-outline`) em Ionicons; Quadro pendente. Teste novo `testes/icones-visualizacoes.mjs` (41 ok, saída 0); `consolidacao` (22), `fluxos` (17) e `menu` (18) ok, saída 0. A verificação dos sete ícones do `consolidacao` agora ignora a barra de ferramentas, que tem teste próprio. Referência visual não regravada.
+
 **Pendências do usuário:** (1) avaliar visualmente este bloco (Catalyst único, 7 ícones, Mostrar menu); (2) selecionar os símbolos Ionicons dos demais ícones; (3) ajuste do iPad vertical corrigido em 24/10/2026 e revisão visual do mesmo dia implementada (ver bloco acima), ambos só aguardam a sua avaliação; (4) ferramentas (Impeccable já instalada), um assunto por vez; (5) merge na main, se quiser.
 
 **Lembretes de máquina:** no trabalho o computador ficou com pouca memória (Chrome do usuário ocupa muita). O `clicar-tudo.mjs` agora usa flags que poupam memória; rodar uma combinação por vez. Não rodar a suíte inteira de uma vez.

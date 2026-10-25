@@ -247,10 +247,10 @@
     return estado.vis === 'cards' ? '<div class="cards">' + l.map(cardHTML).join('') + '</div>' : estado.vis === 'quadro' ? quadro() : estado.vis === 'tabela' ? tabela() : lista();
   }
   function demandas() {
-    var V = [['cards', 'Cards', 'view-grid'], ['quadro', 'Quadro', 'columns'], ['tabela', 'Tabela', 'table'], ['lista', 'Lista', 'list']];
+    var V = [['cards', 'Cards', 'vis-cards'], ['quadro', 'Quadro', 'columns'], ['tabela', 'Tabela', 'vis-tabela'], ['lista', 'Lista', 'vis-lista']];
     var nAt = DEMANDAS.filter(atrasada).length;
     return '<div class="toolbar"><div class="tabs" role="group" aria-label="Visão">' + V.map(function (v) {
-      return '<button data-act="vis" data-v="' + v[0] + '" aria-pressed="' + (estado.vis === v[0]) + '" aria-label="' + v[1] + '">' + ic(v[2] === 'view-grid' ? 'layout-grid' : v[2]) + '<span class="tx">' + v[1] + '</span></button>';
+      return '<button data-act="vis" data-v="' + v[0] + '" aria-pressed="' + (estado.vis === v[0]) + '" aria-label="' + v[1] + '">' + ic(v[2]) + '<span class="tx">' + v[1] + '</span></button>';
     }).join('') + '</div><label class="filtro">' + ic('search') + '<input id="fq" placeholder="' + (estado.dev === 'phone' || estado.dev === 'tablet-v' ? 'Filtrar demandas' : 'Filtrar demandas ( / )') + '" value="' + esc(estado.q) + '" aria-label="Filtrar demandas" autocomplete="off"></label>' +
       '<button class="btn gl" data-act="atras" aria-pressed="' + estado.soAtras + '" aria-label="Só atrasadas">' + ic('clock') + '<span class="tx">Só atrasadas' + (nAt ? ' ' + nAt : '') + '</span></button>' +
       '<button class="btn gl" data-act="msg" data-m="Filtros: prazo, origem, tipo" aria-label="Filtros">' + ic('filter') + '<span class="tx">Filtros</span></button>' +
