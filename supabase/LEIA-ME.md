@@ -95,18 +95,26 @@ A ordem importa: faça o Google Cloud primeiro, depois o painel do Supabase. Nã
    - **URIs de redirecionamento autorizados:** `https://gmxoosvgfcydccyeudej.supabase.co/auth/v1/callback`
 5. Copie o **ID do cliente** e a **chave secreta** (só para colar no passo 2).
 
-**2. Painel do Supabase** (`https://supabase.com/dashboard/project/gmxoosvgfcydccyeudej`):
-1. **Authentication > Sign In / Providers > Google:** ative, cole o ID do cliente e a chave secreta, deixe "Skip nonce checks" desligado e salve.
-2. Na mesma tela, **desative o provedor Email** e mantenha o acesso anônimo desligado. Mantenha "Allow new users to sign up" **ligado até o seu primeiro login**; o hook já impede cadastros de outras contas.
-3. **Authentication > URL Configuration:** "Site URL" = `http://localhost:7100`; em "Redirect URLs" adicione `http://localhost:7100/auth/callback`. (O retorno do Google para o Supabase é o endereço `.../auth/v1/callback` do passo anterior; o retorno do Supabase para o aplicativo é `/auth/callback` na porta 7100. São duas coisas diferentes.)
-4. **Authentication > Auth Hooks** (ou "Hooks"): "Add a new hook" > **Before User Created** > tipo **Postgres function** > esquema `public`, função `hook_antes_criar_usuario` > crie e **ative**. O painel concede sozinho a execução ao papel do Auth.
-5. **Project Settings > API Keys > Secret keys > "default":** revele e copie a chave. Cole no `.env.local`, na linha `SUPABASE_SERVICE_ROLE_KEY=` (sem aspas), e salve.
+**2. Painel do Supabase** (`https://supabase.com/dashboard/project/gmxoosvgfcydccyeudej`). **A ordem importa: o hook vem antes do provedor Google**, para que nenhum cadastro aconteça sem a trava.
+1. **Authentication > Auth Hooks** (ou "Hooks"): "Add a new hook" > **Before User Created** > tipo **Postgres function** > esquema `public`, função `hook_antes_criar_usuario` > crie e **ative**. O painel concede sozinho a execução ao papel do Auth.
+2. **Avise o assistente.** Ele confere a ativação pela CLI, em leitura, antes de você prosseguir (`config pull` numa pasta temporária; `[auth.hook.before_user_created]` deve aparecer com `enabled = true` e `uri = "pg-functions://postgres/public/hook_antes_criar_usuario"`).
+3. **Authentication > Sign In / Providers > Google:** ative, cole o ID do cliente e a chave secreta, deixe "Skip nonce checks" desligado e salve.
+4. Na mesma tela, **desative o provedor Email** e mantenha o acesso anônimo desligado. Mantenha "Allow new users to sign up" **ligado até o seu primeiro login**; o hook já impede cadastros de outras contas.
+5. **Authentication > URL Configuration:** "Site URL" = `http://localhost:7100`; em "Redirect URLs" adicione `http://localhost:7100/auth/callback`. (O retorno do Google para o Supabase é o endereço `.../auth/v1/callback` do passo anterior; o retorno do Supabase para o aplicativo é `/auth/callback` na porta 7100. São duas coisas diferentes.)
+6. **Project Settings > API Keys > Secret keys > "default":** revele e copie a chave (começa com `sb_secret_`). Cole no `.env.local`, na linha `SUPABASE_SERVICE_ROLE_KEY=` (sem aspas), e salve. Ver "Chave secreta" abaixo.
 
 **3. Depois, no terminal da sessão:** pare o servidor de teste e rode `npm run dev`; o assistente então valida com você o primeiro login, o segundo acesso e a rejeição de outra conta. Depois do primeiro login bem-sucedido, em Authentication > Sign In / Providers, desligue "Allow new users to sign up" (proteção extra).
 
+## Chave secreta (`sb_secret_...`) e o que o papel de serviço pode
+
+- **Formato:** a chave nova do Supabase **não é um JWT** (começa com `sb_secret_`). O código a trata como texto opaco: `src/servidor/banco.ts` só a repassa a `createClient` do `@supabase/supabase-js` (versão instalada 2.118, que reconhece o prefixo e a envia no cabeçalho `apikey`). Nada no código a decodifica nem a valida como JWT. O nome da variável continua `SUPABASE_SERVICE_ROLE_KEY` (a chave "default" mapeia para o papel `service_role`). Chaves antigas no formato JWT (`eyJ...`) também funcionariam, mas não são necessárias.
+- **Onde fica:** só no servidor (`.env.local` e, depois, variáveis da Vercel). Nunca em `NEXT_PUBLIC`, nunca no navegador, no Git, em Issues ou no chat.
+- **Restrição real no banco (conferida no banco real em 25/10/2026, por `has_table_privilege` e `has_function_privilege`):** `service_role` tem `BYPASSRLS`, não faz login direto no Postgres, **não** tem select, insert, update nem delete em nenhuma tabela de `public`, **não** tem uso do esquema `dmanda_privado` e só executa duas funções: `rotina_diaria()` e `registrar_falha_rotina(text)`. Pela Data API (PostgREST), portanto, a chave só consegue chamar essas duas funções. Isso é restrição de privilégio, não apenas "a rota só chama essas duas".
+- **O que os GRANTs não restringem:** (1) `service_role` mantém `TRUNCATE`, `REFERENCES` e `TRIGGER` nas tabelas por padrão da plataforma, mas a Data API não expõe esses comandos e o papel não faz login direto; (2) a chave secreta vale também para as APIs administrativas do próprio Supabase (por exemplo, a administração de usuários do Auth), que não dependem dos GRANTs do nosso esquema. Por isso a chave é tratada como credencial de administração: só no servidor, rotacionável no painel, e nunca exposta. Se for desejado, uma migração nova pode retirar `TRUNCATE`, `REFERENCES` e `TRIGGER` do papel; não foi feita por não alterar o alcance da Data API.
+
 ## Validação feita no Supabase real (25/10/2026)
 
-Feita com a CLI, em transações sempre desfeitas, com JWTs simulados no nível do banco (**não** é um login real):
+Feita com a CLI, como **SQL no banco real com contextos de autenticação simulados** (JWTs simulados em transações sempre desfeitas). **Não comprova o login Google real**, nem o hook ativo no painel:
 
 - Esquema remoto antes: vazio (sem tabelas, sem usuários, sem migrações). Depois: 5 migrações registradas, 4 tabelas com RLS, 1 tabela privada com RLS e sem política.
 - Security Advisor: sem problemas.
@@ -115,7 +123,7 @@ Feita com a CLI, em transações sempre desfeitas, com JWTs simulados no nível 
 - Mesma conta por outro provedor: vê zero.
 - Visitante (anon): sem acesso a funções, tabelas nem à lista protegida.
 - Usuário logado: não executa a rotina nem lê a lista protegida.
-- Papel de serviço: executa só a rotina e o registro de falha, gravou o resumo e a execução, e não toca as demandas diretamente.
+- Papel de serviço: pelos GRANTs, executa só a rotina e o registro de falha e não lê nem grava as tabelas diretamente (ver "Chave secreta" para o que os GRANTs não cobrem). Gravou o resumo e a execução.
 - Hook: libera a conta autorizada pelo Google; recusa (403) outra conta, a mesma conta por e-mail e senha, anônimo e sem e-mail; só o papel do Auth o executa.
 - Nenhum dado de teste ficou no banco (0 usuários, 0 demandas, 0 execuções depois).
 

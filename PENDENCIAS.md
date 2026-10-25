@@ -1,31 +1,30 @@
 # Pendências do Dmanda
 
-Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 25/10/2026 (Supabase real criado e migrado). O que está depois de "Histórico" é anterior a esta data e pode estar superado pelas decisões em `DECISOES.md` e pelo estado descrito no `CLAUDE.md`.
+Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 25/10/2026.
 
-## Aguardando o usuário (uma rodada)
+**Desde 25/10/2026 as tarefas, o estado, os bloqueios e os critérios de conclusão ficam nas GitHub Issues** (repositório privado edermoliveira/Dmanda). Este arquivo é só um índice curto e o histórico. Decisões duradouras continuam em `DECISOES.md`; ambiente e retomada, em `SINCRONIZA-PROJETINHO.md`. Uma Issue só é fechada quando os seus critérios são atendidos, incluindo a avaliação do usuário quando ela faz parte.
 
-O projeto Supabase **Dmanda** existe, está vinculado e migrado (5 migrações aplicadas e validadas no banco real). O que falta para validar o login de verdade depende de você, nesta ordem (passo a passo com os endereços exatos em `supabase/LEIA-ME.md`, seção "Passo a passo do login Google"):
+## Marco "Base real e primeiro uso"
 
-1. **No Google Cloud (navegador):** criar o ID de cliente OAuth do tipo "Aplicativo da Web" com origem `http://localhost:7100` e redirecionamento `https://gmxoosvgfcydccyeudej.supabase.co/auth/v1/callback`, com a conta autorizada como usuário de teste e só os escopos básicos.
-2. **No painel do Supabase (navegador):** ativar o provedor Google com o ID e a chave secreta, desativar o provedor Email, configurar Site URL e Redirect URL, **ativar o hook Before User Created** (`public.hook_antes_criar_usuario`) e copiar a chave secreta (Project Settings > API Keys) para o `SUPABASE_SERVICE_ROLE_KEY=` do `.env.local` (arquivo local, nunca no chat).
-3. **Depois, avisar o assistente.** Ele sobe `npm run dev` e valida com você o primeiro login, o segundo acesso e a rejeição de outra conta.
-4. **Conferir a aplicação** (hoje no ar em modo de teste, não é o Supabase): http://localhost:7100 e, só para comparar, http://127.0.0.1:7200. Roteiro curto: Início, as quatro visões de Demandas, abrir e editar uma demanda, tarefas, o menu Mover, celular e iPad. A aprovação visual do protótipo continua válida; esta conferência verifica a fidelidade e os fluxos. Ainda não há aprovação visual da aplicação React.
-5. **`.env.example`:** o assistente não tem permissão para editá-lo. O modelo (valores fictícios) está em `supabase/LEIA-ME.md`; conferir o arquivo ou liberar a edição.
-6. **Cópia privada dos dados reais (pendência explícita):** o GitHub não guarda dados e o plano gratuito do Supabase não tem os backups gerenciados dos planos pagos, mas permite exportação lógica. Falta decidir mecanismo e destino (proposta no `supabase/LEIA-ME.md`).
-7. **Vercel (fora deste bloco):** confirmar se o plano **Hobby** serve (uso pessoal e não comercial; a documentação inclui "funcionário pago que escreve o código" como uso comercial) e criar ou indicar o projeto ligado ao GitHub. **Nada será contratado sem a sua decisão.**
+https://github.com/edermoliveira/Dmanda/milestone/1
 
-## Próximo passo técnico após a sua resposta
+| Issue | Tarefa | Quem bloqueia |
+|---|---|---|
+| [#1](https://github.com/edermoliveira/Dmanda/issues/1) | Concluir login Google e integração real com Supabase | Usuário: Google Cloud e painel do Supabase (passo a passo em `supabase/LEIA-ME.md`) |
+| [#2](https://github.com/edermoliveira/Dmanda/issues/2) | Conferir a aplicação React nos dispositivos | Usuário: avaliação visual e teste em aparelho real |
+| [#3](https://github.com/edermoliveira/Dmanda/issues/3) | Publicar o aplicativo e ativar a rotina diária | Depende da #1 e da decisão do usuário sobre hospedagem e plano |
+| [#4](https://github.com/edermoliveira/Dmanda/issues/4) | Implantar cópia privada dos dados | Usuário: mecanismo e destino |
 
-Validar com login Google real: primeiro acesso (usuário interno criado no primeiro login autorizado), acessos seguintes, rejeição de outra conta, expiração de 6 h, cadastro e edição de demandas e tarefas, mudança de etapa, persistência depois de recarregar, consistência das quatro visões e leitura direta do banco; chamada manual autenticada da rotina diária com leitura do resultado gravado. Depois, na fase da Vercel: `CRON_SECRET` e chave de serviço nas variáveis, agendamento e primeira execução automática. Só então reavaliar o `ANDAMENTO.md`.
+Etiquetas: `bug`, `funcionalidade`, `acabamento`, `em-andamento`, `aguarda-usuario`. Nos commits, referenciar o número real (por exemplo, "#1"), sem fechamento automático.
 
-## Em aberto, sem bloquear
+## Fora das Issues por enquanto
 
+- **`.env.example`:** o assistente não tem permissão para editá-lo. O modelo (valores fictícios) está em `supabase/LEIA-ME.md`.
 - **Ícones restantes** (revisão consolidada, `INVENTARIO-ICONES.md`). O Quadro mantém `columns` como exceção provisória.
-- **Teclado virtual em aparelho real:** o rodapé do formulário no celular só foi testado em emulação.
 - **Humor e Energia:** cada registro terá a sua própria data, preservada ao editar (requisito da implementação funcional).
-- **Referência visual ampliada** do protótipo e comparação de telas da aplicação real, depois da sua avaliação.
-- **Itens de decisão antigos** (GitHub Issues, Open Notebook, direção iPhone e iPad, PNGs do Figma, padrões do Catalyst): seguem sem resposta. Ver o histórico abaixo e `SINCRONIZA-PROJETINHO.md`, seção 3.
-- **Fora desta etapa, continuam no planejamento:** Entradas, Agenda, Documentos, IA, Configurações, Perfil, busca global, Google Calendar e Drive, notificações, PWA e app nativo. Não iniciar antes da base real validada e da sua avaliação.
+- **Referência visual ampliada** do protótipo e comparação de telas da aplicação real, depois da avaliação do usuário.
+- **Itens de decisão antigos** (Open Notebook, direção iPhone e iPad, PNGs do Figma, padrões do Catalyst): seguem sem resposta. Ver o histórico abaixo e `SINCRONIZA-PROJETINHO.md`, seção 3.
+- **Módulos futuros** (Entradas, Agenda, Documentos, IA, Configurações, Perfil, busca global, Google Calendar e Drive, notificações, PWA e app nativo): ficam no planejamento (`FUNCIONALIDADES.md`). Uma Issue por bloco é criada quando ele entrar em execução. Não iniciar antes da base real validada e da avaliação do usuário.
 
 ## Como continuar em outro computador
 
@@ -41,7 +40,7 @@ Validar com login Google real: primeiro acesso (usuário interno criado no prime
 Nada abaixo foi decidido pelo Claude. O detalhe de cada item está em `SINCRONIZA-PROJETINHO.md`, seção 3.
 
 **Decisões**
-1. **GitHub Issues:** aprovar (ou ajustar) a proposta de etiquetas, marcos e uso nos commits, e dizer "pode criar". Nada foi criado ainda.
+1. **GitHub Issues:** adotado e configurado em 25/10/2026 (marco, cinco etiquetas e as Issues #1 a #4; ver o início deste arquivo).
 2. **Skills de design:** o Claude recomenda a **Impeccable** (melhor encaixe, pode substituir a Taste skill). Decidir se instala, quando, e se testa Transitions.dev, Playwright CLI, Ponytail e Claude Design. Avaliação em `ANALISE-FERRAMENTAS.md`, seção 11.5. Nada foi instalado.
 3. **no-ai-slop** (skill de texto, só em inglês): instalar como está, criar versão em português no projeto, ou não usar. Seção 11.1.
 4. **Open Notebook:** o Claude avaliou que não serve como IA do sistema. Confirmar a conclusão. Seção 11.2.

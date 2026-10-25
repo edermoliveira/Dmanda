@@ -13,7 +13,7 @@ Desenvolvido no computador e publicado na Vercel (com login Google restrito à c
 - **Supabase real:** projeto Dmanda (`gmxoosvgfcydccyeudej`, São Paulo) criado, vinculado, com as 5 migrações aplicadas e a segurança do banco validada nele (RLS, privilégios, conta única, rotina só do papel de serviço, hook). Acesso exclusivo à conta autorizada em três camadas (hook de cadastro, servidor, RLS). Detalhes em `supabase/LEIA-ME.md`.
 - **Ainda não validado:** login Google real (Google Cloud e painel do Supabase são ações do usuário), hook ativo no painel, persistência pela interface com sessão real, publicação na Vercel e primeira execução automática da rotina. Sem isso, não declarar integração remota concluída; testes só do PGlite nunca substituem o Supabase real.
 - **Ícones:** escolhidos e implementados (Ionicons outline 8.0.13): os sete do menu, Cards, Tabela, Lista, busca, filtros, ordenação e expansão. Os restantes ficam para uma revisão consolidada e não bloqueiam funcionalidades. O Quadro mantém `columns` como exceção provisória.
-- Retomada detalhada: seção "Retomada rápida" no topo de `SINCRONIZA-PROJETINHO.md`. Pendências do usuário: `PENDENCIAS.md`.
+- Retomada detalhada: seção "Retomada rápida" no topo de `SINCRONIZA-PROJETINHO.md`. Tarefas, estado e bloqueios: **GitHub Issues** (marco "Base real e primeiro uso", #1 a #4); `PENDENCIAS.md` é só o índice com links.
 
 ## Como rodar
 
@@ -41,7 +41,7 @@ Estes testes validam a lógica e a interface no banco de **teste**. Não substit
 ## Documentos do projeto
 
 - DECISOES.md: **fonte mais recente.** Se algo divergir, vale este arquivo.
-- PENDENCIAS.md: o que aguarda o usuário. SINCRONIZA-PROJETINHO.md: retomada e histórico das sessões.
+- GitHub Issues (repositório privado): controle operacional das tarefas, estado, bloqueios e critérios de conclusão. PENDENCIAS.md: índice curto com links e histórico. SINCRONIZA-PROJETINHO.md: ambiente e retomada das sessões.
 - PRODUTO.md (o que o sistema tem), FUNCIONALIDADES.md (mapa por tela e etapas de construção), ANDAMENTO.md (cálculo do percentual).
 - PESQUISA.md (dores do usuário), REFERENCIAS.md (organização das informações, não o visual), QUESTIONARIO.md (já respondido), ANALISE-FERRAMENTAS.md, INVENTARIO-ICONES.md.
 - supabase/LEIA-ME.md: Supabase, Vercel, rotina diária e proteção dos dados reais.
@@ -98,6 +98,7 @@ São regras de trabalho. A configuração de plugins do projeto está em `.claud
 - **Blocos maiores:** início, fim e entrega verificada. No fim de cada bloco, informar o percentual, o que depende do usuário e sugerir modelo e effort do próximo (quem troca é o usuário).
 - **Verificação proporcional:** rodar só as verificações dos componentes afetados pela mudança (por exemplo, `testar:app` para a interface funcional, `testar:banco` para migrações, `prototipo/CLAUDE.md` para mudanças no protótipo). Repetir suíte extensa só com alteração ou dúvida que justifique. Não declarar concluído sem rodar a verificação e conferir o resultado.
 - **Navegador de verdade:** telas novas são testadas clicando, trocando tema e largura, não só por captura. Servir o protótipo por http (o Playwright bloqueia `file://`). Capturas minhas não valem como aprovação visual do usuário.
+- **Issues:** ao iniciar um bloco, consultar as Issues abertas (`gh issue list -R edermoliveira/Dmanda`). Criar uma Issue por bloco quando ele entrar em execução. Referenciar o número real nos commits ("#1"), sem fechamento automático; fechar só quando os critérios forem atendidos, incluindo a avaliação do usuário quando fizer parte. Nada de credenciais, e-mail pessoal, dados reais ou conteúdo do `.env.local` nas Issues; não mencionar nem atribuir outras pessoas.
 - **Git:** `git push` só com autorização do usuário (vale para o bloco e a branch indicados; nunca na main, nunca force push, nunca reescrever histórico publicado). Para confirmar o backup, comparar o commit local com a **branch correspondente no remoto** (`git ls-remote origin refs/heads/<branch>`), nunca com `origin/main`. Revisar arquivos novos e segredos antes de commitar. Ao encerrar uma sessão, atualizar a retomada em `SINCRONIZA-PROJETINHO.md`, a memória local e fazer o commit.
 - **Ação do usuário fora do Claude Code** (comando no PowerShell, site do Supabase, da Vercel, do GitHub, outro programa): avisar sempre, em negrito, dizendo onde e o que fazer. Não pedir senha, token privado nem conteúdo do `.env.local` no chat.
 - Ao instalar plugins, skills ou MCPs a pedido do usuário, informar o que ficou instalado, o escopo (usuário ou projeto) e que o outro computador precisa repetir a instalação.

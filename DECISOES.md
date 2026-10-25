@@ -293,3 +293,13 @@ Esta avaliação acrescenta alterações específicas; não é aprovação integ
 5. **Migração da plataforma:** `public.rls_auto_enable()` teve a execução pública revogada (migração 5) para limpar o aviso do Security Advisor; o RLS automático foi conferido depois.
 6. **Chaves:** a chave pública (publishable) vai no `.env.local`. A chave secreta (`SUPABASE_SERVICE_ROLE_KEY`) só no servidor e é colada pelo usuário; o assistente não a lê nem a imprime. Não há publicação na Vercel neste bloco.
 7. **Backup:** o plano gratuito não tem os backups gerenciados dos planos pagos, mas permite exportação lógica. A cópia privada continua pendência explícita até haver mecanismo e destino.
+
+## Decisões de 25/10/2026 (GitHub Issues como controle operacional)
+
+1. **Adotado** no repositório privado edermoliveira/Dmanda, com o `gh` já autenticado. Issues já estava habilitado; visibilidade e acessos não foram alterados. Sem GitHub Projects, automações, workflows nem plugins novos.
+2. **Organização:** marco "Base real e primeiro uso"; etiquetas `bug`, `funcionalidade` (renomeada a partir de `enhancement`, para não duplicar), `acabamento`, `em-andamento` e `aguarda-usuario`. Issues #1 a #4: login Google e integração real, conferência da aplicação React, publicação e rotina diária, cópia privada dos dados.
+3. **Papéis dos documentos:** as Issues controlam tarefas, estado, bloqueios e critérios de conclusão. `DECISOES.md` registra decisões duradouras. `SINCRONIZA-PROJETINHO.md` registra ambiente e retomada. `PENDENCIAS.md` é só um índice curto com links, mais o histórico.
+4. **Uso:** ao iniciar um bloco, consultar as Issues; criar uma Issue por bloco quando ele entrar em execução (módulos futuros ficam no planejamento); referenciar os números reais nos commits; fechar uma Issue só quando os critérios forem atendidos, incluindo a avaliação do usuário quando ela fizer parte. Nada de encerramento automático por palavra-chave.
+5. **Conteúdo proibido nas Issues:** credenciais, o e-mail pessoal, dados reais de demandas e conteúdo do `.env.local`; não mencionar nem atribuir outras pessoas.
+6. **Chave secreta (`sb_secret_...`):** aceita pelo código sem alteração (texto opaco entregue ao `createClient`, enviada no cabeçalho `apikey`, nunca tratada como JWT, só no servidor). Os GRANTs do papel de serviço foram conferidos no banco real: a restrição às duas funções da rotina é real para a Data API, mas a chave também vale para APIs administrativas do Supabase e o papel mantém `TRUNCATE`, `REFERENCES` e `TRIGGER` por padrão da plataforma. Ver `supabase/LEIA-ME.md`.
+7. **Ordem no painel do Supabase:** o hook Before User Created é ativado e conferido pela CLI **antes** de ativar o provedor Google e antes do primeiro login.
