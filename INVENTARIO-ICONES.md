@@ -8,7 +8,7 @@ Todos os nomes abaixo vêm hoje do **Iconoir** (padrão). O Lucide é a alternat
 
 ## Visualização e filtros de Demandas
 
-**Andamento da seleção:** feitos Cards, Tabela e Lista (SVGs oficiais em `prototipo/icones-nav/originais/`, chaves `vis-cards`, `vis-tabela`, `vis-lista`, iguais com Iconoir ou Lucide). Quadro pendente. **Os demais grupos abaixo (filtros e busca, ações, prazo e tempo, tipos de evento, topo e menu, conteúdo, IA e Perfil) ainda aguardam escolha.**
+**Andamento da seleção:** feitos e **aprovados em `dd1b340`** Cards, Tabela e Lista (SVGs oficiais em `prototipo/icones-nav/originais/`, chaves `vis-cards`, `vis-tabela`, `vis-lista`, iguais com Iconoir ou Lucide). Quadro pendente (exceção provisória: mantém `columns`, sem bloquear os outros grupos). **Os demais grupos abaixo (filtros e busca, ações, prazo e tempo, tipos de evento, topo e menu, conteúdo, IA e Perfil) ainda aguardam escolha.**
 
 | Função | Nome atual | Onde aparece | Reuso |
 |---|---|---|---|

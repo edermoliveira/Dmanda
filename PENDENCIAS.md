@@ -82,3 +82,4 @@ O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês
 - **Seleção dos demais ícones Ionicons:** continua pendente da sua escolha (inventário em `INVENTARIO-ICONES.md`).
 - **Design do protótipo aprovado em 24/10/2026 (commit `cd7b03f`).** Continuam abertas: teclado virtual em aparelho real, data própria por registro na implementação funcional e seleção dos demais ícones (aguarda a escolha do usuário).
 - **Ícones:** feitos Cards, Tabela e Lista (aguardam sua avaliação visual). Quadro pendente (nenhum ícone do Ionicons comunica colunas ou Kanban; decisão sua). Demais grupos do `INVENTARIO-ICONES.md` aguardam escolha.
+- **Ícones:** Cards, Tabela e Lista aprovados em `dd1b340`. Quadro mantém `columns` como exceção provisória (migração pendente, sem bloquear os outros grupos). Próximo grupo em escolha: busca, filtros e ordenação.
