@@ -1,6 +1,6 @@
 # Supabase, Vercel e rotina diária do Dmanda
 
-**Estado (25/10/2026):** o projeto Supabase **Dmanda** existe, está vinculado a esta pasta e **as 5 migrações foram aplicadas no banco real**. A segurança do banco foi validada nele com JWTs simulados dentro de transações desfeitas. **Ainda não validados:** o login Google de verdade (depende do Google Cloud e do painel do Supabase, ações suas), o hook de cadastro ativo no painel, a gravação pela interface com sessão real, a publicação na Vercel e o agendamento.
+**Estado (26/10/2026):** o projeto Supabase **Dmanda** existe, está vinculado ao computador de casa e **as 5 primeiras migrações estão aplicadas no banco real**. Nova orientação do usuário (26/10/2026): entrar por **e-mail e senha** (Supabase Auth), sem depender do Google. O código, o hook e a RLS já aceitam os dois (migração 6 **escrita e testada em banco local, ainda não aplicada no banco real**). **Ainda não validados no Supabase real:** a migração 6, a entrada por senha, a publicação na Vercel e o agendamento. Veja "Entrada por e-mail e senha" e `AUDITORIA.md`.
 
 ## O projeto
 
@@ -15,18 +15,18 @@
 
 A CLI oficial (`npx supabase`, sem instalação global) está autenticada neste computador por login seu. O assistente a usa só neste projeto: `migration list`, `db push`, `db query --linked`, `db advisors`. Nunca `db reset`.
 
-## Quem faz o quê
+## Quem faz o quê (entrada por senha, 26/10/2026)
 
-| Etapa | Quem | Onde | Estado |
+| # | Etapa | Quem | Onde |
 |---|---|---|---|
-| Criar o projeto | usuário | site do Supabase | feito |
-| Aplicar as migrações e conferir o banco | Claude (CLI) | Supabase | feito |
-| Cadastrar a conta autorizada na lista protegida | Claude (CLI) | banco | feito |
-| Criar `.env.local` com URL, chave pública, conta autorizada e `CRON_SECRET` | Claude | computador | feito (sem exibir valores) |
-| **Preencher `SUPABASE_SERVICE_ROLE_KEY` no `.env.local`** | **usuário** | painel do Supabase e arquivo local | pendente |
-| **Login Google (Google Cloud + painel do Supabase) e hook de cadastro** | **usuário** | ver "Passo a passo" abaixo | pendente |
-| Validar o login real, o primeiro acesso, o segundo acesso e a rejeição de outra conta | Claude, com o usuário entrando | `http://localhost:7100` | depois do passo anterior |
-| Projeto da Vercel, variáveis e agendamento | usuário e Claude | site da Vercel | depois, fora deste bloco |
+| 1 | Criar `.env.local` (copiar `.env.example`) e preencher URL, chave pública, e-mail autorizado, `SUPABASE_SERVICE_ROLE_KEY` e `CRON_SECRET` | **usuário** | computador, no PowerShell, sem colar valores no chat |
+| 2 | `npx supabase login` e `npx supabase link --project-ref gmxoosvgfcydccyeudej` (neste computador ainda não há login) | **usuário** | PowerShell (`! npx supabase login` na sessão) |
+| 3 | Aplicar a migração 6: `npx supabase db push --linked --dry-run`, depois `npx supabase db push --linked` | Claude (CLI) | Supabase, sem reset e sem perda de dados |
+| 4 | Ligar o provedor **Email** (ver "Entrada por e-mail e senha") | **usuário** | painel do Supabase |
+| 5 | Definir a senha: `npm run definir:senha` (digitada duas vezes, tela oculta) | **usuário** | PowerShell, na pasta do projeto |
+| 6 | Provar a entrada por senha no mesmo usuário (mesmo identificador) e a gravação | usuário entra; Claude confere o banco | `http://localhost:7100` |
+| 7 | Só depois: desligar o Google no painel e `DMANDA_LOGIN_GOOGLE=nao` | **usuário** | painel do Supabase e `.env.local` |
+| 8 | Projeto da Vercel, variáveis e agendamento | usuário e Claude | site da Vercel, depois (ver "Publicação") |
 
 ## Variáveis de ambiente
 
@@ -37,18 +37,10 @@ A CLI oficial (`npx supabase`, sem instalação global) está autenticada neste 
 | `DMANDA_EMAIL_AUTORIZADO` | `.env.local` e Vercel | e-mail da conta Google do Secretário. O servidor recusa qualquer outra conta |
 | `SUPABASE_SERVICE_ROLE_KEY` | **só no servidor**: `.env.local` (teste local da rotina) e Vercel | chave privilegiada (a "secret key"). Usada apenas pela rotina diária. **Nunca** em `NEXT_PUBLIC` nem no Git |
 | `CRON_SECRET` | `.env.local` e Vercel (só no servidor) | texto aleatório de 16 caracteres ou mais. A Vercel o envia como `Authorization: Bearer` ao chamar a rotina |
+| `DMANDA_LOGIN_GOOGLE` | `.env.local` e Vercel (opcional) | vazio ou qualquer valor: o botão do Google aparece (transição). `nao`: some. Lida na montagem da página (vale no próximo build ou publicação) |
 | `DMANDA_BANCO=teste` | só em desenvolvimento (`npm run dev:teste`) | banco local descartável. **Recusado em produção** |
 
-Modelo do `.env.example` (valores fictícios; o assistente não tem permissão para editar esse arquivo, então este é o texto a conferir ou colar):
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=chave-publica-de-exemplo
-DMANDA_EMAIL_AUTORIZADO=seu-email@exemplo.com
-# Só no servidor (Vercel). Nunca com NEXT_PUBLIC e nunca no Git:
-SUPABASE_SERVICE_ROLE_KEY=
-CRON_SECRET=
-```
+O modelo está no `.env.example` (versionado, sem valores; atualizado em 26/10/2026, antes tinha nomes antigos). Copiar para `.env.local` e preencher.
 
 **Conferir o `.env.local` sem revelar valores** (no PowerShell, dentro da pasta do projeto):
 
@@ -64,14 +56,16 @@ node --env-file=.env.local -e "for (const k of ['NEXT_PUBLIC_SUPABASE_URL','NEXT
 4. `20261025000300_acesso_exclusivo.sql`: lista protegida de contas (`dmanda_privado.acesso_autorizado`), função `dmanda_privado.conta_autorizada()`, hook `public.hook_antes_criar_usuario` e as políticas de RLS exigindo também a conta autorizada.
 5. `20261025000400_revogar_funcao_da_plataforma.sql`: tira a execução pública de `public.rls_auto_enable()`, função da própria plataforma que o Security Advisor apontava. O RLS automático continua funcionando (conferido).
 
+6. `20261026000000_login_email_senha.sql` (**nova, ainda não aplicada no banco real**): troca só `dmanda_privado.conta_autorizada()` para aceitar o provedor `email` além de `google`, mantendo a lista protegida. O **hook de cadastro não muda** (continua só Google): ninguém cria usuário por e-mail e senha, e a senha é definida no usuário que já existe. Nenhuma tabela, política ou privilégio muda; o usuário e os dados são os mesmos. Compatível com as anteriores (não reescreve nenhuma).
+
 **Por que a conferência de privilégios importa aqui:** o projeto foi criado com a exposição automática de tabelas **desligada**. Tabelas novas nascem **sem** select, insert, update e delete para `anon`, `authenticated` e `service_role`, e funções novas nascem executáveis por qualquer papel até serem revogadas. Por isso cada migração declara tudo de que depende. O banco de teste local (PGlite) agora imita esse comportamento, então uma permissão esquecida aparece nos testes.
 
 Regras: antes de aplicar, conferir o esquema remoto e `npx supabase db push --linked --dry-run`. As migrações não apagam dados. Nunca resetar o banco real. Dados do protótipo não entram. Migração já aplicada não se reescreve: correções vão em migração nova.
 
 ## Acesso exclusivo à conta autorizada (três camadas)
 
-1. **Supabase Auth (cadastro):** o hook **Before User Created** (`public.hook_antes_criar_usuario`) só permite criar usuário com o e-mail da lista protegida **e** `app_metadata.provider = google`. Decide só por dados que o servidor de Auth define, nunca por nome de exibição nem `user_metadata`. Qualquer outra conta recebe 403 e a mensagem "Este endereço não tem acesso ao Dmanda."; o callback leva o usuário a `/login?negado=1`.
-2. **Servidor da aplicação:** `src/proxy.ts`, o callback e cada operação (`src/servidor/banco.ts`) exigem sessão válida, provedor Google e e-mail igual a `DMANDA_EMAIL_AUTORIZADO`, mais o uso nas últimas **6 horas**.
+1. **Supabase Auth (cadastro):** o hook **Before User Created** (`public.hook_antes_criar_usuario`) só permite criar usuário com o e-mail da lista protegida **e** provedor `google`. Mesmo com a entrada por senha, ele **continua só Google de propósito**: aceitar `email` abriria cadastro por senha para o endereço autorizado sem exigir e-mail confirmado (se a conta fosse apagada ou a confirmação desligada). Decide só por dados que o servidor de Auth define, nunca por nome de exibição nem `user_metadata`. Qualquer outra conta recebe 403 e a mensagem "Este endereço não tem acesso ao Dmanda.".
+2. **Servidor da aplicação:** `src/proxy.ts`, o callback, a conclusão da entrada por senha (`src/servidor/entrar.ts`) e cada operação (`src/servidor/banco.ts`) exigem sessão válida, provedor aceito (Google ou e-mail e senha) e e-mail igual a `DMANDA_EMAIL_AUTORIZADO`, mais o uso nas últimas **6 horas** (ver "Sessão de 6 horas").
 3. **Banco:** as políticas de RLS exigem `user_id = auth.uid()` **e** `dmanda_privado.conta_autorizada()`, que compara o e-mail e o provedor do JWT assinado com a lista protegida. Mesmo que outro usuário existisse, não leria nem gravaria nada.
 
 A lista protegida **não está em nenhum arquivo versionado** (vazia significa ninguém autorizado). Para trocar ou acrescentar a conta (o assistente faz com a CLI, ou você no SQL Editor do painel):
@@ -82,7 +76,50 @@ npx supabase db query --linked "insert into dmanda_privado.acesso_autorizado (em
 
 O endereço vai em minúsculas. O esquema `dmanda_privado` **não** deve ser adicionado aos "Exposed schemas" da Data API.
 
-## Passo a passo do login Google (ações suas)
+## Entrada por e-mail e senha (decisão de 26/10/2026)
+
+**Situação encontrada na auditoria:** não havia autenticação por senha no aplicativo. O formulário só tinha o botão do Google, e o código (`contaAutorizada`), o hook e a RLS exigiam `provider = google`. As credenciais de e-mail e senha que o usuário conhece são do **painel de administração** do Supabase, outra coisa. Habilitar "Email" no painel sozinho não bastava. Agora:
+
+- **Formulário** em `/login` (`FormularioSenha`): o navegador chama o Supabase Auth direto (`signInWithPassword`), de modo que o **limite de tentativas do Auth conta pelo endereço de quem tenta**; se a chamada saísse do servidor, todas contariam pelo endereço do servidor e um terceiro poderia esgotar o limite e bloquear o próprio Secretário. Em seguida uma **ação do servidor** (`concluirEntrada`, `src/servidor/entrar.ts`) confere que a conta é a autorizada (e-mail e provedor), encerra a sessão local se não for e só então grava o carimbo de último uso. A senha nunca é guardada nem registrada e nunca volta para a tela (só o e-mail digitado é mantido se a entrada falhar). Erro de e-mail, de senha ou de conta fora da lista mostra sempre a mesma mensagem. Sem a conclusão não há carimbo, e sem carimbo a porta de entrada trata a sessão como expirada.
+- **Mesmo usuário e mesmos dados:** a senha é definida **no usuário que já existe** (o que entrou pelo Google), com a API de administração oficial. Não se cria outro usuário, não se troca o e-mail, o identificador e as linhas de `demandas` continuam os mesmos.
+- **Sem autenticação própria, sem senha no código, sem cadastro público, sem vários usuários.**
+- **Saída** (`Sair`, escopo local) e **expiração de 6 horas** valem igualmente para os dois modos de entrada.
+
+**Ordem segura de implantação (o acesso atual não é interrompido):**
+
+1. Aplicar a migração 6 (`npx supabase db push --linked --dry-run`, depois sem `--dry-run`). O Google continua funcionando.
+2. No painel do Supabase, **Authentication > Sign In / Providers > Email**: **ligue** o provedor. Em "Password" defina o **mínimo de 12 caracteres** (padrão é 6). Mantenha **"Confirm email" ligado** e **"Allow new users to sign up" desligado** (o usuário já existe; o hook continua barrando qualquer outro cadastro).
+3. **Definir a senha** (você mesmo, no PowerShell, dentro da pasta do projeto, com o `.env.local` preenchido):
+
+```
+npm run definir:senha
+```
+
+   O script pede a senha duas vezes **sem mostrá-la**, confere 12 a 72 caracteres, exige que exista **exatamente 1 usuário** no projeto e que ele seja a conta autorizada, e chama `auth.admin.updateUserById` (só `password` e `email_confirm: true`). Não imprime a senha nem a chave, não grava arquivo e não usa argumento de comando. Use uma frase longa e única.
+4. Entrar por senha em `http://localhost:7100/login` e conferir, com o Claude, que o identificador do usuário e as demandas são os mesmos.
+5. **Só depois de provado**, desligar o Google: painel, Authentication > Sign In / Providers > Google > desativar (não excluir o projeto do Google Cloud nem a credencial); e `DMANDA_LOGIN_GOOGLE=nao` no `.env.local` (e na Vercel) para o botão sumir. Dá para reverter ligando o Google de novo.
+
+**Recuperação de acesso (conta única).** Há dois caminhos, nenhum depende de e-mail:
+
+- **Esqueci a senha:** com o `.env.local` deste projeto (ou com `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `DMANDA_EMAIL_AUTORIZADO` no ambiente), rodar de novo `npm run definir:senha`. Se o `.env.local` foi perdido, a chave secreta está em Project Settings > API Keys > Secret keys no painel do Supabase (a conta do painel é protegida pelo acesso do Supabase do usuário: guarde esse acesso e a recuperação dele em lugar seguro).
+- **Sem o computador do projeto:** no painel do Supabase, Authentication > Users > o usuário > "Send password recovery" **não funciona hoje** (não há tela de redefinição no aplicativo). Use o primeiro caminho em qualquer computador com Node e o repositório.
+- **Se perder também o acesso ao painel do Supabase:** a recuperação passa pelo suporte do Supabase com o e-mail dono da conta. O Google, enquanto ligado, é a porta reserva: por isso não o desligue antes de provar a senha e de guardar o acesso ao painel.
+- Para trocar a conta autorizada, ver o comando da lista protegida acima.
+
+**Limites a saber:**
+
+- O Supabase Auth, no plano gratuito, **não** tem expiração por inatividade nem tempo máximo de sessão (planos pagos têm). As 6 horas são controle **da aplicação** (ver abaixo).
+- A senha trafega pelo HTTPS do Supabase e pela ação do servidor; o servidor só repassa. Se as redes do trabalho inspecionarem tráfego, use as mesmas cautelas de qualquer senha de trabalho.
+
+## Sessão de 6 horas (como funciona de verdade)
+
+- **Origem do tempo:** cookie `dmanda-ultimo-uso` (só servidor, `httpOnly`, `sameSite=lax`, `secure` em produção), valor = instante do último uso em milissegundos. Quem grava: a conclusão do login por senha, o retorno do Google e o `proxy` a cada pedido de página ou ação de uma pessoa logada. O atributo `secure` só vale sobre HTTPS (no `localhost` em http o navegador o descartaria). **Não renovam:** a página de login e o retorno do login, a rotina diária (`/api/cron/*` passa direto, sem tocar em cookies nem sessão) e arquivos estáticos. O aplicativo não usa `<Link>` nem `router.prefetch`, então nada pré-carrega sozinho (o Next remove os cabeçalhos de pré-carregamento antes de o `proxy` ver o pedido, por isso o `proxy` não os distinguiria). Um teste (`testar:regras`) falha se alguém passar a usá-los no aplicativo em uso. A sonda `GET /api/sessao` (204, sem corpo) serve para a tela saber, depois de uma falha, se a sessão terminou (redirecionamento) ou se é só a conexão.
+- **Decisão:** cookie ausente, ilegível ou com data no futuro conta como **expirado** (falha fechada; antes, cookie ausente não expirava, e um valor futuro nunca expirava). Passou de 6 h: o `proxy` encerra só a sessão deste navegador (escopo local) e leva a `/login?expirou=1`. Uma ação do servidor barrada pela expiração leva ao login, sem mostrar sucesso.
+- **Limite honesto:** o cookie não é assinado. Quem tem os cookies da sessão e edita esse valor no navegador consegue prolongar o prazo, e o token do Supabase continua válido na API até expirar sozinho (1 hora, renovável pelo refresh token) mesmo depois das 6 horas. Não é fronteira de segurança contra quem já controla o aparelho; é proteção contra aparelho esquecido. Para torná-la dura, o caminho oficial é o plano pago do Supabase (expiração por inatividade da sessão).
+
+## Passo a passo do login Google (já feito em 25/10/2026; passa a ser transitório)
+
+O Google continua ligado enquanto a entrada por senha não é provada. Depois, ver o passo 5 de "Entrada por e-mail e senha". Este passo a passo fica como histórico e para religar o Google se for preciso.
 
 A ordem importa: faça o Google Cloud primeiro, depois o painel do Supabase. Não envie o Client Secret nem a chave secreta no chat.
 
@@ -99,7 +136,7 @@ A ordem importa: faça o Google Cloud primeiro, depois o painel do Supabase. Nã
 1. **Authentication > Auth Hooks** (ou "Hooks"): "Add a new hook" > **Before User Created** > tipo **Postgres function** > esquema `public`, função `hook_antes_criar_usuario` > crie e **ative**. O painel concede sozinho a execução ao papel do Auth.
 2. **Avise o assistente.** Ele confere a ativação pela CLI, em leitura, antes de você prosseguir (`config pull` numa pasta temporária; `[auth.hook.before_user_created]` deve aparecer com `enabled = true` e `uri = "pg-functions://postgres/public/hook_antes_criar_usuario"`).
 3. **Authentication > Sign In / Providers > Google:** ative, cole o ID do cliente e a chave secreta, deixe "Skip nonce checks" desligado e salve.
-4. Na mesma tela, **desative o provedor Email** e mantenha o acesso anônimo desligado. Mantenha "Allow new users to sign up" **ligado até o seu primeiro login**; o hook já impede cadastros de outras contas.
+4. Na época, o provedor Email ficou **desligado**; agora ele é ligado conforme "Entrada por e-mail e senha". Mantenha o acesso anônimo desligado. Mantenha "Allow new users to sign up" **ligado até o seu primeiro login**; o hook já impede cadastros de outras contas.
 5. **Authentication > URL Configuration:** "Site URL" = `http://localhost:7100`; em "Redirect URLs" adicione `http://localhost:7100/auth/callback`. (O retorno do Google para o Supabase é o endereço `.../auth/v1/callback` do passo anterior; o retorno do Supabase para o aplicativo é `/auth/callback` na porta 7100. São duas coisas diferentes.)
 6. **Project Settings > API Keys > Secret keys > "default":** revele e copie a chave (começa com `sb_secret_`). Cole no `.env.local`, na linha `SUPABASE_SERVICE_ROLE_KEY=` (sem aspas), e salve. Ver "Chave secreta" abaixo.
 
@@ -129,7 +166,9 @@ Feita com a CLI, como **SQL no banco real com contextos de autenticação simula
 
 **Validado depois, com login Google real (25/10/2026, Issue #1):** primeiro login (1 usuário, identidade Google); pela interface, na sessão real e com registros TESTE já excluídos: cadastro, edição, tarefas, mudança de etapa, conclusão, reabertura, exclusão, persistência ao recarregar e as quatro visões consistentes, tudo conferido por leitura do banco; chamada HTTP local da rotina com a chave de serviço (200, execução e resumo gravados).
 
-**Ainda não validado:** segundo acesso, rejeição real de outra conta (bloqueio do Google em modo Teste e rejeição pelo hook), expiração de 6 h, produção na Vercel, agendamento. A interface ainda não tem botão Sair; para sair, limpe os dados do site `localhost:7100`.
+**Ainda não validado no Supabase real:** segundo acesso, rejeição real de outra conta, expiração de 6 h real, a migração 6, a entrada por senha, produção na Vercel, agendamento. (O botão Sair existe desde 26/10, no menu do avatar.) Esta lista não muda por causa dos testes locais abaixo.
+
+**Auditoria de 26/10/2026 (computador do trabalho, sem credenciais do Supabase):** verificações em banco local e em Auth **falso**, todas identificadas como tais: banco 90, regras 25, aplicação 64, sessão e senha 57 (ver `AUDITORIA.md`). Não houve acesso ao Supabase real neste computador (sem `.env.local` e sem login da CLI).
 
 ## Rotina diária na nuvem
 
@@ -149,9 +188,43 @@ Feita com a CLI, como **SQL no banco real com contextos de autenticação simula
 ## Proteção dos dados reais (cópia própria)
 
 - O GitHub guarda **código e migrações**, não os dados. Os registros reais ficam só no Supabase e **nunca** vão para o repositório.
-- **Correção:** o plano gratuito **não oferece os backups gerenciados** dos planos pagos (nem restauração pelo painel), mas **permite a exportação lógica** dos próprios dados (por exemplo, `pg_dump` ou exportação das tabelas).
-- **Hoje:** não existe nenhuma cópia própria. **Pendente explícita** até haver mecanismo e destino definidos: uma cópia privada periódica, fora do repositório, com teste de restauração. O `supabase db dump` da CLI pode exigir o Docker, que **não** será instalado sem necessidade; alternativas (pg_dump com a senha do banco, que fica só com você, ou um script de exportação das tabelas) serão propostas na hora de decidir.
+- O plano gratuito **não oferece os backups gerenciados** dos planos pagos, mas permite exportar os próprios dados.
+- **Primeira peça implantada (26/10/2026):** menu do avatar > **Baixar cópia dos dados**, que baixa `dmanda-copia-AAAA-MM-DD.json` (rota `GET /api/exportar`, só com a sessão da conta autorizada, sem cache). O arquivo tem formato versionado (`formato: dmanda-exportacao`, `versao: 1`) com `demandas`, `arquivadas` e as tarefas de cada uma, sem o identificador interno do usuário. **Ele contém dados reais:** guarde só em lugar privado e **nunca** no repositório nem em Issues.
+- **Proposta para recuperação (não implementada):** uma função SQL `importar_dados(jsonb)`, chamada como o próprio usuário (com a RLS), que recria demandas e tarefas de um arquivo `versao: 1` de forma atômica e idempotente, ligada a "Importar" em Configurações (já planejado). Antes disso, em emergência, o arquivo é legível por qualquer pessoa técnica e permite reinserir os dados por SQL.
+- **Rotina sugerida:** exportar uma vez por semana (e antes de qualquer migração), guardando as últimas cópias. Como o plano gratuito pode pausar um projeto sem uso, a exportação também protege contra isso.
+- **Decisão pendente do usuário (não bloqueia nada):** o **destino privado** das cópias (por exemplo, uma pasta privada no Google Drive ou OneDrive pessoal, ou um pendrive) e a frequência. Nenhum dado real vai para o GitHub.
+
+## Publicação na Vercel (preparo; nada foi publicado nem contratado)
+
+**Estado do código:** `npm run build` passa; em produção local (`next start`) conferidos: `/login`, `/manifest.webmanifest`, ícones e `/apple-icon.png` públicos; qualquer outra página, `/marca`, `/pecas`, `/tokens` e `/api/exportar` redirecionam ao login sem sessão; `/api/cron/diaria` responde 401 sem o segredo; `DMANDA_BANCO=teste` em produção derruba as páginas com erro 500 (o modo de teste é recusado, não ignorado).
+
+**Variáveis (Vercel, ambiente Produção apenas; nunca em Preview, para previews não tocarem o banco real):**
+
+| Variável | Valor | Observação |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | endereço do projeto | pública |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | chave publishable | pública, vale só com RLS e login |
+| `DMANDA_EMAIL_AUTORIZADO` | e-mail da conta | servidor |
+| `SUPABASE_SERVICE_ROLE_KEY` | chave `sb_secret_` | servidor; marcar como sensível |
+| `CRON_SECRET` | 16 ou mais caracteres | servidor; a Vercel o envia ao cron |
+| `DMANDA_LOGIN_GOOGLE` | `nao` depois da transição | opcional |
+| `DMANDA_BANCO` | **não definir** | recusado em produção |
+
+**URLs:** com o login por senha **não há redirecionamento de volta**, então Site URL e Redirect URLs do Supabase deixam de importar para entrar. Se o Google continuar ligado, acrescente o endereço de produção em Authentication > URL Configuration (Site URL e `/auth/callback`) e em "Origens JavaScript autorizadas" do cliente OAuth no Google Cloud. Os endereços de localhost continuam.
+
+**Rotina diária:** `vercel.json` agenda `GET /api/cron/diaria` às 09:00 UTC; só roda no deployment de **Produção** e só com `CRON_SECRET`. A primeira execução automática só pode ser observada depois da publicação (a tela do Início mostra a última execução).
+
+**Enquadramento pendente (decisão sua, sem pesquisa aberta de plataformas):** o plano **Hobby** da Vercel é gratuito, mas restrito a **uso pessoal e não comercial**; confirme, se necessário com o suporte da Vercel, se o uso do Dmanda no trabalho da Prefeitura se enquadra. Se não se enquadrar, a decisão de contratar plano (ou outra hospedagem) é sua. Nada foi contratado.
+
+**Ações exatas para publicar (suas, depois de provar a entrada por senha):**
+1. Site da Vercel: criar projeto a partir do repositório `edermoliveira/Dmanda` (branch de produção definida por você; a branch de checkpoint não é a `main`).
+2. Cadastrar as variáveis acima no ambiente Produção.
+3. Opcional, recomendado: em Settings > Functions, região **São Paulo (gru1)**, perto do Supabase, para reduzir a demora de cada gravação.
+4. Deploy; abrir o endereço, entrar por senha e conferir.
+5. Conferir no dia seguinte, no Início, a última execução da rotina diária.
+
+**Instalação no aparelho (PWA):** iPhone/iPad: Safari > Compartilhar > Adicionar à Tela de Início; computador: ícone de instalar na barra do Edge ou Chrome. A PWA **só abre online**: não há service worker, cache de dados nem edição offline. Sem internet o painel mostra a faixa "Sem conexão" e as gravações falham com aviso claro; abrir o app sem internet mostra a tela de erro do navegador.
 
 ## Teste local sem Supabase
 
-`npm run dev:teste` usa o banco local descartável (`.dados-teste/`, não vai para o Git). As migrações novas são aplicadas sozinhas a um banco de teste já existente. Testes: `npm run testar:banco` (87), `testar:regras` (21), `testar:app` (58). Eles **não** substituem a validação no Supabase real.
+`npm run dev:teste` usa o banco local descartável (`.dados-teste/`, não vai para o Git). As migrações novas são aplicadas sozinhas a um banco de teste já existente. Testes: `npm run testar:banco` (90), `testar:regras` (25), `testar:app` (64), `testar:sessao` (57, Auth falso). Eles **não** substituem a validação no Supabase real.

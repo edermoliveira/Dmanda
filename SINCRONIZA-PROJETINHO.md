@@ -2,9 +2,22 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 26/10/2026, por volta de 01h20, no computador de casa, branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA PARA O COMPUTADOR DO TRABALHO" e "Retomada rápida" logo abaixo). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Última atualização:** 26/10/2026, computador do trabalho, branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
+
+---
+
+## PONTO DE RETOMADA (26/10/2026, computador do trabalho, auditoria única)
+
+**Leia primeiro `AUDITORIA.md`** (relatório, achados, mapa de persistência, ações do usuário em ordem). Esta seção é só o resumo para continuar.
+
+- **Branch:** `checkpoint/2026-10-23-ajustes-a-d` (sem merge na main). Base da auditoria: `d22f216`. Os commits da auditoria vêm em seguida (hash conferido no remoto no relatório).
+- **Feito (código, testado em banco local e Auth falso):** entrada por e-mail e senha (`src/servidor/entrar.ts`, `FormularioSenha`, migração 6, `scripts/definir-senha.mjs`), sessão de 6 h mais firme (cookie ausente ou futuro expira), `/marca` fechada ao público, falhas de conexão e de sessão tratadas, rascunho automático, atualização ao voltar para a tela, login com os tokens do Catalyst (claro e escuro), PWA online (manifesto, ícones, metadados, área segura do iPhone), cabeçalhos de segurança, cópia dos dados em JSON, ajustes de ferramentas e do `.env.example`.
+- **Não feito, depende de você:** `.env.local` neste computador, `npx supabase login` e `link`, aplicar a migração 6 (o Claude faz depois do login), ligar o provedor Email, `npm run definir:senha`, provar a entrada por senha, só então desligar o Google; Vercel e enquadramento do plano; destino privado das cópias. Ver a lista ordenada no fim de `AUDITORIA.md`.
+- **Neste computador:** não há `.env.local` nem login da CLI do Supabase, então **nada foi validado no Supabase real**. `gh` não instalado (Issue consolidada: texto pronto em `AUDITORIA.md`). `node_modules` foi reinstalado com `npm ci`.
+- **Comandos:** `npm run testar:banco` (90), `testar:regras` (25), `testar:app` (64, sobe a 7103), `testar:sessao` (57, sobe a 7104 e usa o Auth falso na 7105), `npx tsc --noEmit`, `npx eslint src scripts`, `npm run build`, `npm run definir:senha`. Só um `next dev` por vez.
+- **Próxima ação concreta:** depois do `supabase login` e do `.env.local`, pedir ao Claude para aplicar a migração 6 (dry-run primeiro) e conferir o banco; em seguida ligar o provedor Email e rodar `npm run definir:senha`.
 
 ---
 

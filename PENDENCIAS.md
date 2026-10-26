@@ -1,6 +1,6 @@
 # Pendências do Dmanda
 
-Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 25/10/2026.
+Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 26/10/2026.
 
 **Desde 25/10/2026 as tarefas, o estado, os bloqueios e os critérios de conclusão ficam nas GitHub Issues** (repositório privado edermoliveira/Dmanda). Este arquivo é só um índice curto e o histórico. Decisões duradouras continuam em `DECISOES.md`; ambiente e retomada, em `SINCRONIZA-PROJETINHO.md`. Uma Issue só é fechada quando os seus critérios são atendidos, incluindo a avaliação do usuário quando ela faz parte.
 
@@ -10,16 +10,22 @@ https://github.com/edermoliveira/Dmanda/milestone/1
 
 | Issue | Tarefa | Quem bloqueia |
 |---|---|---|
-| [#1](https://github.com/edermoliveira/Dmanda/issues/1) | Concluir login Google e integração real com Supabase | Usuário: Google Cloud e painel do Supabase (passo a passo em `supabase/LEIA-ME.md`) |
+| [#1](https://github.com/edermoliveira/Dmanda/issues/1) | Concluir o login e a integração real com Supabase (desde 26/10/2026: **entrada por e-mail e senha**; a sequência de testes só do Google foi superada) | Usuário: `.env.local`, `supabase login`, provedor Email e `npm run definir:senha` (ações em ordem no fim de `AUDITORIA.md`) |
 | [#2](https://github.com/edermoliveira/Dmanda/issues/2) | Conferir a aplicação React nos dispositivos | Usuário: avaliação visual e teste em aparelho real |
 | [#3](https://github.com/edermoliveira/Dmanda/issues/3) | Publicar o aplicativo e ativar a rotina diária | Depende da #1 e da decisão do usuário sobre hospedagem e plano |
 | [#4](https://github.com/edermoliveira/Dmanda/issues/4) | Implantar cópia privada dos dados | Usuário: mecanismo e destino |
 
 Etiquetas: `bug`, `funcionalidade`, `acabamento`, `em-andamento`, `aguarda-usuario`. Nos commits, referenciar o número real (por exemplo, "#1"), sem fechamento automático.
 
+## Auditoria de 26/10/2026 (consolidada)
+
+Relatório único em [`AUDITORIA.md`](AUDITORIA.md): achados confirmados, corrigidos e pendentes, configuração das skills, mapa de persistência, PWA, bloqueios de publicação e as ações do usuário em ordem. **Não abrir outra auditoria geral sem fato novo.** As pendências abaixo continuam nas Issues #1 a #4; a lista de "melhorias para depois" está na seção 9 de `AUDITORIA.md` (sem Issue própria por enquanto).
+
+**Issue consolidada de auditoria:** o `gh` não está instalado neste computador, então a Issue não pôde ser criada daqui. O texto pronto está no fim de `AUDITORIA.md`; criar pelo site do GitHub (ou instalar o `gh` portátil e `gh auth login`) e vincular às #1 a #4. Não duplicar pendências em várias listas.
+
 ## Fora das Issues por enquanto
 
-- **`.env.example`:** o assistente não tem permissão para editá-lo. O modelo (valores fictícios) está em `supabase/LEIA-ME.md`.
+- **`.env.example`:** atualizado em 26/10/2026 (tinha nomes antigos). O modelo é o próprio arquivo versionado.
 - **Ícones restantes** (revisão consolidada, `INVENTARIO-ICONES.md`). O Quadro mantém `columns` como exceção provisória.
 - **Humor e Energia:** cada registro terá a sua própria data, preservada ao editar (requisito da implementação funcional).
 - **Referência visual ampliada** do protótipo e comparação de telas da aplicação real, depois da avaliação do usuário.

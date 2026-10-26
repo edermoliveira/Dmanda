@@ -2,6 +2,7 @@
   "enabledPlugins": {
     "ui-ux-pro-max@ui-ux-pro-max-skill": false,
     "taste-skill@taste-skill": false,
-    "code-simplifier@anthropic-plugin-directory": false
+    "code-simplifier@anthropic-plugin-directory": false,
+    "code-simplifier@claude-plugins-official": false
   }
 }

@@ -4,14 +4,14 @@
 
 Painel pessoal do Secretário de Administração da Prefeitura de Taquara/RS, com sete áreas: Início, Entradas, Demandas, Agenda, Documentos, IA e Configurações (mais Arquivo, Perfil, busca global e botão "+"). O objetivo é não esquecer demandas, acompanhar o que está em outro setor e ver prazos (legal e próprio) com poucos campos. Há um único usuário, o admin, que é o próprio Secretário. Não existe equipe, convite nem comentário. Existe um Perfil pessoal e privado (humor, energia e produtividade).
 
-Desenvolvido no computador e publicado na Vercel (com login Google restrito à conta do Secretário). Funciona no celular, iPad e computador (computador primeiro), instalável como PWA. O app nativo da App Store é uma etapa futura.
+Desenvolvido no computador e publicado na Vercel (com login restrito à conta do Secretário: e-mail e senha pelo Supabase Auth, o Google só na transição). Funciona no celular, iPad e computador (computador primeiro), instalável como PWA (primeira versão só online). O app nativo da App Store é uma etapa futura.
 
-## Estado atual (25/10/2026)
+## Estado atual (26/10/2026)
 
 - **Design:** Catalyst único, claro e escuro. O protótipo (`prototipo/`, HTML, CSS e JS puros, dados fictícios) está aprovado visualmente desde o commit `cd7b03f` e é a referência. Aurora, Papel e Grafite foram retiradas. A fonte mais recente das decisões é `DECISOES.md`.
-- **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: núcleo de Demandas e tarefas pronto e testado no banco local de teste. Rotina diária na nuvem preparada. As demais áreas aparecem como "Em construção".
-- **Supabase real:** projeto Dmanda (`gmxoosvgfcydccyeudej`, São Paulo) criado, vinculado, com as 5 migrações aplicadas e a segurança do banco validada nele (RLS, privilégios, conta única, rotina só do papel de serviço, hook). Acesso exclusivo à conta autorizada em três camadas (hook de cadastro, servidor, RLS). Detalhes em `supabase/LEIA-ME.md`.
-- **Validado em 25/10/2026 (Issue #1):** login Google real (primeiro acesso), hook ativo, gravação pela interface com sessão real, persistência e quatro visões, chamada HTTP local da rotina. **Ainda não validado no Supabase real:** segundo acesso após Sair, rejeição de outra conta pelo hook, desligar o cadastro e reentrar, expiração de 6 h (só testada em ambiente isolado, `npm run testar:sessao`), publicação na Vercel e primeira execução automática. Botão Sair implementado (menu do avatar, escopo local). A aplicação React segue sem aprovação visual do usuário. Testes só do PGlite nunca substituem o Supabase real. Ponto de retomada (26/10/2026, para outro computador): topo de `SINCRONIZA-PROJETINHO.md`.
+- **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: núcleo de Demandas e tarefas pronto e testado no banco local de teste, entrada por e-mail e senha (e Google na transição), primeira PWA online preparada (manifesto, ícones, metadados), cópia dos dados em JSON e rotina diária na nuvem preparada. As demais áreas aparecem como "Em construção". **Auditoria única de 26/10/2026 em `AUDITORIA.md`** (achados, mapa de persistência, bloqueios e ações do usuário); não abrir outra auditoria geral sem fato novo.
+- **Supabase real:** projeto Dmanda (`gmxoosvgfcydccyeudej`, São Paulo) criado, vinculado (no computador de casa), com 5 migrações aplicadas e a segurança do banco validada nele. A **migração 6** (`20261026000000_login_email_senha.sql`, aceita provedor `email`) está escrita e testada em banco local, **ainda não aplicada no real**. Acesso exclusivo à conta autorizada em três camadas (hook de cadastro, servidor, RLS). Detalhes em `supabase/LEIA-ME.md`.
+- **Validado no Supabase real em 25/10/2026 (Issue #1):** login Google real (primeiro acesso), hook ativo, gravação pela interface com sessão real, persistência, quatro visões, chamada HTTP local da rotina. **Ainda não validado no Supabase real:** entrada por senha e migração 6, expiração de 6 h real, publicação na Vercel e primeira execução automática. A sequência de testes humanos específica do Google (segundo acesso, rejeição de outra conta Google) foi superada em 26/10/2026. A aplicação React segue sem aprovação visual do usuário. Testes só do PGlite ou do Auth falso nunca substituem o Supabase real. Ponto de retomada: topo de `SINCRONIZA-PROJETINHO.md`.
 - **Ícones:** escolhidos e implementados (Ionicons outline 8.0.13): os sete do menu, Cards, Tabela, Lista, busca, filtros, ordenação e expansão. Os restantes ficam para uma revisão consolidada e não bloqueiam funcionalidades. O Quadro mantém `columns` como exceção provisória.
 - Retomada detalhada: seção "Retomada rápida" no topo de `SINCRONIZA-PROJETINHO.md`. Tarefas, estado e bloqueios: **GitHub Issues** (marco "Base real e primeiro uso", #1 a #4); `PENDENCIAS.md` é só o índice com links.
 
@@ -19,20 +19,21 @@ Desenvolvido no computador e publicado na Vercel (com login Google restrito à c
 
 | Comando | O que faz | Banco |
 |---|---|---|
-| `npm run dev` | aplicação em http://localhost:7100 | **Supabase real** (exige `.env.local`, que já existe neste computador e falta só a chave secreta do Supabase; sem ele o proxy responde 503) |
+| `npm run dev` | aplicação em http://localhost:7100 | **Supabase real** (exige `.env.local`; sem ele o proxy responde 503. No computador de casa o arquivo existe; no de trabalho ainda não) |
 | `npm run dev:teste` | aplicação em http://localhost:7100 | **banco local descartável** (PGlite em `.dados-teste/`, `DMANDA_BANCO=teste`, só em desenvolvimento, recusado em produção) |
 | `npm run build` e `npm run start` | produção local na 7100 | Supabase real |
 | `cd prototipo` e `python -m http.server 7200 --bind 127.0.0.1` | protótipo de referência em http://127.0.0.1:7200 | nenhum (dados fictícios) |
 
 Portas: 7100 aplicação (fixa no `package.json`), 7200 protótipo, 7103 usada pelo `testar:app` (sobe o próprio servidor). Só pode haver **um `next dev` por vez** neste projeto (a pasta `.next` tem trava): encerrar o da 7100 antes de rodar `testar:app`. O banco de teste tem pastas por finalidade em `.dados-teste/` (`pg` do `dev:teste`, `e2e` e `visual` dos testes e das conferências); são descartáveis, mas só apagar com autorização. As migrações novas são aplicadas sozinhas a um banco de teste que já existe.
 
-Variáveis: `.env.local` (nunca vai para o Git; o assistente não lê nem imprime arquivos `.env*`; para conferir sem revelar, ver `supabase/LEIA-ME.md`). O modelo está em `.env.example` e em `supabase/LEIA-ME.md`. Lista e passos do Supabase e da Vercel em `supabase/LEIA-ME.md`.
+Variáveis: `.env.local` (nunca vai para o Git; o assistente não lê nem imprime arquivos `.env*`; para conferir sem revelar, ver `supabase/LEIA-ME.md`). O modelo está em `.env.example` (atualizado em 26/10/2026). Neste computador de trabalho ainda não há `.env.local` nem login da CLI do Supabase. Lista e passos do Supabase e da Vercel em `supabase/LEIA-ME.md`.
 
 Testes da aplicação real (rodar só os dos componentes afetados):
 
-- `npm run testar:banco`: SQL, RLS, rotina diária, acesso exclusivo, hook e privilégios no PGlite, que imita a exposição automática desligada do Supabase (87 verificações).
-- `npm run testar:regras`: datas, grupos do Início, sessão de 6 h, conta autorizada (e-mail e provedor Google), segredo e falha da rotina (21).
-- `npm run testar:app`: navegador (Edge) e leitura direta do banco de teste: fluxos de demandas, tarefas, quatro visões, celular, iPad, claro e escuro, cápsula, rotina diária (57).
+- `npm run testar:banco`: SQL, RLS, rotina diária, acesso exclusivo (Google e senha), hook e privilégios no PGlite, que imita a exposição automática desligada do Supabase (90 verificações).
+- `npm run testar:regras`: datas, grupos do Início, sessão de 6 h, conta autorizada (e-mail e provedor Google ou e-mail e senha), segredo e falha da rotina, cookie seguro e guarda contra pré-carregamento (25).
+- `npm run testar:app`: navegador (Edge) e leitura direta do banco de teste: fluxos de demandas, tarefas, quatro visões, celular, iPad, claro e escuro, cápsula, rotina diária, dois aparelhos, cópia dos dados (64).
+- `npm run testar:sessao`: sessão, expiração de 6 h, entrada por senha pelo formulário, Sair, falhas de conexão e o script `definir:senha`, contra um **Auth falso** local (57). Nunca toca o Supabase real.
 - Também: `npx tsc --noEmit`, `npx eslint src scripts`, `npm run build`.
 - Testes do protótipo: ver `prototipo/CLAUDE.md`.
 
@@ -44,7 +45,8 @@ Estes testes validam a lógica e a interface no banco de **teste**. Não substit
 - GitHub Issues (repositório privado): controle operacional das tarefas, estado, bloqueios e critérios de conclusão. PENDENCIAS.md: índice curto com links e histórico. SINCRONIZA-PROJETINHO.md: ambiente e retomada das sessões.
 - PRODUTO.md (o que o sistema tem), FUNCIONALIDADES.md (mapa por tela e etapas de construção), ANDAMENTO.md (cálculo do percentual).
 - PESQUISA.md (dores do usuário), REFERENCIAS.md (organização das informações, não o visual), QUESTIONARIO.md (já respondido), ANALISE-FERRAMENTAS.md, INVENTARIO-ICONES.md.
-- supabase/LEIA-ME.md: Supabase, Vercel, rotina diária e proteção dos dados reais.
+- supabase/LEIA-ME.md: Supabase, entrada por senha e recuperação, sessão de 6 h, Vercel, rotina diária e proteção dos dados reais.
+- AUDITORIA.md: auditoria única de 26/10/2026 (achados, configuração das skills, mapa de persistência, PWA, publicação, ações do usuário).
 
 ## Regras
 

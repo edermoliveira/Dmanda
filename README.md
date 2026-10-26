@@ -6,7 +6,7 @@ Painel pessoal de demandas do Secretário de Administração da Prefeitura de Ta
 
 - **Design:** Catalyst único (claro e escuro), aprovado no protótipo em `prototipo/`.
 - **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: núcleo de Demandas e tarefas pronto e testado no banco local de teste, com rotina diária na nuvem preparada. As demais áreas ainda não foram construídas.
-- **Supabase real:** projeto criado, vinculado e migrado (5 migrações), com a segurança do banco validada. **Ainda não validado:** login Google real, publicação na Vercel e a primeira execução automática da rotina.
+- **Supabase real:** projeto criado e migrado (5 migrações aplicadas, a 6 escrita), segurança do banco validada, login Google real validado em 25/10/2026. Nova orientação (26/10/2026): entrada por e-mail e senha. **Ainda não validado no real:** entrada por senha, publicação na Vercel e a primeira execução automática da rotina. Ver `AUDITORIA.md`.
 
 ## Como rodar
 
@@ -22,7 +22,7 @@ Variáveis: copiar `.env.example` para `.env.local` e preencher (nunca vai para 
 
 ## Testes
 
-`npm run testar:banco`, `npm run testar:regras`, `npm run testar:app` (veja o `CLAUDE.md` para o que cada um cobre e as limitações).
+`npm run testar:banco`, `npm run testar:regras`, `npm run testar:app`, `npm run testar:sessao` (veja o `CLAUDE.md` para o que cada um cobre e as limitações).
 
 ## Documentos
 
