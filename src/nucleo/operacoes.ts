@@ -4,14 +4,17 @@
 import { AREAS, ETAPAS, PRAZOS, TIPOS, type DadosDemanda, type Demanda, type Etapa } from '@/lib/demandas';
 
 export type Chamar = (funcao: string, args: Record<string, unknown>) => Promise<unknown>;
-export type Resultado<T> = { ok: true; dados: T } | { ok: false; erro: string };
+export type Resultado<T> = { ok: true; dados: T } | { ok: false; erro: string; conflito?: true };
 
 /** Erro com texto próprio para mostrar na tela. */
 export class ErroDmanda extends Error {}
+/** A demanda mudou depois que a janela de edição foi aberta (outro aparelho ou janela): nada foi gravado e a tela precisa avisar sem apagar o que foi digitado. */
+export class ErroConflito extends ErroDmanda {}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
 const id = (v: unknown, nome: string) => { if (typeof v !== 'string' || !UUID.test(v)) throw new ErroDmanda(`${nome} inválido.`); return v; };
+const versaoDe = (v: unknown) => { if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) throw new ErroDmanda('Versão da demanda inválida. Recarregue a tela e abra a demanda de novo.'); return v; };
 const enumerado = <T extends string>(v: unknown, lista: readonly T[], nome: string) => { if (typeof v !== 'string' || !(lista as readonly string[]).includes(v)) throw new ErroDmanda(`${nome} inválido.`); return v as T; };
 const texto = (v: unknown, nome: string, max: number) => { if (typeof v !== 'string') throw new ErroDmanda(`${nome} inválido.`); if (v.length > max) throw new ErroDmanda(`${nome} passa de ${max} caracteres.`); return v; };
 const dataOuNulo = (v: unknown, nome: string) => { if (v === null || v === '') return null; if (typeof v !== 'string' || !DATA.test(v) || Number.isNaN(Date.parse(v))) throw new ErroDmanda(`${nome} inválida.`); return v; };
@@ -54,8 +57,12 @@ export function criarOperacoes(chamar: Chamar) {
     listar: async (arquivadas = false) => (await chamar('listar_demandas', { p_arquivadas: !!arquivadas })) as Demanda[],
     criar: (dados: DadosDemanda) => demanda('criar_demanda', { p: validarDados(dados, { criando: true }) }),
     atualizar: (demandaId: string, dados: DadosDemanda) => demanda('atualizar_demanda', { p_id: id(demandaId, 'Demanda'), p: validarDados(dados, { criando: false }) }),
-    /** Salva a janela de edição inteira, de forma atômica: campos, lista de tarefas (na ordem) e, se informada, a etapa. */
-    salvar: (demandaId: string, dados: DadosDemanda, tarefas: TarefaEdicao[] | null) => demanda('salvar_demanda', { p_id: id(demandaId, 'Demanda'), p: validarDados(dados, { criando: false, aceitaEtapa: true }), p_tarefas: validarTarefas(tarefas) }),
+    buscar: (demandaId: string) => demanda('buscar_demanda', { p_id: id(demandaId, 'Demanda') }),
+    /**
+     * Salva a janela de edição inteira, de forma atômica: campos, lista de tarefas (na ordem) e, se informada, a etapa. `versao` é a que a demanda tinha quando a janela
+     * foi aberta: se mudou desde então, o banco recusa tudo (ErroConflito) em vez de sobrescrever o que outro aparelho gravou.
+     */
+    salvar: (demandaId: string, dados: DadosDemanda, tarefas: TarefaEdicao[] | null, versao: number) => demanda('salvar_demanda', { p_id: id(demandaId, 'Demanda'), p: validarDados(dados, { criando: false, aceitaEtapa: true }), p_tarefas: validarTarefas(tarefas), p_versao: versaoDe(versao) }),
     moverEtapa: (demandaId: string, etapa: Etapa) => demanda('mover_etapa', { p_id: id(demandaId, 'Demanda'), p_etapa: enumerado(etapa, ETAPAS, 'Etapa') }),
     concluir: (demandaId: string) => demanda('concluir_demanda', { p_id: id(demandaId, 'Demanda') }),
     reabrir: (demandaId: string, etapa: Etapa = 'Fazendo') => demanda('reabrir_demanda', { p_id: id(demandaId, 'Demanda'), p_etapa: enumerado(etapa, ETAPAS, 'Etapa') }),
@@ -74,6 +81,7 @@ export type Operacoes = ReturnType<typeof criarOperacoes>;
 export async function executar<T>(f: () => Promise<T>): Promise<Resultado<T>> {
   try { return { ok: true, dados: await f() }; }
   catch (e) {
+    if (e instanceof ErroConflito) return { ok: false, erro: e.message, conflito: true };
     if (e instanceof ErroDmanda) return { ok: false, erro: e.message };
     console.error('[dmanda] falha na operação:', e);
     return { ok: false, erro: 'Não foi possível concluir a operação. Nada foi gravado. Tente de novo.' };

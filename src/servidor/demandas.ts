@@ -29,8 +29,11 @@ export async function criarDemanda(dados: DadosDemanda) {
 export async function atualizarDemanda(id: string, dados: DadosDemanda) {
   return executar(() => op().atualizar(id, dados));
 }
-export async function salvarDemanda(id: string, dados: DadosDemanda, tarefas: TarefaEdicao[] | null) {
-  return executar(() => op().salvar(id, dados, tarefas));
+export async function salvarDemanda(id: string, dados: DadosDemanda, tarefas: TarefaEdicao[] | null, versao: number) {
+  return executar(() => op().salvar(id, dados, tarefas, versao));
+}
+export async function buscarDemanda(id: string) {
+  return executar(() => op().buscar(id));
 }
 export async function moverEtapa(id: string, etapa: Etapa) {
   return executar(() => op().moverEtapa(id, etapa));

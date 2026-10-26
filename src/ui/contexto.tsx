@@ -8,7 +8,10 @@ import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 
 export type Visao = 'cards' | 'quadro' | 'tabela' | 'lista';
 export type Janela = { t: 'nova'; etapa?: Etapa } | { t: 'editar'; id: string } | { t: 'tarefa' } | null;
-export type Rascunho = { dados: DadosDemanda; tarefas?: TarefaEdicao[]; nt?: string };
+// versao: a versão da demanda sobre a qual o rascunho foi digitado (se a demanda mudou depois, o salvamento é recusado em vez de sobrescrever)
+export type Rascunho = { dados: DadosDemanda; tarefas?: TarefaEdicao[]; nt?: string; versao?: number };
+/** Resultado de salvar a janela de edição: gravou, foi recusado por conflito de versão (nada gravado, a edição local fica) ou falhou por outro motivo. */
+export type ResultadoSalvar = { ok: true; demanda: Demanda } | { ok: false; conflito: boolean };
 type Aviso = { n: number; msg: string; erro: boolean } | null;
 
 export type EstadoRotina = { ultima_ok: string | null; ultima_falha: string | null; resumo_data: string | null; resumo_calculado_em: string | null };
@@ -47,7 +50,7 @@ type Ctx = {
   guardarRascunho: (chave: string, r: Rascunho | null) => void;
   // operações (devolvem a demanda gravada, ou null se falhou; o erro já foi avisado)
   criar: (dados: DadosDemanda) => Promise<Demanda | null>;
-  salvar: (id: string, dados: DadosDemanda, tarefas: TarefaEdicao[] | null, msg?: string) => Promise<Demanda | null>;
+  salvar: (id: string, dados: DadosDemanda, tarefas: TarefaEdicao[] | null, versao: number, msg?: string) => Promise<ResultadoSalvar>;
   mover: (id: string, etapa: Etapa) => Promise<Demanda | null>;
   concluir: (id: string) => Promise<Demanda | null>;
   reabrir: (id: string, etapa?: Etapa) => Promise<Demanda | null>;
@@ -213,7 +216,17 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     rascunhos,
     guardarRascunho,
     criar: (dados) => rodar(() => srv.criarDemanda(dados), 'Demanda cadastrada'),
-    salvar: (id, dados, tarefas, msg = 'Alterações salvas') => rodar(() => srv.salvarDemanda(id, dados, tarefas), msg),
+    salvar: async (id, dados, tarefas, versao, msg = 'Alterações salvas') => {
+      const r = await gravando(() => protegido(() => srv.salvarDemanda(id, dados, tarefas, versao)));
+      if (r.ok) { aplicar(r.dados); if (msg) avisar(msg); return { ok: true, demanda: r.dados }; }
+      if (r.conflito) {
+        // traz a versão atual para a lista (a janela aberta mantém o que foi digitado e passa a mostrar o aviso de conflito)
+        const atual = await protegido(() => srv.buscarDemanda(id));
+        if (atual.ok) aplicar(atual.dados);
+      }
+      avisar(r.erro, true);
+      return { ok: false, conflito: r.conflito === true };
+    },
     mover: (id, etapa) => rodar(() => srv.moverEtapa(id, etapa), `Movida para ${etapa}`),
     concluir: (id) => rodar(() => srv.concluirDemanda(id), 'Demanda finalizada. As tarefas foram marcadas como concluídas.'),
     reabrir: (id, etapa = 'Fazendo') => rodar(() => srv.reabrirDemanda(id, etapa), `Reaberta em ${etapa}. O histórico foi mantido.`),
@@ -230,7 +243,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar]);
+  }), [demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

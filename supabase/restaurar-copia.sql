@@ -12,6 +12,7 @@
 --   - Só grava demandas e tarefas (com as arquivadas). Uma demanda que já existe com o mesmo identificador NÃO é tocada nem sobrescrita, nem recebe tarefas.
 --   - Tudo é atribuído ao único usuário do projeto (a conta do Secretário): serve ao mesmo projeto e também a um projeto novo, com outro identificador de usuário.
 --   - Se o projeto não tiver exatamente 1 usuário, nada é gravado. A conta, a senha, a lista de acesso e as migrações NÃO fazem parte da cópia e precisam existir antes.
+--   - Exige o dono da tabela (no SQL Editor do Supabase você já é): o script desliga e religa um gatilho dentro da própria transação.
 --   - Não restaura: preferências do navegador (tema, visão, rascunhos), resumos e registros da rotina diária (a rotina recalcula), nem a data de criação de cada tarefa.
 --   - Rodar duas vezes com o mesmo arquivo não duplica nada.
 do $restaurar$
@@ -39,12 +40,16 @@ begin
     insert into public.demandas
     select r.*
     from jsonb_populate_recordset(null::public.demandas,
-      (select coalesce(jsonb_agg(x || jsonb_build_object('user_id', dono)), '[]'::jsonb) from jsonb_array_elements(todas) x)) r
+      (select coalesce(jsonb_agg(x || jsonb_build_object('user_id', dono, 'versao', coalesce(x -> 'versao', '1'::jsonb))), '[]'::jsonb) from jsonb_array_elements(todas) x)) r
     on conflict (id) do nothing
     returning id
   )
   select coalesce(array_agg(id), '{}') into novas from inseridas;
   n_dem := coalesce(array_length(novas, 1), 0);
+
+  -- o gatilho que sobe a versão da demanda a cada tarefa gravada fica desligado só durante esta transação (a restauração devolve a versão e a data de atualização da cópia;
+  -- cópias antigas, sem versão, entram com versão 1). Se algo falhar, a transação inteira é desfeita, inclusive esta troca.
+  alter table public.tarefas disable trigger tarefas_versao;
 
   -- só as tarefas das demandas inseridas agora: uma demanda que já existia fica exatamente como está, com as tarefas que tem
   -- a cópia não traz a data de criação das tarefas (a ordem vem de "posicao"): as colunas são listadas e essa data recebe o momento da restauração
@@ -56,6 +61,7 @@ begin
      where (x ->> 'id')::uuid = any (novas))) r
   on conflict (id) do nothing;
   get diagnostics n_tar = row_count;
+  alter table public.tarefas enable trigger tarefas_versao;
 
   raise notice 'Restauradas % demanda(s) e % tarefa(s); o que já existia não foi tocado.', n_dem, n_tar;
 end

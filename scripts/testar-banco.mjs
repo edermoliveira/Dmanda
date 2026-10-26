@@ -81,23 +81,24 @@ const resto = await db.query('select count(*)::int as n from public.tarefas wher
 ok(r.excluida === true && resto.rows[0].n === 0 && (await c(A, 'listar_demandas', {})).length === 1, 'excluir com confirmação remove a demanda e as tarefas dela');
 
 // salvar a janela de edição de uma vez (atômico)
+const ver = async (id) => (await c(A, 'buscar_demanda', { p_id: id })).versao; // versão atual da demanda (o salvar exige a versão em que a janela foi aberta)
 const e1 = await c(A, 'criar_demanda', { p: { assunto: 'Edição em lote', tipo: 'Memorando' } });
-let sv = await c(A, 'salvar_demanda', { p_id: e1.id, p: { assunto: 'Edição salva', descricao: 'Texto novo', prazo: '2026-12-01' }, p_tarefas: [{ texto: 'Primeira', concluida: false }, { texto: 'Segunda', concluida: true }] });
+let sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { assunto: 'Edição salva', descricao: 'Texto novo', prazo: '2026-12-01' }, p_tarefas: [{ texto: 'Primeira', concluida: false }, { texto: 'Segunda', concluida: true }] });
 ok(sv.assunto === 'Edição salva' && sv.prazo === '2026-12-01' && sv.tarefas.map((x) => x.texto).join() === 'Primeira,Segunda' && sv.tarefas[1].concluida === true && sv.etapa === 'Vistos', 'salvar grava campos e tarefas novas, na ordem, e Cadastro vai para Vistos com a primeira tarefa');
 const [s1, s2] = sv.tarefas;
-sv = await c(A, 'salvar_demanda', { p_id: e1.id, p: {}, p_tarefas: [{ id: s2.id, texto: 'Segunda (editada)', concluida: false }, { id: s1.id, texto: 'Primeira', concluida: true }, { texto: 'Terceira', concluida: false }] });
+sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: {}, p_tarefas: [{ id: s2.id, texto: 'Segunda (editada)', concluida: false }, { id: s1.id, texto: 'Primeira', concluida: true }, { texto: 'Terceira', concluida: false }] });
 ok(sv.tarefas.map((x) => x.texto).join('|') === 'Segunda (editada)|Primeira|Terceira' && sv.tarefas.map((x) => x.posicao).join() === '1,2,3' && sv.tarefas[0].id === s2.id && sv.tarefas[1].concluida === true, 'salvar reordena, edita e marca mantendo os identificadores das tarefas existentes');
-sv = await c(A, 'salvar_demanda', { p_id: e1.id, p: {}, p_tarefas: [{ id: s1.id, texto: 'Primeira', concluida: true }] });
+sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: {}, p_tarefas: [{ id: s1.id, texto: 'Primeira', concluida: true }] });
 ok(sv.tarefas.length === 1 && sv.tarefas[0].id === s1.id, 'tarefas fora da lista são excluídas');
 const antesAtomico = JSON.stringify(await c(A, 'buscar_demanda', { p_id: e1.id }));
-ok(/não pode ficar vazia/.test(await erro(A, 'salvar_demanda', { p_id: e1.id, p: { assunto: 'NÃO DEVE GRAVAR' }, p_tarefas: [{ id: s1.id, texto: 'x', concluida: false }, { texto: '   ', concluida: false }] })) && JSON.stringify(await c(A, 'buscar_demanda', { p_id: e1.id })) === antesAtomico, 'uma tarefa inválida desfaz tudo: nada do salvar é gravado (atomicidade)');
-sv = await c(A, 'salvar_demanda', { p_id: e1.id, p: { etapa: 'Finalizado', assunto: 'Concluída pela janela' }, p_tarefas: [{ id: s1.id, texto: 'Primeira', concluida: false }, { texto: 'Nova', concluida: false }] });
+ok(/não pode ficar vazia/.test(await erro(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { assunto: 'NÃO DEVE GRAVAR' }, p_tarefas: [{ id: s1.id, texto: 'x', concluida: false }, { texto: '   ', concluida: false }] })) && JSON.stringify(await c(A, 'buscar_demanda', { p_id: e1.id })) === antesAtomico, 'uma tarefa inválida desfaz tudo: nada do salvar é gravado (atomicidade)');
+sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { etapa: 'Finalizado', assunto: 'Concluída pela janela' }, p_tarefas: [{ id: s1.id, texto: 'Primeira', concluida: false }, { texto: 'Nova', concluida: false }] });
 ok(sv.etapa === 'Finalizado' && sv.tarefas.every((x) => x.concluida) && sv.assunto === 'Concluída pela janela' && sv.concluida_em !== null, 'salvar com etapa Finalizado conclui: marca todas as tarefas e registra a data');
-sv = await c(A, 'salvar_demanda', { p_id: e1.id, p: { etapa: 'Fazendo' } });
+sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { etapa: 'Fazendo' }, p_tarefas: null });
 ok(sv.etapa === 'Fazendo' && sv.concluida_em === null && sv.tarefas.length === 2 && sv.tarefas.every((x) => x.concluida), 'salvar com outra etapa reabre mantendo as tarefas');
-ok(/não encontrada/.test(await erro(B, 'salvar_demanda', { p_id: e1.id, p: { assunto: 'x' }, p_tarefas: [] })), 'RLS: B não salva a demanda de A');
-ok(/Etapa desconhecida|check/i.test(await erro(A, 'salvar_demanda', { p_id: e1.id, p: { etapa: 'Voando' } })), 'etapa inválida no salvar é recusada');
-sv = await c(A, 'salvar_demanda', { p_id: e1.id, p: { tipo: 'Processo', area: 'Compras' }, p_tarefas: null });
+ok(/não encontrada/.test(await erro(B, 'salvar_demanda', { p_id: e1.id, p: { assunto: 'x' }, p_tarefas: [], p_versao: 1 })), 'RLS: B não salva a demanda de A');
+ok(/Etapa desconhecida|check/i.test(await erro(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { etapa: 'Voando' }, p_tarefas: null })), 'etapa inválida no salvar é recusada');
+sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { tipo: 'Processo', area: 'Compras' }, p_tarefas: null });
 ok(sv.tipo === 'Processo' && sv.area === 'Compras' && sv.tarefas.length === 2, 'salvar sem lista de tarefas não mexe nas tarefas');
 
 
@@ -247,16 +248,80 @@ ok(privFn.length === 0, 'privilégios: nenhuma função do Dmanda é executável
 const privSvc = await sql("select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and has_function_privilege('service_role', p.oid, 'execute') order by 1");
 ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diaria', 'privilégios: o papel de serviço executa somente rotina_diaria e registrar_falha_rotina');
 
-// limitação conhecida (documentada em supabase/LEIA-ME.md): a janela de edição grava a lista inteira de tarefas que mostra, então salvar uma janela antiga
-// apaga a tarefa criada depois em outro aparelho. Este teste descreve o comportamento ATUAL; se um dia houver controle de versão por demanda, ele deve mudar.
+// proteção contra edição simultânea (migração 7). Antes dela, o teste que ficava aqui reproduzia o defeito: salvar uma janela antiga apagava a tarefa criada
+// em outro aparelho, sem aviso. Agora a janela antiga é recusada pelo banco (código DM409), inteira, e nada do que foi gravado depois se perde.
 {
-  const dl = await c(A, 'criar_demanda', { p: { assunto: 'Edição simultânea TESTE' } });
+  const codigo = async (u, f, a) => { try { await c(u, f, a); return null; } catch (e) { return e.code || 'sem-codigo'; } };
+  const foto = async (id) => JSON.stringify(await c(A, 'buscar_demanda', { p_id: id }));
+  const lista = (d) => d.tarefas.map((t) => ({ id: t.id, texto: t.texto, concluida: t.concluida }));
+  const dl = await c(A, 'criar_demanda', { p: { assunto: 'Edição simultânea TESTE', descricao: 'original' } });
   const comUma = await c(A, 'adicionar_tarefa', { p_demanda: dl.id, p_texto: 'visível na janela antiga' });
-  const janelaAntiga = comUma.tarefas.map((t) => ({ id: t.id, texto: t.texto, concluida: t.concluida }));
+  ok(Number.isInteger(comUma.versao) && comUma.versao > dl.versao, 'versão: toda demanda devolve o número de versão e ele sobe quando uma tarefa é criada');
+  const janelaAntiga = { versao: comUma.versao, tarefas: lista(comUma) }; // o que a janela de edição do aparelho 1 mostrava ao ser aberta
+
+  // aparelho 2 grava depois: cria uma tarefa e muda um campo
   await c(A, 'adicionar_tarefa', { p_demanda: dl.id, p_texto: 'criada no outro aparelho' });
-  const salvo = await c(A, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'Edição simultânea TESTE (aparelho antigo)' }, p_tarefas: janelaAntiga });
-  ok(salvo.assunto.endsWith('(aparelho antigo)') && salvo.tarefas.length === 1 && salvo.tarefas[0].texto === 'visível na janela antiga', 'limitação conhecida: salvar uma janela antiga substitui o outro aparelho e apaga a tarefa criada nele (sem aviso de conflito)');
-  await c(A, 'excluir_demanda', { p_id: dl.id, p_confirmado: true });
+  const outro = await c(A, 'atualizar_demanda', { p_id: dl.id, p: { descricao: 'alterada no outro aparelho' } });
+  ok(outro.versao > janelaAntiga.versao && outro.tarefas.length === 2, 'versão: a mudança feita no outro aparelho (tarefa e campo) subiu a versão');
+  const antes = await foto(dl.id);
+
+  // aparelho 1 salva a janela antiga: o defeito antigo apagava a tarefa nova e desfazia o campo; agora é recusado por inteiro
+  const cod = await codigo(A, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'ALTERADO PELA JANELA ANTIGA', descricao: 'texto antigo' }, p_tarefas: janelaAntiga.tarefas, p_versao: janelaAntiga.versao });
+  ok(cod === 'DM409', 'janela desatualizada: o banco recusa o salvamento com o código de conflito (DM409)');
+  const msg = await erro(A, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'x' }, p_tarefas: janelaAntiga.tarefas, p_versao: janelaAntiga.versao });
+  ok(/alterada em outro aparelho ou janela/.test(msg) && /Nada foi gravado/.test(msg), 'janela desatualizada: a mensagem é compreensível e diz que nada foi gravado');
+  const depois = JSON.parse(await foto(dl.id));
+  ok(await foto(dl.id) === antes, 'janela desatualizada: nada mudou no banco (campos, tarefas, ordem, versão e etapa idênticos), sem perda parcial');
+  ok(depois.tarefas.length === 2 && depois.tarefas.some((t) => t.texto === 'criada no outro aparelho') && depois.assunto === 'Edição simultânea TESTE' && depois.descricao === 'alterada no outro aparelho', 'janela desatualizada: a tarefa criada no outro aparelho permanece e os campos gravados lá não foram sobrescritos');
+
+  // a recusa vale com ou sem lista de tarefas, com etapa pedida e para versão que nunca existiu
+  ok(await codigo(A, 'salvar_demanda', { p_id: dl.id, p: { etapa: 'Finalizado' }, p_tarefas: null, p_versao: janelaAntiga.versao }) === 'DM409'
+    && await codigo(A, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'y' }, p_tarefas: [], p_versao: depois.versao + 5 }) === 'DM409'
+    && await foto(dl.id) === antes, 'janela desatualizada: também recusada só com campos, pedindo etapa, ou com versão que não existe (nada muda)');
+  ok(/não informada/.test(await erro(A, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'y' }, p_tarefas: null, p_versao: null })) && await foto(dl.id) === antes, 'versão ausente é recusada (não existe caminho de salvamento sem conferência)');
+  const erroAssinaturaAntiga = await erro(A, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'y' }, p_tarefas: [] });
+  ok(erroAssinaturaAntiga !== null && await foto(dl.id) === antes, 'a assinatura antiga de salvar_demanda (sem versão) deixou de existir');
+
+  // com a versão atual, salva; a versão devolvida serve para o salvamento seguinte e a anterior deixa de valer
+  const s1 = await c(A, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'Edição simultânea TESTE (atual)' }, p_tarefas: lista(depois), p_versao: depois.versao });
+  ok(s1.assunto.endsWith('(atual)') && s1.tarefas.length === 2 && s1.versao > depois.versao, 'com a versão atual o salvamento grava e devolve a nova versão');
+  const s2 = await c(A, 'salvar_demanda', { p_id: dl.id, p: { descricao: 'segunda gravação' }, p_tarefas: lista(s1), p_versao: s1.versao });
+  ok(s2.descricao === 'segunda gravação' && await codigo(A, 'salvar_demanda', { p_id: dl.id, p: { descricao: 'reaproveitou a versão velha' }, p_tarefas: lista(s2), p_versao: s1.versao }) === 'DM409', 'a versão devolvida pelo salvamento serve para o próximo e a anterior é recusada');
+
+  // duas janelas abertas na mesma versão: a primeira que salva vence e a outra é recusada (a trava da linha serializa as duas, sem perda do que a primeira gravou)
+  const base = await c(A, 'buscar_demanda', { p_id: dl.id });
+  await c(A, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'janela 1 salvou primeiro' }, p_tarefas: [...lista(base), { texto: 'tarefa da janela 1', concluida: false }], p_versao: base.versao });
+  ok(await codigo(A, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'janela 2' }, p_tarefas: lista(base), p_versao: base.versao }) === 'DM409'
+    && (await c(A, 'buscar_demanda', { p_id: dl.id })).tarefas.some((t) => t.texto === 'tarefa da janela 1'), 'duas janelas na mesma versão: a segunda é recusada e a tarefa gravada pela primeira permanece');
+
+  // toda operação que altera a demanda ou as tarefas sobe a versão (por gatilho), então vale para qualquer origem da mudança
+  {
+    const v = async () => (await c(A, 'buscar_demanda', { p_id: dl.id })).versao;
+    const t0 = (await c(A, 'buscar_demanda', { p_id: dl.id })).tarefas[0];
+    const operacoes = [
+      ['atualizar_demanda', () => c(A, 'atualizar_demanda', { p_id: dl.id, p: { numero: '9/2026' } })],
+      ['mover_etapa', () => c(A, 'mover_etapa', { p_id: dl.id, p_etapa: 'Fazendo' })],
+      ['adicionar_tarefa', () => c(A, 'adicionar_tarefa', { p_demanda: dl.id, p_texto: 'nova para a versão' })],
+      ['editar_tarefa', () => c(A, 'editar_tarefa', { p_id: t0.id, p_texto: 'editada para a versão' })],
+      ['marcar_tarefa', () => c(A, 'marcar_tarefa', { p_id: t0.id, p_concluida: true })],
+      ['excluir_tarefa', () => c(A, 'excluir_tarefa', { p_id: t0.id })],
+      ['concluir_demanda', () => c(A, 'concluir_demanda', { p_id: dl.id })],
+      ['reabrir_demanda', () => c(A, 'reabrir_demanda', { p_id: dl.id, p_etapa: 'Vistos' })],
+      ['arquivar_demanda', () => c(A, 'arquivar_demanda', { p_id: dl.id })],
+      ['desarquivar_demanda', () => c(A, 'desarquivar_demanda', { p_id: dl.id })],
+    ];
+    const naoSobem = [];
+    for (const [nome, f] of operacoes) { const a = await v(); await f(); if (!((await v()) > a)) naoSobem.push(nome); }
+    ok(naoSobem.length === 0, 'versão: sobe em toda operação que altera a demanda ou as tarefas (' + (naoSobem.join(',') || operacoes.length + ' operações conferidas') + ')');
+    const lido = await v();
+    await c(A, 'listar_demandas', {}); await c(A, 'buscar_demanda', { p_id: dl.id });
+    ok(await v() === lido, 'versão: apenas ler não altera a versão');
+  }
+
+  // outra conta não troca a versão nem enxerga a demanda (a RLS continua valendo)
+  ok(/não encontrada/.test(await erro(B, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'x' }, p_tarefas: [], p_versao: 1 })), 'RLS: outra conta não salva a demanda mesmo informando uma versão');
+  const dx = await c(A, 'excluir_demanda', { p_id: dl.id, p_confirmado: true });
+  ok(dx.excluida === true && (await db.query('select count(*)::int as n from public.tarefas where demanda_id = $1', [dl.id])).rows[0].n === 0, 'os gatilhos de versão não atrapalham a exclusão da demanda com suas tarefas');
 }
 
 // cópia dos dados e restauração (supabase/restaurar-copia.sql): exporta como a rota /api/exportar, restaura num banco novo e compara tudo (dados fictícios, bancos em memória)

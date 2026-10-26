@@ -13,7 +13,8 @@ process.loadEnvFile(arquivo);
 
 const v = (n) => (process.env[n] ?? '').trim();
 let problemas = 0;
-const linha = (nome, estado, nota = '') => { console.log(nome.padEnd(40) + estado.padEnd(10) + nota); if (estado !== 'ok') problemas++; };
+let bloqueios = 0; // problemas que impedem a leitura do Supabase (DMANDA_LOGIN_GOOGLE é só aviso: qualquer valor diferente de "nao" mantém o botão do Google)
+const linha = (nome, estado, nota = '') => { console.log(nome.padEnd(40) + estado.padEnd(10) + nota); if (estado !== 'ok') { problemas++; if (nome !== 'DMANDA_LOGIN_GOOGLE') bloqueios++; } };
 const checar = (nome, obrigatoria, regras) => {
   if (!v(nome)) return obrigatoria ? linha(nome, 'VAZIA') : console.log(nome.padEnd(40) + 'vazia'.padEnd(10) + '(opcional)');
   const falha = regras.map((r) => r()).find(Boolean);
@@ -36,7 +37,7 @@ checar('SUPABASE_SERVICE_ROLE_KEY', true, [
 checar('CRON_SECRET', true, [() => (v('CRON_SECRET').length >= 16 ? '' : 'precisa ter 16 caracteres ou mais')]);
 checar('DMANDA_BANCO', false, [() => (v('DMANDA_BANCO') ? 'deve ficar vazia aqui ("teste" é só para npm run dev:teste e desliga o Supabase real)' : '')]);
 
-if (!semRede && problemas === 0) {
+if (!semRede && bloqueios === 0) {
   console.log('\nO que o Supabase respondeu (só leitura):');
   const base = v('NEXT_PUBLIC_SUPABASE_URL').replace(/\/$/, '');
   try {

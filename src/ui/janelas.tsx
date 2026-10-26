@@ -102,6 +102,11 @@ function EditarInterna({ d, hoje, rasc, guardarRascunho, fechar, salvar, arquiva
   const [nt, setNt] = useState(rasc?.nt ?? '');
   const [conf, setConf] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  // Versão da demanda em que esta edição se baseia: a da abertura da janela, ou a do rascunho recuperado (que pode ser mais antiga que a demanda atual).
+  // Vai junto no salvamento: se a demanda mudou desde então (outro aparelho ou janela), o banco recusa tudo e esta edição continua aqui, intacta.
+  const [versaoBase] = useState(() => rasc?.versao ?? d.versao);
+  const [conflito, setConflito] = useState(false);
+  const desatualizada = conflito || versaoBase !== d.versao;
   const [menuAcoes, setMenuAcoes] = useState<{ x: number; y: number } | null>(null);
   const mudar = (p: Partial<Campos>) => setC((x) => ({ ...x, ...p }));
   const fin = d.etapa === 'Finalizado';
@@ -113,10 +118,10 @@ function EditarInterna({ d, hoje, rasc, guardarRascunho, fechar, salvar, arquiva
   // Rascunho automático: meio segundo depois da última alteração, e não só ao fechar a janela (recarregar, sessão encerrada ou o sistema fechar o aplicativo não perdem o texto)
   useEffect(() => {
     if (!sujo) return;
-    const t = setTimeout(() => guardarRascunho(chave, { dados: c, tarefas: tarefas.map((x) => ({ id: x.id, texto: x.texto, concluida: x.concluida })), nt }), 500);
+    const t = setTimeout(() => guardarRascunho(chave, { dados: c, tarefas: tarefas.map((x) => ({ id: x.id, texto: x.texto, concluida: x.concluida })), nt, versao: versaoBase }), 500);
     return () => clearTimeout(t);
-  }, [sujo, c, tarefas, nt, chave, guardarRascunho]);
-  const fecharGuardando = () => { if (sujo) guardarRascunho(chave, { dados: c, tarefas: tarefas.map((t) => ({ id: t.id, texto: t.texto, concluida: t.concluida })), nt }); else guardarRascunho(chave, null); fechar(); };
+  }, [sujo, c, tarefas, nt, chave, guardarRascunho, versaoBase]);
+  const fecharGuardando = () => { if (sujo) guardarRascunho(chave, { dados: c, tarefas: tarefas.map((t) => ({ id: t.id, texto: t.texto, concluida: t.concluida })), nt, versao: versaoBase }); else guardarRascunho(chave, null); fechar(); };
   const cancelar = () => { guardarRascunho(chave, null); fechar(); };
 
   const gravar = async (etapaFinal: Etapa | null, msg: string) => {
@@ -124,9 +129,9 @@ function EditarInterna({ d, hoje, rasc, guardarRascunho, fechar, salvar, arquiva
     setSalvando(true);
     const pendente = nt.trim() ? [...listaEnvio, { texto: nt.trim(), concluida: false }] : listaEnvio;
     const dados: DadosDemanda = { ...paraDados(c), ...(etapaFinal ? { etapa: etapaFinal } : {}) };
-    const r = await salvar(d.id, dados, pendente, msg);
+    const r = await salvar(d.id, dados, pendente, versaoBase, msg);
     setSalvando(false);
-    if (r) { guardarRascunho(chave, null); fechar(); }
+    if (r.ok) { guardarRascunho(chave, null); fechar(); } else if (r.conflito) setConflito(true);
   };
 
   const adicionarNt = () => { const v = nt.trim(); if (!v) return; setTarefas((l) => [...l, { chave: chaveTarefa(), texto: v, concluida: false }]); setNt(''); };
@@ -142,16 +147,16 @@ function EditarInterna({ d, hoje, rasc, guardarRascunho, fechar, salvar, arquiva
       <span className="data">Excluir de vez? Não dá para desfazer.</span>
       <button className="btn perigo" onClick={async () => { if (await excluir(d.id)) { guardarRascunho(chave, null); fechar(); } }}><Icone nome="trash" />Confirmar exclusão</button>
       <span className="esp" /><button className="btn" onClick={cancelar}>Cancelar</button>
-      {fin ? <button className="btn" disabled={salvando} onClick={() => void gravar('Fazendo', 'Reaberta em Fazendo. O histórico foi mantido.')}>Reabrir (volta para Fazendo)</button> : <button className="btn" disabled={salvando} onClick={() => void gravar('Finalizado', 'Demanda finalizada. As tarefas foram marcadas como concluídas.')}><Icone nome="check" />Concluir demanda</button>}
-      <button className="btn pri" disabled={salvando} aria-label="Salvar alterações" onClick={() => void gravar(etapa !== base.etapa ? etapa : null, 'Alterações salvas')}>Salvar<span className="rot-ext"> alterações</span></button>
+      {fin ? <button className="btn" disabled={salvando || desatualizada} onClick={() => void gravar('Fazendo', 'Reaberta em Fazendo. O histórico foi mantido.')}>Reabrir (volta para Fazendo)</button> : <button className="btn" disabled={salvando || desatualizada} onClick={() => void gravar('Finalizado', 'Demanda finalizada. As tarefas foram marcadas como concluídas.')}><Icone nome="check" />Concluir demanda</button>}
+      <button className="btn pri" disabled={salvando || desatualizada} aria-label="Salvar alterações" onClick={() => void gravar(etapa !== base.etapa ? etapa : null, 'Alterações salvas')}>Salvar<span className="rot-ext"> alterações</span></button>
     </>
   ) : (
     <>
       <button className="btn mini m-sec" onClick={async () => { const r = await arquivar(d.id); if (r) { guardarRascunho(chave, null); fechar(); } }}><Icone nome="archive" />{d.arquivada_em ? 'Arquivada' : 'Arquivar'}</button>
       <button className="btn mini m-sec" onClick={() => setConf(true)}><Icone nome="trash" />Excluir</button>
       <span className="esp" /><button className="btn" onClick={cancelar}>Cancelar</button>
-      {fin ? <button className="btn" disabled={salvando} onClick={() => void gravar('Fazendo', 'Reaberta em Fazendo. O histórico foi mantido.')}>Reabrir (volta para Fazendo)</button> : <button className="btn" disabled={salvando} onClick={() => void gravar('Finalizado', 'Demanda finalizada. As tarefas foram marcadas como concluídas.')}><Icone nome="check" />Concluir demanda</button>}
-      <button className="btn pri" disabled={salvando} aria-label="Salvar alterações" onClick={() => void gravar(etapa !== base.etapa ? etapa : null, 'Alterações salvas')}>Salvar<span className="rot-ext"> alterações</span></button>
+      {fin ? <button className="btn" disabled={salvando || desatualizada} onClick={() => void gravar('Fazendo', 'Reaberta em Fazendo. O histórico foi mantido.')}>Reabrir (volta para Fazendo)</button> : <button className="btn" disabled={salvando || desatualizada} onClick={() => void gravar('Finalizado', 'Demanda finalizada. As tarefas foram marcadas como concluídas.')}><Icone nome="check" />Concluir demanda</button>}
+      <button className="btn pri" disabled={salvando || desatualizada} aria-label="Salvar alterações" onClick={() => void gravar(etapa !== base.etapa ? etapa : null, 'Alterações salvas')}>Salvar<span className="rot-ext"> alterações</span></button>
     </>
   );
 
@@ -159,6 +164,12 @@ function EditarInterna({ d, hoje, rasc, guardarRascunho, fechar, salvar, arquiva
     <Janela titulo={`${d.tipo} ${d.numero}`} larga aoFechar={fecharGuardando} sujo={sujo} rodape={rodape}
       extraCab={conf ? null : <button type="button" className="icbtn-s m-mais" aria-haspopup="menu" aria-label="Mais ações da demanda: arquivar ou excluir" title="Mais ações" onClick={(e) => { const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setMenuAcoes((m) => (m ? null : { x: b.right - a.left, y: b.bottom - a.top })); }}><Icone nome="ellipsis" /></button>}>
       {recuperado ? <p className="data rec">Rascunho recuperado. Cancelar descarta as alterações.</p> : null}
+      {desatualizada ? (
+        <p className="data rec" role="alert" id="m-conflito">
+          Esta demanda foi alterada em outro aparelho ou janela depois que você abriu esta edição{versaoBase !== d.versao ? ` (agora ela está em ${d.etapa}, com ${plural(d.tarefas.length, 'tarefa')})` : ''}.
+          Nada foi gravado e o que você digitou continua aqui. Salvar fica bloqueado para não apagar o que foi gravado lá. Copie o que precisar e toque em Cancelar (descarta esta edição) para abrir a demanda de novo, já na versão atual.
+        </p>
+      ) : null}
       <div className="m-cols">
         <div>
           <Grupo titulo="Identificação"><CamposIdentificacao c={c} mudar={mudar} prefixo="d" /></Grupo>

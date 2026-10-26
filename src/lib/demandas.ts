@@ -29,6 +29,8 @@ export type Demanda = {
   arquivada_em: string | null;
   criado_em: string;
   atualizado_em: string;
+  /** Sobe a cada alteração da demanda ou de suas tarefas; a janela de edição devolve a que abriu para o banco recusar o salvamento se mudou. */
+  versao: number;
   tarefas: Tarefa[];
 };
 

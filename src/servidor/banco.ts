@@ -4,7 +4,7 @@ import { criarClienteServidor } from '@/lib/supabase/servidor';
 import { createClient } from '@supabase/supabase-js';
 import { configSupabase, modoTeste } from '@/lib/supabase/config';
 import { contaAutorizada } from '@/lib/sessao';
-import { ErroDmanda, type Chamar } from '@/nucleo/operacoes';
+import { ErroConflito, ErroDmanda, type Chamar } from '@/nucleo/operacoes';
 
 export const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
 
@@ -24,6 +24,7 @@ async function bancoTeste(): Promise<Banco> {
 
 /** Erros de regra do banco (P0001) já vêm em português e são mostrados; o resto vira mensagem genérica (o detalhe vai para o log). */
 function traduzir(e: { message?: string; code?: string }): Error {
+  if (e.code === 'DM409') return new ErroConflito(e.message ?? 'A demanda foi alterada em outro aparelho. Nada foi gravado.');
   if (e.code === 'P0001') return new ErroDmanda(e.message ?? 'Operação recusada.');
   if (/constraint|violates/i.test(e.message ?? '')) return new ErroDmanda('Os dados não passaram na validação do banco. Confira os campos.');
   return Object.assign(new Error(e.message ?? 'erro de banco'), { code: e.code });

@@ -210,6 +210,51 @@ await pg.setViewportSize({ width: 1360, height: 780 });
   await pg.click('.linha:has-text("Criada no outro aparelho") .btn:has-text("Excluir")'); await pg.click('.linha:has-text("Criada no outro aparelho") .btn:has-text("Confirmar exclusão")'); await pg.waitForTimeout(600);
   await ir('/demandas');
 }
+// 11b3) edição simultânea: a janela aberta num aparelho fica desatualizada quando outro aparelho grava. Salvar é recusado por inteiro, a edição local continua na tela
+// com um aviso que não some, e a tarefa criada no outro aparelho permanece (antes, salvar a janela antiga a apagava sem aviso)
+{
+  await ir('/demandas');
+  await pg.click('button[aria-label="Nova demanda"]'); await pg.waitForSelector('#n-assunto');
+  await pg.fill('#n-assunto', 'Conflito TESTE'); await pg.click('.modal .btn.pri'); await aviso(); await pg.waitForTimeout(400);
+  // aparelho 1 abre a edição e digita, sem salvar
+  await pg.click('.dcard:has-text("Conflito TESTE") .assunto'); await pg.waitForSelector('.modal .m-cols');
+  await pg.fill('#d-assunto', 'Conflito TESTE (minha edição)'); await pg.fill('#m-nt', 'tarefa do aparelho 1'); await pg.press('#m-nt', 'Enter');
+  ok(!(await pg.$('#m-conflito')), 'edição simultânea: com a demanda ainda na versão aberta não há aviso de conflito');
+  // aparelho 2 abre a mesma demanda e grava uma tarefa
+  const outro = await ctx.newPage();
+  await outro.goto(BASE + '/demandas', { waitUntil: 'load', timeout: 120000 });
+  await outro.waitForSelector('.app .main'); await outro.waitForFunction(() => !document.body.innerText.includes('Carregando as demandas'), null, { timeout: 60000 });
+  await outro.click('.dcard:has-text("Conflito TESTE") .assunto'); await outro.waitForSelector('.modal .m-cols');
+  await outro.fill('#m-nt', 'criada no outro aparelho'); await outro.press('#m-nt', 'Enter');
+  await outro.click('.modal .btn.pri[aria-label="Salvar alterações"]'); await outro.waitForSelector('#toast.on');
+  await outro.close();
+  // aparelho 1 tenta salvar a janela antiga
+  await pg.click('.modal .btn.pri[aria-label="Salvar alterações"]');
+  const recusado = await avisoRe(/alterada em outro aparelho/);
+  const aviso1 = await pg.waitForSelector('#m-conflito', { timeout: 8000 }).then(() => true, () => false);
+  const textoAviso = aviso1 ? await pg.textContent('#m-conflito') : '';
+  const mantido = (await pg.inputValue('#d-assunto')) === 'Conflito TESTE (minha edição)' && (await pg.$$eval('.t-campo', (e) => e.map((x) => x.value))).includes('tarefa do aparelho 1');
+  const bloqueado = await pg.isDisabled('.modal .btn.pri[aria-label="Salvar alterações"]');
+  ok(recusado && aviso1 && /Nada foi gravado/.test(textoAviso) && /Copie o que precisar/.test(textoAviso) && mantido && bloqueado, 'edição simultânea: salvar a janela antiga é recusado com aviso compreensível e fixo na janela, a edição local continua nos campos e Salvar fica bloqueado');
+  await pg.waitForTimeout(700); // deixa o rascunho automático gravar
+  // fechar pelo X guarda a edição como rascunho com a versão em que ela se baseia: ao reabrir a demanda o aviso já aparece (a edição é de antes da mudança) e Salvar segue bloqueado
+  await pg.click('.modal [aria-label="Fechar"]'); await pg.waitForTimeout(300);
+  await pg.click('.dcard:has-text("Conflito TESTE") .assunto'); await pg.waitForSelector('.modal .m-cols');
+  ok(!!(await pg.$('#m-conflito')) && /Rascunho recuperado/.test(await pg.textContent('.modal')) && (await pg.inputValue('#d-assunto')) === 'Conflito TESTE (minha edição)' && await pg.isDisabled('.modal .btn.pri[aria-label="Salvar alterações"]'), 'edição simultânea: o rascunho guardado lembra a versão de origem, então ao reabrir o aviso aparece de novo, a edição recuperada está nos campos e Salvar continua bloqueado');
+  // nada do aparelho 1 foi gravado e a tarefa do aparelho 2 permanece (lido do banco por uma página nova)
+  await pg.click('.modal .btn:has-text("Cancelar")'); await ir('/demandas');
+  const nomes = await assuntos();
+  await pg.click('.dcard:has-text("Conflito TESTE") .assunto'); await pg.waitForSelector('.modal .m-cols');
+  const tarefas = await pg.$$eval('.t-campo', (e) => e.map((x) => x.value));
+  ok(nomes.includes('Conflito TESTE') && !nomes.some((n) => n.includes('minha edição')) && tarefas.join('|') === 'criada no outro aparelho' && !(await pg.$('#m-conflito')), 'edição simultânea: no banco ficou só o que o outro aparelho gravou (a tarefa dele permanece, nada do aparelho 1 foi gravado) e a janela reaberta mostra a versão atual sem aviso');
+  // limpeza: arquiva e exclui a demanda criada só para este teste (as verificações finais do banco esperam exatamente as duas de antes)
+  await pg.click('.modal .btn:has-text("Cancelar")'); await pg.waitForTimeout(300);
+  await pg.click('.dcard:has-text("Conflito TESTE") .girar >> nth=0'); await pg.waitForTimeout(600);
+  await pg.click('.dcard:has-text("Conflito TESTE") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
+  await ir('/arquivo');
+  await pg.click('.linha:has-text("Conflito TESTE") .btn:has-text("Excluir")'); await pg.click('.linha:has-text("Conflito TESTE") .btn:has-text("Confirmar exclusão")'); await pg.waitForTimeout(600);
+  await ir('/demandas');
+}
 // 11c) cópia dos dados: a rota /api/exportar devolve o JSON versionado com demandas e tarefas (e arquivadas), como arquivo para baixar e sem cache
 {
   const r = await pg.context().request.get(BASE + '/api/exportar');
