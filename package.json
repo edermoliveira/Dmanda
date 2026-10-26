@@ -14,7 +14,8 @@
     "testar:banco": "node scripts/testar-banco.mjs",
     "testar:regras": "node scripts/testar-regras.mjs",
     "testar:app": "node scripts/testar-app.mjs",
-    "testar:sessao": "node scripts/testar-sessao.mjs"
+    "testar:sessao": "node scripts/testar-sessao.mjs",
+    "definir:senha": "node --env-file=.env.local scripts/definir-senha.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

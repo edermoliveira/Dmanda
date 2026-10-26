@@ -2,12 +2,15 @@
 // Verificação otimista (a autorização de verdade está nas funções do banco, com RLS, e em cada ação do servidor).
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { configSupabase, modoTeste } from '@/lib/supabase/config';
-import { COOKIE_ULTIMO_USO, contaAutorizada, sessaoExpirou } from '@/lib/sessao';
+import { configSupabase, modoTeste, opcoesCookiesSessao } from '@/lib/supabase/config';
+import { COOKIE_ULTIMO_USO, contaAutorizada, opcoesCookieUltimoUso, sessaoExpirou } from '@/lib/sessao';
+
+const emHttps = (request: NextRequest) => request.nextUrl.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
 
 function clienteCom(request: NextRequest, resposta: NextResponse) {
   const c = configSupabase()!;
   return createServerClient(c.url, c.chave, {
+    cookieOptions: opcoesCookiesSessao(emHttps(request)),
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (lista) => {
@@ -38,14 +41,21 @@ export async function proxy(request: NextRequest) {
     r.cookies.delete(COOKIE_ULTIMO_USO);
     return r;
   };
+  const marca = request.cookies.get(COOKIE_ULTIMO_USO)?.value;
   if (user && !publico) {
     if (!contaAutorizada(user)) return sair('negado');
-    if (sessaoExpirou(request.cookies.get(COOKIE_ULTIMO_USO)?.value)) return sair('expirou');
+    if (sessaoExpirou(marca)) return sair('expirou');
   }
   if (!user && !publico) return NextResponse.redirect(new URL('/login', request.url));
-  if (user && pathname.startsWith('/login') && contaAutorizada(user)) return NextResponse.redirect(new URL('/', request.url));
-  if (user) resposta.cookies.set(COOKIE_ULTIMO_USO, String(Date.now()), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 60 * 60 * 24 * 30, path: '/' });
+  // com sessão válida o login não faz sentido; com a marca de uso vencida ou ausente mostra o formulário para entrar de novo
+  if (user && pathname.startsWith('/login') && contaAutorizada(user) && !sessaoExpirou(marca)) return NextResponse.redirect(new URL('/', request.url));
+  // Só uso de verdade renova a marca: páginas e ações pedidas por quem usa o painel. As páginas públicas (login e retorno do login) não renovam: quem
+  // grava a marca ao entrar é o próprio login. O Next remove os cabeçalhos de pré-carregamento antes do proxy, então ele não os distingue; o aplicativo não
+  // usa <Link> nem router.prefetch, logo nada pré-carrega sozinho. Se isso mudar, rever esta regra.
+  if (user && !publico) resposta.cookies.set(COOKIE_ULTIMO_USO, String(Date.now()), opcoesCookieUltimoUso(emHttps(request)));
   return resposta;
 }
 
-export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|marca|emojis|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|json|webmanifest)$).*)'] };
+// Fora da porta de entrada ficam só os arquivos estáticos pela extensão (imagens, ícones, manifesto). Nomes de pasta como "marca" não entram na exceção:
+// a página antiga /marca ficava aberta sem login.
+export const config = { matcher: ['/((?!_next/static|_next/image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|json|webmanifest)$).*)'] };

@@ -13,3 +13,6 @@ export function modoTeste(): boolean {
   if (process.env.NODE_ENV === 'production') throw new Error('DMANDA_BANCO=teste não é permitido em produção.');
   return true;
 }
+
+/** Cookies da sessão do Supabase: "secure" só sobre HTTPS (o padrão do SDK não marca). Os demais atributos continuam os do SDK. */
+export const opcoesCookiesSessao = (https: boolean) => ({ secure: https });
