@@ -45,8 +45,22 @@ O modelo está no `.env.example` (versionado, sem valores; atualizado em 26/10/2
 **Conferir o `.env.local` sem revelar valores** (no PowerShell, dentro da pasta do projeto):
 
 ```
-node --env-file=.env.local -e "for (const k of ['NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY','DMANDA_EMAIL_AUTORIZADO','SUPABASE_SERVICE_ROLE_KEY','CRON_SECRET']) console.log(k.padEnd(40), process.env[k] ? 'preenchida' : 'VAZIA')"
+npm run conferir:env
 ```
+
+Mostra só `ok`, `VAZIA` ou `ATENÇÃO` com o motivo, nunca os valores. Confere o formato (a URL precisa ser a do projeto Dmanda, a chave pública não pode ser a secreta e vice-versa, o `CRON_SECRET` precisa de 16 caracteres ou mais, `DMANDA_BANCO` precisa estar vazia aqui). Com tudo no formato certo, também consulta o Supabase só para leitura: provedores ligados (Email, Google), cadastro público, confirmação automática de e-mail, quantos usuários existem e o início do identificador do usuário autorizado. Não altera nada. `node scripts/conferir-env.mjs --sem-rede` pula a consulta.
+
+**De onde vem cada valor** (valores só no `.env.local`; nada disso vai ao chat, a comandos visíveis ou ao Git):
+
+| Variável | Painel de origem |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | já vem preenchida (endereço do projeto Dmanda; não é segredo). Também em Project Settings > API |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase > Project Settings > API Keys > aba **Publishable key** (`sb_publishable_...`) |
+| `DMANDA_EMAIL_AUTORIZADO` | o e-mail da conta autorizada: o mesmo da conta Google com que você já entrou (ou Authentication > Users, coluna de e-mail) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase > Project Settings > API Keys > aba **Secret keys** (`sb_secret_...`). Nunca em `NEXT_PUBLIC` |
+| `CRON_SECRET` | já vem gerado (aleatório, só neste computador). Na publicação, copie o mesmo valor para a Vercel |
+| `DMANDA_LOGIN_GOOGLE` | vazio por enquanto; `nao` só depois de provar a senha e desligar o Google |
+| `DMANDA_BANCO` | vazio |
 
 ## Migrações (`migrations/`, aplicadas em ordem)
 
@@ -95,7 +109,7 @@ O endereço vai em minúsculas. O esquema `dmanda_privado` **não** deve ser adi
 npm run definir:senha
 ```
 
-   O script pede a senha duas vezes **sem mostrá-la**, confere 12 a 72 caracteres, exige que exista **exatamente 1 usuário** no projeto e que ele seja a conta autorizada, e chama `auth.admin.updateUserById` (só `password` e `email_confirm: true`). Não imprime a senha nem a chave, não grava arquivo e não usa argumento de comando. Use uma frase longa e única.
+   O script pede a senha duas vezes **sem mostrá-la**, confere 12 a 72 caracteres, exige que exista **exatamente 1 usuário** no projeto e que ele seja a conta autorizada, e chama `auth.admin.updateUserById` (só `password` e `email_confirm: true`). Não imprime a senha nem a chave, não grava arquivo e não usa argumento de comando. Use uma frase longa e única. Teclas de seta, Delete e Home são ignoradas (não entram na senha). Ctrl+C cancela sem alterar nada. O caminho do terminal foi testado em um console de verdade do Windows (ConPTY) com entradas fictícias: `npm run testar:senha-terminal` (10 cenários: ocultação, confirmação, cancelamento, Backspace, senha curta ou longa demais, setas, chave recusada e senha fraca).
 4. Entrar por senha em `http://localhost:7100/login` e conferir, com o Claude, que o identificador do usuário e as demandas são os mesmos.
 5. **Só depois de provado**, desligar o Google: painel, Authentication > Sign In / Providers > Google > desativar (não excluir o projeto do Google Cloud nem a credencial); e `DMANDA_LOGIN_GOOGLE=nao` no `.env.local` (e na Vercel) para o botão sumir. Dá para reverter ligando o Google de novo.
 
@@ -185,12 +199,22 @@ Feita com a CLI, como **SQL no banco real com contextos de autenticação simula
   3. Agendamento implantado na Vercel: **não**.
   4. Primeira execução automática observada: **não**.
 
-## Proteção dos dados reais (cópia própria)
+## Cópia dos dados e restauração
 
 - O GitHub guarda **código e migrações**, não os dados. Os registros reais ficam só no Supabase e **nunca** vão para o repositório.
 - O plano gratuito **não oferece os backups gerenciados** dos planos pagos, mas permite exportar os próprios dados.
-- **Primeira peça implantada (26/10/2026):** menu do avatar > **Baixar cópia dos dados**, que baixa `dmanda-copia-AAAA-MM-DD.json` (rota `GET /api/exportar`, só com a sessão da conta autorizada, sem cache). O arquivo tem formato versionado (`formato: dmanda-exportacao`, `versao: 1`) com `demandas`, `arquivadas` e as tarefas de cada uma, sem o identificador interno do usuário. **Ele contém dados reais:** guarde só em lugar privado e **nunca** no repositório nem em Issues.
-- **Proposta para recuperação (não implementada):** uma função SQL `importar_dados(jsonb)`, chamada como o próprio usuário (com a RLS), que recria demandas e tarefas de um arquivo `versao: 1` de forma atômica e idempotente, ligada a "Importar" em Configurações (já planejado). Antes disso, em emergência, o arquivo é legível por qualquer pessoa técnica e permite reinserir os dados por SQL.
+- **Exportação (implantada em 26/10/2026):** menu do avatar > **Baixar cópia dos dados**, que baixa `dmanda-copia-AAAA-MM-DD.json` (rota `GET /api/exportar`, só com a sessão da conta autorizada, sem cache). **Ele contém dados reais:** guarde só em lugar privado e **nunca** no repositório nem em Issues.
+- **O que a cópia contém:** `formato: "dmanda-exportacao"`, `versao: 1`, `exportado_em`, `fuso`, e duas listas, `demandas` (ativas) e `arquivadas`. Cada demanda traz todos os campos (identificador, tipo, área, número, assunto, descrição, origem, etapa, datas de chegada, prazo, tipo de prazo, setor, acompanhamento, conclusão, arquivamento, criação e última alteração) e suas `tarefas` (identificador, texto, concluída, posição).
+- **O que a cópia NÃO contém:** a conta e a senha, a lista de acesso, as migrações, as preferências do navegador (tema, visão, filtros, rascunhos não salvos), os resumos e o registro da rotina diária (a rotina recalcula) e a data de criação de cada tarefa. Por isso a cópia sozinha não recria o projeto: primeiro as migrações e a conta, depois os dados.
+- **Restauração demonstrada (em banco de teste, com dados fictícios):** `supabase/restaurar-copia.sql`. Passo a passo:
+  1. Garanta o projeto pronto: migrações aplicadas e o usuário existente (para um projeto novo, ver "Passo a passo do login Google" e "Entrada por e-mail e senha").
+  2. Abra o `.json` da cópia em um editor de texto e copie todo o conteúdo.
+  3. Abra `supabase/restaurar-copia.sql`, troque a palavra marcadora `COLE_AQUI_O_JSON` (com dois sublinhados de cada lado, na linha `j jsonb := ...`) pelo conteúdo copiado, mantendo as marcas `$dmanda$`.
+  4. No **SQL Editor** do painel do Supabase do projeto, cole o arquivo inteiro e execute. Não salve o arquivo editado no repositório (ele passa a ter dados reais).
+  5. Confira: `select count(*) from public.demandas;` e `select count(*) from public.tarefas;`.
+- **Garantias do restaurador (testadas no `testar:banco`, 12 verificações):** tudo em uma transação (se algo estiver errado, nada é gravado); atribui tudo ao único usuário do projeto (e recusa se não houver exatamente 1); rodar duas vezes não duplica; uma demanda que já existe com o mesmo identificador não é sobrescrita nem recebe tarefas de volta; após apagar tudo no mesmo projeto, a cópia devolve demandas e tarefas idênticas (campos, datas, etapas, ordem das tarefas, acentos e aspas). O `testar:app` também confere que o arquivo que a rota real entrega é aceito por esse SQL.
+- **O que ainda não foi feito:** restaurar em um projeto Supabase real (só se testou em banco local). Faça uma vez, num projeto descartável, antes de depender da cópia. Não existe tela de importação (adiada de propósito); quando existir, vai usar uma função SQL com a RLS do usuário.
+- **Limitação de edição simultânea (vale para os dois modos de entrada):** a janela de edição grava a demanda inteira que ela mostra: os campos e a lista completa de tarefas (`salvar_demanda`: tarefa que não está na lista da janela é **excluída**). Se a mesma demanda for editada em dois aparelhos, **o último salvamento substitui o do outro, sem aviso de conflito**. O caso mais danoso: uma tarefa criada no outro aparelho **some** se uma janela de edição aberta antes dela for salva depois. Cada aparelho só vê a mudança do outro ao recarregar ou ao voltar à tela (a leitura é adiada enquanto há janela aberta). Isto **não** é sincronização sem risco de conflito. Na prática, para uma pessoa só: feche a janela de edição antes de mexer na mesma demanda em outro aparelho. Resolver de verdade exige controle de versão por demanda (comparar `atualizado_em` ao salvar e avisar); não foi feito e fica registrado como limitação. Tema, visão e rascunhos ficam só no navegador e não sincronizam.
 - **Rotina sugerida:** exportar uma vez por semana (e antes de qualquer migração), guardando as últimas cópias. Como o plano gratuito pode pausar um projeto sem uso, a exportação também protege contra isso.
 - **Decisão pendente do usuário (não bloqueia nada):** o **destino privado** das cópias (por exemplo, uma pasta privada no Google Drive ou OneDrive pessoal, ou um pendrive) e a frequência. Nenhum dado real vai para o GitHub.
 

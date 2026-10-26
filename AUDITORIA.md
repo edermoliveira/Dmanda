@@ -48,7 +48,7 @@ Relatório consolidado. **Não abrir outra auditoria geral sem fato novo.** Pend
 ### 3.4 Pendentes e limites (preferência ou melhoria, nenhum bloqueia o uso)
 
 1. **Expiração de 6 h é controle da aplicação.** O cookie não é assinado e o token do Supabase segue válido na API por até 1 h (renovável) mesmo depois das 6 h. Proteção contra aparelho esquecido, não fronteira contra quem controla o aparelho. O caminho "duro" é o plano pago do Supabase (expiração por inatividade).
-2. **Dois aparelhos editando a mesma demanda:** o último a salvar vence, sem aviso de conflito (`salvar_demanda` não compara versão). Recomendado antes de usar muito nos dois aparelhos: comparar `atualizado_em`.
+2. **Dois aparelhos editando a mesma demanda:** o último a salvar vence, sem aviso de conflito. Detalhe que importa: a janela de edição grava a lista **inteira** de tarefas que mostra (`salvar_demanda` exclui as que não estão na lista), então uma tarefa criada no outro aparelho **some** se uma janela antiga for salva depois. Isto não é sincronização sem risco de conflito. Está documentado em `supabase/LEIA-ME.md` e descrito por um teste (`testar:banco`, "limitação conhecida"). Correção de verdade: comparar `atualizado_em` ao salvar e avisar (não feita).
 3. **Rascunhos e preferências ficam no navegador depois de "Sair"** (decisão anterior de preservar). Em computador compartilhado, os rascunhos (texto de demandas) permanecem.
 4. **Sem service worker:** abrir a PWA sem internet mostra a tela de erro do navegador (só o uso com o app aberto tem aviso próprio).
 5. **Cookies do Supabase não são `httpOnly`** enquanto o cliente do navegador for usado (hoje: login por senha e Google). É padrão do Supabase para esse modo.
@@ -56,8 +56,8 @@ Relatório consolidado. **Não abrir outra auditoria geral sem fato novo.** Pend
 7. **`scripts/verificar-cores.mjs`** olha um `globals.css` do design antigo: obsoleto, não faz parte dos testes acordados.
 8. **eslint 9.39** avisa fim de suporte: atualizar depois (preferência).
 9. **Projeto Supabase gratuito pode pausar** por inatividade. A rotina diária ajuda mas não garante; a cópia manual protege.
-10. **Intermitência registrada:** em cerca de 2 de 10 execuções do `testar:sessao` uma verificação ("as preferências do navegador continuam depois de sair") falhou uma vez, sem causa conclusiva. A comparação agora ignora a ordem das chaves e mostra os valores se falhar; as 6 execuções seguintes e as 3 finais passaram 57 de 57. Se voltar, investigar com a mensagem nova.
-11. O prompt oculto de `definir:senha` em terminal real (PowerShell) não é automatizável aqui: foi testado só o caminho canalizado. Se a digitação oculta falhar, avise.
+10. **Intermitência do `testar:sessao` (causa AINDA DESCONHECIDA).** Verificação: "as preferências do navegador (tema e outras) continuam depois de sair" (`scripts/testar-sessao.mjs`, passo 8, compara o `localStorage` com chave `dmanda*` antes e depois de sair). Evidência: falhou em cerca de 2 de 10 execuções e em 1 de 3 numa repetição de investigação, sempre uma verificação só, e **a mensagem da época não mostrava os valores**, então nunca se soube qual chave diferiu. O que mudou: (a) as chaves passaram a ser **ordenadas** antes de comparar (antes valia a ordem de enumeração do navegador, que não é garantida); (b) a mensagem de falha mostra antes, depois, uma segunda leitura 1 s depois, a URL e se o tema e a visão chegaram a ser gravados antes de sair. A verificação **não foi afrouxada**: continua exigindo igualdade exata entre as duas leituras (a segunda leitura só entra na mensagem). Resultado desde a mudança: 19 execuções seguidas sem falha (6 e 3 na sessão anterior, 10 em 26/10/2026 na rodada de validação). Se a taxa original (cerca de 20%) continuasse, 19 acertos seguidos teriam chance de uns 1,4%: isso favorece a hipótese da ordem de enumeração, **mas não a prova**. Tratar como causa provável, não resolvida. Se voltar, a mensagem nova dirá se foi valor diferente ou escrita tardia.
+11. O prompt oculto de `definir:senha` foi testado em console de verdade (ConPTY do Windows, entradas fictícias, Auth falso): `npm run testar:senha-terminal`, 10 cenários (ocultação, confirmação, Ctrl+C, Backspace, senha curta ou longa, setas, chave recusada, senha fraca). Achou um defeito real (setas e Delete entravam na senha como texto), corrigido. Não foi testado em PowerShell 7 nem em outros terminais; a ocultação vem do modo bruto do Node, comum a todos.
 
 ### 3.5 Revisão de código (skill `code-review`, nível alto, sobre o conjunto de mudanças)
 
@@ -117,10 +117,12 @@ Não foram instalados pacotes, skills, memória nem MCPs. Permissões e modo de 
 | `npx tsc --noEmit` | exit 0 | tipos |
 | `npx eslint src scripts` | exit 0 | lint |
 | `npm run testar:regras` | 25 de 25 | regras puras (datas, sessão, conta, rotina, cookie, guarda de pré-carregamento) |
-| `npm run testar:banco` | 90 de 90 | **PGlite** (banco local), não o Supabase real |
-| `npm run testar:app` | 64 de 64 | navegador (Edge) + banco de teste local; inclui dois aparelhos e a cópia dos dados |
-| `npm run testar:sessao` | 57 de 57 (3 execuções seguidas) | aplicação real contra **Auth falso**; entrada por senha, 6 h, Sair, falhas, `definir:senha` |
-| `npm run build` | passa | produção |
+| `npm run testar:banco` | 103 de 103 | **PGlite** (banco local), não o Supabase real; inclui restauração da cópia (12) e a limitação de edição simultânea (1) |
+| `npm run testar:app` | 65 de 65 | navegador (Edge) + banco de teste local; inclui dois aparelhos, a cópia dos dados e a restauração do arquivo que a rota entrega |
+| `npm run testar:sessao` | 57 de 57 (10 execuções seguidas em 26/10/2026, depois do script de senha mudar) | aplicação real contra **Auth falso**; entrada por senha, 6 h, Sair, falhas, `definir:senha` canalizado |
+| `npm run testar:senha-terminal` | 10 de 10 | `definir:senha` em console de verdade (ConPTY), teclas fictícias, Auth falso |
+| `npm run conferir:env` | testado com arquivos fictícios (formato errado, certo, vazio, ausente) | conferência do `.env.local` sem mostrar valores |
+| `npm run build` | passou em `0a8aa3a`; `src/` e as migrações não mudaram desde então (só scripts e documentos) | produção |
 | `next start` (fake env) | conferido | rotas públicas e protegidas, manifesto, ícones, cron 401, `DMANDA_BANCO=teste` recusado |
 | `npm audit` | 0 vulnerabilidades | dependências |
 
@@ -134,8 +136,10 @@ Limitações: nada contra o Supabase real, o Google real, a Vercel, o iPhone/iPa
 
 ## 9. Cópia dos dados (backup)
 
-- Implantado: menu do avatar > "Baixar cópia dos dados" (`GET /api/exportar`, só com sessão da conta autorizada, sem cache) gera `dmanda-copia-AAAA-MM-DD.json` versionado (`dmanda-exportacao`, `versao 1`) com demandas, arquivadas e tarefas. Dados reais: nunca no GitHub.
-- Proposto: função SQL `importar_dados(jsonb)` chamada como o próprio usuário (RLS), atômica, ligada a "Importar" em Configurações; rotina semanal manual e antes de migrações.
+- Implantado: menu do avatar > "Baixar cópia dos dados" (`GET /api/exportar`, só com sessão da conta autorizada, sem cache) gera `dmanda-copia-AAAA-MM-DD.json` versionado (`dmanda-exportacao`, `versao 1`) com demandas, arquivadas e tarefas. Dados reais: nunca no GitHub. É uma **exportação**: só vira "backup" depois de uma restauração demonstrada no projeto real.
+- **Restauração (26/10/2026, em banco de teste, dados fictícios):** `supabase/restaurar-copia.sql`, em transação única, só para o usuário único, sem sobrescrever nada existente e sem duplicar. Testado: projeto novo com outro identificador de usuário, perda total no mesmo projeto, repetição, demanda existente preservada, formato errado, zero ou dois usuários, tarefa inválida (nada fica pela metade), acentos, aspas, cifrão e quebra de linha. O arquivo que a rota real entrega também é aceito. O teste achou um defeito real no primeiro rascunho do SQL (a cópia não traz a data de criação das tarefas e o `not null` quebrava), corrigido. **Não restaurado ainda em projeto Supabase real.**
+- A cópia não traz conta, senha, lista de acesso, preferências do navegador, resumos e registro da rotina, nem a data de criação das tarefas. Detalhes e passo a passo em `supabase/LEIA-ME.md`.
+- Adiado: tela "Importar" em Configurações (função SQL com a RLS do usuário). Rotina semanal manual e antes de migrações.
 - **Decisão sua (não bloqueia):** destino privado das cópias (por exemplo pasta privada do Drive ou OneDrive pessoal, ou pendrive) e frequência.
 
 ## 10. Bloqueios reais para publicação
@@ -150,7 +154,7 @@ Não bloqueiam: destino do backup, melhorias da seção 3.4.
 
 ## 11. Ações suas, em ordem
 
-1. **No PowerShell, na pasta do projeto:** copie `.env.example` para `.env.local` e preencha (URL e chave pública: painel do Supabase > Project Settings > API; chave secreta: API Keys > Secret keys > "default"; `DMANDA_EMAIL_AUTORIZADO`; `CRON_SECRET` com 16 ou mais caracteres). Não cole valores no chat. Conferir sem revelar: comando em `supabase/LEIA-ME.md`.
+1. **Abra `.env.local` (na pasta do projeto, no Desktop) no Bloco de Notas** (já foi criado a partir do modelo, com a URL do projeto e o `CRON_SECRET` gerado) e preencha só 3 valores: chave pública (painel do Supabase > Project Settings > API Keys > Publishable key), chave secreta (mesma tela, Secret keys) e `DMANDA_EMAIL_AUTORIZADO`. Salve. Não cole valores no chat. Depois rode `npm run conferir:env` no PowerShell (ou avise o Claude, que roda): mostra só ok ou VAZIA, nunca os valores.
 2. **No prompt desta sessão:** `! npx supabase login` e depois `! npx supabase link --project-ref gmxoosvgfcydccyeudej`.
 3. **Avise o Claude:** ele roda `db push --linked --dry-run`, depois a migração 6, e confere o banco.
 4. **Painel do Supabase > Authentication > Sign In / Providers > Email:** ligar; mínimo de senha 12; "Confirm email" ligado; "Allow new users to sign up" desligado.
@@ -176,3 +180,18 @@ Não bloqueiam: destino do backup, melhorias da seção 3.4.
 **Título:** Auditoria única de 26/10/2026: entrada por senha, PWA e fechamento da primeira versão
 
 **Corpo:** Relatório em `AUDITORIA.md` (branch de checkpoint). Vinculada a #1 (login e integração real), #2 (avaliação da aplicação), #3 (publicação e rotina) e #4 (cópia dos dados). Pendências, sem duplicar as Issues: (a) aplicar a migração 6 e provar a entrada por senha no real, depois desligar o Google (#1); (b) avaliação visual e teste em iPhone e iPad (#2); (c) enquadramento do plano Hobby e publicação (#3); (d) destino privado das cópias e importação (#4); (e) melhorias: conflito de edição, assinatura do carimbo de uso, service worker se houver necessidade. Critério de encerramento: escopo revisado, achados classificados, correções verificadas, pendências externas explícitas. Não abrir outra auditoria geral sem fato novo.
+
+## 14. Continuação: validação no Supabase real (bloco de 26/10/2026, em andamento)
+
+**Preservado das validações reais anteriores (25/10/2026, Issue #1):** login Google real, hook ativo, gravação pela interface com sessão real, persistência, quatro visões, chamada HTTP local da rotina, segurança do banco nas 5 primeiras migrações. Nada disso foi refeito nem invalidado.
+
+**Ainda NÃO validado no Supabase real (mudanças desta versão):** migração 6, entrada por senha, `definir:senha` no usuário real, expiração de 6 h real, restauração da cópia em projeto real, publicação e primeira execução automática.
+
+**Feito neste bloco, só localmente (sem credenciais do Supabase):**
+- `.env.local` criado a partir do modelo (URL do projeto e `CRON_SECRET` gerado; chaves e e-mail ficaram para você). `npm run conferir:env` confere o formato e, depois, o painel (provedores, cadastro público, confirmação de e-mail, usuários) sem mostrar valores.
+- `definir:senha` em console de verdade: 10 cenários, um defeito real achado e corrigido (setas e Delete entravam na senha). Mínimo e máximo agora são checados antes da confirmação.
+- Intermitência do `testar:sessao`: causa ainda desconhecida; 10 execuções seguidas sem falha; diagnóstico reforçado (seção 3.4, item 10).
+- Restauração da cópia em SQL (`supabase/restaurar-copia.sql`), testada em banco de teste com dados fictícios.
+- Limitação de edição simultânea descrita com precisão (a tarefa criada no outro aparelho pode sumir) e coberta por teste de caracterização.
+
+**Bloqueio atual:** neste computador não há `.env.local` preenchido nem login da CLI do Supabase (a CLI responde `AccessTokenRequiredError`; `supabase/.temp` só tem `cli-latest`, sem projeto vinculado). A migração 6, a conferência do painel e a prova da senha dependem disso.

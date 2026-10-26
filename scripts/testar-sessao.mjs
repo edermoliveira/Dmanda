@@ -269,7 +269,7 @@ const pg = await ctx.newPage();
 const ir = async (rota) => { await pg.goto(BASE + rota, { waitUntil: 'load', timeout: 120000 }); await pg.waitForSelector('.app .main', { timeout: 120000 }); await pg.waitForFunction(() => !document.body.innerText.includes('Carregando as demandas'), null, { timeout: 60000 }); };
 await ir('/demandas');
 await pg.click('.icbtn[aria-label^="Alternar tema"]');
-await pg.waitForFunction(() => localStorage.getItem('dmanda-tema') === '"escuro"' && !!localStorage.getItem('dmanda:ui'), null, { timeout: 10000 }).catch(() => {});
+const prefProntas = await pg.waitForFunction(() => localStorage.getItem('dmanda-tema') === '"escuro"' && !!localStorage.getItem('dmanda:ui'), null, { timeout: 10000 }).then(() => true, () => false);
 const prefAntes = await pg.evaluate(() => JSON.stringify(Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith('dmanda')).sort(([x], [y]) => x.localeCompare(y)))));
 
 // 7) falha ao sair: nada de sucesso, a sessão continua
@@ -295,8 +295,11 @@ const cks2 = await ctx.cookies();
 ok(/saiu do Dmanda/.test(aviso ?? ''), 'depois de sair: login com a mensagem "Você saiu do Dmanda neste navegador"');
 ok(!cks2.some((c) => c.name === 'sb-127-auth-token' && c.value) && !cks2.some((c) => c.name === 'dmanda-ultimo-uso' && c.value), 'os cookies de sessão e de último uso foram removidos');
 ok(chamadas.includes('POST /auth/v1/logout?scope=local') && !chamadas.some((c) => /scope=(global|others)/.test(c)), 'o Auth recebeu logout só do escopo local (outros aparelhos e a conta Google não são tocados)');
-const prefDepois = await pg.evaluate(() => JSON.stringify(Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith('dmanda')).sort(([x], [y]) => x.localeCompare(y)))));
-ok(prefAntes === prefDepois && prefAntes.includes('dmanda-tema'), 'as preferências do navegador (tema e outras) continuam depois de sair' + (prefAntes === prefDepois ? '' : ` [antes: ${prefAntes} | depois: ${prefDepois}]`));
+const lerPref = () => pg.evaluate(() => JSON.stringify(Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith('dmanda')).sort(([x], [y]) => x.localeCompare(y)))));
+const prefDepois = await lerPref();
+// a verificação usa só a primeira leitura (não é afrouxada); a segunda, 1 s depois, só entra na mensagem para distinguir escrita tardia de valor diferente
+const prefTarde = prefAntes === prefDepois ? prefDepois : (await pg.waitForTimeout(1000), await lerPref());
+ok(prefAntes === prefDepois && prefAntes.includes('dmanda-tema'), 'as preferências do navegador (tema e outras) continuam depois de sair' + (prefAntes === prefDepois ? '' : ` [antes: ${prefAntes} | depois: ${prefDepois} | depois+1s: ${prefTarde} | url: ${pg.url()} | tema e ui gravados antes de sair: ${prefProntas}]`));
 await pg.goto(BASE + '/demandas', { waitUntil: 'load', timeout: 60000 });
 ok(new URL(pg.url()).pathname === '/login', 'depois de sair, /demandas exige novo login');
 const semAuth = await pedir(null, '/');

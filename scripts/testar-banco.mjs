@@ -1,6 +1,7 @@
 // Testa as migrações e as funções SQL do núcleo de demandas e tarefas, com a RLS valendo, num Postgres local de teste (PGlite).
 // Valida a lógica SQL e o isolamento por usuário. NÃO valida o Supabase real (plataforma, Auth, chaves, rede).
 // Uso: node scripts/testar-banco.mjs
+import { readFileSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario, chamarComoServico, entrarComo } from '../src/servidor/banco-teste-base.mjs';
 
 const A = '11111111-1111-4111-8111-111111111111', B = '22222222-2222-4222-8222-222222222222';
@@ -245,6 +246,84 @@ const privFn = await sql("select p.proname from pg_proc p join pg_namespace n on
 ok(privFn.length === 0, 'privilégios: nenhuma função do Dmanda é executável por visitante nem por "public" (' + privFn.map((x) => x.proname).join(',') + ')');
 const privSvc = await sql("select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and has_function_privilege('service_role', p.oid, 'execute') order by 1");
 ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diaria', 'privilégios: o papel de serviço executa somente rotina_diaria e registrar_falha_rotina');
+
+// limitação conhecida (documentada em supabase/LEIA-ME.md): a janela de edição grava a lista inteira de tarefas que mostra, então salvar uma janela antiga
+// apaga a tarefa criada depois em outro aparelho. Este teste descreve o comportamento ATUAL; se um dia houver controle de versão por demanda, ele deve mudar.
+{
+  const dl = await c(A, 'criar_demanda', { p: { assunto: 'Edição simultânea TESTE' } });
+  const comUma = await c(A, 'adicionar_tarefa', { p_demanda: dl.id, p_texto: 'visível na janela antiga' });
+  const janelaAntiga = comUma.tarefas.map((t) => ({ id: t.id, texto: t.texto, concluida: t.concluida }));
+  await c(A, 'adicionar_tarefa', { p_demanda: dl.id, p_texto: 'criada no outro aparelho' });
+  const salvo = await c(A, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'Edição simultânea TESTE (aparelho antigo)' }, p_tarefas: janelaAntiga });
+  ok(salvo.assunto.endsWith('(aparelho antigo)') && salvo.tarefas.length === 1 && salvo.tarefas[0].texto === 'visível na janela antiga', 'limitação conhecida: salvar uma janela antiga substitui o outro aparelho e apaga a tarefa criada nele (sem aviso de conflito)');
+  await c(A, 'excluir_demanda', { p_id: dl.id, p_confirmado: true });
+}
+
+// cópia dos dados e restauração (supabase/restaurar-copia.sql): exporta como a rota /api/exportar, restaura num banco novo e compara tudo (dados fictícios, bancos em memória)
+{
+  const SQL_RESTAURAR = readFileSync('supabase/restaurar-copia.sql', 'utf8');
+  if (SQL_RESTAURAR.split('__COLE_AQUI_O_JSON__').length !== 2) throw new Error('o marcador do JSON deve aparecer uma única vez em supabase/restaurar-copia.sql');
+  const O = '33333333-3333-4333-8333-333333333333', N = '44444444-4444-4444-8444-444444444444';
+  const novoBanco = async (...usuarios) => {
+    const d = await abrirBancoTeste();
+    for (const [id, email] of usuarios) { await d.query('insert into auth.users (id, email) values ($1, $2)', [id, email]); await d.query('insert into dmanda_privado.acesso_autorizado (email) values ($1) on conflict do nothing', [email]); }
+    return d;
+  };
+  const rodar = (d, json) => d.exec(SQL_RESTAURAR.replace('__COLE_AQUI_O_JSON__', () => (typeof json === 'string' ? json : JSON.stringify(json))));
+  const tentar = async (d, json) => { try { await rodar(d, json); return null; } catch (e) { return e.message || String(e); } };
+  const todas = async (d, u) => {
+    const lista = [...(await chamarComoUsuario(d, u, 'listar_demandas', { p_arquivadas: false })), ...(await chamarComoUsuario(d, u, 'listar_demandas', { p_arquivadas: true }))];
+    return JSON.stringify(lista.sort((a, b) => a.id.localeCompare(b.id)));
+  };
+  const contar = async (d) => { const r = await d.query('select (select count(*) from public.demandas)::int as d, (select count(*) from public.tarefas)::int as t'); return `${r.rows[0].d}/${r.rows[0].t}`; };
+  const achar = async (d, u, id) => JSON.parse(await todas(d, u)).find((x) => x.id === id);
+
+  // origem: dados fictícios com acento, aspas, cifrão, barra, quebra de linha, demanda finalizada e demanda arquivada com tarefas
+  const origem = await novoBanco([O, 'origem@teste']);
+  const co = (f, a) => chamarComoUsuario(origem, O, f, a);
+  const TEXTOS = ['Primeira á', 'Segunda "q"', "Terceira 'a'"];
+  const x1 = await co('criar_demanda', { p: { assunto: 'Ofício "especial" d\'Água $$ ção', descricao: 'linha 1\nlinha 2 com $dmanda e \\ barra', numero: '77/2026', prazo: '2026-12-01', prazo_tipo: 'Legal', origem: 'Câmara' } });
+  for (const tx of TEXTOS) await co('adicionar_tarefa', { p_demanda: x1.id, p_texto: tx });
+  const x2 = await co('criar_demanda', { p: { assunto: 'Finalizada TESTE', tipo: 'Portaria' } });
+  await co('adicionar_tarefa', { p_demanda: x2.id, p_texto: 'única' }); await co('concluir_demanda', { p_id: x2.id });
+  const x3 = await co('criar_demanda', { p: { assunto: 'Arquivada TESTE', area: 'Compras', setor: 'PGM', acompanhar_em: '2026-11-03' } });
+  await co('adicionar_tarefa', { p_demanda: x3.id, p_texto: 'tarefa arquivada' }); await co('mover_etapa', { p_id: x3.id, p_etapa: 'Aguardando retorno' }); await co('arquivar_demanda', { p_id: x3.id });
+  await co('criar_demanda', { p: { assunto: 'Sem tarefas TESTE' } });
+  const copia = JSON.parse(JSON.stringify({ formato: 'dmanda-exportacao', versao: 1, exportado_em: new Date().toISOString(), fuso: 'America/Sao_Paulo', demandas: await co('listar_demandas', { p_arquivadas: false }), arquivadas: await co('listar_demandas', { p_arquivadas: true }) }));
+  const original = await todas(origem, O);
+  ok(copia.demandas.length === 3 && copia.arquivadas.length === 1 && copia.demandas.concat(copia.arquivadas).reduce((n, d) => n + d.tarefas.length, 0) === 5, 'restauração: a cópia fictícia tem 3 ativas e 1 arquivada, com 5 tarefas no total');
+
+  // destino novo: outro projeto, com a conta de outro identificador, ainda sem dados
+  const destino = await novoBanco([N, 'destino@teste']);
+  ok(await tentar(destino, copia) === null && await contar(destino) === '4/5', 'restauração: a cópia entra num projeto novo (4 demandas e 5 tarefas)');
+  ok(await todas(destino, N) === original, 'restauração: tudo volta igual (campos, datas, etapas, tarefas e ordem), visto pela conta nova com a RLS valendo');
+  const r1 = await achar(destino, N, x1.id);
+  ok(r1.tarefas.map((t) => t.texto).join('|') === TEXTOS.join('|') && r1.assunto === x1.assunto && r1.descricao === x1.descricao, 'restauração: acentos, aspas, cifrão, barra e quebra de linha chegam sem alteração');
+  ok((await destino.query('select count(*)::int as n from public.demandas where user_id <> $1', [N])).rows[0].n === 0, 'restauração: tudo pertence à conta do projeto (nenhuma linha com outro dono)');
+  ok(await tentar(destino, copia) === null && await contar(destino) === '4/5' && await todas(destino, N) === original, 'restauração: rodar de novo com o mesmo arquivo não duplica nem altera nada');
+
+  // o que já existe não é sobrescrito nem recebe tarefas de volta
+  await chamarComoUsuario(destino, N, 'atualizar_demanda', { p_id: x1.id, p: { assunto: 'ALTERADA DEPOIS' } });
+  await chamarComoUsuario(destino, N, 'excluir_tarefa', { p_id: r1.tarefas[0].id });
+  const antes = await todas(destino, N);
+  const r1b = await achar(destino, N, x1.id);
+  ok(await tentar(destino, copia) === null && await todas(destino, N) === antes && r1b.assunto === 'ALTERADA DEPOIS' && r1b.tarefas.length === 2, 'restauração: uma demanda que já existe não é sobrescrita nem recebe de volta a tarefa que foi excluída');
+
+  // perda total no mesmo projeto: apaga tudo e restaura
+  await destino.exec('delete from public.demandas');
+  ok(await contar(destino) === '0/0' && await tentar(destino, copia) === null && await todas(destino, N) === original, 'restauração: depois de perder tudo no mesmo projeto, a cópia devolve as demandas e as tarefas idênticas');
+
+  // recusas: nada é gravado
+  const vazio = await novoBanco([N, 'destino@teste']);
+  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 2 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
+  const dois = await novoBanco([N, 'destino@teste'], [O, 'origem@teste']);
+  ok(/exatamente 1 usuário/.test(await tentar(dois, copia)) && await contar(dois) === '0/0', 'restauração: com mais de um usuário no projeto, nada é gravado');
+  const nenhum = await novoBanco();
+  ok(/exatamente 1 usuário/.test(await tentar(nenhum, copia)) && await contar(nenhum) === '0/0', 'restauração: sem nenhum usuário no projeto, nada é gravado');
+  const quebrada = JSON.parse(JSON.stringify(copia)); quebrada.demandas[0].tarefas[0].texto = '   ';
+  ok(await tentar(vazio, quebrada) !== null && await contar(vazio) === '0/0', 'restauração: uma tarefa inválida derruba a restauração inteira (transação única, nada fica pela metade)');
+  for (const d of [origem, destino, vazio, dois, nenhum]) await d.close();
+}
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);

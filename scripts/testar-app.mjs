@@ -3,7 +3,7 @@
 // NÃO valida o Supabase real nem o login Google (ainda sem projeto e credenciais). Uso: node scripts/testar-app.mjs
 import { chromium } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
-import { rmSync, mkdirSync } from 'node:fs';
+import { rmSync, mkdirSync, readFileSync } from 'node:fs';
 import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
 
 const SEGREDO = 'segredo-de-teste-1234567890';
@@ -216,6 +216,17 @@ await pg.setViewportSize({ width: 1360, height: 780 });
   const j = await r.json().catch(() => null);
   ok(r.status() === 200 && /attachment; filename="dmanda-copia-\d{4}-\d{2}-\d{2}\.json"/.test(r.headers()['content-disposition'] ?? '') && r.headers()['cache-control'] === 'no-store', 'cópia dos dados: a rota entrega um arquivo JSON para baixar, sem cache');
   ok(j?.formato === 'dmanda-exportacao' && j.versao === 1 && Array.isArray(j.demandas) && Array.isArray(j.arquivadas) && j.demandas.length > 0 && j.demandas.every((d) => Array.isArray(d.tarefas) && d.id && !('user_id' in d)), 'cópia dos dados: formato versionado, demandas com tarefas, sem o identificador interno do usuário');
+  // a cópia que a rota real entrega é aceita pelo SQL de restauração documentado (supabase/restaurar-copia.sql), num banco novo em memória
+  {
+    const dr = await abrirBancoTeste();
+    await dr.query("insert into auth.users (id, email) values ('55555555-5555-4555-8555-555555555555', 'restaurar@teste')");
+    let erroRestaurar = null;
+    try { await dr.exec(readFileSync('supabase/restaurar-copia.sql', 'utf8').replace('__COLE_AQUI_O_JSON__', () => JSON.stringify(j))); } catch (e) { erroRestaurar = e.message; }
+    const cont = (await dr.query('select (select count(*) from public.demandas)::int as d, (select count(*) from public.tarefas)::int as t')).rows[0];
+    const esperadoT = [...j.demandas, ...j.arquivadas].reduce((n, d) => n + d.tarefas.length, 0);
+    ok(erroRestaurar === null && cont.d === j.demandas.length + j.arquivadas.length && cont.t === esperadoT, 'cópia dos dados: o arquivo que a rota entrega é restaurado inteiro pelo SQL documentado' + (erroRestaurar ? ` [${erroRestaurar}]` : ` (${cont.d} demandas, ${cont.t} tarefas)`));
+    await dr.close();
+  }
   await ir('/demandas'); await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label="Conta"]');
   const [baixado] = await Promise.all([pg.waitForEvent('download', { timeout: 20000 }).catch(() => null), pg.click('.mv-menu [role=menuitem]:has-text("Baixar cópia")')]);
   const textoAviso = await pg.waitForSelector('#toast.on', { timeout: 10000 }).then((e) => e.textContent()).catch(() => '');

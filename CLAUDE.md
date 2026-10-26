@@ -30,10 +30,12 @@ Variáveis: `.env.local` (nunca vai para o Git; o assistente não lê nem imprim
 
 Testes da aplicação real (rodar só os dos componentes afetados):
 
-- `npm run testar:banco`: SQL, RLS, rotina diária, acesso exclusivo (Google e senha), hook e privilégios no PGlite, que imita a exposição automática desligada do Supabase (90 verificações).
+- `npm run testar:banco`: SQL, RLS, rotina diária, acesso exclusivo (Google e senha), hook e privilégios no PGlite, que imita a exposição automática desligada do Supabase (103 verificações).
 - `npm run testar:regras`: datas, grupos do Início, sessão de 6 h, conta autorizada (e-mail e provedor Google ou e-mail e senha), segredo e falha da rotina, cookie seguro e guarda contra pré-carregamento (25).
-- `npm run testar:app`: navegador (Edge) e leitura direta do banco de teste: fluxos de demandas, tarefas, quatro visões, celular, iPad, claro e escuro, cápsula, rotina diária, dois aparelhos, cópia dos dados (64).
+- `npm run testar:app`: navegador (Edge) e leitura direta do banco de teste: fluxos de demandas, tarefas, quatro visões, celular, iPad, claro e escuro, cápsula, rotina diária, dois aparelhos, cópia dos dados e restauração da cópia (65).
 - `npm run testar:sessao`: sessão, expiração de 6 h, entrada por senha pelo formulário, Sair, falhas de conexão e o script `definir:senha`, contra um **Auth falso** local (57). Nunca toca o Supabase real.
+- `npm run testar:senha-terminal`: `definir:senha` em console de verdade do Windows (ConPTY, só Windows com Python 3), com teclas fictícias e Auth falso (10 cenários).
+- `npm run conferir:env`: confere o `.env.local` sem mostrar valores e, com o formato certo, lê só as configurações do Supabase (provedores, cadastro, usuários). Não altera nada.
 - Também: `npx tsc --noEmit`, `npx eslint src scripts`, `npm run build`.
 - Testes do protótipo: ver `prototipo/CLAUDE.md`.
 

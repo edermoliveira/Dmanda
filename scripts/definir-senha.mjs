@@ -27,11 +27,16 @@ function lerSenha(pergunta) {
       return;
     }
     process.stdout.write(pergunta);
-    let valor = '';
+    let valor = '', esc = 0;
     process.stdin.setRawMode(true); process.stdin.resume(); process.stdin.setEncoding('utf8');
     const fim = () => { process.stdin.setRawMode(false); process.stdin.pause(); process.stdin.off('data', tecla); process.stdout.write('\n'); };
     const tecla = (c) => {
       for (const ch of c) {
+        // teclas de seta, Delete, Home etc. chegam como sequências (ESC [ ... ou ESC O x): são ignoradas, não viram texto da senha
+        if (esc === 1) { esc = ch === '[' ? 2 : ch === 'O' ? 3 : 0; continue; }
+        if (esc === 2) { if (ch >= '@' && ch <= '~') esc = 0; continue; }
+        if (esc === 3) { esc = 0; continue; }
+        if (ch === '\u001b') { esc = 1; continue; }
         if (ch === '\r' || ch === '\n') { fim(); return resolve(valor); }
         if (ch === '\u0003') { fim(); return reject(new Error('Cancelado.')); }
         if (ch === '\u007f' || ch === '\b') valor = valor.slice(0, -1); else if (ch >= ' ') valor += ch;
@@ -43,12 +48,12 @@ function lerSenha(pergunta) {
 
 try {
   const senha = await lerSenha('Nova senha (mínimo ' + MINIMO + ' caracteres, não aparece na tela): ');
+  if (senha.length < MINIMO) { console.error('A senha precisa ter pelo menos ' + MINIMO + ' caracteres. Nada foi alterado.'); process.exit(1); }
+  if (senha.length > 72) { console.error('A senha passa de 72 caracteres, limite do Supabase. Nada foi alterado.'); process.exit(1); }
   if (process.stdin.isTTY) {
     const confere = await lerSenha('Repita a senha: ');
     if (confere !== senha) { console.error('As duas senhas não são iguais. Nada foi alterado.'); process.exit(1); }
   }
-  if (senha.length < MINIMO) { console.error('A senha precisa ter pelo menos ' + MINIMO + ' caracteres. Nada foi alterado.'); process.exit(1); }
-  if (senha.length > 72) { console.error('A senha passa de 72 caracteres, limite do Supabase. Nada foi alterado.'); process.exit(1); }
 
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   const alvo = process.env.DMANDA_EMAIL_AUTORIZADO.trim().toLowerCase();
