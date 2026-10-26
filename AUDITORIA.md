@@ -48,7 +48,7 @@ Relatório consolidado. **Não abrir outra auditoria geral sem fato novo.** Pend
 ### 3.4 Pendentes e limites (preferência ou melhoria, nenhum bloqueia o uso)
 
 1. **Expiração de 6 h é controle da aplicação.** O cookie não é assinado e o token do Supabase segue válido na API por até 1 h (renovável) mesmo depois das 6 h. Proteção contra aparelho esquecido, não fronteira contra quem controla o aparelho. O caminho "duro" é o plano pago do Supabase (expiração por inatividade).
-2. **Dois aparelhos editando a mesma demanda:** o último a salvar vence, sem aviso de conflito. Detalhe que importa: a janela de edição grava a lista **inteira** de tarefas que mostra (`salvar_demanda` exclui as que não estão na lista), então uma tarefa criada no outro aparelho **some** se uma janela antiga for salva depois. Isto não é sincronização sem risco de conflito. Está documentado em `supabase/LEIA-ME.md` e descrito por um teste (`testar:banco`, "limitação conhecida"). Correção de verdade: comparar `atualizado_em` ao salvar e avisar (não feita).
+2. **Dois aparelhos editando a mesma demanda (corrigido em 26/10/2026, migração 7):** a limitação original (o último a salvar vencia e uma tarefa criada no outro aparelho sumia) foi corrigida com versão por demanda e recusa, no banco, do salvamento da janela desatualizada (`DM409`), com aviso fixo e a edição local preservada. Ver seção 15. Resta: as operações pontuais seguem "último a gravar vence" por campo.
 3. **Rascunhos e preferências ficam no navegador depois de "Sair"** (decisão anterior de preservar). Em computador compartilhado, os rascunhos (texto de demandas) permanecem.
 4. **Sem service worker:** abrir a PWA sem internet mostra a tela de erro do navegador (só o uso com o app aberto tem aviso próprio).
 5. **Cookies do Supabase não são `httpOnly`** enquanto o cliente do navegador for usado (hoje: login por senha e Google). É padrão do Supabase para esse modo.
@@ -88,7 +88,7 @@ Não foram instalados pacotes, skills, memória nem MCPs. Permissões e modo de 
 - **Agora:** `FormularioSenha` chama o Supabase Auth direto do navegador (limite de tentativas por quem tenta, e não pelo IP do servidor, que um terceiro poderia esgotar para bloquear você), e `concluirEntrada` (servidor) confere a conta autorizada e grava o carimbo de uso. `conta_autorizada()` aceita `google` e `email` (migração 6, nova, não reescreve nenhuma). O hook segue só Google (ninguém cria usuário por senha). Mesmo usuário e identificador: a senha é definida no usuário existente por `npm run definir:senha` (API de administração, senha oculta, exige exatamente 1 usuário e que seja o autorizado, só envia `password` e `email_confirm`). Sair e as 6 h valem para os dois modos. O Google continua ligado até a senha ser provada.
 - **Recuperação:** `npm run definir:senha` de novo, em qualquer computador com o repositório e o `.env.local`; a chave secreta se recupera no painel. Detalhes e limites em `supabase/LEIA-ME.md`.
 - **Verificado (Auth falso e banco local):** entrada correta, senha errada, conta fora da lista, provedor GitHub, limite de tentativas, usuário Google com senha (provider `google`) e provider `email`, aba de login velha, senha ausente da página, cookies, Sair; banco: RLS e hook para os dois provedores; script: sucesso, senha curta, mais de um usuário, usuário diferente, variáveis ausentes, saída sem senha nem chave.
-- **Não verificado:** o comportamento real do Supabase (em especial o valor de `app_metadata.provider` no JWT de um usuário Google que ganhou senha; ambos os valores são aceitos por isso), a migração 6 no banco real, o provedor Email ligado, a entrada por senha de verdade.
+- **Não verificado na auditoria (provado depois, ver seção 15):** o comportamento real do Supabase (em especial o valor de `app_metadata.provider` no JWT de um usuário Google que ganhou senha; ambos os valores são aceitos por isso), a migração 6 no banco real, o provedor Email ligado, a entrada por senha de verdade.
 
 ## 6. Mapa real de persistência
 
@@ -117,8 +117,8 @@ Não foram instalados pacotes, skills, memória nem MCPs. Permissões e modo de 
 | `npx tsc --noEmit` | exit 0 | tipos |
 | `npx eslint src scripts` | exit 0 | lint |
 | `npm run testar:regras` | 25 de 25 | regras puras (datas, sessão, conta, rotina, cookie, guarda de pré-carregamento) |
-| `npm run testar:banco` | 103 de 103 | **PGlite** (banco local), não o Supabase real; inclui restauração da cópia (12) e a limitação de edição simultânea (1) |
-| `npm run testar:app` | 65 de 65 | navegador (Edge) + banco de teste local; inclui dois aparelhos, a cópia dos dados e a restauração do arquivo que a rota entrega |
+| `npm run testar:banco` | 118 de 118 (eram 103 na auditoria) | **PGlite** (banco local), não o Supabase real; inclui restauração da cópia (12) e a proteção de edição simultânea, com ciclo vermelho e verde (10 falhas com a conferência desligada) |
+| `npm run testar:app` | 69 de 69 (eram 65) | navegador (Edge) + banco de teste local; inclui dois aparelhos, a edição simultânea, a cópia dos dados e a restauração do arquivo que a rota entrega |
 | `npm run testar:sessao` | 57 de 57 (10 execuções seguidas em 26/10/2026, depois do script de senha mudar) | aplicação real contra **Auth falso**; entrada por senha, 6 h, Sair, falhas, `definir:senha` canalizado |
 | `npm run testar:senha-terminal` | 10 de 10 | `definir:senha` em console de verdade (ConPTY), teclas fictícias, Auth falso |
 | `npm run conferir:env` | testado com arquivos fictícios (formato errado, certo, vazio, ausente) | conferência do `.env.local` sem mostrar valores |
@@ -144,8 +144,8 @@ Limitações: nada contra o Supabase real, o Google real, a Vercel, o iPhone/iPa
 
 ## 10. Bloqueios reais para publicação
 
-1. Entrada por senha ainda não provada no Supabase real (depende das suas ações abaixo).
-2. Migração 6 não aplicada no banco real.
+1. (Resolvido em 26/10/2026) Entrada por senha provada no Supabase real, ver seção 15.
+2. (Resolvido em 26/10/2026) Migrações 6 e 7 aplicadas no banco real.
 3. Enquadramento do plano Hobby da Vercel (uso pessoal e não comercial) para o uso no trabalho da Prefeitura: decisão e confirmação suas.
 4. Avaliação visual da aplicação React por você (Issue #2) e teste em aparelho real.
 5. Cron diário só é observável depois de publicado.
@@ -153,6 +153,8 @@ Limitações: nada contra o Supabase real, o Google real, a Vercel, o iPhone/iPa
 Não bloqueiam: destino do backup, melhorias da seção 3.4.
 
 ## 11. Ações suas, em ordem
+
+*Atualização de 26/10/2026: os passos 1 a 6 estão concluídos e provados. O passo 7 está em andamento: o botão foi ocultado, falta desativar o Google no painel (ver seção 15).*
 
 1. **Abra `.env.local` (na pasta do projeto, no Desktop) no Bloco de Notas** (já foi criado a partir do modelo, com a URL do projeto e o `CRON_SECRET` gerado) e preencha só 3 valores: chave pública (painel do Supabase > Project Settings > API Keys > Publishable key), chave secreta (mesma tela, Secret keys) e `DMANDA_EMAIL_AUTORIZADO`. Salve. Não cole valores no chat. Depois rode `npm run conferir:env` no PowerShell (ou avise o Claude, que roda): mostra só ok ou VAZIA, nunca os valores.
 2. **No prompt desta sessão:** `! npx supabase login` e depois `! npx supabase link --project-ref gmxoosvgfcydccyeudej`.
@@ -179,19 +181,37 @@ Não bloqueiam: destino do backup, melhorias da seção 3.4.
 
 **Título:** Auditoria única de 26/10/2026: entrada por senha, PWA e fechamento da primeira versão
 
-**Corpo:** Relatório em `AUDITORIA.md` (branch de checkpoint). Vinculada a #1 (login e integração real), #2 (avaliação da aplicação), #3 (publicação e rotina) e #4 (cópia dos dados). Pendências, sem duplicar as Issues: (a) aplicar a migração 6 e provar a entrada por senha no real, depois desligar o Google (#1); (b) avaliação visual e teste em iPhone e iPad (#2); (c) enquadramento do plano Hobby e publicação (#3); (d) destino privado das cópias e importação (#4); (e) melhorias: conflito de edição, assinatura do carimbo de uso, service worker se houver necessidade. Critério de encerramento: escopo revisado, achados classificados, correções verificadas, pendências externas explícitas. Não abrir outra auditoria geral sem fato novo.
+**Corpo:** Relatório em `AUDITORIA.md` (branch de checkpoint). Vinculada a #1 (login e integração real), #2 (avaliação da aplicação), #3 (publicação e rotina) e #4 (cópia dos dados). Pendências, sem duplicar as Issues: (a) desativar o Google no painel (migrações 6 e 7 aplicadas e entrada por senha provada no real em 26/10/2026, ver seção 15) (#1); (b) avaliação visual e teste em iPhone e iPad (#2); (c) enquadramento do plano Hobby e publicação (#3); (d) destino privado das cópias e importação (#4); (e) melhorias: assinatura do carimbo de uso, service worker se houver necessidade. Critério de encerramento: escopo revisado, achados classificados, correções verificadas, pendências externas explícitas. Não abrir outra auditoria geral sem fato novo.
 
 ## 14. Continuação: validação no Supabase real (bloco de 26/10/2026, em andamento)
 
 **Preservado das validações reais anteriores (25/10/2026, Issue #1):** login Google real, hook ativo, gravação pela interface com sessão real, persistência, quatro visões, chamada HTTP local da rotina, segurança do banco nas 5 primeiras migrações. Nada disso foi refeito nem invalidado.
 
-**Ainda NÃO validado no Supabase real (mudanças desta versão):** migração 6, entrada por senha, `definir:senha` no usuário real, expiração de 6 h real, restauração da cópia em projeto real, publicação e primeira execução automática.
+**(Superado, ver seção 15) Lista de antes: ainda NÃO validado no Supabase real:** migração 6, entrada por senha, `definir:senha` no usuário real, expiração de 6 h real, restauração da cópia em projeto real, publicação e primeira execução automática.
 
 **Feito neste bloco, só localmente (sem credenciais do Supabase):**
 - `.env.local` criado a partir do modelo (URL do projeto e `CRON_SECRET` gerado; chaves e e-mail ficaram para você). `npm run conferir:env` confere o formato e, depois, o painel (provedores, cadastro público, confirmação de e-mail, usuários) sem mostrar valores.
 - `definir:senha` em console de verdade: 10 cenários, um defeito real achado e corrigido (setas e Delete entravam na senha). Mínimo e máximo agora são checados antes da confirmação.
 - Intermitência do `testar:sessao`: causa ainda desconhecida; 10 execuções seguidas sem falha; diagnóstico reforçado (seção 3.4, item 10).
 - Restauração da cópia em SQL (`supabase/restaurar-copia.sql`), testada em banco de teste com dados fictícios.
-- Limitação de edição simultânea descrita com precisão (a tarefa criada no outro aparelho pode sumir) e coberta por teste de caracterização.
+- Limitação de edição simultânea descrita com precisão (a tarefa criada no outro aparelho pode sumir) e coberta por teste de caracterização (corrigida depois, ver seção 15).
 
-**Bloqueio atual:** neste computador não há `.env.local` preenchido nem login da CLI do Supabase (a CLI responde `AccessTokenRequiredError`; `supabase/.temp` só tem `cli-latest`, sem projeto vinculado). A migração 6, a conferência do painel e a prova da senha dependem disso.
+**Bloqueio daquele momento (resolvido, ver seção 15):** neste computador não há `.env.local` preenchido nem login da CLI do Supabase (a CLI responde `AccessTokenRequiredError`; `supabase/.temp` só tem `cli-latest`, sem projeto vinculado). A migração 6, a conferência do painel e a prova da senha dependem disso.
+
+
+## 15. Conclusão da validação no Supabase real (26/10/2026)
+
+**Preservado:** as validações reais de 25/10/2026 (login Google, hook, gravação, persistência, rotina, segurança do banco) e a seção 14 não foram refeitas nem invalidadas.
+
+**Provado no Supabase real nesta etapa:**
+- **Migrações:** histórico remoto 7 de 7. Foram aplicadas só a 6 e a 7, depois de dry-run, sem `reset`, sem reaplicar as cinco anteriores e sem tocar outros projetos da conta.
+- **Autorização (SQL em transação desfeita):** a conta existente é aceita por `email` e por `google`; outro e-mail, `phone`, `github` e anônimo são recusados. O hook de cadastro segue só Google (`email` e outros endereços recusados).
+- **Sem sessão (16 de 16):** páginas, `/api/exportar` e operações do servidor redirecionam ao login; a rotina diária recusa segredo ausente ou errado; senha errada, e-mail desconhecido e senha curta recebem a mesma mensagem, sem criar sessão nem usuário.
+- **Entrada por senha (19 de 19, senha digitada pelo usuário numa janela do Edge):** mesmo usuário e identificador, último acesso atualizado, 1 usuário e 1 e-mail na lista de acesso antes e depois, carimbo de 6 h criado; senha incorreta recusada sem sessão; demanda TESTE com duas tarefas criada, editada, recarregada e conferida no banco; edição simultânea recusada com aviso e a tarefa do outro aparelho preservada; Sair apaga os cookies e barra a página protegida e a exportação; nova entrada com o mesmo usuário; exportação com demandas, tarefas e versão; limpeza só dos registros TESTE; nenhum erro de JavaScript.
+- **Observação:** o banco real tem 0 demandas e 0 tarefas (os registros de 25/10 eram de teste). "Dados preservados" refere-se, portanto, a usuário, identidade e lista de acesso; a prova de dados usou registros TESTE, removidos no fim (o banco voltou a 0 e 0).
+
+**Perda de tarefas, corrigida (migração 7):** a janela de edição gravava a lista inteira de tarefas e apagava as que não estavam nela. Agora cada demanda tem uma `versao` (gatilhos na demanda e nas tarefas), `salvar_demanda` exige a versão da abertura e o banco recusa tudo com `DM409` antes de gravar qualquer coisa (sem perda parcial). Na tela o aviso fica fixo, o texto digitado permanece, Salvar fica bloqueado e o rascunho lembra a versão. Sem tela de mesclagem. Verificação: banco local 118 de 118 (ciclo vermelho e verde: 10 falhas com a conferência desligada), navegador 69 de 69 (inclui dois aparelhos), e no real em transação desfeita (recusa, tarefa preservada, visitante barrado) e pela interface na prova acima. Alcance: o salvamento da janela de edição. As operações pontuais seguem "último a gravar vence" por campo.
+
+**Google:** com a senha provada, o botão foi ocultado (`DMANDA_LOGIN_GOOGLE=nao`; conferido: a página de login não tem o botão nem o "ou" e mantém o campo de senha). **Pendente do usuário:** desativar o provedor Google no painel (Authentication > Sign In / Providers > Google), sem excluir usuário, identidade nem o projeto do Google Cloud. Depois, `npm run conferir:env` deve mostrar o Google desligado.
+
+**Limitações e pendências que permanecem:** intermitência do `testar:sessao` (causa desconhecida; 19 execuções sem falha desde a mudança, não repetida nesta etapa porque a área não mudou); restauração da cópia só testada em banco local (demonstrar no projeto real exige dados TESTE e autorização); cookie `dmanda-ultimo-uso` não assinado (não é garantia inviolável); expiração de 6 h real; aviso do Supabase sobre proteção contra senhas vazadas (exige plano pago, não contratado); PowerShell 7 e outros terminais não testados; Vercel e primeira execução automática; iPhone e iPad reais; avaliação visual (Issue #2); Issue consolidada sem `gh` (texto na seção 13).

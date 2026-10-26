@@ -39,3 +39,6 @@ Evidências já existentes em 25/10/2026 (por isso as linhas abaixo não mudaram
 | Demais etapas | Existem só no protótipo (Entradas, Agenda, Configurações, Perfil, IA simulada) | Construção na aplicação funcional |
 
 Os pontos não mudaram em 25/10/2026 (segunda revisão do dia): a validação real ficou parcial (banco, sem login Google) e o usuário ainda não avaliou a aplicação. Assim que o login real for validado e o usuário avaliar a aplicação, reavaliar as linhas Estrutura, Demandas e Início com os critérios acima e registrar a nova soma.
+
+
+**Nota de 26/10/2026 (noite):** o percentual continua 18%. Entrada por senha provada no Supabase real, migrações 6 e 7 aplicadas e a perda de tarefas corrigida são marcos de verificação registrados em `AUDITORIA.md` (seção 15); o critério de cálculo não mudou e o percentual não substitui esses marcos.

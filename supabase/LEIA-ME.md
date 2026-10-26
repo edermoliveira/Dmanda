@@ -1,6 +1,6 @@
 # Supabase, Vercel e rotina diária do Dmanda
 
-**Estado (26/10/2026):** o projeto Supabase **Dmanda** existe, está vinculado ao computador de casa e **as 5 primeiras migrações estão aplicadas no banco real**. Nova orientação do usuário (26/10/2026): entrar por **e-mail e senha** (Supabase Auth), sem depender do Google. O código, o hook e a RLS já aceitam os dois (migração 6 **escrita e testada em banco local, ainda não aplicada no banco real**). **Ainda não validados no Supabase real:** a migração 6, a entrada por senha, a publicação na Vercel e o agendamento. Veja "Entrada por e-mail e senha" e `AUDITORIA.md`.
+**Estado (26/10/2026):** o projeto Supabase **Dmanda** existe, está vinculado a este computador e tem **7 migrações aplicadas no banco real** (a 6, login por e-mail e senha, e a 7, proteção de edição simultânea, aplicadas em 26/10/2026 com dry-run, sem reset). A entrada por **e-mail e senha** (Supabase Auth) foi **provada no Supabase real** no mesmo usuário (ver `AUDITORIA.md`, seção 15). O botão do Google está oculto (`DMANDA_LOGIN_GOOGLE=nao`); **falta desativar o provedor no painel (ação do usuário)**. **Ainda não validados no real:** expiração de 6 h real, restauração da cópia, publicação na Vercel e o agendamento.
 
 ## O projeto
 
@@ -16,6 +16,8 @@
 A CLI oficial (`npx supabase`, sem instalação global) está autenticada neste computador por login seu. O assistente a usa só neste projeto: `migration list`, `db push`, `db query --linked`, `db advisors`. Nunca `db reset`.
 
 ## Quem faz o quê (entrada por senha, 26/10/2026)
+
+Situação em 26/10/2026: as etapas 1 a 6 estão **concluídas e provadas**. A 7 está em andamento: o botão foi ocultado, falta desativar o Google no painel.
 
 | # | Etapa | Quem | Onde |
 |---|---|---|---|
@@ -70,7 +72,8 @@ Mostra só `ok`, `VAZIA` ou `ATENÇÃO` com o motivo, nunca os valores. Confere 
 4. `20261025000300_acesso_exclusivo.sql`: lista protegida de contas (`dmanda_privado.acesso_autorizado`), função `dmanda_privado.conta_autorizada()`, hook `public.hook_antes_criar_usuario` e as políticas de RLS exigindo também a conta autorizada.
 5. `20261025000400_revogar_funcao_da_plataforma.sql`: tira a execução pública de `public.rls_auto_enable()`, função da própria plataforma que o Security Advisor apontava. O RLS automático continua funcionando (conferido).
 
-6. `20261026000000_login_email_senha.sql` (**nova, ainda não aplicada no banco real**): troca só `dmanda_privado.conta_autorizada()` para aceitar o provedor `email` além de `google`, mantendo a lista protegida. O **hook de cadastro não muda** (continua só Google): ninguém cria usuário por e-mail e senha, e a senha é definida no usuário que já existe. Nenhuma tabela, política ou privilégio muda; o usuário e os dados são os mesmos. Compatível com as anteriores (não reescreve nenhuma).
+6. `20261026000000_login_email_senha.sql` (**aplicada no banco real em 26/10/2026**): troca só `dmanda_privado.conta_autorizada()` para aceitar o provedor `email` além de `google`, mantendo a lista protegida. O **hook de cadastro não muda** (continua só Google): ninguém cria usuário por e-mail e senha, e a senha é definida no usuário que já existe. Nenhuma tabela, política ou privilégio muda; o usuário e os dados são os mesmos. Compatível com as anteriores (não reescreve nenhuma).
+7. `20261026000100_protecao_edicao_simultanea.sql` (**aplicada no banco real em 26/10/2026**): coluna `demandas.versao` (padrão 1), gatilhos que a sobem a cada alteração da demanda ou de qualquer tarefa dela, e `salvar_demanda(p_id, p, p_tarefas, p_versao)` que, depois de travar a linha, recusa tudo com o código `DM409` se a versão mudou (nada é gravado). A função antiga de três argumentos foi removida. Não reescreve nenhuma migração anterior; os dados existentes ganham versão 1.
 
 **Por que a conferência de privilégios importa aqui:** o projeto foi criado com a exposição automática de tabelas **desligada**. Tabelas novas nascem **sem** select, insert, update e delete para `anon`, `authenticated` e `service_role`, e funções novas nascem executáveis por qualquer papel até serem revogadas. Por isso cada migração declara tudo de que depende. O banco de teste local (PGlite) agora imita esse comportamento, então uma permissão esquecida aparece nos testes.
 
@@ -101,7 +104,7 @@ O endereço vai em minúsculas. O esquema `dmanda_privado` **não** deve ser adi
 
 **Ordem segura de implantação (o acesso atual não é interrompido):**
 
-1. Aplicar a migração 6 (`npx supabase db push --linked --dry-run`, depois sem `--dry-run`). O Google continua funcionando.
+1. (Feito em 26/10/2026) Aplicar a migração 6 (`npx supabase db push --linked --dry-run`, depois sem `--dry-run`). O Google continua funcionando.
 2. No painel do Supabase, **Authentication > Sign In / Providers > Email**: **ligue** o provedor. Em "Password" defina o **mínimo de 12 caracteres** (padrão é 6). Mantenha **"Confirm email" ligado** e **"Allow new users to sign up" desligado** (o usuário já existe; o hook continua barrando qualquer outro cadastro).
 3. **Definir a senha** (você mesmo, no PowerShell, dentro da pasta do projeto, com o `.env.local` preenchido):
 
@@ -180,7 +183,7 @@ Feita com a CLI, como **SQL no banco real com contextos de autenticação simula
 
 **Validado depois, com login Google real (25/10/2026, Issue #1):** primeiro login (1 usuário, identidade Google); pela interface, na sessão real e com registros TESTE já excluídos: cadastro, edição, tarefas, mudança de etapa, conclusão, reabertura, exclusão, persistência ao recarregar e as quatro visões consistentes, tudo conferido por leitura do banco; chamada HTTP local da rotina com a chave de serviço (200, execução e resumo gravados).
 
-**Ainda não validado no Supabase real:** segundo acesso, rejeição real de outra conta, expiração de 6 h real, a migração 6, a entrada por senha, produção na Vercel, agendamento. (O botão Sair existe desde 26/10, no menu do avatar.) Esta lista não muda por causa dos testes locais abaixo.
+**Ainda não validado no Supabase real:** expiração de 6 h real, restauração da cópia, produção na Vercel e agendamento. (Em 26/10/2026 foram validados: migrações 6 e 7, entrada por senha no mesmo usuário, saída e nova entrada, recusa de credenciais inválidas e de outras contas, gravação de demanda com tarefas e a proteção de edição simultânea. O botão Sair existe no menu do avatar.) Esta lista não muda por causa dos testes locais abaixo.
 
 **Auditoria de 26/10/2026 (computador do trabalho, sem credenciais do Supabase):** verificações em banco local e em Auth **falso**, todas identificadas como tais: banco 90, regras 25, aplicação 64, sessão e senha 57 (ver `AUDITORIA.md`). Não houve acesso ao Supabase real neste computador (sem `.env.local` e sem login da CLI).
 
@@ -214,7 +217,7 @@ Feita com a CLI, como **SQL no banco real com contextos de autenticação simula
   5. Confira: `select count(*) from public.demandas;` e `select count(*) from public.tarefas;`.
 - **Garantias do restaurador (testadas no `testar:banco`, 12 verificações):** tudo em uma transação (se algo estiver errado, nada é gravado); atribui tudo ao único usuário do projeto (e recusa se não houver exatamente 1); rodar duas vezes não duplica; uma demanda que já existe com o mesmo identificador não é sobrescrita nem recebe tarefas de volta; após apagar tudo no mesmo projeto, a cópia devolve demandas e tarefas idênticas (campos, datas, etapas, ordem das tarefas, acentos e aspas). O `testar:app` também confere que o arquivo que a rota real entrega é aceito por esse SQL.
 - **O que ainda não foi feito:** restaurar em um projeto Supabase real (só se testou em banco local). Faça uma vez, num projeto descartável, antes de depender da cópia. Não existe tela de importação (adiada de propósito); quando existir, vai usar uma função SQL com a RLS do usuário.
-- **Limitação de edição simultânea (vale para os dois modos de entrada):** a janela de edição grava a demanda inteira que ela mostra: os campos e a lista completa de tarefas (`salvar_demanda`: tarefa que não está na lista da janela é **excluída**). Se a mesma demanda for editada em dois aparelhos, **o último salvamento substitui o do outro, sem aviso de conflito**. O caso mais danoso: uma tarefa criada no outro aparelho **some** se uma janela de edição aberta antes dela for salva depois. Cada aparelho só vê a mudança do outro ao recarregar ou ao voltar à tela (a leitura é adiada enquanto há janela aberta). Isto **não** é sincronização sem risco de conflito. Na prática, para uma pessoa só: feche a janela de edição antes de mexer na mesma demanda em outro aparelho. Resolver de verdade exige controle de versão por demanda (comparar `atualizado_em` ao salvar e avisar); não foi feito e fica registrado como limitação. Tema, visão e rascunhos ficam só no navegador e não sincronizam.
+- **Edição simultânea (protegida desde 26/10/2026, migração 7):** cada demanda tem uma `versao`. Se a mesma demanda for alterada em outro aparelho ou janela depois que a janela de edição foi aberta, salvar é **recusado por inteiro** (código `DM409`, nada é gravado, nem campos nem tarefas) e a janela mostra um aviso fixo; o que foi digitado continua nos campos para copiar e Salvar fica bloqueado. Feche a janela e reabra para ver a versão atual. Não há tela de mesclagem. Alcance: o salvamento da janela de edição. As operações pontuais (mover de etapa, marcar uma tarefa, arquivar) seguem "último a gravar vence" por campo. A restauração da cópia (`restaurar-copia.sql`) preserva a versão da cópia e religa o gatilho dentro da transação. Cada aparelho só vê a mudança do outro ao recarregar ou ao voltar à tela.
 - **Rotina sugerida:** exportar uma vez por semana (e antes de qualquer migração), guardando as últimas cópias. Como o plano gratuito pode pausar um projeto sem uso, a exportação também protege contra isso.
 - **Decisão pendente do usuário (não bloqueia nada):** o **destino privado** das cópias (por exemplo, uma pasta privada no Google Drive ou OneDrive pessoal, ou um pendrive) e a frequência. Nenhum dado real vai para o GitHub.
 

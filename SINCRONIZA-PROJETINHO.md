@@ -8,7 +8,21 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 ---
 
-## PONTO DE RETOMADA (26/10/2026, computador do trabalho, auditoria única)
+## PONTO DE RETOMADA (26/10/2026, noite, computador do trabalho, login por senha provado no Supabase real)
+
+**Leia primeiro `AUDITORIA.md`, seção 15.** Branch `checkpoint/2026-10-23-ajustes-a-d` (sem merge na main, sem force push).
+
+- **Feito e provado no Supabase real:** migrações 6 e 7 aplicadas (histórico remoto 7 de 7, sem reset, só as pendentes); autorização e hook conferidos; entrada por e-mail e senha no mesmo usuário (19 verificações com a senha digitada pelo usuário: saída, nova entrada, senha incorreta recusada, demanda TESTE com tarefas criada, editada, recarregada e removida, edição simultânea recusada); acesso sem sessão barrado (16 de 16). Banco real: 0 demandas e 0 tarefas, 1 usuário.
+- **Perda de tarefas corrigida (migração 7):** versão por demanda, `salvar_demanda` recusa a janela desatualizada (`DM409`) sem gravar nada, aviso fixo e edição local preservada. Testes: `testar:banco` 118, `testar:app` 69, `testar:regras` 25.
+- **Google:** botão oculto (`DMANDA_LOGIN_GOOGLE=nao` no `.env.local`; incluir também nas variáveis da Vercel). **Falta o usuário desativar o provedor Google no painel do Supabase** (Authentication > Sign In / Providers > Google), sem excluir usuário, identidade nem o projeto do Google Cloud; depois `npm run conferir:env` deve mostrar o Google desligado.
+- **Depende do usuário:** desativar o Google no painel; decidir o destino privado das cópias; enquadramento do plano Hobby da Vercel; publicar na Vercel (variáveis, agendamento da rotina); avaliação visual (Issue #2) e PWA no iPhone e iPad; autorizar (ou não) uma demonstração da restauração da cópia no projeto real com dados TESTE.
+- **Limitações conhecidas:** intermitência do `testar:sessao` com causa desconhecida (19 execuções seguidas sem falha); proteção só no salvamento da janela (operações pontuais seguem "último a gravar vence" por campo); cookie `dmanda-ultimo-uso` não assinado; restauração só testada em banco local; senhas vazadas dependem de plano pago; outros terminais além do PowerShell 5.1 não testados.
+- **Próximo passo:** publicação na Vercel (passos em `supabase/LEIA-ME.md`), depois a avaliação do aplicativo publicado e o uso real.
+- **Comandos:** `npm run testar:banco` (118), `testar:regras` (25), `testar:app` (69, sobe a 7103), `testar:sessao` (57), `conferir:env`, `definir:senha`, `npx tsc --noEmit`, `npx eslint src scripts`, `npm run build`. Só um `next dev` por vez.
+
+---
+
+## PONTO ANTERIOR (26/10/2026, auditoria única; superado pelo ponto acima)
 
 **Leia primeiro `AUDITORIA.md`** (relatório, achados, mapa de persistência, ações do usuário em ordem). Esta seção é só o resumo para continuar.
 
@@ -50,7 +64,7 @@ Esta seção basta para continuar sem reler a conversa nem depender da memória 
 - Aprovação visual da aplicação React pelo usuário (Issue #2). Nenhuma foi registrada.
 - Publicação na Vercel, backup próprio dos dados (#4) e agendamento da rotina em produção com primeira execução automática (#3).
 
-**Estado do Supabase:** projeto Dmanda (`gmxoosvgfcydccyeudej`, São Paulo, plano gratuito). 5 migrações aplicadas, nenhuma nova depois. Banco real no fim da sessão: 0 demandas, 0 tarefas, 1 usuário, 1 identidade Google, `execucoes_rotina` com 2 linhas e 1 resumo (evidência da rotina, preservados). Cadastro de novos usuários ainda ABERTO no painel, de propósito. Provedor Google ativo, Email desligado, hook Before User Created ativo.
+**Estado do Supabase:** projeto Dmanda (`gmxoosvgfcydccyeudej`, São Paulo, plano gratuito). 5 migrações aplicadas na época (hoje 7, ver o ponto de retomada mais recente). Banco real no fim da sessão: 0 demandas, 0 tarefas, 1 usuário, 1 identidade Google, `execucoes_rotina` com 2 linhas e 1 resumo (evidência da rotina, preservados). Cadastro de novos usuários ainda ABERTO no painel, de propósito. Provedor Google ativo, Email desligado, hook Before User Created ativo.
 
 **Próxima ação concreta (no computador do trabalho):** a validação real precisa do Google Cloud e do Supabase, então só é possível onde o `.env.local` e o Redirect URL `http://localhost:7100/auth/callback` funcionarem. Ordem: (1) preparar o ambiente (abaixo); (2) `npm run dev`; (3) Edge: entrar com a conta autorizada; (4) Chrome (ou outro navegador): avatar, Sair, entrar de novo, avisar o Claude para conferir o banco (mesmo usuário e identidade, sessão antiga removida, sessão do Edge preservada); (5) Sair e tentar entrar com outra conta Google SUA, sem adicioná-la ao Google Cloud nem à lista do Dmanda, e descrever o que apareceu; (6) só então o Claude orienta desligar o cadastro e testar a entrada da conta existente.
 
