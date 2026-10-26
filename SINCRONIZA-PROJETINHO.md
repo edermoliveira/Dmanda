@@ -2,9 +2,60 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 25/10/2026, no computador de casa, branch `checkpoint/2026-10-23-ajustes-a-d` (ver "Retomada rápida" logo abaixo). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Última atualização:** 26/10/2026, por volta de 01h20, no computador de casa, branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA PARA O COMPUTADOR DO TRABALHO" e "Retomada rápida" logo abaixo). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
+
+---
+
+## PONTO DE RETOMADA PARA O COMPUTADOR DO TRABALHO (26/10/2026, ~01h20, computador de casa)
+
+Esta seção basta para continuar sem reler a conversa nem depender da memória local do Claude.
+
+**Onde está o código:** https://github.com/edermoliveira/Dmanda.git (privado), branch `checkpoint/2026-10-23-ajustes-a-d`. Último commit de implementação: `1c00141` (botão Sair, ajuste da expiração, `testar:sessao`). Depois dele só documentação de retomada. Sem merge na main. O GitHub guarda o código, não os registros reais do Supabase (cópia dos dados: Issue #4).
+
+**Bloco em andamento:** Issue #1 (login Google e integração real), fechamento da validação real. Estado: o bloco de implementação está concluído e a validação real está parada no meio, por escolha do usuário (continua no trabalho).
+
+**Últimas alterações (1c00141):**
+- `src/servidor/demandas.ts`: ação `sairDaConta` (`signOut({ scope: 'local' })`, apaga o cookie de último uso, devolve `sessaoLocalEncerrada` quando o Auth falha mas a sessão local já foi apagada).
+- `src/ui/MenuConta.tsx` (novo) e `src/ui/Casca.tsx`: menu do avatar do topo com "Sair" (desktop e celular), sem o módulo Perfil.
+- `src/app/(app)/login/page.tsx`: avisos `?saiu=1`, `?saiu=parcial`, `?negado=1`, `?expirou=1`, `?erro=1`.
+- `src/proxy.ts`: expiração por inatividade (6 h) também com escopo local.
+- `scripts/testar-sessao.mjs` (novo, `npm run testar:sessao`) e bloco 11b em `scripts/testar-app.mjs`.
+
+**O que está VALIDADO, por tipo de prova:**
+- *Supabase real, com o usuário logado (Google real):* primeiro login (1 usuário, 1 identidade, na lista protegida); cadastro, edição, tarefas, etapa, concluir, reabrir, excluir, persistência e quatro visões pela interface, conferidos por leitura do banco; arraste no Quadro com persistência (registro TESTE removido); rotina diária por HTTP local autenticado contra o banco real (200, execução e resumo gravados). Hook, Google, Email desligado, Site URL e Redirect URL conferidos pela CLI.
+- *Testes locais, sem Supabase real:* `testar:sessao` 20/20 (Auth falso e tempo controlado: 5h59 renova, 6h01 expira, Sair com falha, rotas protegidas, preferências preservadas); `testar:app` 60/60 (PGlite); `tsc` e `eslint` aprovados no último bloco. `testar:banco` (87) e `testar:regras` (21) não foram repetidos neste bloco. `next build` não foi rodado depois da implementação do Sair.
+- *Limitação:* as seis horas só foram testadas em ambiente isolado, não em 6 h reais nem com o Google real. Os fluxos e o arraste foram feitos por mim, via extensão do Chrome sobre a sessão do usuário, e **não são avaliação visual dele**.
+
+**O que AINDA NÃO ocorreu:**
+- Teste real simultâneo em Edge e Chrome (prova de que Sair local não derruba outro navegador).
+- Segundo acesso depois de Sair (mesmo usuário e mesma identidade Google reutilizados).
+- Tentativa real com outra conta Google e comprovação da rejeição pelo hook (o app deve mostrar `/login?negado=1`; se o Supabase devolver outra forma de erro, ajustar `src/app/auth/callback/route.ts` com base no log do servidor).
+- Desligar "Allow new users to sign up" e nova entrada da conta existente (só DEPOIS da rejeição provada, para não confundir as causas).
+- Aprovação visual da aplicação React pelo usuário (Issue #2). Nenhuma foi registrada.
+- Publicação na Vercel, backup próprio dos dados (#4) e agendamento da rotina em produção com primeira execução automática (#3).
+
+**Estado do Supabase:** projeto Dmanda (`gmxoosvgfcydccyeudej`, São Paulo, plano gratuito). 5 migrações aplicadas, nenhuma nova depois. Banco real no fim da sessão: 0 demandas, 0 tarefas, 1 usuário, 1 identidade Google, `execucoes_rotina` com 2 linhas e 1 resumo (evidência da rotina, preservados). Cadastro de novos usuários ainda ABERTO no painel, de propósito. Provedor Google ativo, Email desligado, hook Before User Created ativo.
+
+**Próxima ação concreta (no computador do trabalho):** a validação real precisa do Google Cloud e do Supabase, então só é possível onde o `.env.local` e o Redirect URL `http://localhost:7100/auth/callback` funcionarem. Ordem: (1) preparar o ambiente (abaixo); (2) `npm run dev`; (3) Edge: entrar com a conta autorizada; (4) Chrome (ou outro navegador): avatar, Sair, entrar de novo, avisar o Claude para conferir o banco (mesmo usuário e identidade, sessão antiga removida, sessão do Edge preservada); (5) Sair e tentar entrar com outra conta Google SUA, sem adicioná-la ao Google Cloud nem à lista do Dmanda, e descrever o que apareceu; (6) só então o Claude orienta desligar o cadastro e testar a entrada da conta existente.
+
+**Comandos atuais:** `npm install`, `npm run dev` (Supabase real, exige `.env.local`), `npm run dev:teste` (banco local descartável, PGlite), `npm run build` e `npm run start` (produção local na 7100), `npm run testar:banco`, `testar:regras`, `testar:app` (sobe a 7103), `testar:sessao` (sobe a 7104 e a 7105), `npx tsc --noEmit`, `npx eslint src scripts`. Protótipo: dentro de `prototipo`, `python -m http.server 7200 --bind 127.0.0.1`. Só um `next dev` por vez (a pasta `.next` tem trava); encerrar o da 7100 antes de `testar:app` e `testar:sessao`.
+
+**Portas:** 7100 aplicação; 7200 protótipo; 7103 `testar:app`; 7104 e 7105 `testar:sessao` (aplicação e Auth falso).
+
+**Variáveis de ambiente (só os NOMES; valores nunca no Git, no chat nem nas Issues):** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`, `SUPABASE_SERVICE_ROLE_KEY` (a chave `sb_secret_...`, só no servidor), `CRON_SECRET`. `DMANDA_BANCO=teste` só em desenvolvimento (`dev:teste`). Descrição de cada uma e modelo: `supabase/LEIA-ME.md` e `.env.example` (versionado, sem valores).
+
+**O que fica FORA do Git e precisa ser configurado no computador do trabalho:**
+1. **`.env.local`** na raiz do projeto. **Fazer no computador do trabalho:** copiar `.env.example` para `.env.local` e preencher. URL e chave pública: painel do Supabase, Project Settings, API. Chave secreta: Project Settings, API Keys, Secret keys, "default". `DMANDA_EMAIL_AUTORIZADO`: a conta Google autorizada. `CRON_SECRET`: texto aleatório de 16 caracteres ou mais (pode ser novo; só precisa coincidir com o da Vercel quando houver publicação). Conferir sem revelar: comando de `node --env-file=.env.local -e ...` em `supabase/LEIA-ME.md` (mostra "preenchida" ou "VAZIA"). Se preferir não digitar segredos no trabalho, usar `npm run dev:teste`, que não precisa de nada disso.
+2. **CLI do Supabase:** `npx supabase login` (abre o navegador) e `npx supabase link --project-ref gmxoosvgfcydccyeudej`. Só para este projeto; nunca `db reset`. A pasta `supabase/.temp` não vai para o Git.
+3. **`gh` (GitHub CLI):** `gh auth login`, para as Issues. Se não existir, usar o site do GitHub.
+4. **Chrome com a extensão Claude in Chrome**, logado na conta Google autorizada, se o Claude for conduzir testes no navegador. Edge já vem no Windows (usado por `testar:app`).
+5. **Claude Code:** a memória local (`~/.claude`) não vai para o Git. Esta seção e as Issues bastam para retomar. Os plugins desativados no projeto estão em `.claude/settings.json` (versionado). Plugins e MCPs (Context7, Playwright, Figma) só reinstalar se forem usados.
+6. **`.dados-teste/`** (banco de teste descartável) é local e fica fora do Git; é recriado pelos testes.
+7. **Google Cloud e painel do Supabase já estão configurados na nuvem;** nada disso precisa ser refeito no trabalho. O único cuidado: o Redirect URL cadastrado é `http://localhost:7100/auth/callback`, então o login só funciona com a aplicação na porta 7100.
+
+**Antes de pedir acesso real no trabalho:** se a rede do trabalho bloquear o Google ou o Supabase, o login real não será possível lá. Nesse caso, avançar com `dev:teste` e a Issue #2, e deixar o login real para casa.
 
 ---
 
