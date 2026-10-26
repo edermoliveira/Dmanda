@@ -186,14 +186,49 @@ for (const [w, h, rotulo] of [[390, 800, 'celular'], [820, 1000, 'iPad vertical'
   }
 }
 await pg.setViewportSize({ width: 1360, height: 780 });
+// 11b2) dois aparelhos: o que outro aparelho grava aparece ao voltar para a tela (sem recarregar), mas não mexe numa janela aberta
+{
+  await ir('/demandas');
+  const outro = await ctx.newPage();
+  await outro.goto(BASE + '/demandas', { waitUntil: 'load', timeout: 120000 });
+  await outro.waitForSelector('.app .main'); await outro.waitForFunction(() => !document.body.innerText.includes('Carregando as demandas'), null, { timeout: 60000 });
+  await outro.click('button[aria-label="Nova demanda"]'); await outro.waitForSelector('#n-assunto');
+  await outro.fill('#n-assunto', 'Criada no outro aparelho'); await outro.click('.modal .btn.pri'); await outro.waitForSelector('#toast.on');
+  await outro.close();
+  const volta = () => pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await pg.click('button[aria-label="Nova demanda"]'); await pg.waitForSelector('#n-assunto');
+  await volta(); await pg.waitForTimeout(1500);
+  const comJanela = (await pg.locator('.dcard, .mini-card, tr, .linha').filter({ hasText: 'Criada no outro aparelho' }).count()) > 0;
+  await pg.click('.modal .btn:has-text("Cancelar")'); await pg.waitForTimeout(300);
+  await volta();
+  const apareceu = await pg.waitForFunction(() => document.body.innerText.includes('Criada no outro aparelho'), null, { timeout: 10000 }).then(() => true, () => false);
+  ok(!comJanela && apareceu, 'dois aparelhos: com a janela aberta a lista não muda; ao voltar para a tela (sem janela) aparece o que outro aparelho gravou, sem recarregar');
+  // limpeza: arquiva e exclui a demanda criada só para este teste (as verificações finais do banco esperam exatamente as duas de antes)
+  await pg.click('.dcard:has-text("Criada no outro aparelho") .girar >> nth=0'); await pg.waitForTimeout(600);
+  await pg.click('.dcard:has-text("Criada no outro aparelho") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
+  await ir('/arquivo');
+  await pg.click('.linha:has-text("Criada no outro aparelho") .btn:has-text("Excluir")'); await pg.click('.linha:has-text("Criada no outro aparelho") .btn:has-text("Confirmar exclusão")'); await pg.waitForTimeout(600);
+  await ir('/demandas');
+}
+// 11c) cópia dos dados: a rota /api/exportar devolve o JSON versionado com demandas e tarefas (e arquivadas), como arquivo para baixar e sem cache
+{
+  const r = await pg.context().request.get(BASE + '/api/exportar');
+  const j = await r.json().catch(() => null);
+  ok(r.status() === 200 && /attachment; filename="dmanda-copia-\d{4}-\d{2}-\d{2}\.json"/.test(r.headers()['content-disposition'] ?? '') && r.headers()['cache-control'] === 'no-store', 'cópia dos dados: a rota entrega um arquivo JSON para baixar, sem cache');
+  ok(j?.formato === 'dmanda-exportacao' && j.versao === 1 && Array.isArray(j.demandas) && Array.isArray(j.arquivadas) && j.demandas.length > 0 && j.demandas.every((d) => Array.isArray(d.tarefas) && d.id && !('user_id' in d)), 'cópia dos dados: formato versionado, demandas com tarefas, sem o identificador interno do usuário');
+  await ir('/demandas'); await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label="Conta"]');
+  const [baixado] = await Promise.all([pg.waitForEvent('download', { timeout: 20000 }).catch(() => null), pg.click('.mv-menu [role=menuitem]:has-text("Baixar cópia")')]);
+  const textoAviso = await pg.waitForSelector('#toast.on', { timeout: 10000 }).then((e) => e.textContent()).catch(() => '');
+  ok(!!baixado && /^dmanda-copia-\d{4}-\d{2}-\d{2}\.json$/.test(baixado.suggestedFilename()) && /Cópia baixada/.test(textoAviso ?? ''), 'cópia dos dados: o item do menu da conta baixa o arquivo e só então avisa que baixou');
+}
 
 // 11b) menu da conta (avatar do topo, computador e celular): abre, cabe na tela, "Sair" indisponível no banco de teste, fecha com Esc e ao clicar fora
 for (const [w, h, rotulo] of [[1360, 780, 'computador'], [390, 800, 'celular']]) {
   await pg.setViewportSize({ width: w, height: h });
   await ir('/demandas');
   await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label="Conta"]');
-  const m = await pg.evaluate(() => { const r = document.querySelector('.mv-menu[aria-label="Conta"]').getBoundingClientRect(), b = document.querySelector('.top .perfil-b'); return { cabe: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight, expandido: b.getAttribute('aria-expanded'), sair: document.querySelector('.mv-menu [role=menuitem]')?.textContent, bloqueado: document.querySelector('.mv-menu [role=menuitem]')?.getAttribute('aria-disabled') }; });
-  await pg.click('.mv-menu [role=menuitem]', { force: true }); await pg.waitForTimeout(300);
+  const m = await pg.evaluate(() => { const r = document.querySelector('.mv-menu[aria-label="Conta"]').getBoundingClientRect(), b = document.querySelector('.top .perfil-b'); return { cabe: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight, expandido: b.getAttribute('aria-expanded'), sair: document.querySelector('.mv-menu [role=menuitem]:last-of-type')?.textContent, bloqueado: document.querySelector('.mv-menu [role=menuitem]:last-of-type')?.getAttribute('aria-disabled') }; });
+  await pg.click('.mv-menu [role=menuitem]:last-of-type', { force: true }); await pg.waitForTimeout(300);
   const ficou = pg.url().endsWith('/demandas') && !!(await pg.$('.mv-menu[aria-label="Conta"]'));
   await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.mv-menu[aria-label="Conta"]'), null, { timeout: 3000 }).catch(() => {});
   const fechouEsc = !(await pg.$('.mv-menu[aria-label="Conta"]'));

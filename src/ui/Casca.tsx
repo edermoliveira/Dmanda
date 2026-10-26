@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, ty
 import { usePathname, useRouter } from 'next/navigation';
 import { Capsula } from './Capsula';
 import { Icone, LOGO } from './Icone';
-import { ProvedorApp, useApp } from './contexto';
+import { ProvedorApp, useApp, useOnline } from './contexto';
 import { Janelas } from './janelas';
 import { MenuMover } from './visoes';
 import { MenuConta } from './MenuConta';
@@ -27,6 +27,7 @@ function Interior({ children }: { children: ReactNode }) {
   const caminho = usePathname();
   const router = useRouter();
   const toque = useToque();
+  const online = useOnline();
   const [plus, setPlus] = useState(false);
   const [conta, setConta] = useState<{ x: number; y: number } | null>(null);
   const fecharConta = useCallback(() => setConta(null), []);
@@ -75,6 +76,7 @@ function Interior({ children }: { children: ReactNode }) {
         </header>
         <main className="main" id="main">
           {ambiente?.teste ? <p className="faixa-teste" role="note">Banco local de teste (dados descartáveis, não é o Supabase). Só em desenvolvimento.</p> : null}
+          {!online ? <p className="faixa-offline" role="status">Sem conexão com a internet. Nada do que você fizer agora será gravado; o que já está na tela continua visível. Quando a conexão voltar, tente de novo.</p> : null}
           {erroCarga ? <div className="erro-carga" role="alert"><b>Não foi possível carregar as demandas.</b><span>{erroCarga}</span><button className="btn mini" onClick={() => void recarregar()}>Tentar de novo</button></div> : null}
           {children}
         </main>

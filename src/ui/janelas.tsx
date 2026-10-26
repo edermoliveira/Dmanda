@@ -109,6 +109,13 @@ function EditarInterna({ d, hoje, rasc, guardarRascunho, fechar, salvar, arquiva
   const listaEnvio: TarefaEdicao[] = tarefas.filter((t) => t.texto.trim()).map((t) => ({ ...(t.id ? { id: t.id } : {}), texto: t.texto.trim(), concluida: t.concluida }));
   const sujo = JSON.stringify(c) !== JSON.stringify(base.c) || etapa !== base.etapa || nt.trim() !== '' || JSON.stringify(listaEnvio) !== JSON.stringify(base.t.map((t) => ({ id: t.id, texto: t.texto, concluida: t.concluida })));
   const chave = `d:${d.id}`;
+  const [recuperado] = useState(!!rasc);
+  // Rascunho automático: meio segundo depois da última alteração, e não só ao fechar a janela (recarregar, sessão encerrada ou o sistema fechar o aplicativo não perdem o texto)
+  useEffect(() => {
+    if (!sujo) return;
+    const t = setTimeout(() => guardarRascunho(chave, { dados: c, tarefas: tarefas.map((x) => ({ id: x.id, texto: x.texto, concluida: x.concluida })), nt }), 500);
+    return () => clearTimeout(t);
+  }, [sujo, c, tarefas, nt, chave, guardarRascunho]);
   const fecharGuardando = () => { if (sujo) guardarRascunho(chave, { dados: c, tarefas: tarefas.map((t) => ({ id: t.id, texto: t.texto, concluida: t.concluida })), nt }); else guardarRascunho(chave, null); fechar(); };
   const cancelar = () => { guardarRascunho(chave, null); fechar(); };
 
@@ -151,7 +158,7 @@ function EditarInterna({ d, hoje, rasc, guardarRascunho, fechar, salvar, arquiva
   return (
     <Janela titulo={`${d.tipo} ${d.numero}`} larga aoFechar={fecharGuardando} sujo={sujo} rodape={rodape}
       extraCab={conf ? null : <button type="button" className="icbtn-s m-mais" aria-haspopup="menu" aria-label="Mais ações da demanda: arquivar ou excluir" title="Mais ações" onClick={(e) => { const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setMenuAcoes((m) => (m ? null : { x: b.right - a.left, y: b.bottom - a.top })); }}><Icone nome="ellipsis" /></button>}>
-      {rasc ? <p className="data rec">Rascunho recuperado. Cancelar descarta as alterações.</p> : null}
+      {recuperado ? <p className="data rec">Rascunho recuperado. Cancelar descarta as alterações.</p> : null}
       <div className="m-cols">
         <div>
           <Grupo titulo="Identificação"><CamposIdentificacao c={c} mudar={mudar} prefixo="d" /></Grupo>
@@ -231,8 +238,15 @@ export function JanelaNova({ etapa }: { etapa?: Etapa }) {
   const [c, setC] = useState<Campos>(() => ({ ...vazio, ...(rasc?.dados as Partial<Campos> | undefined) }));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+  const [recuperado] = useState(!!rasc);
   const mudar = (p: Partial<Campos>) => setC((x) => ({ ...x, ...p }));
   const sujo = !!(c.assunto || c.numero || c.origem || c.descricao || c.prazo);
+  // rascunho automático (ver a janela de edição)
+  useEffect(() => {
+    if (!sujo) return;
+    const t = setTimeout(() => guardarRascunho('nova', { dados: c }), 500);
+    return () => clearTimeout(t);
+  }, [sujo, c, guardarRascunho]);
   const fecharGuardando = () => { guardarRascunho('nova', sujo ? { dados: c } : null); fecharJanela(); };
   const cancelar = () => { guardarRascunho('nova', null); fecharJanela(); };
   const cadastrar = async () => {
@@ -245,7 +259,7 @@ export function JanelaNova({ etapa }: { etapa?: Etapa }) {
   return (
     <Janela titulo={etapa && etapa !== 'Cadastro' ? `Nova demanda em ${etapa}` : 'Nova demanda'} aoFechar={fecharGuardando} sujo={sujo}
       rodape={<><span className="data">Rascunho guardado automaticamente</span><span className="esp" /><button className="btn" onClick={cancelar}>Cancelar</button><button className="btn pri" disabled={salvando} onClick={() => void cadastrar()}>Cadastrar</button></>}>
-      {rasc ? <p className="data rec">Rascunho recuperado. Cancelar descarta o texto.</p> : null}
+      {recuperado ? <p className="data rec">Rascunho recuperado. Cancelar descarta o texto.</p> : null}
       <p className="data">Cadastro rápido. Só o assunto é obrigatório.</p>
       {erro ? <p className="data" role="alert" style={{ color: 'var(--perigo)' }}>{erro}</p> : null}
       <Grupo titulo="Identificação"><CamposIdentificacao c={c} mudar={mudar} prefixo="n" nota /></Grupo>
@@ -264,6 +278,12 @@ export function JanelaTarefa() {
   const [texto, setTexto] = useState(rasc?.nt ?? '');
   const [salvando, setSalvando] = useState(false);
   const sujo = !!texto.trim();
+  // rascunho automático (ver a janela de edição)
+  useEffect(() => {
+    if (!sujo) return;
+    const t = setTimeout(() => guardarRascunho('tarefa', { dados: { assunto: '' }, nt: texto }), 500);
+    return () => clearTimeout(t);
+  }, [sujo, texto, guardarRascunho]);
   const fecharGuardando = () => { guardarRascunho('tarefa', sujo ? { dados: { assunto: '' }, nt: texto } : null); fecharJanela(); };
   const cancelar = () => { guardarRascunho('tarefa', null); fecharJanela(); };
   const adicionar = async () => { if (!dem || !texto.trim()) return; setSalvando(true); const r = await adicionarTarefa(dem, texto.trim()); setSalvando(false); if (r) { guardarRascunho('tarefa', null); fecharJanela(); } };

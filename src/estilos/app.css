@@ -6,6 +6,7 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 /* a moldura do protótipo vira a tela inteira (continua sendo o contêiner "tela" das regras de largura) */
 .frame.real { max-width: none; width: 100%; height: 100dvh; border-radius: 0; border: 0; box-shadow: none; }
 .faixa-teste { margin: 0 0 12px; padding: 8px 12px; border-radius: 12px; font-size: 13px; background: var(--cat-amar); color: var(--text); }
+.faixa-offline { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-size: 13px; background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--card-brd); }
 .erro-carga { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: var(--cat-venc); color: var(--text); }
 .toast.erro { background: var(--z-venc-bg); color: var(--ag-sig-venc, #FCFCFC); border-radius: 18px; max-width: min(92%, 560px); text-align: center; }
 .app .icbtn[aria-disabled="true"], .app .perfil-b[aria-disabled="true"] { opacity: .6; }
@@ -15,4 +16,24 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .login-caixa p { margin: 0; color: var(--text2, #555); }
 .login-caixa .btn { justify-content: center; }
 .login-aviso { color: var(--perigo, #C4001A) !important; font-weight: 600; }
+.app.app-login { position: fixed; inset: 0; display: block; overflow: auto; }
+.login-form { display: grid; gap: 4px; text-align: left; }
+.login-form .fld > label { font-size: 13px; font-weight: 500; color: var(--text2); padding-left: 14px; }
+.login-form .fld input { background: var(--grp-campo); color: var(--text); border: 0; border-radius: 12px; min-height: 44px; padding: 0 14px; box-shadow: 0 0 0 1px var(--card-brd); transition: box-shadow .2s var(--rapido); }
+.login-form .fld input:focus { box-shadow: 0 0 0 2px var(--acc); outline: 0; }
+.login-form .fld { margin-bottom: 8px; }
+.login-form .btn { justify-content: center; margin-top: 6px; }
+.login-ou { font-size: 13px; }
 .rotina-estado { margin: 20px 0 8px; font-size: 13px; color: var(--text2); }
+
+/* PWA no iPhone: a barra inferior, o botão + , o menu + e os avisos sobem para não ficar sob o indicador de início do aparelho.
+   env(safe-area-inset-bottom) vale 0 fora do iPhone (e no navegador comum), então nada muda no computador. */
+.app[data-dir="d"] .bar { bottom: max(14px, env(safe-area-inset-bottom)); }
+.app[data-dir="d"] .fab { bottom: max(24px, env(safe-area-inset-bottom)); }
+.app[data-dir="d"] .menuplus { bottom: calc(96px + env(safe-area-inset-bottom)); }
+.app[data-dir="d"] .toast { bottom: calc(100px + env(safe-area-inset-bottom)); }
+@container tela (max-width: 899px) {
+  .app[data-dir="d"] .menuplus { bottom: calc(92px + env(safe-area-inset-bottom)); }
+  .app[data-dir="d"] .toast { bottom: calc(96px + env(safe-area-inset-bottom)); }
+  .app[data-dir="d"] .main { padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
+}

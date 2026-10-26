@@ -1,7 +1,7 @@
 'use client';
 // Estado do aplicativo no navegador: demandas vindas do banco, preferências de tela, avisos e janelas. Cada operação passa pelo servidor
 // e só atualiza a tela quando o banco confirmou; uma falha vira aviso de erro e nada muda (sem sucesso de mentira).
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { FILTRO_VAZIO, hojeISO, type Coluna, type DadosDemanda, type Demanda, type Etapa, type Filtro } from '@/lib/demandas';
 import * as srv from '@/servidor/demandas';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
@@ -61,6 +61,24 @@ type Ctx = {
 };
 
 const Contexto = createContext<Ctx | null>(null);
+
+// Falha ao falar com o servidor (sem internet, servidor fora do ar, sessão encerrada pelo proxy): a chamada lança em vez de devolver { ok: false }.
+// Nenhuma dessas falhas vira sucesso: a tela mostra o motivo, nada muda e o que foi digitado continua nos campos e nos rascunhos.
+const MSG_SEM_REDE = 'Sem conexão com o servidor. Nada foi gravado. Confira a internet e tente de novo; o que você digitou continua na tela.';
+async function explicarFalha(): Promise<string> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return MSG_SEM_REDE;
+  try {
+    // sonda leve da porta de entrada: se ela redireciona, a sessão terminou (expirou por inatividade ou foi encerrada) e o login assume
+    const r = await fetch('/api/sessao', { redirect: 'manual', cache: 'no-store' });
+    if (r.type === 'opaqueredirect') { window.location.replace('/login?expirou=1'); return 'Sua sessão terminou. Entre de novo.'; }
+  } catch { return MSG_SEM_REDE; }
+  return 'Não foi possível falar com o servidor agora. Nada foi gravado. Tente de novo.';
+}
+const protegido = async <T,>(f: () => Promise<Resultado<T>>): Promise<Resultado<T>> => { try { return await f(); } catch { return { ok: false, erro: await explicarFalha() }; } };
+
+const assinarConexao = (aviso: () => void) => { addEventListener('online', aviso); addEventListener('offline', aviso); return () => { removeEventListener('online', aviso); removeEventListener('offline', aviso); }; };
+/** true enquanto o navegador diz que há conexão (no servidor e na hidratação vale true, para as duas telas serem iguais). */
+export const useOnline = () => useSyncExternalStore(assinarConexao, () => navigator.onLine, () => true);
 export const useApp = () => { const c = useContext(Contexto); if (!c) throw new Error('useApp fora do ProvedorApp'); return c; };
 
 const lerLS = <T,>(chave: string, padrao: T): T => { try { const v = localStorage.getItem(chave); return v ? (JSON.parse(v) as T) : padrao; } catch { return padrao; } };
@@ -88,6 +106,11 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   // só depois de ler as preferências do navegador é que elas podem ser gravadas (senão os padrões sobrescrevem o que estava salvo)
   const [pronto, setPronto] = useState(false);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // para a atualização ao voltar à tela: janela aberta (não mexer), gravações em andamento e um contador que muda no início e no fim de cada gravação
+  // (uma leitura que começou antes de uma gravação terminar, ou durante ela, é descartada)
+  const janelaAberta = useRef(false);
+  const gravacoes = useRef(0);
+  const pendentes = useRef(0);
 
   const avisar = useCallback((msg: string, erro = false) => {
     if (temporizador.current) clearTimeout(temporizador.current);
@@ -125,12 +148,12 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
-    const r = await srv.listarDemandas(false);
+    const r = await protegido(() => srv.listarDemandas(false));
     if (r.ok) { setDemandas(r.dados); setErroCarga(null); } else setErroCarga(r.erro);
     setCarregando(false);
   }, []);
   const carregarArquivadas = useCallback(async () => {
-    const r = await srv.listarDemandas(true);
+    const r = await protegido(() => srv.listarDemandas(true));
     if (r.ok) setArquivadas(r.dados); else avisar(r.erro, true);
   }, [avisar]);
 
@@ -140,19 +163,40 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setHoje(hojeISO());
     const virada = setInterval(() => setHoje(hojeISO()), 60_000);
     void recarregar();
-    void srv.ambiente().then(setAmbiente);
-    void srv.estadoRotina().then((x) => { if (x.ok) setRotina(x.dados); });
+    void srv.ambiente().then(setAmbiente).catch(() => {});
+    void srv.estadoRotina().then((x) => { if (x.ok) setRotina(x.dados); }).catch(() => {});
     return () => clearInterval(virada);
   }, [recarregar]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  useEffect(() => { janelaAberta.current = janela !== null; }, [janela]);
+  // Outro aparelho pode ter alterado as demandas (iPhone e computador usam o mesmo banco): ao voltar para a tela ou recuperar a conexão, relê a lista.
+  // Não mexe com uma janela de edição aberta, não pisca o "carregando" e descarta a leitura se uma gravação aconteceu enquanto ela vinha.
+  useEffect(() => {
+    const atualizar = async () => {
+      if (document.visibilityState !== 'visible' || janelaAberta.current || pendentes.current > 0) return;
+      const antes = gravacoes.current;
+      const r = await protegido(() => srv.listarDemandas(false));
+      if (r.ok && gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) { setDemandas(r.dados); setErroCarga(null); }
+    };
+    document.addEventListener('visibilitychange', atualizar); addEventListener('online', atualizar);
+    return () => { document.removeEventListener('visibilitychange', atualizar); removeEventListener('online', atualizar); };
+  }, []);
+
+  // estável (identidade fixa): as janelas a usam em efeitos que gravam o rascunho sozinhos
+  const guardarRascunho = useCallback((chave: string, r: Rascunho | null) => setRascunhos((m) => { const n = { ...m }; if (r) n[chave] = r; else delete n[chave]; gravarLS('dmanda:rascunhos', n); return n; }), []);
+
+  const gravando = useCallback(async <T,>(f: () => Promise<T>): Promise<T> => {
+    gravacoes.current++; pendentes.current++;
+    try { return await f(); } finally { pendentes.current--; gravacoes.current++; }
+  }, []);
   const rodar = useCallback(async (f: () => Promise<Resultado<Demanda>>, msg?: string) => {
-    const r = await f();
+    const r = await gravando(() => protegido(f));
     if (!r.ok) { avisar(r.erro, true); return null; }
     aplicar(r.dados);
     if (msg) avisar(msg);
     return r.dados;
-  }, [aplicar, avisar]);
+  }, [aplicar, avisar, gravando]);
 
   const valor = useMemo<Ctx>(() => ({
     demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema,
@@ -167,7 +211,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     abrirMenuMover: (id, g) => { const a = document.querySelector('.app')!.getBoundingClientRect(), b = g.getBoundingClientRect(); setMenuMover({ id, x: b.right - a.left, y: b.bottom - a.top }); },
     fecharMenuMover: () => setMenuMover(null),
     rascunhos,
-    guardarRascunho: (chave, r) => setRascunhos((m) => { const n = { ...m }; if (r) n[chave] = r; else delete n[chave]; gravarLS('dmanda:rascunhos', n); return n; }),
+    guardarRascunho,
     criar: (dados) => rodar(() => srv.criarDemanda(dados), 'Demanda cadastrada'),
     salvar: (id, dados, tarefas, msg = 'Alterações salvas') => rodar(() => srv.salvarDemanda(id, dados, tarefas), msg),
     mover: (id, etapa) => rodar(() => srv.moverEtapa(id, etapa), `Movida para ${etapa}`),
@@ -176,7 +220,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     arquivar: (id) => rodar(() => srv.arquivarDemanda(id), 'Demanda arquivada'),
     desarquivar: (id) => rodar(() => srv.desarquivarDemanda(id), 'Demanda desarquivada'),
     excluir: async (id) => {
-      const r = await srv.excluirDemanda(id, true);
+      const r = await gravando(() => protegido(() => srv.excluirDemanda(id, true)));
       if (!r.ok) { avisar(r.erro, true); return false; }
       setDemandas((l) => l.filter((x) => x.id !== id)); setArquivadas((l) => (l ? l.filter((x) => x.id !== id) : l));
       avisar('Demanda excluída');
@@ -186,7 +230,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, rodar]);
+  }), [demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

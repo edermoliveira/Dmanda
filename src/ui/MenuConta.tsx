@@ -9,6 +9,7 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
   const ref = useRef<HTMLDivElement>(null);
   const gatilho = useRef<Element | null>(null);
   const [saindo, setSaindo] = useState(false);
+  const [baixando, setBaixando] = useState(false);
   const teste = !!ambiente?.teste;
 
   useLayoutEffect(() => {
@@ -41,9 +42,30 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
     window.location.replace(r.ok ? '/login?saiu=1' : '/login?saiu=parcial');
   };
 
+  // Cópia dos dados: baixa o JSON pela rota /api/exportar. Só avisa sucesso depois de receber o arquivo; sessão encerrada vai ao login.
+  const baixar = async () => {
+    if (baixando) return;
+    setBaixando(true);
+    try {
+      const r = await fetch('/api/exportar', { cache: 'no-store', redirect: 'manual' });
+      if (r.type === 'opaqueredirect') { window.location.replace('/login?expirou=1'); return; }
+      if (!r.ok) throw new Error('falha');
+      const nome = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') ?? '')?.[1] ?? 'dmanda-copia.json';
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement('a'); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      fechar(); avisar('Cópia baixada: ' + nome + '. Guarde em um lugar privado; ela tem seus dados reais.');
+    } catch {
+      fechar(); avisar('Não foi possível gerar a cópia agora. Nada foi baixado. Tente de novo.', true);
+    } finally { setBaixando(false); }
+  };
+
   return (
     <div ref={ref} className="mv-menu" role="menu" aria-label="Conta">
       <div className="mv-t">{ambiente?.nome || 'Conta'}</div>
+      <button type="button" role="menuitem" aria-disabled={baixando || undefined} onClick={() => void baixar()}>
+        <span>{baixando ? 'Gerando...' : 'Baixar cópia dos dados'}</span><small>arquivo JSON</small>
+      </button>
       <button type="button" role="menuitem" aria-disabled={saindo || teste || undefined} onClick={() => void sair()}>
         <span>{saindo ? 'Saindo...' : 'Sair'}</span><small>{teste ? 'indisponível no teste' : 'só neste navegador'}</small>
       </button>
