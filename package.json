@@ -13,7 +13,8 @@
     "dev:teste": "node scripts/dev-teste.mjs",
     "testar:banco": "node scripts/testar-banco.mjs",
     "testar:regras": "node scripts/testar-regras.mjs",
-    "testar:app": "node scripts/testar-app.mjs"
+    "testar:app": "node scripts/testar-app.mjs",
+    "testar:sessao": "node scripts/testar-sessao.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

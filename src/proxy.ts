@@ -33,7 +33,8 @@ export async function proxy(request: NextRequest) {
 
   const sair = async (motivo: string) => {
     const r = NextResponse.redirect(new URL(`/login?${motivo}=1`, request.url));
-    await clienteCom(request, r).auth.signOut();
+    // escopo local: encerra só a sessão deste navegador (a expiração por inatividade de um aparelho não derruba os outros)
+    await clienteCom(request, r).auth.signOut({ scope: 'local' });
     r.cookies.delete(COOKIE_ULTIMO_USO);
     return r;
   };

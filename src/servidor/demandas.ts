@@ -5,6 +5,8 @@ import { criarOperacoes, executar, type TarefaEdicao } from '@/nucleo/operacoes'
 import type { DadosDemanda, Etapa } from '@/lib/demandas';
 import { modoTeste } from '@/lib/supabase/config';
 import { criarClienteServidor } from '@/lib/supabase/servidor';
+import { COOKIE_ULTIMO_USO } from '@/lib/sessao';
+import { cookies } from 'next/headers';
 
 const op = () => criarOperacoes(chamar);
 
@@ -64,4 +66,27 @@ export async function excluirTarefa(tarefaId: string) {
 /** Estado da rotina diária para a tela (última execução bem-sucedida, última falha, data do resumo). Sem dado pessoal. */
 export async function estadoRotina() {
   return executar(() => chamar('estado_rotina', {}) as Promise<{ ultima_ok: string | null; ultima_falha: string | null; resumo_data: string | null; resumo_calculado_em: string | null }>);
+}
+
+/**
+ * Sair da conta neste navegador. Usa o signOut oficial do Supabase com escopo "local": encerra só esta sessão, sem desconectar outros
+ * aparelhos nem a conta Google. Só devolve sucesso quando o Supabase confirmou. Se o Auth não confirmar, a resposta diz se a sessão deste
+ * navegador já foi apagada (o SDK apaga mesmo assim), para a tela ir ao login com aviso honesto, ou se nada mudou (só erro na tela).
+ */
+export async function sairDaConta(): Promise<{ ok: true } | { ok: false; erro: string; sessaoLocalEncerrada: boolean }> {
+  const falha = 'Não foi possível sair agora. Tente de novo.';
+  if (modoTeste()) return { ok: false, erro: 'No banco de teste não há conta para sair.', sessaoLocalEncerrada: false };
+  try {
+    const sb = await criarClienteServidor();
+    const { error } = await sb.auth.signOut({ scope: 'local' });
+    if (!error) { (await cookies()).delete(COOKIE_ULTIMO_USO); return { ok: true }; }
+    // O SDK apaga a sessão deste navegador mesmo quando o servidor de Auth não confirma o encerramento: se for o caso, a tela precisa ir ao login
+    // (com aviso honesto) em vez de continuar parecendo autenticada. Se a sessão local continua, nada mudou e é só erro.
+    const { data } = await sb.auth.getSession();
+    if (data.session) return { ok: false, erro: falha, sessaoLocalEncerrada: false };
+    (await cookies()).delete(COOKIE_ULTIMO_USO);
+    return { ok: false, erro: falha, sessaoLocalEncerrada: true };
+  } catch {
+    return { ok: false, erro: falha, sessaoLocalEncerrada: false };
+  }
 }

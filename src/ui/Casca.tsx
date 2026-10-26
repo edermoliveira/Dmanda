@@ -1,12 +1,13 @@
 'use client';
 // Moldura do aplicativo: menu lateral, barra do topo, barra inferior do celular, botão "+", avisos e janelas. Mesmo desenho e mesmas classes do protótipo aprovado.
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Capsula } from './Capsula';
 import { Icone, LOGO } from './Icone';
 import { ProvedorApp, useApp } from './contexto';
 import { Janelas } from './janelas';
 import { MenuMover } from './visoes';
+import { MenuConta } from './MenuConta';
 
 const NAV: [string, string, string, string][] = [
   ['/', 'Início', 'nav-inicio', 'inicio'], ['/entradas', 'Entradas', 'nav-entradas', 'entradas'], ['/demandas', 'Demandas', 'nav-demandas', 'demandas'],
@@ -22,11 +23,13 @@ function useToque() {
 }
 
 function Interior({ children }: { children: ReactNode }) {
-  const { tema, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar } = useApp();
+  const { tema, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover } = useApp();
   const caminho = usePathname();
   const router = useRouter();
   const toque = useToque();
   const [plus, setPlus] = useState(false);
+  const [conta, setConta] = useState<{ x: number; y: number } | null>(null);
+  const fecharConta = useCallback(() => setConta(null), []);
   const appRef = useRef<HTMLDivElement>(null);
   const nome = ambiente?.nome || 'Secretário';
 
@@ -68,7 +71,7 @@ function Interior({ children }: { children: ReactNode }) {
           <button className="icbtn buscabtn" aria-label="Buscar em tudo (ainda não implementado)" aria-disabled="true" title="A busca global fica para um dos próximos blocos" onClick={breve('A busca global')}><Icone nome="busca" /><span className="tx">Buscar demanda, entrada, evento ou documento</span><kbd>Ctrl K</kbd></button>
           <button className="icbtn sino" aria-label="Avisos (ainda não implementado)" aria-disabled="true" title="Os avisos ficam para um dos próximos blocos" onClick={breve('Os avisos')}><Icone nome="bell" /></button>
           <button className="icbtn" aria-label="Alternar tema claro e escuro" onClick={alternarTema}><Icone nome={tema === 'claro' ? 'moon' : 'sun'} /></button>
-          <button className="perfil-b" aria-label="Perfil (ainda não implementado)" aria-disabled="true" title="O Perfil fica para um dos próximos blocos" onClick={breve('O Perfil')}><span className="avatar">{nome.charAt(0).toUpperCase()}</span><span className="tx">{nome}</span></button>
+          <button className="perfil-b" aria-label="Menu da conta" aria-haspopup="menu" aria-expanded={!!conta} title="Conta" onClick={(e) => { if (conta) { setConta(null); return; } fecharMenuMover(); setPlus(false); const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setConta({ x: b.right - a.left, y: b.bottom - a.top }); }}><span className="avatar">{nome.charAt(0).toUpperCase()}</span><span className="tx">{nome}</span></button>
         </header>
         <main className="main" id="main">
           {ambiente?.teste ? <p className="faixa-teste" role="note">Banco local de teste (dados descartáveis, não é o Supabase). Só em desenvolvimento.</p> : null}
@@ -93,6 +96,7 @@ function Interior({ children }: { children: ReactNode }) {
         </div>
         <Janelas />
         <MenuMover />
+        {conta ? <MenuConta ponto={conta} fechar={fecharConta} /> : null}
         <div className={`toast${aviso ? ' on' : ''}${aviso?.erro ? ' erro' : ''}`} id="toast" role={aviso?.erro ? 'alert' : 'status'}>{aviso?.msg}</div>
       </div>
     </div>

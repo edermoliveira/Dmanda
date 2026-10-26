@@ -187,6 +187,22 @@ for (const [w, h, rotulo] of [[390, 800, 'celular'], [820, 1000, 'iPad vertical'
 }
 await pg.setViewportSize({ width: 1360, height: 780 });
 
+// 11b) menu da conta (avatar do topo, computador e celular): abre, cabe na tela, "Sair" indisponível no banco de teste, fecha com Esc e ao clicar fora
+for (const [w, h, rotulo] of [[1360, 780, 'computador'], [390, 800, 'celular']]) {
+  await pg.setViewportSize({ width: w, height: h });
+  await ir('/demandas');
+  await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label="Conta"]');
+  const m = await pg.evaluate(() => { const r = document.querySelector('.mv-menu[aria-label="Conta"]').getBoundingClientRect(), b = document.querySelector('.top .perfil-b'); return { cabe: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight, expandido: b.getAttribute('aria-expanded'), sair: document.querySelector('.mv-menu [role=menuitem]')?.textContent, bloqueado: document.querySelector('.mv-menu [role=menuitem]')?.getAttribute('aria-disabled') }; });
+  await pg.click('.mv-menu [role=menuitem]', { force: true }); await pg.waitForTimeout(300);
+  const ficou = pg.url().endsWith('/demandas') && !!(await pg.$('.mv-menu[aria-label="Conta"]'));
+  await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.mv-menu[aria-label="Conta"]'), null, { timeout: 3000 }).catch(() => {});
+  const fechouEsc = !(await pg.$('.mv-menu[aria-label="Conta"]'));
+  await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label="Conta"]'); await pg.click('.main h1, .main'); await pg.waitForTimeout(250);
+  const fechouFora = !(await pg.$('.mv-menu[aria-label="Conta"]'));
+  ok(m.cabe && m.expandido === 'true' && /^Sair/.test(m.sair ?? '') && m.bloqueado === 'true' && ficou && fechouEsc && fechouFora, `${rotulo}: menu da conta abre dentro da tela, "Sair" fica indisponível no banco de teste (sem navegar), fecha com Esc e ao clicar fora`);
+}
+await pg.setViewportSize({ width: 1360, height: 780 });
+
 // 12) entradas ainda não construídas dizem a verdade
 await ir('/agenda'); ok(/Em construção/.test(await pg.textContent('.main')) && !/Reunião|Audiência/.test(await pg.textContent('.main')), 'áreas ainda não construídas mostram "Em construção" e nenhum dado de exemplo');
 // 12b) rotina diária: autenticação própria, repetível, sem cookie, sem dado pessoal, e o Início mostra o estado
