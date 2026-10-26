@@ -127,7 +127,9 @@ Feita com a CLI, como **SQL no banco real com contextos de autenticação simula
 - Hook: libera a conta autorizada pelo Google; recusa (403) outra conta, a mesma conta por e-mail e senha, anônimo e sem e-mail; só o papel do Auth o executa.
 - Nenhum dado de teste ficou no banco (0 usuários, 0 demandas, 0 execuções depois).
 
-**Ainda não validado:** login Google real, primeiro e segundo acesso, rejeição real de outra conta pelo hook ativo, gravação e leitura pela interface, persistência depois de recarregar, quatro visões com dados reais, chamada HTTP da rotina com a chave de serviço.
+**Validado depois, com login Google real (25/10/2026, Issue #1):** primeiro login (1 usuário, identidade Google); pela interface, na sessão real e com registros TESTE já excluídos: cadastro, edição, tarefas, mudança de etapa, conclusão, reabertura, exclusão, persistência ao recarregar e as quatro visões consistentes, tudo conferido por leitura do banco; chamada HTTP local da rotina com a chave de serviço (200, execução e resumo gravados).
+
+**Ainda não validado:** segundo acesso, rejeição real de outra conta (bloqueio do Google em modo Teste e rejeição pelo hook), expiração de 6 h, produção na Vercel, agendamento. A interface ainda não tem botão Sair; para sair, limpe os dados do site `localhost:7100`.
 
 ## Rotina diária na nuvem
 
