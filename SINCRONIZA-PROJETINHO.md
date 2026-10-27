@@ -2,9 +2,19 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 26/10/2026, computador do trabalho, branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Última atualização:** 26/10/2026, noite, computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; depois dele, o ponto do trabalho), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
+
+---
+
+## PONTO DE RETOMADA ATUAL (26/10/2026, noite, computador de casa, ambiente conferido)
+
+Retomado do commit `b78f763` (local e remoto idênticos, sem pull). **Conferência do ambiente do Claude Code: `AUDITORIA.md`, seção 16** (nenhuma configuração precisou mudar; recomendações globais não aplicadas, aguardam você). Nada a refazer do bloco do trabalho: migrações 6 e 7 aplicadas, senha definida, entrada por senha provada (ver o ponto logo abaixo).
+
+- **Estado deste computador:** `.env.local` completo e compatível (`npm run conferir:env`), mas `DMANDA_LOGIN_GOOGLE` está vazia, então o botão do Google ainda aparece aqui. O provedor Google continua LIGADO no painel do Supabase (conferido). `npm run build` passou. CLI do Supabase 2.122.0 por `npx`, `gh` logado, Vercel só pelo site.
+- **Ações suas, nesta ordem:** (1) **no Bloco de Notas, em `.env.local`, ponha `DMANDA_LOGIN_GOOGLE=nao`** (o assistente não consegue ler nem editar `.env*`); (2) **no painel do Supabase, Authentication > Sign In / Providers > Google: desativar** (sem excluir usuário, identidade nem o projeto do Google Cloud) e avisar "Google desligado"; (3) decidir o destino privado das cópias; (4) decidir o enquadramento do plano Hobby da Vercel; (5) criar o projeto na Vercel com as variáveis (LEIA-ME, "Publicação na Vercel"); (6) avaliar a aplicação (Issue #2) no iPhone e no iPad.
+- **Depois do aviso "Google desligado":** o Claude roda `npm run conferir:env`, confirma Google desligado e a entrada por senha, e atualiza a Issue #1. Nada foi publicado nem contratado.
 
 ---
 

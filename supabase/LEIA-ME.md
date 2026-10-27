@@ -198,7 +198,7 @@ Feita com a CLI, como **SQL no banco real com contextos de autenticação simula
 - **Supabase gratuito:** projetos de baixa atividade podem ser **pausados** (a documentação fala em 7 dias). Uma chamada diária **não garante** que o projeto nunca pause. O plano Pro evita a pausa, mas não foi contratado.
 - **Em quatro níveis:**
   1. Código preparado: **sim**.
-  2. Função validada no banco real, como papel de serviço, dentro de transação desfeita: **sim**. Chamada HTTP da rota em produção local: 401 sem segredo, 401 com segredo errado e 500 com segredo correto e chave de serviço ainda em branco (falha por configuração ausente). **Chamada HTTP bem-sucedida no banco real: ainda não** (falta a chave de serviço no `.env.local`).
+  2. Função validada no banco real, como papel de serviço, dentro de transação desfeita: **sim**. Chamada HTTP da rota contra o banco real, em `localhost:7100` (não é produção): 401 sem segredo, 401 com segredo errado e 200 com o segredo correto, execução e resumo gravados (25/10/2026).
   3. Agendamento implantado na Vercel: **não**.
   4. Primeira execução automática observada: **não**.
 
@@ -254,4 +254,4 @@ Feita com a CLI, como **SQL no banco real com contextos de autenticação simula
 
 ## Teste local sem Supabase
 
-`npm run dev:teste` usa o banco local descartável (`.dados-teste/`, não vai para o Git). As migrações novas são aplicadas sozinhas a um banco de teste já existente. Testes: `npm run testar:banco` (90), `testar:regras` (25), `testar:app` (64), `testar:sessao` (57, Auth falso). Eles **não** substituem a validação no Supabase real.
+`npm run dev:teste` usa o banco local descartável (`.dados-teste/`, não vai para o Git). As migrações novas são aplicadas sozinhas a um banco de teste já existente. Testes: `npm run testar:banco` (118), `testar:regras` (25), `testar:app` (69), `testar:sessao` (57, Auth falso). Eles **não** substituem a validação no Supabase real.

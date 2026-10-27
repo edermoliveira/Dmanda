@@ -78,7 +78,7 @@ Instalado, habilitado, disponível nesta sessão e efetivamente usado são coisa
 | Figma MCP | escopo local deste projeto (`~/.claude.json`) | sim | sim (conectado) | não, preservado |
 | taste-skill | usuário (v2.1.4) | desativado no projeto | **não** | não |
 | ui-ux-pro-max | projeto (cache) | desativado no projeto | não | não |
-| code-simplifier | usuário (`claude-plugins-official`) | **estava ativo** (chave errada no projeto) | sim nesta sessão (agente listado) | não; corrigido, vale na próxima sessão |
+| code-simplifier | usuário (no trabalho `claude-plugins-official`; em casa `anthropic-plugin-directory`, ver seção 16) | **estava ativo no trabalho** (chave errada no projeto) | sim nesta sessão (agente listado) | não; corrigido, vale na próxima sessão |
 
 Não foram instalados pacotes, skills, memória nem MCPs. Permissões e modo de execução não foram tocados. A CLI do Supabase foi apenas executada por `npx` (2.122.0), sem login.
 
@@ -215,3 +215,53 @@ Não bloqueiam: destino do backup, melhorias da seção 3.4.
 **Google:** com a senha provada, o botão foi ocultado (`DMANDA_LOGIN_GOOGLE=nao`; conferido: a página de login não tem o botão nem o "ou" e mantém o campo de senha). **Pendente do usuário:** desativar o provedor Google no painel (Authentication > Sign In / Providers > Google), sem excluir usuário, identidade nem o projeto do Google Cloud. Depois, `npm run conferir:env` deve mostrar o Google desligado.
 
 **Limitações e pendências que permanecem:** intermitência do `testar:sessao` (causa desconhecida; 19 execuções sem falha desde a mudança, não repetida nesta etapa porque a área não mudou); restauração da cópia só testada em banco local (demonstrar no projeto real exige dados TESTE e autorização); cookie `dmanda-ultimo-uso` não assinado (não é garantia inviolável); expiração de 6 h real; aviso do Supabase sobre proteção contra senhas vazadas (exige plano pago, não contratado); PowerShell 7 e outros terminais não testados; Vercel e primeira execução automática; iPhone e iPad reais; avaliação visual (Issue #2); Issue consolidada sem `gh` (texto na seção 13).
+
+## 16. Ambiente do Claude Code (conferência única de 26/10/2026, computador de casa)
+
+Conferência do ambiente, não do aplicativo. Feita uma vez: inventário, ajustes justificados e conferência final. **Não abrir outra rodada sem fato novo.** Configurações pessoais e credenciais não foram lidas nem copiadas para cá.
+
+**Retomada:** local e remoto idênticos em `b78f763` (resumo de encerramento `RESUMOCASA-26-10.md`), árvore limpa, nenhum pull necessário. `.env.local` de casa preservado: `npm run conferir:env` (a única forma de conferir, porque uma regra de usuário bloqueia a leitura direta de `.env*`) mostra tudo preenchido no formato esperado, provedor Email ligado, cadastro público desligado, 1 usuário autorizado. **Divergências com o resumo:** `DMANDA_LOGIN_GOOGLE` está vazia neste computador (o botão do Google ainda aparece) e o provedor Google segue LIGADO no painel. `npm run build` passou neste computador.
+
+**Instalação.** Claude Code 2.1.310, instalação nativa, `C:\Users\Éder\.local\bin\claude.exe`; é o único executável encontrado (nenhum `claude` no npm global). A atualização automática do canal "latest" já baixou a 2.1.311 (`~/.claude/.last-update-result.json`: sucesso), que vale a partir da próxima abertura. Atualizações, modo auto e permissões gerais não foram tocados. Não há política gerenciada, `.mcp.json` nem `settings.local.json`.
+
+**Inventário e estado efetivo** (instalado, habilitado, carregado nesta sessão e conectado são coisas diferentes):
+
+| Componente | Origem e versão | Escopo | Estado efetivo | Decisão |
+|---|---|---|---|---|
+| Impeccable (skill 4.7.0, motor 0.1.16, 4 agentes: asset-producer, documenter, finish-reviewer, manual-edit-applier) | `.claude/skills` e `.claude/agents` (versionados; o binário `scripts/bin` é ignorado pelo Git e existe neste computador) | projeto | carregado na sessão; sem hooks; `.impeccable/config.json` com `telemetry: false` | manter; só avalia e refina a direção aprovada |
+| systematic-debugging, test-driven-development, verification-before-completion | cópias em `.claude/skills` | projeto | carregadas na sessão | manter |
+| code-review | `code-review-anthropics@anthropic-plugin-directory` (58267944f921-f52fa04c) | usuário | habilitado e carregado (`code-review:code-review`). O `code-review` nativo (diff local, níveis de esforço) coexiste com nome diferente: sobreposição parcial, sem conflito | manter |
+| Playwright | `playwright@anthropic-plugin-directory` (MCP `npx @playwright/mcp@latest`) | usuário | habilitado e **conectado** (`claude mcp list`). Os testes do projeto usam `playwright-core` e o Edge, não este MCP | manter |
+| Context7 | `context7@anthropic-plugin-directory` (MCP http) | usuário | habilitado e **conectado** | manter |
+| Figma MCP | `https://mcp.figma.com/mcp` | local, só neste projeto (`~/.claude.json`) | **conectado**; nenhuma tarefa atual depende dele | preservar |
+| taste-skill 2.1.4 | `taste-skill@taste-skill` | usuário | desativado (usuário e projeto); não aparece nesta sessão | manter desativado |
+| ui-ux-pro-max 2.15.0 | `ui-ux-pro-max@ui-ux-pro-max-skill` | usuário (**habilitado**) e um registro de instalação de projeto | desativado **só pelo projeto**; `claude plugin list` neste diretório mostra os dois registros desativados; não aparece nesta sessão | manter desativado no projeto |
+| code-simplifier 1.0.0 | **`code-simplifier@anthropic-plugin-directory`** (id instalado em casa) | usuário | desativado (usuário e projeto); o agente não aparece nesta sessão | manter desativado |
+| Conectores do claude.ai (Canva, Notion, Adobe etc.) | conta | conta | `disableClaudeAiConnectors: true` no usuário; nenhum carregado | manter |
+| Hooks | nenhum em `~/.claude/settings.json`, no projeto, nos plugins habilitados nem em skills e agentes do projeto | nenhum | nenhum ativo | nada a criar |
+| Comandos e agentes pessoais | `~/.claude/commands`, `agents` e `hooks` não existem; `~/.claude/skills` só tem lixeira | nenhum | nenhum | nada |
+| Instruções e memória | `CLAUDE.md` (18 mil caracteres), `AGENTS.md` (0,7 mil) e o índice da memória local (5 linhas) | projeto e usuário | carregados | memória reescrita, ver abaixo |
+
+**Correção do code-simplifier recebida do trabalho.** No trabalho o plugin instalado é `code-simplifier@claude-plugins-official`; **em casa o instalado é `code-simplifier@anthropic-plugin-directory`** (conferido em `installed_plugins.json`, `plugin-directory-bindings.json` e `claude plugin list`). O `.claude/settings.json` do projeto já traz as **duas** chaves em `false`, então cobre os dois computadores e nada foi alterado. A chave que não existe numa máquina é inofensiva (`claude plugin list` não acusa erro). Manter as duas.
+
+**Conflitos, resíduos e falhas concretas** (nenhum quebra a sessão):
+1. `ui-ux-pro-max` está habilitado no escopo de **usuário** e só o projeto o desativa. Em outros projetos ele carrega. Isso cumpre "desativado no Dmanda"; por isso nada foi mudado.
+2. `~/.claude/plugins/cache` guarda versões antigas de plugins instalados e pastas de plugins **não instalados** (Superpowers 6.4.2 com hook de `SessionStart`, `superpowers-dev`, `frontend-design`, `claude-code-setup`). Não constam em `installed_plugins.json` nem em `enabledPlugins`, não carregam nesta sessão (nenhuma skill do Superpowers aparece) e seus hooks não rodam. É só espaço em disco; nenhum cache foi apagado.
+3. `~/.claude/.credentials.json.tmp.0d889b23` (30/08) é um **arquivo temporário de credenciais que sobrou**. Não foi aberto nem apagado. Recomendação 1 abaixo.
+4. Restos inofensivos: `.ponytail-active` e `.ponytail-statusline-nudged` (sem plugin nem hook que os leia), `settings.json.bak-doctor`, `skills-backup-20261006`.
+5. `/doctor`: o nativo é um comando interno do Claude Code. O Impeccable tem um subcomando próprio, `impeccable doctor`, que só confere os artefatos dele (`PRODUCT.md`, `DESIGN.md`, `.impeccable/`). **Nenhum dos dois foi executado**, para não entrar em ciclo de doctor, e nenhum resultado foi interpretado.
+6. Sobreposição `code-review` (nativo) e `code-review:code-review` (plugin): funções vizinhas, nomes distintos. Mantidos pela definição acordada.
+7. Ferramentas oficiais já suficientes, sem MCP novo: Supabase pela CLI (`npx supabase`, 2.122.0), GitHub pelo `gh` 2.103.0 (logado, Issues #1 a #4 abertas) e Vercel pelo site (não há CLI da Vercel instalada e não é necessária para o primeiro deploy).
+
+**Ajustes feitos (locais e reversíveis):** nenhum arquivo de configuração do Claude Code precisou mudar, porque o estado já cumpre a definição. Foram feitos: cópia privada de segurança da memória local e das configurações de projeto e de usuário em `~/.claude/backups/dmanda-memoria-2026-10-26/` (fora do repositório, nunca vai para o Git); reescrita da nota de estado da memória (estava em 25/10, dizia Google exclusivo e 5 migrações) e nova nota `ambiente-claude-code-dmanda`; esta seção; a retomada em `SINCRONIZA-PROJETINHO.md`; duas frases desatualizadas de `supabase/LEIA-ME.md`.
+
+**Contexto e inicialização (estimativas, não medidas):** sem acesso programático ao `/context`. Fixo em toda sessão: `CLAUDE.md` mais `AGENTS.md` com cerca de 19 mil caracteres (ordem de 5 mil tokens, estimativa) e a lista de skills, agentes e nomes de ferramentas adiadas (Figma cerca de 50 nomes, Playwright 25, Context7 2). O corpo das skills (`impeccable` 11,9 mil caracteres; as outras três de 3,6 a 9,6 mil) e dos 4 agentes só entra quando usados. Não houve medição de lentidão de inicialização e não se afirma economia de tokens.
+
+**Limitações da conferência:** não abri `.env.local` (bloqueado de propósito); não rodei `/context`, `/doctor` nem `impeccable doctor`; a saúde dos MCPs vem de `claude mcp list` no momento da conferência; não inspecionei outros projetos nem conversas antigas; o desempenho real de cada plugin não foi medido.
+
+**Recarga:** nada pede nova sessão, porque nenhuma configuração do Claude Code mudou. A memória reescrita vale a partir da próxima sessão. A versão 2.1.311, já baixada, vale na próxima abertura.
+
+**Recomendações globais (nada aplicado; só com sua decisão):**
+1. **Apagar o temporário de credenciais.** Necessidade: arquivo sensível sem uso. Impacto: nenhum no funcionamento (o `.credentials.json` ativo é outro arquivo). Mudança: excluir `C:\Users\Éder\.claude\.credentials.json.tmp.0d889b23`. Desfazer: não se desfaz; se algo falhar, o login se refaz pelo próprio Claude Code.
+2. **Opcional: desativar `ui-ux-pro-max` também no escopo de usuário.** Necessidade: coerência com taste-skill e code-simplifier, já desativados globalmente. Impacto: em outros projetos o plugin deixa de carregar. Mudança: em `~/.claude/settings.json`, `"ui-ux-pro-max@ui-ux-pro-max-skill": false`. Desfazer: voltar para `true`. Não é necessário para o Dmanda.
+3. **Opcional: limpar caches de plugins não instalados** (`plugins/cache/superpowers-dev`, `claude-plugins-official`, versões antigas). Necessidade: só espaço em disco. Impacto: nenhum se não estiverem instalados; o Claude Code baixa de novo se forem instalados. Desfazer: reinstalar o plugin. Não recomendo agora.
