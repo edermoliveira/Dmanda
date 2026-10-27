@@ -2,13 +2,13 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 27/10/2026, encerramento no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Última atualização:** 27/10/2026, bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
 ---
 
-## PONTO DE RETOMADA ATUAL (27/10/2026, encerramento em casa, para continuar no computador do trabalho)
+## PONTO DE RETOMADA ATUAL (27/10/2026, em casa: publicação preparada, aguardando o plano da Vercel e a conexão da nuvem)
 
 Esta seção basta para continuar sem a conversa e sem a memória local. Detalhes: `AUDITORIA.md` (seção 17 fecha a base Supabase; seção 16 é a conferência do ambiente, encerrada) e `supabase/LEIA-ME.md`. Não abrir outra auditoria geral nem do ambiente sem fato novo.
 
@@ -37,18 +37,67 @@ npm run dev
 ```
 `conferir:env` mostra só ok, VAZIA ou ATENÇÃO, nunca valores, e lê o painel em modo leitura (deve mostrar Email LIGADO, Google desligado, cadastro público desligado, 1 usuário). `npm run dev` abre a aplicação real em http://localhost:7100/login (só um `next dev` por vez). O `.env.local` e a CLI do Supabase não vão para o Git: o computador do trabalho já tem os seus. Se a CLI pedir login: `npx supabase login` e `npx supabase link --project-ref gmxoosvgfcydccyeudej`. O binário do Impeccable (`.claude/skills/impeccable/scripts/bin`) é por computador e não vai para o Git.
 
+**ATUALIZAÇÃO 27/10/2026 (bloco "publicação controlada", em casa):** preparado, **nada publicado, nada contratado**.
+- `vercel.json` agora tem região `gru1`, a regra "só a branch `producao` implanta" (`git.deploymentEnabled`) e o cron diário (09:00 UTC). Branch `producao` criada a partir do commit verificado (conferir com `git ls-remote origin refs/heads/producao`); regra de avanço em `CLAUDE.md` e `DECISOES.md` 16.
+- Verificado hoje: `tsc`, `eslint`, `testar:regras` 26, `npm run build`, `conferir:env` (tudo ok, Email ligado, Google desligado, cadastro público desligado, 1 usuário) e produção local (`npm run start`): `/login`, manifesto e ícones 200; `/demandas`, `/marca`, `/api/exportar` redirecionam ao login; cron 401 sem segredo e com segredo errado; cabeçalhos de segurança presentes. `testar:banco` e `testar:app` não repetidos (SQL e telas não mudaram).
+- **Plano da Vercel: recomendação Pro (US$ 20 por mês), decisão do usuário pendente.** Fundamento, tabela e alternativa (perguntar ao suporte antes) em `supabase/LEIA-ME.md`, seção "Plano da Vercel".
+- **Aviso:** a primeira implantação de um projeto novo na Vercel é sempre de produção e sai da `main` (protótipo antigo, dados fictícios). Roteiro em `supabase/LEIA-ME.md` ("Ações exatas para publicar").
+- **Ainda pendente:** publicação, agendamento implantado, primeira execução automática, 6 h reais, avaliação visual da aplicação React (#2), destino e automação das cópias (#4).
+- Guia do iPhone (Claude Code na nuvem): seção "Claude Code na nuvem" logo abaixo.
+
 **Pendências que exigem ação ANTES da publicação:**
-1. Usuário: decidir o enquadramento do plano **Hobby** da Vercel (uso pessoal e não comercial) para o uso no trabalho, ou outro caminho. Nada foi contratado.
-2. Usuário: criar o projeto na Vercel (ver o mecanismo de liberação abaixo), cadastrar as variáveis só em Produção e avisar o endereço.
-3. Claude, depois do endereço: conferir o publicado, o cron e o banco.
+1. Usuário: decidir o plano da Vercel (recomendação: Pro) ou perguntar ao suporte e esperar a resposta por escrito. Nada foi contratado.
+2. Usuário: criar o projeto na Vercel conforme "Ações exatas para publicar" no `LEIA-ME`, cadastrar as variáveis só em Produção e avisar o endereço.
+3. Claude, depois do endereço: avançar a `producao` (só com autorização), conferir o publicado, o cron e o banco.
 
 **Limitações conhecidas (podem continuar registradas, não bloqueiam a publicação):** expiração de 6 h reais ainda não observada (só em ambiente isolado); restauração da cópia nunca feita em projeto real; destino e automação das cópias; cookie `dmanda-ultimo-uso` não assinado; operações pontuais (mover etapa, marcar tarefa, arquivar) seguem "último a gravar vence" por campo; sem service worker (a PWA só abre online); intermitência não reproduzida do `testar:sessao` (57 de 57 agora); senhas vazadas exigem plano pago; PowerShell 7 não testado; projeto Supabase gratuito pode pausar por inatividade; aplicação React sem avaliação visual (#2).
 
 **PRÓXIMO BLOCO (já definido): publicação controlada, rotina diária em nuvem e conferência da PWA.**
-- **Checkpoint não é liberação.** Enviar commits à branch de checkpoint no GitHub não deve publicar nada. Mecanismo mais simples proposto (não aplicado): na Vercel, a Production Branch é uma branch separada, por exemplo `producao`, que só avança quando o usuário e o Claude conferirem uma versão (`git push origin <commit-verificado>:refs/heads/producao`, apenas avanço, nunca force). Os pushes na branch de checkpoint ficam sem build (Settings > Git > Ignored Build Step: `[ "$VERCEL_GIT_COMMIT_REF" = "producao" ] && exit 1 || exit 0`) e as variáveis ficam só em Produção. A `main` continua intocada. Isto exige uma decisão do usuário antes de criar a branch.
+- **Checkpoint não é liberação (mecanismo aplicado em 27/10/2026).** A Vercel publica só a branch `producao`, que avança por fast-forward a partir de um commit verificado (`git push origin <commit-verificado>:refs/heads/producao`, nunca force). As outras branches não implantam, por regra no próprio `vercel.json`. Na Vercel, a Production Branch é definida em Settings > Environments > Production > Branch Tracking. A `main` continua intocada.
 - **Roteiro:** (1) decidir o plano; (2) criar o projeto na Vercel com a Production Branch definida acima, região São Paulo (gru1) e as variáveis `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`, `SUPABASE_SERVICE_ROLE_KEY` (sensível) e `CRON_SECRET` (16 ou mais caracteres); não definir `DMANDA_BANCO` nem `DMANDA_LOGIN_GOOGLE`; (3) Claude confere o publicado sem sessão (login, manifesto, ícones, `/api/exportar` barrado, cron 401 sem segredo), depois da entrada por senha confere o banco; (4) execução manual do cron pelo painel (Cron Jobs, Run) ou a automática do dia seguinte, lida em `execucoes_rotina` e no Início; (5) PWA no iPhone e no iPad e avaliação (#2).
-- **Intenção registrada para a próxima sessão (NÃO configurada):** trabalhar pelo iPhone usando Claude Code na nuvem, sem depender do computador de casa ligado. Salvaguardas desde já: não copiar a pasta pessoal do Claude (`~/.claude`), credenciais nem o `.env.local` para o repositório; segredos só nos mecanismos de ambiente do serviço em nuvem, definidos pelo usuário; começar com trabalho só de código e documentos, sem acesso ao Supabase real, até decidir o contrário.
 - **Depois, quando o usuário decidir:** destino privado das cópias (então armazenamento e, se quiser, automação) e uma demonstração da restauração em projeto descartável.
+
+---
+
+## Claude Code na nuvem (iPhone): guia único (preparado em 27/10/2026; NADA configurado ainda)
+
+**Duas coisas diferentes (fonte: code.claude.com/docs, lida em 27/10/2026):**
+
+| | Remote Control | Execução na nuvem (cloud session) |
+|---|---|---|
+| Onde roda | no **seu computador**; o iPhone só controla a sessão | numa máquina virtual da Anthropic que clona o GitHub |
+| Computador ligado? | **sim**, com a sessão aberta | **não**; continua com o computador desligado |
+| O que enxerga | seus arquivos, `.env.local`, plugins, memória e MCPs locais | **só o que está no repositório**; sem `~/.claude`, sem memória pessoal, sem `.env.local`, sem plugins do usuário nem os declarados em `.claude/settings.json` |
+| Custo | dentro do plano Claude | dentro dos limites do plano Claude (sem cobrança extra pela máquina) |
+
+Aqui o objetivo é a segunda. Ela vale no Claude Pro. Os arquivos versionados (`CLAUDE.md`, `AGENTS.md`, `.claude/skills/`, esta seção) chegam; o resto, não.
+
+**Ações suas (nada disso foi feito):**
+1. No iPhone, instalar o aplicativo Claude (App Store) e entrar com a mesma conta do Claude Code do computador.
+2. **Conectar o GitHub pelo navegador, não por `/web-setup`.** Abrir https://claude.ai/code, entrar, escolher conectar o GitHub e autorizar. Quando pedir para instalar o **Claude GitHub App** (https://github.com/apps/claude/installations/new), escolher **Only select repositories** e marcar só `edermoliveira/Dmanda`. Motivo: `/web-setup` envia o token do `gh`, que alcança todos os seus repositórios.
+3. Aceitar o ambiente **Default** (rede **Trusted**). Não adicionar variáveis de ambiente, segredos de rede nem script de instalação agora (qualquer pessoa que use o ambiente lê as variáveis; e a primeira conferência não precisa de nada disso).
+4. Iniciar a sessão **pelo https://claude.ai/code** (o Safari do iPhone serve): repositório `Dmanda` e **troque a branch** no controle ao lado do seletor para `checkpoint/2026-10-23-ajustes-a-d`. A padrão é a `main`, que tem o protótipo antigo. Modo **Plan** (só lê e propõe). Depois a sessão aparece na aba **Code** do aplicativo e continua de lá.
+5. Colar o texto abaixo.
+
+**Primeira conferência (somente leitura), texto para colar:**
+> Conferência SOMENTE DE LEITURA do repositório Dmanda. Não edite arquivos, não faça commit nem push, não instale dependências e não acesse Supabase, Vercel ou qualquer serviço externo. 1) Informe a branch atual e o hash do HEAD, e rode `git ls-remote origin` para dizer se existem `producao` e `main` e em quais hashes. 2) Leia CLAUDE.md, AGENTS.md e a seção "PONTO DE RETOMADA ATUAL" de SINCRONIZA-PROJETINHO.md. 3) Confirme que o vercel.json tem região gru1, a regra para só a branch producao implantar e o cron diário. 4) Liste o que está pendente e o que você NÃO consegue fazer neste ambiente (por exemplo, usar .env.local, acessar o Supabase real, usar a memória do computador). Responda em português, sem travessão, e termine com a linha de andamento copiada de ANDAMENTO.md, sem recalcular.
+
+**Regras para qualquer tarefa depois disso:**
+- Trabalhar em uma branch `claude/...` criada pela sessão. **Nunca** enviar para `producao`, `main` nem diretamente para a branch de checkpoint. (O GitHub Free não protege branches de repositório privado, então a regra é escrita, não técnica. Diga isso no primeiro pedido de cada tarefa.)
+- Só configurar o ambiente quando uma tarefa concreta exigir. Exemplo: para a nuvem rodar `tsc`, `eslint` e `testar:regras`, um script de instalação com `npm ci` (rede Trusted alcança o npm). `testar:app` precisa do Edge e não roda lá.
+- Sem acesso ao Supabase real: não há chave na nuvem e nenhuma será colocada sem decisão sua. Qualquer chave futura entra como **segredo de rede** do ambiente (não como variável), com o menor privilégio possível.
+- Não enviar `.env.local`, nem `~/.claude`, nem cópias de dados (`dmanda-copia-*.json`) ao GitHub ou à nuvem.
+
+**Uma sessão por vez.** Antes de abrir uma sessão na nuvem, no computador: `git status` limpo, `git push` da branch de checkpoint e conferência com `git ls-remote origin refs/heads/checkpoint/2026-10-23-ajustes-a-d`. Enquanto a sessão da nuvem não terminar e o resultado não voltar, não editar no computador.
+
+**Como o resultado volta ao fluxo principal:**
+1. A sessão termina com um push da branch `claude/...`. No claude.ai/code (ou no app), abrir **Changes** e revisar.
+2. **Create PR** com **base na branch de checkpoint** (nunca na `main`). Conferir a base antes de confirmar.
+3. Você revisa e faz o merge do PR no GitHub (o site no iPhone serve). A `main` não é tocada.
+4. No computador: `git fetch origin`, `git checkout checkpoint/2026-10-23-ajustes-a-d`, `git pull --ff-only origin checkpoint/2026-10-23-ajustes-a-d`, e `git ls-remote` para confirmar o hash. Se o `--ff-only` recusar, houve edição paralela: parar e pedir ao Claude para conciliar.
+5. Publicação continua à parte: a `producao` só avança de um commit conferido, com sua autorização.
+
+**Limites e cuidados:** as sessões na nuvem dividem o limite de uso do seu plano com o restante do Claude; o ambiente é recolhido depois de um tempo parado (reabrir a sessão restaura a conversa, não processos em andamento); sem Remote Control, o computador pode ficar desligado, mas nada local (como `.dados-teste/` e o `.env.local`) existe na nuvem.
 
 ---
 

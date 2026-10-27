@@ -280,16 +280,38 @@ Cada demanda tem uma `versao`. Se a mesma demanda for alterada em outro aparelho
 
 **URLs:** com o login por senha **não há redirecionamento de volta**, então Site URL e Redirect URLs do Supabase deixam de importar para entrar. Se o Google continuar ligado, acrescente o endereço de produção em Authentication > URL Configuration (Site URL e `/auth/callback`) e em "Origens JavaScript autorizadas" do cliente OAuth no Google Cloud. Os endereços de localhost continuam.
 
-**Rotina diária:** `vercel.json` agenda `GET /api/cron/diaria` às 09:00 UTC; só roda no deployment de **Produção** e só com `CRON_SECRET`. A primeira execução automática só pode ser observada depois da publicação (a tela do Início mostra a última execução).
+**Separação entre checkpoint e publicação (preparada em 27/10/2026):** a Vercel só publica a branch `producao`. O `vercel.json` desliga a implantação automática de todas as outras branches (`"**": false`, `"producao": true`), então enviar checkpoints, branches `claude/...` da nuvem ou a `main` ao GitHub **não** muda o aplicativo em uso. A `producao` só avança por `git push origin <commit-verificado>:refs/heads/producao`, sem force push (só avanço). Região das funções: `gru1` (São Paulo), junto do Supabase, também no `vercel.json` (o Hobby aceita uma região, o Pro aceita cinco). A Vercel lê esse arquivo da branch que recebe o envio, por isso ele precisa estar na `producao` e na branch de checkpoint (está nas duas). O padrão `**` foi testado com a biblioteca de comparação que a Vercel documenta (minimatch): só `producao` implanta; `main`, `checkpoint/...` e `claude/...` não.
 
-**Enquadramento pendente (decisão sua, sem pesquisa aberta de plataformas):** o plano **Hobby** da Vercel é gratuito, mas restrito a **uso pessoal e não comercial**; confirme, se necessário com o suporte da Vercel, se o uso do Dmanda no trabalho da Prefeitura se enquadra. Se não se enquadrar, a decisão de contratar plano (ou outra hospedagem) é sua. Nada foi contratado.
+**Rotina diária:** `vercel.json` agenda `GET /api/cron/diaria` às 09:00 UTC (06:00 em Brasília); só roda no deployment de **Produção** e só com `CRON_SECRET`. A Vercel não segue redirecionamentos, não repete a chamada se ela falhar e entrega em "melhor esforço" (pode falhar ou, raramente, duplicar); a rotina recalcula a partir das datas originais, então uma falta ou repetição se corrige na execução seguinte. No Hobby a chamada pode ocorrer a qualquer minuto da hora marcada (06:00 a 06:59 em Brasília); no Pro, no minuto marcado. A primeira execução automática só pode ser observada depois da publicação (a tela do Início mostra a última execução). Disparo manual de teste depois do deploy: o Claude chama a rota com o `CRON_SECRET` (lido do `.env.local` sem exibir) ou, pela CLI da Vercel, `vercel crons run /api/cron/diaria` (beta, só acha a rotina em produção já implantada).
 
-**Ações exatas para publicar (suas, depois de provar a entrada por senha):**
-1. Site da Vercel: criar projeto a partir do repositório `edermoliveira/Dmanda` (branch de produção definida por você; a branch de checkpoint não é a `main`).
-2. Cadastrar as variáveis acima no ambiente Produção.
-3. Opcional, recomendado: em Settings > Functions, região **São Paulo (gru1)**, perto do Supabase, para reduzir a demora de cada gravação.
-4. Deploy; abrir o endereço, entrar por senha e conferir.
-5. Conferir no dia seguinte, no Início, a última execução da rotina diária.
+### Plano da Vercel: recomendação (documentação oficial lida em 27/10/2026)
+
+**Regra do Hobby (Fair Use Guidelines):** "Hobby teams are restricted to non-commercial personal use only." Uso comercial é "any Deployment that is used for the purpose of financial gain of anyone involved in any part of the production of the project, including a paid employee or consultant writing the code". Exemplos da página: cobrar visitantes, anunciar venda, receber para criar, atualizar ou hospedar o site, afiliados, anúncios. Doações não contam como comercial. Em caso de dúvida, a página manda consultar o suporte da Vercel.
+
+**Leitura para o Dmanda:** não há venda, anúncio nem cobrança, e o objetivo não é lucro. Mas é uma ferramenta do trabalho, escrita e usada por quem é pago para exercer essa função, e o texto cita expressamente "paid employee ... writing the code". A página não diz se o uso de um servidor público na própria função, sem receita, é "ganho financeiro". Só a Vercel responde isso. Se a resposta for contrária, a consequência é a conta ou o deployment ser pausado por violação de política, o que derrubaria o painel e a rotina diária.
+
+**Recomendação:** plano **Pro**, em vez de apostar no Hobby. **Alternativa gratuita:** perguntar ao suporte da Vercel (https://vercel.com/help) e só publicar no Hobby com a resposta por escrito. Texto sugerido: "I am a salaried public employee (municipal administration, Brazil). I want to host a private, single-user, login-protected web app that organizes my own work tasks. It has no ads, no sales, no payments and no public users, and nobody is charged for it. Does this fit the Hobby plan's non-commercial personal use rule, or do I need Pro?"
+
+| | Hobby | Pro |
+|---|---|---|
+| Preço | US$ 0 | US$ 20 por mês com 1 vaga de desenvolvedor (cada vaga extra, US$ 20), mais impostos |
+| Uso incluído | 100 GB de transferência, 1 milhão de invocações, 4 h de CPU ativa | US$ 20 de crédito de uso por mês; depois, cobrança por uso (US$ 0,60 por milhão de invocações) |
+| Rotina diária | uma vez por dia, na hora marcada (±59 min) | até por minuto, no minuto marcado |
+| Regiões das funções | 1 | 5 |
+| Registros de execução | 1 hora | 1 dia |
+| Teto de gastos (Spend Management) | não existe | configurável |
+| Uso comercial | proibido | permitido |
+
+O consumo do Dmanda (um usuário, poucas chamadas por dia, uma rotina diária) fica muito abaixo do crédito incluído no Pro, então o custo esperado é só a mensalidade; mesmo assim convém ligar o Spend Management como teto. Cobrança por cartão, em dólar, e impostos podem ser acrescentados. Quem paga (conta pessoal ou da Prefeitura) é decisão do usuário. O Pro não muda o risco de pausa por inatividade do projeto gratuito do Supabase. Nada foi contratado nem iniciado (inclusive o período de teste do Pro).
+
+**Ações exatas para publicar (suas, depois da decisão do plano):**
+1. https://vercel.com: entrar com a conta do GitHub. Na autorização do aplicativo da Vercel no GitHub, escolher **Only select repositories** e marcar só `edermoliveira/Dmanda`. Se o plano for o Pro: Settings > Billing > Upgrade e, em seguida, Spend Management com teto.
+2. Add New > Project > importar `edermoliveira/Dmanda`. Framework Next.js (automático). Cadastrar as cinco variáveis da tabela acima e implantar. **Atenção:** a primeira implantação de um projeto novo é sempre de produção e sai da `main`, que guarda o protótipo antigo (sem login, sem acesso ao banco, dados fictícios). Essa implantação é descartável.
+3. Settings > Environments > Production > Branch Tracking: digitar `producao` e salvar. Em Settings > Environment Variables, deixar as variáveis só em **Production** (sem Preview nem Development) e marcar `SUPABASE_SERVICE_ROLE_KEY` como sensível.
+4. Avisar o Claude com o endereço (algo como `dmanda-xxxx.vercel.app`). O Claude avança a `producao` por um commit de documentação (isso dispara a implantação certa, com cron e região), confere o publicado e o banco. Depois você apaga a primeira implantação (Deployments > ⋯ > Delete).
+5. Entrar pelo endereço publicado com e-mail e senha. No dia seguinte, conferir no Início a última execução da rotina diária.
+
+**Conferência depois da publicação (feita pelo Claude):** sem sessão, `/login`, `/manifest.webmanifest`, `/icon.svg` e `/apple-icon.png` respondem 200; `/demandas`, `/marca` e `/api/exportar` redirecionam ao login; `/api/cron/diaria` responde 401 sem segredo e com segredo errado; cabeçalhos de segurança presentes (o mesmo roteiro passou em `npm run start` local em 27/10/2026). Depois da sua entrada: nova sessão no banco real, uma demanda TESTE criada pelo endereço publicado e removida, chamada manual da rotina (200 e linha em `execucoes_rotina`), cron registrado no painel (Settings > Cron Jobs) e região `gru1` no resumo do deployment. Em seguida, instalar a PWA e avaliar (Issue #2).
 
 **Instalação no aparelho (PWA):** iPhone/iPad: Safari > Compartilhar > Adicionar à Tela de Início; computador: ícone de instalar na barra do Edge ou Chrome. A PWA **só abre online**: não há service worker, cache de dados nem edição offline. Sem internet o painel mostra a faixa "Sem conexão" e as gravações falham com aviso claro; abrir o app sem internet mostra a tela de erro do navegador.
 
