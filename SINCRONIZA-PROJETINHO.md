@@ -2,31 +2,53 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 27/10/2026, computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Última atualização:** 27/10/2026, encerramento no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
 ---
 
-## PONTO DE RETOMADA ATUAL (27/10/2026, computador de casa, base Supabase do núcleo fechada)
+## PONTO DE RETOMADA ATUAL (27/10/2026, encerramento em casa, para continuar no computador do trabalho)
 
-Leia `AUDITORIA.md`, seção 17 (fechamento), e `supabase/LEIA-ME.md`. Branch `checkpoint/2026-10-23-ajustes-a-d` (sem merge na `main`, sem force push). A auditoria do ambiente do Claude Code está encerrada (seção 16); não abrir outra.
+Esta seção basta para continuar sem a conversa e sem a memória local. Detalhes: `AUDITORIA.md` (seção 17 fecha a base Supabase; seção 16 é a conferência do ambiente, encerrada) e `supabase/LEIA-ME.md`. Não abrir outra auditoria geral nem do ambiente sem fato novo.
 
-**Estado:**
-- **Pronto e provado no Supabase real:** entrada por e-mail e senha no usuário existente (`e38872d3`), saída e nova entrada, gravação e leitura persistentes de demandas e tarefas, acesso restrito à conta autorizada. Painel: Email ligado, Google desligado, cadastro público desligado. Migrações 7 de 7. Banco: 0 demandas, 0 tarefas, 1 usuário (o teste do usuário foi removido por identificador).
-- **Interface de login:** o botão do Google fica oculto por padrão (só aparece com `DMANDA_LOGIN_GOOGLE=sim`); não é preciso configurar a variável.
-- **Cópias:** exportação disponível; recuperação demonstrada só em banco local; armazenamento externo e execução automática **não configurados** (não é backup completo nem automático). Orientação em `supabase/LEIA-ME.md`.
-- **Verificado nesta etapa:** `tsc`, `eslint`, `testar:regras` 26, `testar:sessao` 57, build, login real com a variável vazia e com `sim`. A rotina diária mantém a prova HTTP de 25/10 (código inalterado).
-- **Servidor local:** `npm run dev` pode estar no ar na 7100 (real). Só um `next dev` por vez; encerrar antes de `testar:app` e `testar:sessao`.
+**Onde está o código:** repositório `edermoliveira/Dmanda` (privado), branch `checkpoint/2026-10-23-ajustes-a-d` (sem merge na `main`, sem force push; a `main` não foi tocada). Último commit de implementação: `d879af0` (botão do Google oculto por padrão). O topo da branch é o commit de fechamento: conferir sempre com `git ls-remote origin refs/heads/checkpoint/2026-10-23-ajustes-a-d`.
 
-**Não validado ainda:** expiração de 6 h reais, restauração em projeto real, publicação na Vercel, agendamento e primeira execução automática, aplicação no iPhone e no iPad, avaliação visual da aplicação React (Issue #2). Nada foi publicado nem contratado.
+**Base Supabase do núcleo: CONCLUÍDA** (login por e-mail e senha, demandas e tarefas):
+- Painel: Email ligado, Google desligado (pelo usuário), cadastro público desligado, 1 usuário (`e38872d3`, o mesmo de sempre). Migrações: 7 de 7 registradas, nenhuma a reaplicar.
+- Teste manual do usuário (confirmado em 27/10/2026): demanda TESTE com tarefas permaneceu depois de sair e entrar. Evidência complementar no banco real: a demanda pertencia ao usuário existente (2 tarefas, versão 5) e havia uma sessão nova criada depois da última gravação. O banco não prova o clique em Sair; isso vem da confirmação do usuário e das 19 verificações de 26/10.
+- Limpeza: removidas só essa demanda (por identificador) e suas tarefas. Banco real: **0 demandas, 0 tarefas, 1 usuário, 1 e-mail na lista de acesso.**
+- Últimas alterações: botão "Entrar com Google" oculto por padrão (só com `DMANDA_LOGIN_GOOGLE=sim`; nada a configurar); seção de cópias do `LEIA-ME` reescrita; `.gitignore` ignora `dmanda-copia-*.json`; decisões 14 e 15 em `DECISOES.md`.
+- Verificado nesta etapa: `tsc`, `eslint`, `testar:regras` 26, `testar:sessao` 57, build, login real com a variável vazia e com `sim`. A rotina diária mantém a prova HTTP de 25/10 (código inalterado). `testar:banco` (118) e `testar:app` (69) não foram repetidos porque SQL e telas internas não mudaram.
 
-**Próximo bloco (publicação, agendamento e PWA), roteiro único:**
-1. **Usuário:** confirmar o enquadramento do plano Hobby da Vercel (uso pessoal e não comercial) para o uso no trabalho, ou decidir outro caminho.
-2. **Usuário, no site da Vercel:** criar o projeto do repositório `edermoliveira/Dmanda`; em Settings > Environments > Production definir a branch `checkpoint/2026-10-23-ajustes-a-d` (a `main` não é tocada; cada push nela passa a publicar); região São Paulo (gru1); variáveis só em Produção: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`, `SUPABASE_SERVICE_ROLE_KEY` (sensível), `CRON_SECRET` (16 ou mais caracteres, pode ser novo). Não definir `DMANDA_BANCO` nem `DMANDA_LOGIN_GOOGLE`. Avisar o endereço publicado.
-3. **Claude:** conferir o endereço publicado sem sessão (login, manifesto, ícones, `/api/exportar` barrado, cron 401 sem segredo), depois que o usuário entrar por senha, conferir o banco; conferir o cron cadastrado e, após uma execução manual pelo painel da Vercel (Cron Jobs, Run) ou a automática do dia seguinte, ler `execucoes_rotina` e o Início.
-4. **Usuário:** instalar a PWA no iPhone e no iPad (Safari > Compartilhar > Adicionar à Tela de Início) e avaliar a aplicação (Issue #2).
-5. **Depois, quando decidir:** destino privado das cópias (então configurar o armazenamento e, se quiser, a automação) e uma demonstração da restauração em projeto descartável.
+**Cópias dos dados (não é backup completo nem automático):** exportação disponível (avatar > Baixar cópia dos dados); recuperação demonstrada **somente em banco local**, com dados fictícios; armazenamento externo **pendente** (destino privado a definir pelo usuário); execução automática **pendente**. Orientação de uso e verificação do arquivo em `supabase/LEIA-ME.md`. Nada foi enviado a Drive, OneDrive ou GitHub.
+
+**Issues (repositório privado):** #1 FECHADA (login e integração real, e-mail e senha). #2 aberta (avaliar a aplicação React, sem avaliação visual do usuário ainda). #3 aberta (publicar, rotina diária, 6 h reais). #4 aberta (cópia privada: destino e restauração em projeto real). Andamento oficial: 18% (`ANDAMENTO.md`).
+
+**Para iniciar no computador do trabalho** (PowerShell, na pasta do projeto):
+```
+git fetch origin
+git checkout checkpoint/2026-10-23-ajustes-a-d
+git pull origin checkpoint/2026-10-23-ajustes-a-d
+git ls-remote origin refs/heads/checkpoint/2026-10-23-ajustes-a-d
+npm ci
+npm run conferir:env
+npm run dev
+```
+`conferir:env` mostra só ok, VAZIA ou ATENÇÃO, nunca valores, e lê o painel em modo leitura (deve mostrar Email LIGADO, Google desligado, cadastro público desligado, 1 usuário). `npm run dev` abre a aplicação real em http://localhost:7100/login (só um `next dev` por vez). O `.env.local` e a CLI do Supabase não vão para o Git: o computador do trabalho já tem os seus. Se a CLI pedir login: `npx supabase login` e `npx supabase link --project-ref gmxoosvgfcydccyeudej`. O binário do Impeccable (`.claude/skills/impeccable/scripts/bin`) é por computador e não vai para o Git.
+
+**Pendências que exigem ação ANTES da publicação:**
+1. Usuário: decidir o enquadramento do plano **Hobby** da Vercel (uso pessoal e não comercial) para o uso no trabalho, ou outro caminho. Nada foi contratado.
+2. Usuário: criar o projeto na Vercel (ver o mecanismo de liberação abaixo), cadastrar as variáveis só em Produção e avisar o endereço.
+3. Claude, depois do endereço: conferir o publicado, o cron e o banco.
+
+**Limitações conhecidas (podem continuar registradas, não bloqueiam a publicação):** expiração de 6 h reais ainda não observada (só em ambiente isolado); restauração da cópia nunca feita em projeto real; destino e automação das cópias; cookie `dmanda-ultimo-uso` não assinado; operações pontuais (mover etapa, marcar tarefa, arquivar) seguem "último a gravar vence" por campo; sem service worker (a PWA só abre online); intermitência não reproduzida do `testar:sessao` (57 de 57 agora); senhas vazadas exigem plano pago; PowerShell 7 não testado; projeto Supabase gratuito pode pausar por inatividade; aplicação React sem avaliação visual (#2).
+
+**PRÓXIMO BLOCO (já definido): publicação controlada, rotina diária em nuvem e conferência da PWA.**
+- **Checkpoint não é liberação.** Enviar commits à branch de checkpoint no GitHub não deve publicar nada. Mecanismo mais simples proposto (não aplicado): na Vercel, a Production Branch é uma branch separada, por exemplo `producao`, que só avança quando o usuário e o Claude conferirem uma versão (`git push origin <commit-verificado>:refs/heads/producao`, apenas avanço, nunca force). Os pushes na branch de checkpoint ficam sem build (Settings > Git > Ignored Build Step: `[ "$VERCEL_GIT_COMMIT_REF" = "producao" ] && exit 1 || exit 0`) e as variáveis ficam só em Produção. A `main` continua intocada. Isto exige uma decisão do usuário antes de criar a branch.
+- **Roteiro:** (1) decidir o plano; (2) criar o projeto na Vercel com a Production Branch definida acima, região São Paulo (gru1) e as variáveis `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`, `SUPABASE_SERVICE_ROLE_KEY` (sensível) e `CRON_SECRET` (16 ou mais caracteres); não definir `DMANDA_BANCO` nem `DMANDA_LOGIN_GOOGLE`; (3) Claude confere o publicado sem sessão (login, manifesto, ícones, `/api/exportar` barrado, cron 401 sem segredo), depois da entrada por senha confere o banco; (4) execução manual do cron pelo painel (Cron Jobs, Run) ou a automática do dia seguinte, lida em `execucoes_rotina` e no Início; (5) PWA no iPhone e no iPad e avaliação (#2).
+- **Intenção registrada para a próxima sessão (NÃO configurada):** trabalhar pelo iPhone usando Claude Code na nuvem, sem depender do computador de casa ligado. Salvaguardas desde já: não copiar a pasta pessoal do Claude (`~/.claude`), credenciais nem o `.env.local` para o repositório; segredos só nos mecanismos de ambiente do serviço em nuvem, definidos pelo usuário; começar com trabalho só de código e documentos, sem acesso ao Supabase real, até decidir o contrário.
+- **Depois, quando o usuário decidir:** destino privado das cópias (então armazenamento e, se quiser, automação) e uma demonstração da restauração em projeto descartável.
 
 ---
 
