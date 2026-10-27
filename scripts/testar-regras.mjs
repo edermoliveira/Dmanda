@@ -2,6 +2,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sessaoExpirou, emailAutorizado, contaAutorizada, opcoesCookieUltimoUso, LIMITE_SEM_USO_MS } from '../src/lib/sessao.ts';
+import { googleLigado } from '../src/lib/login.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
 import { dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte } from '../src/lib/demandas.ts';
 let falhas = 0, total = 0;
@@ -34,6 +35,7 @@ ok(grupoFiltro(lista[0], hoje) === 'atrasadas' && grupoFiltro(lista[1], hoje) ==
 ok(contaAutorizada({ email: 'Eu@Exemplo.com', app_metadata: { provider: 'google' } }, 'eu@exemplo.com'), 'conta autorizada: e-mail certo entrando pelo Google');
 ok(contaAutorizada({ email: 'Eu@Exemplo.com', app_metadata: { provider: 'email' } }, 'eu@exemplo.com'), 'conta autorizada: e-mail certo entrando por e-mail e senha');
 ok(!contaAutorizada({ email: 'eu@exemplo.com', app_metadata: { provider: 'github' } }, 'eu@exemplo.com') && !contaAutorizada({ email: 'eu@exemplo.com', app_metadata: { provider: 'anonymous' } }, 'eu@exemplo.com') && !contaAutorizada({ email: 'eu@exemplo.com' }, 'eu@exemplo.com') && !contaAutorizada({ email: 'outro@exemplo.com', app_metadata: { provider: 'google' } }, 'eu@exemplo.com') && !contaAutorizada(null, 'eu@exemplo.com') && !contaAutorizada({ email: 'eu@exemplo.com', app_metadata: { provider: 'google' } }, undefined), 'conta autorizada: provedor fora de Google e e-mail e senha, sem provedor, outro e-mail, sem usuário ou sem configuração são recusados');
+ok(googleLigado('sim') && googleLigado(' SIM ') && !googleLigado(undefined) && !googleLigado('') && !googleLigado('nao') && !googleLigado('true') && !googleLigado('1'), 'botão do Google: oculto por padrão (variável ausente, vazia, "nao" ou outro valor) e visível só com "sim"');
 
 ok(opcoesCookieUltimoUso(true).secure === true && opcoesCookieUltimoUso(false).secure === false && opcoesCookieUltimoUso(true).httpOnly === true && opcoesCookieUltimoUso(true).sameSite === 'lax', 'cookie de último uso: sempre só do servidor (httpOnly) e "secure" apenas sobre HTTPS (em http local o navegador o descartaria)');
 // Regra de sessão que depende do código: o proxy não distingue pré-carregamento (o Next esconde os cabeçalhos), então nada no aplicativo em uso pode pré-carregar

@@ -13,7 +13,7 @@ process.loadEnvFile(arquivo);
 
 const v = (n) => (process.env[n] ?? '').trim();
 let problemas = 0;
-let bloqueios = 0; // problemas que impedem a leitura do Supabase (DMANDA_LOGIN_GOOGLE é só aviso: qualquer valor diferente de "nao" mantém o botão do Google)
+let bloqueios = 0; // problemas que impedem a leitura do Supabase (DMANDA_LOGIN_GOOGLE é só aviso: o botão do Google fica oculto por padrão e só aparece com "sim")
 const linha = (nome, estado, nota = '') => { console.log(nome.padEnd(40) + estado.padEnd(10) + nota); if (estado !== 'ok') { problemas++; if (nome !== 'DMANDA_LOGIN_GOOGLE') bloqueios++; } };
 const checar = (nome, obrigatoria, regras) => {
   if (!v(nome)) return obrigatoria ? linha(nome, 'VAZIA') : console.log(nome.padEnd(40) + 'vazia'.padEnd(10) + '(opcional)');
@@ -29,7 +29,7 @@ checar('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', true, [
   () => (/^sb_publishable_/.test(v('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')) || papel(v('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY')) === 'anon' ? '' : 'não parece uma chave pública (esperado começar com sb_publishable_)'),
 ]);
 checar('DMANDA_EMAIL_AUTORIZADO', true, [() => (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('DMANDA_EMAIL_AUTORIZADO')) ? '' : 'não parece um e-mail')]);
-checar('DMANDA_LOGIN_GOOGLE', false, [() => (v('DMANDA_LOGIN_GOOGLE') === 'nao' ? '' : 'use vazio (botão do Google aparece) ou "nao" (some)')]);
+checar('DMANDA_LOGIN_GOOGLE', false, [() => (v('DMANDA_LOGIN_GOOGLE').toLowerCase() === 'sim' ? 'o botão do Google aparece: só faz sentido com o provedor Google ligado no painel (padrão: vazio, botão oculto)' : '')]);
 checar('SUPABASE_SERVICE_ROLE_KEY', true, [
   () => (/^sb_publishable_/.test(v('SUPABASE_SERVICE_ROLE_KEY')) || papel(v('SUPABASE_SERVICE_ROLE_KEY')) === 'anon' ? 'é a chave PÚBLICA no campo da chave secreta' : ''),
   () => (/^sb_secret_/.test(v('SUPABASE_SERVICE_ROLE_KEY')) || papel(v('SUPABASE_SERVICE_ROLE_KEY')) === 'service_role' ? '' : 'não parece uma chave secreta (esperado começar com sb_secret_)'),

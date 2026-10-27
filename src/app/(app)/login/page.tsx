@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
+import { googleLigado } from '@/lib/login';
 import { modoTeste } from '@/lib/supabase/config';
 import { BotaoGoogle } from './BotaoGoogle';
 import { FormularioSenha } from './FormularioSenha';
@@ -13,9 +14,7 @@ async function Aviso({ searchParams }: { searchParams: Promise<Record<string, st
   return aviso ? <p className="login-aviso" role="alert">{aviso}</p> : null;
 }
 
-// Transição do login: o botão do Google continua até DMANDA_LOGIN_GOOGLE=nao (definida só depois de provada a entrada por senha e de desligar o Google no Supabase).
-// A variável é lida na montagem da página: vale no próximo build ou publicação.
-const googleLigado = () => process.env.DMANDA_LOGIN_GOOGLE !== 'nao';
+// O botão do Google só aparece com DMANDA_LOGIN_GOOGLE=sim (ver src/lib/login.ts). A variável é lida na montagem da página: vale no próximo build ou publicação.
 
 export default function Login({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   return (
@@ -26,7 +25,7 @@ export default function Login({ searchParams }: { searchParams: Promise<Record<s
         <p>Demandas do Secretário de Administração. Acesso restrito.</p>
         <Suspense fallback={null}><Aviso searchParams={searchParams} /></Suspense>
         <FormularioSenha />
-        {googleLigado() ? <><p className="login-ou">ou</p><BotaoGoogle /></> : null}
+        {googleLigado(process.env.DMANDA_LOGIN_GOOGLE) ?<><p className="login-ou">ou</p><BotaoGoogle /></> : null}
       </div>
     </main>
     </PainelLogin>

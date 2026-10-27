@@ -47,7 +47,7 @@ const auth = http.createServer(async (req, res) => {
 await new Promise((r) => auth.listen(PORTA_AUTH, '127.0.0.1', r));
 
 // ---- aplicação real (modo real, apontada para o Auth falso) ----
-const env = { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${PORTA_AUTH}`, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_falsa_para_teste', DMANDA_EMAIL_AUTORIZADO: EMAIL, SUPABASE_SERVICE_ROLE_KEY: '', CRON_SECRET: 'segredo-de-teste-1234567890', DMANDA_BANCO: '' };
+const env = { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${PORTA_AUTH}`, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_falsa_para_teste', DMANDA_EMAIL_AUTORIZADO: EMAIL, SUPABASE_SERVICE_ROLE_KEY: '', CRON_SECRET: 'segredo-de-teste-1234567890', DMANDA_BANCO: '', DMANDA_LOGIN_GOOGLE: '' };
 const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env, stdio: 'ignore' });
 const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } auth.close(); };
 process.on('exit', parar);
@@ -170,7 +170,7 @@ ok(r.status === 200, 'e-mail certo entrando por e-mail e senha: passa');
   const avisoLogin = () => p0.evaluate(() => document.querySelector('.login-form .login-aviso')?.textContent ?? '');
   atual = null; chamadas.length = 0;
   await abrirLogin();
-  ok(await p0.isVisible('#login-senha') && (await p0.textContent('.login-caixa')).includes('Entrar com Google'), 'login: formulário de e-mail e senha e (na transição) o botão do Google aparecem');
+  ok(await p0.isVisible('#login-senha') && !(await p0.textContent('.login-caixa')).includes('Google') && (await p0.locator('.login-ou').count()) === 0, 'login: com a variável do Google ausente aparece só o formulário de e-mail e senha (sem botão do Google nem o "ou")');
   // senha errada
   await entrar(EMAIL, 'senha-errada-qualquer');
   await p0.waitForFunction(() => document.querySelector('.login-form .login-aviso')?.textContent === 'E-mail ou senha incorretos.', null, { timeout: 60000 });
