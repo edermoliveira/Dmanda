@@ -66,3 +66,6 @@ next-env.d.ts
 
 # metadados da CLI do Supabase (vinculação local)
 supabase/.temp/
+
+# cópias dos dados (exportação do Dmanda): contêm dados reais, nunca vão para o Git
+dmanda-copia-*.json

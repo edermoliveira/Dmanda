@@ -1,6 +1,6 @@
 # Supabase, Vercel e rotina diária do Dmanda
 
-**Estado (26/10/2026):** o projeto Supabase **Dmanda** existe, está vinculado a este computador e tem **7 migrações aplicadas no banco real** (a 6, login por e-mail e senha, e a 7, proteção de edição simultânea, aplicadas em 26/10/2026 com dry-run, sem reset). A entrada por **e-mail e senha** (Supabase Auth) foi **provada no Supabase real** no mesmo usuário (ver `AUDITORIA.md`, seção 15). O botão do Google está oculto (`DMANDA_LOGIN_GOOGLE=nao`); **falta desativar o provedor no painel (ação do usuário)**. **Ainda não validados no real:** expiração de 6 h real, restauração da cópia, publicação na Vercel e o agendamento.
+**Estado (27/10/2026):** o projeto Supabase **Dmanda** existe, está vinculado a este computador e tem **7 migrações aplicadas no banco real** (a 6, login por e-mail e senha, e a 7, proteção de edição simultânea, aplicadas em 26/10/2026 com dry-run, sem reset). A entrada por **e-mail e senha** (Supabase Auth) foi **provada no Supabase real** no mesmo usuário (ver `AUDITORIA.md`, seção 15). Em 27/10/2026 o **provedor Google foi desativado no painel** (Email ligado, cadastro público desligado) e a gravação, a saída e a nova entrada foram confirmadas pelo usuário (ver `AUDITORIA.md`, seção 17). O botão do Google fica **oculto por padrão** (só aparece com `DMANDA_LOGIN_GOOGLE=sim`). **Ainda não validados no real:** expiração de 6 h real, restauração da cópia, publicação na Vercel e o agendamento.
 
 ## O projeto
 
@@ -17,7 +17,7 @@ A CLI oficial (`npx supabase`, sem instalação global) está autenticada neste 
 
 ## Quem faz o quê (entrada por senha, 26/10/2026)
 
-Situação em 26/10/2026: as etapas 1 a 6 estão **concluídas e provadas**. A 7 está em andamento: o botão foi ocultado, falta desativar o Google no painel.
+Situação em 27/10/2026: as etapas 1 a 7 estão **concluídas**. Falta só a 8 (publicação).
 
 | # | Etapa | Quem | Onde |
 |---|---|---|---|
@@ -27,7 +27,7 @@ Situação em 26/10/2026: as etapas 1 a 6 estão **concluídas e provadas**. A 7
 | 4 | Ligar o provedor **Email** (ver "Entrada por e-mail e senha") | **usuário** | painel do Supabase |
 | 5 | Definir a senha: `npm run definir:senha` (digitada duas vezes, tela oculta) | **usuário** | PowerShell, na pasta do projeto |
 | 6 | Provar a entrada por senha no mesmo usuário (mesmo identificador) e a gravação | usuário entra; Claude confere o banco | `http://localhost:7100` |
-| 7 | Só depois: desligar o Google no painel e `DMANDA_LOGIN_GOOGLE=nao` | **usuário** | painel do Supabase e `.env.local` |
+| 7 | Desligar o Google no painel (feito em 27/10/2026). Não precisa de variável: o botão já fica oculto por padrão | **usuário** | painel do Supabase |
 | 8 | Projeto da Vercel, variáveis e agendamento | usuário e Claude | site da Vercel, depois (ver "Publicação") |
 
 ## Variáveis de ambiente
@@ -39,7 +39,7 @@ Situação em 26/10/2026: as etapas 1 a 6 estão **concluídas e provadas**. A 7
 | `DMANDA_EMAIL_AUTORIZADO` | `.env.local` e Vercel | e-mail da conta Google do Secretário. O servidor recusa qualquer outra conta |
 | `SUPABASE_SERVICE_ROLE_KEY` | **só no servidor**: `.env.local` (teste local da rotina) e Vercel | chave privilegiada (a "secret key"). Usada apenas pela rotina diária. **Nunca** em `NEXT_PUBLIC` nem no Git |
 | `CRON_SECRET` | `.env.local` e Vercel (só no servidor) | texto aleatório de 16 caracteres ou mais. A Vercel o envia como `Authorization: Bearer` ao chamar a rotina |
-| `DMANDA_LOGIN_GOOGLE` | `.env.local` e Vercel (opcional) | vazio ou qualquer valor: o botão do Google aparece (transição). `nao`: some. Lida na montagem da página (vale no próximo build ou publicação) |
+| `DMANDA_LOGIN_GOOGLE` | `.env.local` e Vercel (opcional) | deixe **vazia** (padrão): o botão do Google fica oculto e só e-mail e senha aparecem. `sim`: mostra o botão (só faz sentido com o provedor Google ligado no painel). Lida na montagem da página (vale no próximo build ou publicação) |
 | `DMANDA_BANCO=teste` | só em desenvolvimento (`npm run dev:teste`) | banco local descartável. **Recusado em produção** |
 
 O modelo está no `.env.example` (versionado, sem valores; atualizado em 26/10/2026, antes tinha nomes antigos). Copiar para `.env.local` e preencher.
@@ -60,8 +60,8 @@ Mostra só `ok`, `VAZIA` ou `ATENÇÃO` com o motivo, nunca os valores. Confere 
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase > Project Settings > API Keys > aba **Publishable key** (`sb_publishable_...`) |
 | `DMANDA_EMAIL_AUTORIZADO` | o e-mail da conta autorizada: o mesmo da conta Google com que você já entrou (ou Authentication > Users, coluna de e-mail) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase > Project Settings > API Keys > aba **Secret keys** (`sb_secret_...`). Nunca em `NEXT_PUBLIC` |
-| `CRON_SECRET` | já vem gerado (aleatório, só neste computador). Na publicação, copie o mesmo valor para a Vercel |
-| `DMANDA_LOGIN_GOOGLE` | vazio por enquanto; `nao` só depois de provar a senha e desligar o Google |
+| `CRON_SECRET` | já vem gerado (aleatório, só neste computador). Na Vercel pode ser o mesmo valor ou outro novo (16 caracteres ou mais): o da Vercel é o que vale em produção |
+| `DMANDA_LOGIN_GOOGLE` | vazio (botão do Google oculto). Só `sim` o mostra |
 | `DMANDA_BANCO` | vazio |
 
 ## Migrações (`migrations/`, aplicadas em ordem)
@@ -114,7 +114,7 @@ npm run definir:senha
 
    O script pede a senha duas vezes **sem mostrá-la**, confere 12 a 72 caracteres, exige que exista **exatamente 1 usuário** no projeto e que ele seja a conta autorizada, e chama `auth.admin.updateUserById` (só `password` e `email_confirm: true`). Não imprime a senha nem a chave, não grava arquivo e não usa argumento de comando. Use uma frase longa e única. Teclas de seta, Delete e Home são ignoradas (não entram na senha). Ctrl+C cancela sem alterar nada. O caminho do terminal foi testado em um console de verdade do Windows (ConPTY) com entradas fictícias: `npm run testar:senha-terminal` (10 cenários: ocultação, confirmação, cancelamento, Backspace, senha curta ou longa demais, setas, chave recusada e senha fraca).
 4. Entrar por senha em `http://localhost:7100/login` e conferir, com o Claude, que o identificador do usuário e as demandas são os mesmos.
-5. **Só depois de provado**, desligar o Google: painel, Authentication > Sign In / Providers > Google > desativar (não excluir o projeto do Google Cloud nem a credencial); e `DMANDA_LOGIN_GOOGLE=nao` no `.env.local` (e na Vercel) para o botão sumir. Dá para reverter ligando o Google de novo.
+5. **Só depois de provado**, desligar o Google: painel, Authentication > Sign In / Providers > Google > desativar (não excluir o projeto do Google Cloud nem a credencial); (feito em 27/10/2026). O botão do Google já fica oculto por padrão, sem variável. Dá para reverter ligando o Google de novo e usando `DMANDA_LOGIN_GOOGLE=sim`.
 
 **Recuperação de acesso (conta única).** Há dois caminhos, nenhum depende de e-mail:
 
@@ -204,22 +204,63 @@ Feita com a CLI, como **SQL no banco real com contextos de autenticação simula
 
 ## Cópia dos dados e restauração
 
-- O GitHub guarda **código e migrações**, não os dados. Os registros reais ficam só no Supabase e **nunca** vão para o repositório.
-- O plano gratuito **não oferece os backups gerenciados** dos planos pagos, mas permite exportar os próprios dados.
-- **Exportação (implantada em 26/10/2026):** menu do avatar > **Baixar cópia dos dados**, que baixa `dmanda-copia-AAAA-MM-DD.json` (rota `GET /api/exportar`, só com a sessão da conta autorizada, sem cache). **Ele contém dados reais:** guarde só em lugar privado e **nunca** no repositório nem em Issues.
-- **O que a cópia contém:** `formato: "dmanda-exportacao"`, `versao: 1`, `exportado_em`, `fuso`, e duas listas, `demandas` (ativas) e `arquivadas`. Cada demanda traz todos os campos (identificador, tipo, área, número, assunto, descrição, origem, etapa, datas de chegada, prazo, tipo de prazo, setor, acompanhamento, conclusão, arquivamento, criação e última alteração) e suas `tarefas` (identificador, texto, concluída, posição).
-- **O que a cópia NÃO contém:** a conta e a senha, a lista de acesso, as migrações, as preferências do navegador (tema, visão, filtros, rascunhos não salvos), os resumos e o registro da rotina diária (a rotina recalcula) e a data de criação de cada tarefa. Por isso a cópia sozinha não recria o projeto: primeiro as migrações e a conta, depois os dados.
-- **Restauração demonstrada (em banco de teste, com dados fictícios):** `supabase/restaurar-copia.sql`. Passo a passo:
-  1. Garanta o projeto pronto: migrações aplicadas e o usuário existente (para um projeto novo, ver "Passo a passo do login Google" e "Entrada por e-mail e senha").
-  2. Abra o `.json` da cópia em um editor de texto e copie todo o conteúdo.
-  3. Abra `supabase/restaurar-copia.sql`, troque a palavra marcadora `COLE_AQUI_O_JSON` (com dois sublinhados de cada lado, na linha `j jsonb := ...`) pelo conteúdo copiado, mantendo as marcas `$dmanda$`.
-  4. No **SQL Editor** do painel do Supabase do projeto, cole o arquivo inteiro e execute. Não salve o arquivo editado no repositório (ele passa a ter dados reais).
-  5. Confira: `select count(*) from public.demandas;` e `select count(*) from public.tarefas;`.
-- **Garantias do restaurador (testadas no `testar:banco`, 12 verificações):** tudo em uma transação (se algo estiver errado, nada é gravado); atribui tudo ao único usuário do projeto (e recusa se não houver exatamente 1); rodar duas vezes não duplica; uma demanda que já existe com o mesmo identificador não é sobrescrita nem recebe tarefas de volta; após apagar tudo no mesmo projeto, a cópia devolve demandas e tarefas idênticas (campos, datas, etapas, ordem das tarefas, acentos e aspas). O `testar:app` também confere que o arquivo que a rota real entrega é aceito por esse SQL.
-- **O que ainda não foi feito:** restaurar em um projeto Supabase real (só se testou em banco local). Faça uma vez, num projeto descartável, antes de depender da cópia. Não existe tela de importação (adiada de propósito); quando existir, vai usar uma função SQL com a RLS do usuário.
-- **Edição simultânea (protegida desde 26/10/2026, migração 7):** cada demanda tem uma `versao`. Se a mesma demanda for alterada em outro aparelho ou janela depois que a janela de edição foi aberta, salvar é **recusado por inteiro** (código `DM409`, nada é gravado, nem campos nem tarefas) e a janela mostra um aviso fixo; o que foi digitado continua nos campos para copiar e Salvar fica bloqueado. Feche a janela e reabra para ver a versão atual. Não há tela de mesclagem. Alcance: o salvamento da janela de edição. As operações pontuais (mover de etapa, marcar uma tarefa, arquivar) seguem "último a gravar vence" por campo. A restauração da cópia (`restaurar-copia.sql`) preserva a versão da cópia e religa o gatilho dentro da transação. Cada aparelho só vê a mudança do outro ao recarregar ou ao voltar à tela.
-- **Rotina sugerida:** exportar uma vez por semana (e antes de qualquer migração), guardando as últimas cópias. Como o plano gratuito pode pausar um projeto sem uso, a exportação também protege contra isso.
-- **Decisão pendente do usuário (não bloqueia nada):** o **destino privado** das cópias (por exemplo, uma pasta privada no Google Drive ou OneDrive pessoal, ou um pendrive) e a frequência. Nenhum dado real vai para o GitHub.
+O GitHub guarda **código e migrações**, não os dados. Os registros reais ficam só no Supabase e **nunca** vão para o repositório (o `.gitignore` ignora `dmanda-copia-*.json`). O plano gratuito **não tem os backups gerenciados** dos planos pagos; o que existe é a exportação própria abaixo. **Isto ainda não é um backup completo nem automático.** Situação por parte (27/10/2026):
+
+| Parte | Situação |
+|---|---|
+| Exportação disponível | **Sim.** Menu do avatar > **Baixar cópia dos dados** gera `dmanda-copia-AAAA-MM-DD.json` (`GET /api/exportar`, só com a sessão da conta autorizada, sem cache). Conferida em teste local; no Supabase real foi baixada com demandas e tarefas na prova de 26/10/2026 |
+| Recuperação demonstrada | **Só em banco local de teste**, com dados fictícios (`supabase/restaurar-copia.sql`, 12 verificações no `testar:banco`, mais a conferência do `testar:app` de que o arquivo que a rota real entrega é aceito). **Nunca restaurada em projeto Supabase real** |
+| Armazenamento externo | **Não configurado.** O destino privado será definido pelo usuário. Até lá, nada é enviado a Drive, OneDrive, GitHub ou outro serviço |
+| Execução automática | **Não configurada.** Hoje a cópia é manual (um clique). A rotina diária da Vercel não faz cópia: ela só grava o resumo operacional |
+
+### O que a cópia contém e o que fica fora
+
+- **Contém:** `formato: "dmanda-exportacao"`, `versao: 1`, `exportado_em`, `fuso`, e duas listas, `demandas` (ativas) e `arquivadas`. Cada demanda traz todos os campos (identificador, tipo, área, número, assunto, descrição, origem, etapa, datas de chegada, prazo, tipo de prazo, setor, acompanhamento, conclusão, arquivamento, criação e última alteração) e suas `tarefas` (identificador, texto, concluída, posição).
+- **Fica fora:** a conta e a senha (Supabase Auth), a lista de acesso, as migrações, as configurações do painel (provedores, cadastro público, hook), as variáveis de ambiente, as preferências do navegador (tema, visão, filtros, rascunhos não salvos), os resumos e o registro da rotina diária (a rotina recalcula) e a data de criação de cada tarefa. Por isso a cópia sozinha não recria o projeto: primeiro as migrações, a conta e o painel, depois os dados.
+
+### Como verificar se o arquivo foi gerado corretamente
+
+Ele deve ser um JSON válido, com `formato` e `versao` certos e contagens iguais às da aplicação. No PowerShell, na pasta do projeto, trocando o nome do arquivo (o comando não mostra nenhum conteúdo, só números):
+
+```
+node -e "const j=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'));const t=l=>l.reduce((s,d)=>s+(d.tarefas||[]).length,0);console.log(j.formato,j.versao,'| demandas',j.demandas.length,'| arquivadas',j.arquivadas.length,'| tarefas',t(j.demandas)+t(j.arquivadas))" dmanda-copia-AAAA-MM-DD.json
+```
+
+Esperado: `dmanda-exportacao 1`, e `demandas` e `arquivadas` iguais ao que aparece em Demandas e em Arquivo. Se o comando der erro, o arquivo está incompleto: baixe de novo. Se a aplicação disser "Não foi possível gerar a cópia agora", nada foi baixado.
+
+### Como recuperar os dados
+
+`supabase/restaurar-copia.sql`, em transação única. Passo a passo:
+
+1. Garanta o projeto pronto: migrações aplicadas e o usuário existente (para um projeto novo, ver "Passo a passo do login Google" e "Entrada por e-mail e senha").
+2. Abra o `.json` da cópia em um editor de texto e copie todo o conteúdo.
+3. Abra `supabase/restaurar-copia.sql`, troque a palavra marcadora `COLE_AQUI_O_JSON` (com dois sublinhados de cada lado, na linha `j jsonb := ...`) pelo conteúdo copiado, mantendo as marcas `$dmanda$`.
+4. No **SQL Editor** do painel do Supabase do projeto, cole o arquivo inteiro e execute. Não salve o arquivo editado no repositório (ele passa a ter dados reais).
+5. Confira: `select count(*) from public.demandas;` e `select count(*) from public.tarefas;` e compare com a verificação acima.
+
+Garantias do restaurador (testadas no `testar:banco`): tudo em uma transação (se algo estiver errado, nada é gravado); atribui tudo ao único usuário do projeto (e recusa se não houver exatamente 1); rodar duas vezes não duplica; uma demanda que já existe com o mesmo identificador não é sobrescrita nem recebe tarefas de volta; após apagar tudo no mesmo projeto, a cópia devolve demandas e tarefas idênticas (campos, datas, etapas, ordem das tarefas, acentos e aspas). A restauração preserva a `versao` da cópia (migração 7) e religa o gatilho dentro da transação. **Não restaure por cima de um banco em uso:** use um projeto novo ou vazio.
+
+### O que já foi provado e o que falta
+
+| Prova | Estado |
+|---|---|
+| Exportação gera o formato esperado | feita em teste local e no Supabase real (26/10/2026) |
+| Restauração em banco local: projeto novo com outro identificador de usuário, perda total no mesmo projeto, repetição, demanda existente preservada, formato errado, zero ou dois usuários, tarefa inválida, acentos e aspas | feita (banco de teste, dados fictícios). O mecanismo não mudou desde a migração 7 |
+| Restauração em projeto Supabase real | **falta.** Exige um projeto descartável (o plano gratuito permite criar outro) ou autorização para uma demonstração com dados TESTE |
+| Destino privado das cópias | **falta** (decisão do usuário) |
+| Cópia automática | **falta** (depende do destino) |
+| Tela de importar | não existe, adiada de propósito |
+
+### Orientação simples para o uso
+
+- **Quando:** uma vez por dia em que usar o Dmanda (ao terminar) e **antes de qualquer migração relevante** (por exemplo antes de `db push`).
+- **Como:** avatar > Baixar cópia dos dados; rode a verificação acima. Guarde as últimas 7 cópias e apague as mais antigas.
+- **Onde, enquanto o destino não estiver definido:** só na pasta de Downloads deste computador, **nunca** dentro da pasta do projeto, do Git, de Issues ou de serviços de nuvem. Quando o destino privado for definido, mover os arquivos para lá.
+- Como o plano gratuito pode pausar um projeto sem uso, a exportação também protege contra isso.
+
+### Edição simultânea (protegida desde 26/10/2026, migração 7)
+
+Cada demanda tem uma `versao`. Se a mesma demanda for alterada em outro aparelho ou janela depois que a janela de edição foi aberta, salvar é **recusado por inteiro** (código `DM409`, nada é gravado, nem campos nem tarefas) e a janela mostra um aviso fixo; o que foi digitado continua nos campos para copiar e Salvar fica bloqueado. Feche a janela e reabra para ver a versão atual. Não há tela de mesclagem. Alcance: o salvamento da janela de edição. As operações pontuais (mover de etapa, marcar uma tarefa, arquivar) seguem "último a gravar vence" por campo. Cada aparelho só vê a mudança do outro ao recarregar ou ao voltar à tela.
 
 ## Publicação na Vercel (preparo; nada foi publicado nem contratado)
 
@@ -234,7 +275,7 @@ Feita com a CLI, como **SQL no banco real com contextos de autenticação simula
 | `DMANDA_EMAIL_AUTORIZADO` | e-mail da conta | servidor |
 | `SUPABASE_SERVICE_ROLE_KEY` | chave `sb_secret_` | servidor; marcar como sensível |
 | `CRON_SECRET` | 16 ou mais caracteres | servidor; a Vercel o envia ao cron |
-| `DMANDA_LOGIN_GOOGLE` | `nao` depois da transição | opcional |
+| `DMANDA_LOGIN_GOOGLE` | **não definir** (botão do Google oculto por padrão) | opcional; só `sim` mostra o botão |
 | `DMANDA_BANCO` | **não definir** | recusado em produção |
 
 **URLs:** com o login por senha **não há redirecionamento de volta**, então Site URL e Redirect URLs do Supabase deixam de importar para entrar. Se o Google continuar ligado, acrescente o endereço de produção em Authentication > URL Configuration (Site URL e `/auth/callback`) e em "Origens JavaScript autorizadas" do cliente OAuth no Google Cloud. Os endereços de localhost continuam.

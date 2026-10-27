@@ -42,3 +42,5 @@ Os pontos não mudaram em 25/10/2026 (segunda revisão do dia): a validação re
 
 
 **Nota de 26/10/2026 (noite):** o percentual continua 18%. Entrada por senha provada no Supabase real, migrações 6 e 7 aplicadas e a perda de tarefas corrigida são marcos de verificação registrados em `AUDITORIA.md` (seção 15); o critério de cálculo não mudou e o percentual não substitui esses marcos.
+
+**Nota de 27/10/2026:** o percentual continua 18%. A base Supabase do núcleo (acesso por senha, saída e nova entrada, gravação e leitura persistentes, restrições de acesso) tem evidência no Supabase real e foi fechada tecnicamente (`AUDITORIA.md`, seção 17), mas pelo critério acima nenhuma etapa soma pontos ainda: faltam a publicação protegida, a primeira execução automática e a avaliação do usuário da aplicação (Issue #2). O percentual não substitui esses marcos.

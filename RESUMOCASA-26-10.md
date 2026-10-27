@@ -1,5 +1,7 @@
 # RESUMOCASA-26-10
 
+> **Superado em 27/10/2026.** Os itens 1 e 2 da seção 4 (desativar o Google e `DMANDA_LOGIN_GOOGLE=nao`) foram resolvidos: o Google foi desativado no painel e o botão passou a ficar oculto por padrão, sem variável. O estado corrente está no topo de `SINCRONIZA-PROJETINHO.md`.
+
 Resumo para continuar o Dmanda em casa, exatamente de onde parei no computador do trabalho em 26/10/2026. Sem senhas, chaves nem dados reais (nada disso vai para o Git).
 
 ## 1. Onde está o código

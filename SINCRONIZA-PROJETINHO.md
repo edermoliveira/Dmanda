@@ -2,20 +2,31 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 26/10/2026, noite, computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; depois dele, o ponto do trabalho), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Última atualização:** 27/10/2026, computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
 ---
 
-## PONTO DE RETOMADA ATUAL (26/10/2026, noite, computador de casa, ambiente conferido)
+## PONTO DE RETOMADA ATUAL (27/10/2026, computador de casa, base Supabase do núcleo fechada)
 
-Retomado do commit `b78f763` (local e remoto idênticos, sem pull). **Conferência do ambiente do Claude Code: `AUDITORIA.md`, seção 16** (nenhuma configuração precisou mudar; recomendações globais não aplicadas, aguardam você). Nada a refazer do bloco do trabalho: migrações 6 e 7 aplicadas, senha definida, entrada por senha provada (ver o ponto logo abaixo).
+Leia `AUDITORIA.md`, seção 17 (fechamento), e `supabase/LEIA-ME.md`. Branch `checkpoint/2026-10-23-ajustes-a-d` (sem merge na `main`, sem force push). A auditoria do ambiente do Claude Code está encerrada (seção 16); não abrir outra.
 
-- **Atualização (26/10/2026, 23h45, depois do aviso do usuário):** o usuário entrou por e-mail e senha em janela privativa e **desativou o provedor Google no painel**. Conferido pelo Claude: `conferir:env` mostra Email LIGADO, Google desligado, cadastro público desligado, 1 usuário; `supabase migration list --linked` mostra 7 de 7 (a 6 é `20261026000000`); SQL só de leitura: 1 usuário (`e38872d3`, o mesmo), 1 identidade (Google, preservada, nenhuma identidade nova), 3 sessões, todas desse usuário, e a mais recente coincide com o último acesso da entrada por senha; 0 demandas e 0 tarefas. `DMANDA_LOGIN_GOOGLE` ficou vazia por escolha do usuário: **o botão "Entrar com Google" ainda aparece e agora falharia** (decisão pendente, ver abaixo). `npm run dev` está no ar na 7100 (real).
-- **Estado deste computador:** `.env.local` completo e compatível, `npm run build` passou, CLI do Supabase 2.122.0 por `npx`, `gh` logado, Vercel só pelo site.
-- **Ainda sem prova:** Sair, nova entrada e leitura/gravação com a sessão por senha (exigem a senha do usuário; ver o passo a passo dado no chat). Depois disso o Claude confere o banco e remove os registros TESTE.
-- **Decisões e ações restantes (rodada única):** botão do Google (ocultar por padrão no código ou pôr a linha no `.env.local`); destino e frequência das cópias; demonstração da restauração com dados TESTE no projeto real; enquadramento do plano Hobby da Vercel; publicar na Vercel a partir da branch de checkpoint (Production Branch = `checkpoint/2026-10-23-ajustes-a-d`, a `main` fica intacta) com as variáveis do LEIA-ME; avaliar no iPhone e no iPad (Issue #2). Nada foi publicado nem contratado.
+**Estado:**
+- **Pronto e provado no Supabase real:** entrada por e-mail e senha no usuário existente (`e38872d3`), saída e nova entrada, gravação e leitura persistentes de demandas e tarefas, acesso restrito à conta autorizada. Painel: Email ligado, Google desligado, cadastro público desligado. Migrações 7 de 7. Banco: 0 demandas, 0 tarefas, 1 usuário (o teste do usuário foi removido por identificador).
+- **Interface de login:** o botão do Google fica oculto por padrão (só aparece com `DMANDA_LOGIN_GOOGLE=sim`); não é preciso configurar a variável.
+- **Cópias:** exportação disponível; recuperação demonstrada só em banco local; armazenamento externo e execução automática **não configurados** (não é backup completo nem automático). Orientação em `supabase/LEIA-ME.md`.
+- **Verificado nesta etapa:** `tsc`, `eslint`, `testar:regras` 26, `testar:sessao` 57, build, login real com a variável vazia e com `sim`. A rotina diária mantém a prova HTTP de 25/10 (código inalterado).
+- **Servidor local:** `npm run dev` pode estar no ar na 7100 (real). Só um `next dev` por vez; encerrar antes de `testar:app` e `testar:sessao`.
+
+**Não validado ainda:** expiração de 6 h reais, restauração em projeto real, publicação na Vercel, agendamento e primeira execução automática, aplicação no iPhone e no iPad, avaliação visual da aplicação React (Issue #2). Nada foi publicado nem contratado.
+
+**Próximo bloco (publicação, agendamento e PWA), roteiro único:**
+1. **Usuário:** confirmar o enquadramento do plano Hobby da Vercel (uso pessoal e não comercial) para o uso no trabalho, ou decidir outro caminho.
+2. **Usuário, no site da Vercel:** criar o projeto do repositório `edermoliveira/Dmanda`; em Settings > Environments > Production definir a branch `checkpoint/2026-10-23-ajustes-a-d` (a `main` não é tocada; cada push nela passa a publicar); região São Paulo (gru1); variáveis só em Produção: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`, `SUPABASE_SERVICE_ROLE_KEY` (sensível), `CRON_SECRET` (16 ou mais caracteres, pode ser novo). Não definir `DMANDA_BANCO` nem `DMANDA_LOGIN_GOOGLE`. Avisar o endereço publicado.
+3. **Claude:** conferir o endereço publicado sem sessão (login, manifesto, ícones, `/api/exportar` barrado, cron 401 sem segredo), depois que o usuário entrar por senha, conferir o banco; conferir o cron cadastrado e, após uma execução manual pelo painel da Vercel (Cron Jobs, Run) ou a automática do dia seguinte, ler `execucoes_rotina` e o Início.
+4. **Usuário:** instalar a PWA no iPhone e no iPad (Safari > Compartilhar > Adicionar à Tela de Início) e avaliar a aplicação (Issue #2).
+5. **Depois, quando decidir:** destino privado das cópias (então configurar o armazenamento e, se quiser, a automação) e uma demonstração da restauração em projeto descartável.
 
 ---
 

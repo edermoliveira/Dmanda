@@ -265,3 +265,36 @@ Conferência do ambiente, não do aplicativo. Feita uma vez: inventário, ajuste
 1. **Apagar o temporário de credenciais.** Necessidade: arquivo sensível sem uso. Impacto: nenhum no funcionamento (o `.credentials.json` ativo é outro arquivo). Mudança: excluir `C:\Users\Éder\.claude\.credentials.json.tmp.0d889b23`. Desfazer: não se desfaz; se algo falhar, o login se refaz pelo próprio Claude Code.
 2. **Opcional: desativar `ui-ux-pro-max` também no escopo de usuário.** Necessidade: coerência com taste-skill e code-simplifier, já desativados globalmente. Impacto: em outros projetos o plugin deixa de carregar. Mudança: em `~/.claude/settings.json`, `"ui-ux-pro-max@ui-ux-pro-max-skill": false`. Desfazer: voltar para `true`. Não é necessário para o Dmanda.
 3. **Opcional: limpar caches de plugins não instalados** (`plugins/cache/superpowers-dev`, `claude-plugins-official`, versões antigas). Necessidade: só espaço em disco. Impacto: nenhum se não estiverem instalados; o Claude Code baixa de novo se forem instalados. Desfazer: reinstalar o plugin. Não recomendo agora.
+
+
+## 17. Fechamento da base Supabase do núcleo (27/10/2026)
+
+**Escopo:** acesso por e-mail e senha ao usuário existente, saída e nova entrada, gravação e leitura persistentes de demandas e tarefas, restrições de acesso, interface de login coerente com os provedores e procedimento de cópia e recuperação com seus limites. **Não** inclui os demais módulos, a publicação nem a avaliação visual da aplicação React.
+
+**Configuração remota conferida (`npm run conferir:env`, só leitura):** Email ligado, Google desligado (desativado pelo usuário no painel em 26/10/2026, à noite), cadastro público desligado, confirmação de e-mail exigida, 1 usuário, que é o autorizado. Migrações: 7 de 7 registradas (`supabase migration list --linked`), a 6 é `20261026000000`; nenhuma reaplicada, nenhuma migração nova.
+
+**Teste manual do usuário (27/10/2026), vinculado ao banco por consulta de leitura:**
+- A demanda TESTE pertencia ao usuário `e38872d3` (o mesmo de sempre), tinha 2 tarefas (`parecer`, `memorando`), etapa Vistos e versão 5 (cinco alterações pelo gatilho de versão), criada às 03:11:08Z e alterada até 03:11:37Z.
+- O banco tem 4 sessões, todas desse usuário, e a mais recente foi criada às 03:11:54Z, depois da última gravação da demanda. Isso é coerente com sair e entrar de novo. O banco sozinho não prova o clique em Sair: essa parte vem da confirmação do usuário, e a prova técnica de Sair (cookies apagados, rotas barradas, nova entrada no mesmo usuário) já estava na seção 15 (19 verificações).
+- O usuário confirmou que a demanda e as tarefas permaneceram depois do fluxo.
+- Limpeza: removidas só essa demanda (por identificador) e suas 2 tarefas. Banco no fim: **0 demandas, 0 tarefas, 1 usuário, 1 e-mail na lista de acesso.**
+
+**Interface de login:** o botão "Entrar com Google" passou a ficar oculto por padrão e só aparece com `DMANDA_LOGIN_GOOGLE=sim` (`src/lib/login.ts`, `src/app/(app)/login/page.tsx`, decisão 14 de `DECISOES.md`). Estados conferidos: variável ausente, vazia e `nao` ocultam; `sim` mostra (teste de regra e verificação real com a variável `sim`, ver abaixo). O login por senha, o Sair e as mensagens de erro não foram alteradas (`testar:sessao` 57 de 57, que cobre senha errada, conta fora da lista, aviso de saída e falhas do Auth). Nenhuma regra de acesso mudou (hook, RLS, conta autorizada) e o provedor Google não foi reativado. Em modo real, com o `.env.local` desta máquina (variável vazia), `/login` responde só com o campo de e-mail e senha.
+
+**Cópias e recuperação:** `supabase/LEIA-ME.md`, seção "Cópia dos dados e restauração", reescrita com: o que a cópia contém e o que fica fora, como verificar o arquivo (comando que mostra só contagens), como recuperar, quadro de provas feitas e faltantes e a orientação de uso (uma cópia por dia de uso e antes de migrações). Quatro estados distintos: **exportação disponível: sim; recuperação demonstrada: só em banco local, com dados fictícios, mecanismo inalterado; armazenamento externo: não configurado; execução automática: não configurada.** Isto **não é** backup completo nem automático. Nada foi enviado a Drive, OneDrive, GitHub ou outro destino. Novidade: `dmanda-copia-*.json` ignorado pelo Git. Nenhuma restauração foi feita em ambiente real nesta etapa.
+
+**Verificações desta etapa (só o afetado):**
+
+| Verificação | Resultado |
+|---|---|
+| `npx tsc --noEmit` | exit 0 |
+| `npx eslint src scripts` | exit 0 |
+| `npm run testar:regras` | 26 de 26 (a nova: botão do Google nos estados ausente, vazio, `nao`, `sim`, ` SIM `, `true` e `1`) |
+| `npm run testar:sessao` (aplicação real contra Auth falso) | 57 de 57; a verificação de login passou a exigir ausência do botão e do "ou" |
+| `/login` real com `DMANDA_LOGIN_GOOGLE=sim` | botão presente e formulário de senha presente (variável só no processo, `.env.local` intacto) |
+| `/login` real com a variável vazia, `/api/exportar` sem sessão | sem botão do Google; exportação redireciona ao login (307) |
+| `npm run build` | exit 0 |
+
+Não repetidos, por justificativa: `testar:banco` e `testar:app` (SQL, migrações e telas internas não mudaram; o login só é exibido fora do modo de teste) e a rotina diária por HTTP real (prova de 25/10/2026 continua válida: `src/nucleo/rotina.ts` e a rota de cron não mudaram desde então e os diffs do `proxy.ts` não tocaram a isenção do cron).
+
+**Veredito:** a base Supabase do núcleo de demandas e tarefas com login por e-mail e senha está **concluída** pelos critérios acima. Limitações que permanecem: expiração de 6 h reais, restauração em projeto real, destino e automação das cópias, cookie `dmanda-ultimo-uso` não assinado, intermitência não reproduzida do `testar:sessao`, senhas vazadas (plano pago), PowerShell 7 e outros terminais, avaliação visual da aplicação (Issue #2), publicação, agendamento e primeira execução automática (Issue #3).
