@@ -58,7 +58,9 @@ Estados reais em 27/10/2026. "Feito" quer dizer verificado nos testes e, onde in
 | Mover etapas, concluir, reabrir e as quatro visões | Feito nos testes | Avaliação visual do usuário (Issue #2) |
 | Dados preservados ao recarregar e entre aparelhos | Feito (recarga real, dois aparelhos simulados, edição simultânea recusada) | Conferir com computador e iPhone reais |
 | Início com dados reais | Feito com banco de teste; banco real tem 0 demandas | Uso real; regra de "Aguardando retorno" pendente de decisão (`AUDITORIA.md`, P5) |
-| Aplicação publicada | **Não feito** | Importar a `main` no Vercel Hobby (projeto `dmanda`) e conferir o publicado |
+| Aplicação publicada | **Feito em 28/10/2026**: https://dmanda-adm.vercel.app, commit `58fc8ec` servido (status da Vercel no GitHub), login, rotas protegidas, manifesto, ícones, estilos, cron 401 e região `gru1` observados sem sessão | Validação autenticada em produção (entrar, cadastrar, recarregar) e avaliação do usuário |
 | Instalar como PWA online | Manifesto, ícones e metadados prontos e conferidos em produção local | Instalar no iPhone e no iPad |
 | Exportar uma cópia dos dados | Feito (rota, menu da conta, restauração provada só em banco local) | Destino e rotina de guarda (Issue #4); o Supabase Free não tem backup para baixar |
-| Rotina diária | Código e prova HTTP de 25/10 | Cron registrado e primeira execução automática, depois de publicar |
+| Rotina diária | Código e prova HTTP local de 25/10; agendamento no `vercel.json` validado no esquema da Vercel; rota publicada responde 401 sem segredo | Cron registrado no painel, Run manual e primeira execução automática (não comprovados) |
+
+**Nota de 28/10/2026:** o percentual continua 18%. A aplicação foi publicada e conferida sem sessão, mas nenhuma etapa cumpre o critério de contagem (verificada no ambiente real publicado **e** avaliada pelo usuário). Detalhes e evidências em `CONTINUIDADE-DMANDA.md`.

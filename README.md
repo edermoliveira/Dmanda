@@ -4,9 +4,11 @@ Painel pessoal de demandas do Secretário de Administração da Prefeitura de Ta
 
 ## Estado
 
-- **Design:** Catalyst único (claro e escuro), aprovado no protótipo em `prototipo/`.
-- **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: núcleo de Demandas e tarefas pronto e testado no banco local de teste, com rotina diária na nuvem preparada. As demais áreas ainda não foram construídas.
-- **Supabase real:** projeto criado e migrado (7 migrações aplicadas), segurança do banco validada, login Google real validado em 25/10/2026 e, em 26/10/2026, **entrada por e-mail e senha validada no mesmo usuário** e a proteção contra perda de tarefas na edição simultânea. O botão do Google está oculto; desativar o provedor no painel é ação do usuário. **Ainda não validado no real:** publicação na Vercel e a primeira execução automática da rotina. Ver `AUDITORIA.md`.
+- **Publicado:** https://dmanda-adm.vercel.app (Vercel Hobby, Supabase Free). Acesso restrito por e-mail e senha ao usuário único. A `main` é a única branch e a que publica.
+- **Design:** Catalyst único (claro e escuro), aprovado no protótipo em `prototipo/`. A aplicação React ainda aguarda a avaliação visual do usuário.
+- **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: demandas e tarefas com as quatro visões, Início, cópia dos dados em JSON, PWA online e rotina diária na nuvem. As demais áreas (Entradas, Agenda, Documentos, IA, Configurações) ainda não foram construídas.
+- **Supabase:** 7 migrações aplicadas, segurança validada, entrada por e-mail e senha, Google desligado. **Ainda não validado em produção:** cron registrado e primeira execução, 6 horas reais, instalação da PWA.
+- **Resumo consolidado, validação e retomada em outro computador:** `CONTINUIDADE-DMANDA.md`.
 
 ## Como rodar
 
@@ -26,4 +28,4 @@ Variáveis: copiar `.env.example` para `.env.local` e preencher (nunca vai para 
 
 ## Documentos
 
-Comece por `CLAUDE.md` (regras e estado do projeto) e `DECISOES.md` (decisões mais recentes). O que aguarda o usuário está em `PENDENCIAS.md` e a retomada em `SINCRONIZA-PROJETINHO.md`.
+Comece por `CONTINUIDADE-DMANDA.md` (estado, validação e retomada), depois `CLAUDE.md` (regras do projeto) e `DECISOES.md` (decisões mais recentes). O que aguarda o usuário está em `PENDENCIAS.md` e a retomada em `SINCRONIZA-PROJETINHO.md`.

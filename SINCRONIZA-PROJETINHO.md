@@ -2,7 +2,7 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 27/10/2026 (consolidação na `main`, bloco logo abaixo); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Última atualização:** 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
@@ -32,7 +32,11 @@ npm run dev
 - `producao`: removida (local e remoto) na publicação; estava em `a0eaa4630f87700ba8b3d78d63238b8af05beb4d`, ancestral da `main`, 0 commits exclusivos. Para consultar o histórico, `git log a0eaa46`.
 - Resta só a `main`. Não existem PRs, stashes, tags nem worktrees. Issues abertas: #2, #3, #4.
 
-**Publicação (Vercel Hobby, equipe EDER, projeto `dmanda`, importado da `main`, cinco variáveis só em Production):** o estado exato (publicado, validado, ainda não validado) está no bloco "PUBLICAÇÃO E FECHAMENTO" quando ele existir; enquanto não existir, nada foi publicado.
+**PUBLICAÇÃO E FECHAMENTO (28/10/2026): https://dmanda-adm.vercel.app** (Vercel Hobby, equipe EDER, projeto `dmanda`, Production, `main`, `gru1`). Resumo consolidado e primeira ação da próxima sessão: `CONTINUIDADE-DMANDA.md`.
+- **Publicado:** commit `58fc8ec938a4b0874f7d7c1c4ea452295090ab85`, status "Vercel, success, Deployment has completed" no GitHub. Commits posteriores são só de documentação e geram novas implantações; o commit servido em cada momento se confere no painel Deployments da Vercel.
+- **Validado em produção (sem sessão, 28/10):** login 200; `/`, `/demandas`, `/marca`, `/pecas`, `/tokens`, `/config`, `/arquivo`, `/api/exportar`, `/api/sessao` redirecionam ao login; manifesto, ícones e estilos 200; cron 401 sem segredo e com segredo errado; cabeçalhos de segurança; função em `gru1`. Supabase: migrações 7 de 7, nada pendente.
+- **Ainda não validado:** validação autenticada pelo assistente (sem sessão no navegador), cron registrado no painel, Run manual, primeira execução automática, 6 horas reais, PWA instalada no iPhone e no iPad, cópia baixada no app instalado, avaliação visual da aplicação (Issue #2).
+- **Dado real do usuário (não é teste):** demanda "Portarias Comissões" criada em 28/10 às 03:11 UTC. Não alterar nem remover.
 
 ## PONTO DE RETOMADA ATUAL (27/10/2026, em casa: publicação preparada, aguardando o plano da Vercel e a conexão da nuvem)
 

@@ -1,6 +1,6 @@
 # Pendências do Dmanda
 
-Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 26/10/2026.
+Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 28/10/2026. O resumo consolidado do estado, da validação e da retomada está em `CONTINUIDADE-DMANDA.md`.
 
 **Desde 25/10/2026 as tarefas, o estado, os bloqueios e os critérios de conclusão ficam nas GitHub Issues** (repositório privado edermoliveira/Dmanda). Este arquivo é só um índice curto e o histórico. Decisões duradouras continuam em `DECISOES.md`; ambiente e retomada, em `SINCRONIZA-PROJETINHO.md`. Uma Issue só é fechada quando os seus critérios são atendidos, incluindo a avaliação do usuário quando ela faz parte.
 
@@ -12,7 +12,7 @@ https://github.com/edermoliveira/Dmanda/milestone/1
 |---|---|---|
 | [#1](https://github.com/edermoliveira/Dmanda/issues/1) | Concluir o login e a integração real com Supabase (desde 26/10/2026: **entrada por e-mail e senha**; a sequência de testes só do Google foi superada) | Usuário: `.env.local`, `supabase login`, provedor Email e `npm run definir:senha` (ações em ordem no fim de `AUDITORIA.md`) |
 | [#2](https://github.com/edermoliveira/Dmanda/issues/2) | Conferir a aplicação React nos dispositivos | Usuário: avaliação visual e teste em aparelho real |
-| [#3](https://github.com/edermoliveira/Dmanda/issues/3) | Publicar o aplicativo e ativar a rotina diária | Depende da #1 e da decisão do usuário sobre hospedagem e plano |
+| [#3](https://github.com/edermoliveira/Dmanda/issues/3) | Publicar o aplicativo e ativar a rotina diária | Publicado em 28/10/2026 (https://dmanda-adm.vercel.app). Falta: cron registrado e primeira execução, validação autenticada em produção, instalação da PWA |
 | [#4](https://github.com/edermoliveira/Dmanda/issues/4) | Implantar cópia privada dos dados | Usuário: mecanismo e destino |
 
 Etiquetas: `bug`, `funcionalidade`, `acabamento`, `em-andamento`, `aguarda-usuario`. Nos commits, referenciar o número real (por exemplo, "#1"), sem fechamento automático.
