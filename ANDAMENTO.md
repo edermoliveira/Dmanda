@@ -58,7 +58,7 @@ Estados reais em 27/10/2026. "Feito" quer dizer verificado nos testes e, onde in
 | Mover etapas, concluir, reabrir e as quatro visões | Feito nos testes | Avaliação visual do usuário (Issue #2) |
 | Dados preservados ao recarregar e entre aparelhos | Feito (recarga real, dois aparelhos simulados, edição simultânea recusada) | Conferir com computador e iPhone reais |
 | Início com dados reais | Feito com banco de teste; banco real tem 0 demandas | Uso real; regra de "Aguardando retorno" pendente de decisão (`AUDITORIA.md`, P5) |
-| Aplicação publicada | **Não feito** | Criar o projeto Vercel Hobby e avançar a `producao` |
+| Aplicação publicada | **Não feito** | Importar a `main` no Vercel Hobby (projeto `dmanda`) e conferir o publicado |
 | Instalar como PWA online | Manifesto, ícones e metadados prontos e conferidos em produção local | Instalar no iPhone e no iPad |
 | Exportar uma cópia dos dados | Feito (rota, menu da conta, restauração provada só em banco local) | Destino e rotina de guarda (Issue #4); o Supabase Free não tem backup para baixar |
 | Rotina diária | Código e prova HTTP de 25/10 | Cron registrado e primeira execução automática, depois de publicar |

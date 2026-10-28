@@ -23,22 +23,16 @@ npm run dev
 ```
 `npm run dev` abre o Supabase real em http://localhost:7100/login (exige `.env.local`; só um `next dev` por vez). Sem credenciais: `npm run dev:teste` (banco descartável).
 
-**Branches depois da consolidação:** `main` (trabalho) e `producao` (só ponteiro de publicação, não é de trabalho). `producao` ficou porque o `vercel.json` publica apenas ela; sem esse portão, cada envio à `main` publicaria o painel usado pelo Secretário. Ela está em `a0eaa46`, sem as correções da auditoria, e só avança com autorização expressa. Os hashes finais e as branches removidas estão no fim deste bloco.
+**PUBLICAÇÃO PELA MAIN (decisão 25, 27/10/2026): a `main` é a única branch de trabalho e de publicação. A branch `producao` não existe mais.** Qualquer instrução abaixo (ou em outro documento) que mande "avançar a `producao`" é **histórico superado**.
 
-**Ajustes para a futura publicação (registrados, nada iniciado):**
-1. Avançar a `producao` por fast-forward para o commit verificado da `main` (hoje ela está atrás), com autorização expressa.
-2. O roteiro anterior dizia que a primeira implantação do projeto novo sairia da `main` com o protótipo antigo e seria descartável. **Isso mudou:** a `main` agora é a aplicação real e tem `vercel.json` com a implantação das outras branches desligada. Na hora de importar, conferir o que a Vercel faz na primeira implantação (se for feita da `main`, ela sobe a aplicação real) e, se existir, apagá-la depois da entrada; não presumir.
-3. Enviar para a `main` não publica nada enquanto o `vercel.json` estiver assim; isso é o desejado. Se o usuário quiser publicar direto da `main`, é decisão dele e muda `vercel.json` e a Branch Tracking.
-4. Guia do iPhone na nuvem: a base passa a ser a `main` (sessão em branch `claude/...`, PR com base na `main`, revisão do usuário). Nada disso está configurado.
-5. As demais seções deste arquivo que citam a branch `checkpoint/2026-10-23-ajustes-a-d` são **histórico**: a branch foi integrada à `main`.
+**Como a Vercel decide (`vercel.json`):** `"git.deploymentEnabled": {"**": false, "main": true}`. Pela documentação da Vercel (minimatch; basta uma regra `true` para implantar), só a `main` implanta; branches com qualquer outro nome, inclusive com barras (`claude/...`, `feature/x`), não implantam sozinhas. Testado com minimatch 3.1.5 (o que o projeto tem instalado; a versão da Vercel não é conhecida): `main` implanta; `claude/abc`, `claude/a/b`, `feature/main`, `main/x`, `Main` e `producao` não. Região `gru1` e cron diário (09:00 UTC) preservados. **Consequência:** cada commit enviado à `main` passa a publicar o painel real. Por isso, só enviar à `main` o que foi verificado; commits só de documentação também geram uma implantação.
 
 **Registro das branches (27/10/2026):**
-- Integrada e removida: `checkpoint/2026-10-23-ajustes-a-d`, que estava em `8fb7c01386e6d20e096304c83ec1c7a17978715b`. Todos os seus commits estão na `main` (fast-forward de `c314b53711e2cb2981a7f1dfeab09e710de41009` até `8fb7c01`, 56 commits), então nada ficou só nela. Para consultar o histórico, `git log 8fb7c01`.
-- Mantida: `producao` em `a0eaa4630f87700ba8b3d78d63238b8af05beb4d` (ancestral da `main`, sem trabalho exclusivo). Motivo: ponteiro de publicação exigido pelo `vercel.json` e pela Branch Tracking planejada; removê-la exige antes decidir como a Vercel passa a publicar.
-- Não existiam outras branches (nenhuma `claude/...`), PRs, stashes, tags nem worktrees. Issues abertas: #2, #3, #4.
-- O hash da `main` está no relatório final e se confere com `git ls-remote origin refs/heads/main`.
+- `checkpoint/2026-10-23-ajustes-a-d`: removida (local e remoto) na consolidação; estava em `8fb7c01386e6d20e096304c83ec1c7a17978715b`, contida na `main`.
+- `producao`: removida (local e remoto) na publicação; estava em `a0eaa4630f87700ba8b3d78d63238b8af05beb4d`, ancestral da `main`, 0 commits exclusivos. Para consultar o histórico, `git log a0eaa46`.
+- Resta só a `main`. Não existem PRs, stashes, tags nem worktrees. Issues abertas: #2, #3, #4.
 
-**Ponto exato de retomada:** a Vercel ainda não foi criada. O próximo passo é o roteiro do bloco "ATUALIZAÇÃO 27/10/2026 (noite)" (publicação gratuita, rotina diária e PWA), com os ajustes 1 a 4 acima. Só avançar a `producao` com autorização expressa.
+**Publicação (Vercel Hobby, equipe EDER, projeto `dmanda`, importado da `main`, cinco variáveis só em Production):** o estado exato (publicado, validado, ainda não validado) está no bloco "PUBLICAÇÃO E FECHAMENTO" quando ele existir; enquanto não existir, nada foi publicado.
 
 ## PONTO DE RETOMADA ATUAL (27/10/2026, em casa: publicação preparada, aguardando o plano da Vercel e a conexão da nuvem)
 
@@ -76,7 +70,7 @@ npm run dev
 - **Não alterado:** `main` (c314b53), `producao` (a0eaa46, não avançou), o banco real, `.env.local`. Os commits deste bloco estão agora na `main` (consolidação acima); **a `producao` só avança com a autorização do usuário**, e as correções acima só chegam ao ar quando ela avançar.
 - **Decisões que o usuário pode tomar sem pressa (não bloqueiam):** (a) manter ou ocultar os controles de áreas não construídas; (b) regra do Início para "Aguardando retorno" sem data de acompanhamento; (c) autorizar a exclusão do design antigo sem uso (`AUDITORIA.md`, P1, P4, P5).
 - **Planos gratuitos (fontes em `supabase/LEIA-ME.md`, "Planos gratuitos"):** o texto do Hobby sobre uso não comercial não esclarece o servidor público sem receita (efeito, se a Vercel entender que não cabe: pausa; pergunta opcional ao suporte, que não bloqueia); o Supabase Free pode pausar o projeto depois de uma semana de pouca atividade e **não tem backup para baixar**, então a cópia dos dados em arquivo é o único backup (Issue #4).
-- **PRÓXIMO BLOCO (publicação gratuita, rotina diária e PWA), roteiro único:**
+- **PRÓXIMO BLOCO (publicação gratuita, rotina diária e PWA), roteiro único (SUPERADO nos itens que citam `producao`: ver a decisão 25, publicar pela `main`):**
   1. **Usuário (vercel.com):** criar a conta Hobby entrando com o GitHub, autorizar **só** o repositório `Dmanda`, importar o projeto, cadastrar as cinco variáveis só em Produção (chave de serviço como sensível), Settings > Environments > Production > Branch Tracking = `producao`, e avisar o endereço. A primeira implantação sai da `main` e é descartável.
   2. **Claude, com autorização:** avançar a `producao` por fast-forward a partir do commit verificado (traz as correções e dispara a implantação certa), conferir o publicado sem sessão (200 e redirecionamentos, cron 401, cabeçalhos, região `gru1`, rotina registrada em Settings > Cron Jobs).
   3. **Usuário:** entrar com e-mail e senha no endereço publicado e apagar a primeira implantação (Deployments > ⋯ > Delete).
@@ -84,7 +78,7 @@ npm run dev
   5. **Usuário, no dia seguinte:** conferir no Início a última execução automática; instalar a PWA no iPhone e no iPad (Safari > Compartilhar > Adicionar à Tela de Início); baixar a cópia dos dados dentro do app instalado e dizer se funcionou; avaliar a aplicação (Issue #2).
   6. Então: destino das cópias (#4) e, se quiser, o desenvolvimento pelo iPhone (guia abaixo).
 
-**ATUALIZAÇÃO 27/10/2026 (bloco "publicação controlada", em casa; o item do plano foi superado, ver a atualização acima):** preparado, **nada publicado, nada contratado**.
+**ATUALIZAÇÃO 27/10/2026 (bloco "publicação controlada", em casa; o item do plano e o mecanismo da `producao` foram superados, ver a decisão 25):** preparado, **nada publicado, nada contratado**.
 - `vercel.json` agora tem região `gru1`, a regra "só a branch `producao` implanta" (`git.deploymentEnabled`) e o cron diário (09:00 UTC). Branch `producao` criada a partir do commit verificado (conferir com `git ls-remote origin refs/heads/producao`); regra de avanço em `CLAUDE.md` e `DECISOES.md` 16.
 - Verificado hoje: `tsc`, `eslint`, `testar:regras` 26, `npm run build`, `conferir:env` (tudo ok, Email ligado, Google desligado, cadastro público desligado, 1 usuário) e produção local (`npm run start`): `/login`, manifesto e ícones 200; `/demandas`, `/marca`, `/api/exportar` redirecionam ao login; cron 401 sem segredo e com segredo errado; cabeçalhos de segurança presentes. `testar:banco` e `testar:app` não repetidos (SQL e telas não mudaram).
 - **Plano da Vercel:** a recomendação de Pro foi **superada** pela decisão do usuário de usar Hobby e Free (decisão 19). Regra, limites e efeitos em `supabase/LEIA-ME.md`, "Planos gratuitos".
@@ -95,12 +89,12 @@ npm run dev
 **Pendências que exigem ação ANTES da publicação:**
 1. Plano decidido: Hobby (gratuito). Nada será contratado; a pergunta ao suporte da Vercel é opcional e não bloqueia.
 2. Usuário: criar o projeto na Vercel conforme "Ações exatas para publicar" no `LEIA-ME`, cadastrar as variáveis só em Produção e avisar o endereço.
-3. Claude, depois do endereço: avançar a `producao` (só com autorização), conferir o publicado, o cron e o banco.
+3. Claude, depois do endereço: conferir o publicado, o cron e o banco (a `producao` foi removida; publica-se pela `main`).
 
 **Limitações conhecidas (podem continuar registradas, não bloqueiam a publicação):** expiração de 6 h reais ainda não observada (só em ambiente isolado); restauração da cópia nunca feita em projeto real; destino e automação das cópias; cookie `dmanda-ultimo-uso` não assinado; operações pontuais (mover etapa, marcar tarefa, arquivar) seguem "último a gravar vence" por campo; sem service worker (a PWA só abre online); intermitência não reproduzida do `testar:sessao` (57 de 57 agora); senhas vazadas exigem plano pago; PowerShell 7 não testado; projeto Supabase gratuito pode pausar por inatividade; aplicação React sem avaliação visual (#2).
 
 **PRÓXIMO BLOCO (já definido): publicação controlada, rotina diária em nuvem e conferência da PWA.**
-- **Enviar para a `main` não é liberar (mecanismo aplicado em 27/10/2026).** A Vercel publica só a branch `producao`, que avança por fast-forward a partir de um commit verificado da `main` (`git push origin <commit-verificado>:refs/heads/producao`, nunca force). As outras branches, a `main` inclusive, não implantam, por regra no próprio `vercel.json`. Na Vercel, a Production Branch é definida em Settings > Environments > Production > Branch Tracking.
+- **(SUPERADO pela decisão 25: a `main` publica e a `producao` foi removida.) Enviar para a `main` não é liberar (mecanismo aplicado em 27/10/2026).** A Vercel publica só a branch `producao`, que avança por fast-forward a partir de um commit verificado da `main` (`git push origin <commit-verificado>:refs/heads/producao`, nunca force). As outras branches, a `main` inclusive, não implantam, por regra no próprio `vercel.json`. Na Vercel, a Production Branch é definida em Settings > Environments > Production > Branch Tracking.
 - **Roteiro:** (1) plano já decidido (Hobby); (2) criar o projeto na Vercel com a Production Branch definida acima, região São Paulo (gru1) e as variáveis `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`, `SUPABASE_SERVICE_ROLE_KEY` (sensível) e `CRON_SECRET` (16 ou mais caracteres); não definir `DMANDA_BANCO` nem `DMANDA_LOGIN_GOOGLE`; (3) Claude confere o publicado sem sessão (login, manifesto, ícones, `/api/exportar` barrado, cron 401 sem segredo), depois da entrada por senha confere o banco; (4) execução manual do cron pelo painel (Cron Jobs, Run) ou a automática do dia seguinte, lida em `execucoes_rotina` e no Início; (5) PWA no iPhone e no iPad e avaliação (#2).
 - **Depois, quando o usuário decidir:** destino privado das cópias (então armazenamento e, se quiser, automação) e uma demonstração da restauração em projeto descartável.
 
@@ -130,7 +124,7 @@ Aqui o objetivo é a segunda. Ela vale no Claude Pro. Os arquivos versionados (`
 > Conferência SOMENTE DE LEITURA do repositório Dmanda. Não edite arquivos, não faça commit nem push, não instale dependências e não acesse Supabase, Vercel ou qualquer serviço externo. 1) Informe a branch atual e o hash do HEAD, e rode `git ls-remote origin` para dizer se existem `producao` e `main` e em quais hashes. 2) Leia CLAUDE.md, AGENTS.md e a seção "PONTO DE RETOMADA ATUAL" de SINCRONIZA-PROJETINHO.md. 3) Confirme que o vercel.json tem região gru1, a regra para só a branch producao implantar e o cron diário. 4) Liste o que está pendente e o que você NÃO consegue fazer neste ambiente (por exemplo, usar .env.local, acessar o Supabase real, usar a memória do computador). Responda em português, sem travessão, e termine com a linha de andamento copiada de ANDAMENTO.md, sem recalcular.
 
 **Regras para qualquer tarefa depois disso:**
-- Trabalhar em uma branch `claude/...` criada pela sessão. **Nunca** enviar para `producao` nem diretamente para a `main`. (O GitHub Free não protege branches de repositório privado, então a regra é escrita, não técnica. Diga isso no primeiro pedido de cada tarefa.)
+- Trabalhar em uma branch `claude/...` criada pela sessão. **Nunca** enviar diretamente para a `main`, que agora publica sozinha (a `producao` não existe mais). (O GitHub Free não protege branches de repositório privado, então a regra é escrita, não técnica. Diga isso no primeiro pedido de cada tarefa.)
 - Só configurar o ambiente quando uma tarefa concreta exigir. Exemplo: para a nuvem rodar `tsc`, `eslint` e `testar:regras`, um script de instalação com `npm ci` (rede Trusted alcança o npm). `testar:app` precisa do Edge e não roda lá.
 - Sem acesso ao Supabase real: não há chave na nuvem e nenhuma será colocada sem decisão sua. Qualquer chave futura entra como **segredo de rede** do ambiente (não como variável), com o menor privilégio possível.
 - Não enviar `.env.local`, nem `~/.claude`, nem cópias de dados (`dmanda-copia-*.json`) ao GitHub ou à nuvem.
@@ -142,7 +136,7 @@ Aqui o objetivo é a segunda. Ela vale no Claude Pro. Os arquivos versionados (`
 2. **Create PR** com **base na `main`**. Conferir a base antes de confirmar.
 3. Você revisa e faz o merge do PR no GitHub (o site no iPhone serve). Só o seu merge altera a `main`.
 4. No computador: `git fetch origin`, `git checkout main`, `git pull --ff-only origin main`, e `git ls-remote origin refs/heads/main` para confirmar o hash. Se o `--ff-only` recusar, houve edição paralela: parar e pedir ao Claude para conciliar.
-5. Publicação continua à parte: a `producao` só avança de um commit conferido, com sua autorização.
+5. O merge do PR na `main` publica o painel: revisar com esse peso.
 
 **Limites e cuidados:** as sessões na nuvem dividem o limite de uso do seu plano com o restante do Claude; o ambiente é recolhido depois de um tempo parado (reabrir a sessão restaura a conversa, não processos em andamento); sem Remote Control, o computador pode ficar desligado, mas nada local (como `.dados-teste/` e o `.env.local`) existe na nuvem.
 
