@@ -152,7 +152,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const recarregar = useCallback(async () => {
     setCarregando(true);
     const r = await protegido(() => srv.listarDemandas(false));
-    if (r.ok) { setDemandas(r.dados); setErroCarga(null); } else setErroCarga(r.erro);
+    // a data de hoje vai no mesmo lote das demandas: sem isso os cards aparecem um instante com a data provisória e mostram prazos errados
+    if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); } else setErroCarga(r.erro);
     setCarregando(false);
   }, []);
   const carregarArquivadas = useCallback(async () => {
@@ -180,7 +181,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       if (document.visibilityState !== 'visible' || janelaAberta.current || pendentes.current > 0) return;
       const antes = gravacoes.current;
       const r = await protegido(() => srv.listarDemandas(false));
-      if (r.ok && gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) { setDemandas(r.dados); setErroCarga(null); }
+      if (r.ok && gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); }
     };
     document.addEventListener('visibilitychange', atualizar); addEventListener('online', atualizar);
     return () => { document.removeEventListener('visibilitychange', atualizar); removeEventListener('online', atualizar); };

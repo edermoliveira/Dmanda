@@ -101,6 +101,16 @@ export function PaginaDemandas() {
   const [toque, setToque] = useState(false);
   useEffect(() => { const m = matchMedia('(max-width: 899px)'); const f = () => setToque(m.matches); f(); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, []);
   useAjustar(`${demandas.length}${visao}${lista.length}`);
+  // atalho "/" do protótipo aprovado: foca o filtro (não vale digitando em um campo, com janela ou menu aberto)
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      if ((e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]') || document.querySelector('.modal-ov, .mv-menu')) return;
+      e.preventDefault(); document.getElementById('fq')?.focus();
+    };
+    document.addEventListener('keydown', f);
+    return () => document.removeEventListener('keydown', f);
+  }, []);
   return (
     <>
       <CabecaPagina titulo="Demandas" sub={`${plural(demandas.length, 'demanda')}, ${plural(nAt, 'atrasada')}. Do cadastro à conclusão.`} />

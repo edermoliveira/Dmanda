@@ -11,7 +11,9 @@ async function Aviso({ searchParams }: { searchParams: Promise<Record<string, st
   if (modoTeste()) redirect('/');
   const p = await searchParams;
   const aviso = p.saiu === 'parcial' ? 'Você saiu do Dmanda neste navegador, mas o servidor não confirmou o encerramento da sessão. Se este computador não é seu, entre e saia de novo.' : p.saiu ? 'Você saiu do Dmanda neste navegador.' : p.expirou ? 'Por segurança, o login vale por 6 horas sem uso. Entre de novo.' : p.negado ? 'Esta conta não tem acesso ao Dmanda.' : p.erro ? 'Não foi possível entrar. Tente de novo.' : '';
-  return aviso ? <p className="login-aviso" role="alert">{aviso}</p> : null;
+  // avisos de saída e de sessão vencida são informação (tom neutro); só recusa, falha e saída não confirmada pelo servidor usam o vermelho, que a interface reserva ao que é crítico
+  const erro = !!(p.negado || p.erro || p.saiu === 'parcial');
+  return aviso ? <p className={erro ? 'login-aviso' : 'login-info'} role={erro ? 'alert' : 'status'}>{aviso}</p> : null;
 }
 
 // O botão do Google só aparece com DMANDA_LOGIN_GOOGLE=sim (ver src/lib/login.ts). A variável é lida na montagem da página: vale no próximo build ou publicação.

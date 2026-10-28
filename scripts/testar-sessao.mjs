@@ -290,7 +290,7 @@ logoutFalha = false; chamadas.length = 0;
 await semarCookies(); await ir('/demandas');
 await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label="Conta"]');
 await Promise.all([pg.waitForURL(/\/login\?saiu=1/, { timeout: 30000 }), pg.click('.mv-menu [role=menuitem]:last-of-type')]);
-const aviso = await pg.textContent('.login-aviso').catch(() => '');
+const aviso = await pg.textContent('.login-info').catch(() => '');
 const cks2 = await ctx.cookies();
 ok(/saiu do Dmanda/.test(aviso ?? ''), 'depois de sair: login com a mensagem "Você saiu do Dmanda neste navegador"');
 ok(!cks2.some((c) => c.name === 'sb-127-auth-token' && c.value) && !cks2.some((c) => c.name === 'dmanda-ultimo-uso' && c.value), 'os cookies de sessão e de último uso foram removidos');

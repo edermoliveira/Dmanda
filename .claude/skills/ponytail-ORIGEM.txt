@@ -1,0 +1,4 @@
+Origem: https://github.com/DietrichGebert/ponytail (licença MIT, arquivo LICENSE-ponytail.txt)
+Revisão: 09c434ab73ca43761c5d8b0c5d341926c2fba710 (18/10/2026)
+Arquivos copiados sem alteração: skills/ponytail-audit/SKILL.md e skills/ponytail-review/SKILL.md
+Não copiados de propósito: hooks, band, comandos, adaptadores e demais skills.

@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
   /* config options here */
   // Postgres local de teste (só em desenvolvimento) fica fora do pacote do servidor
   serverExternalPackages: ['@electric-sql/pglite'],
+  // ...e fora do pacote das funções publicadas (26 MB que só o teste local usa; em produção a variável DMANDA_BANCO=teste é recusada)
+  outputFileTracingExcludes: { '/*': ['./node_modules/@electric-sql/pglite/**/*'] },
+  // O manifesto e a cor da barra leem src/estilos/catalyst.css (src/lib/cores-barra.ts). Hoje isso acontece na build, mas, se uma página rodar a leitura no servidor
+  // da Vercel, o arquivo precisa estar no pacote da função (a leitura é marcada turbopackIgnore e não entra no rastreio sozinha).
+  outputFileTracingIncludes: { '/*': ['./src/estilos/catalyst.css'] },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

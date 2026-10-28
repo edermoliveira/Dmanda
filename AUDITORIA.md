@@ -1,6 +1,6 @@
 # Auditoria única do Dmanda (26/10/2026)
 
-Relatório consolidado. **Não abrir outra auditoria geral sem fato novo.** Pendências continuam nas Issues #1 a #4 (ver o fim, "Issue consolidada").
+Relatório consolidado. **A seção 18 (27/10/2026) foi a auditoria completa pedida antes da primeira versão utilizável e substitui a regra de não auditar. Não abrir outra auditoria geral sem fato novo.** Pendências continuam nas Issues #1 a #4 (ver o fim, "Issue consolidada").
 
 ## 1. Versão e escopo
 
@@ -298,3 +298,68 @@ Conferência do ambiente, não do aplicativo. Feita uma vez: inventário, ajuste
 Não repetidos, por justificativa: `testar:banco` e `testar:app` (SQL, migrações e telas internas não mudaram; o login só é exibido fora do modo de teste) e a rotina diária por HTTP real (prova de 25/10/2026 continua válida: `src/nucleo/rotina.ts` e a rota de cron não mudaram desde então e os diffs do `proxy.ts` não tocaram a isenção do cron).
 
 **Veredito:** a base Supabase do núcleo de demandas e tarefas com login por e-mail e senha está **concluída** pelos critérios acima. Limitações que permanecem: expiração de 6 h reais, restauração em projeto real, destino e automação das cópias, cookie `dmanda-ultimo-uso` não assinado, intermitência não reproduzida do `testar:sessao`, senhas vazadas (plano pago), PowerShell 7 e outros terminais, avaliação visual da aplicação (Issue #2), publicação, agendamento e primeira execução automática (Issue #3).
+
+## 18. Auditoria completa antes da primeira versão utilizável (27/10/2026)
+
+**Base auditada:** branch `checkpoint/2026-10-23-ajustes-a-d`, partindo do commit `a0eaa46` (árvore limpa, igual ao remoto). Banco real não tocado nesta etapa; `producao` não avançou; `main` preservada.
+
+### 18.1 Ferramentas realmente usadas
+- **Ponytail** (`ponytail-audit`, auditoria do repositório inteiro): estava ausente. Foram copiados para `.claude/skills/ponytail-audit/` e `ponytail-review/` só os dois `SKILL.md`, sem alteração, da revisão `09c434a` (18/10/2026) de https://github.com/DietrichGebert/ponytail, licença MIT (`.claude/skills/LICENSE-ponytail.txt`, origem em `.claude/skills/ponytail-ORIGEM.txt`). Sem hooks, band, telemetria, comandos nem adaptadores. Carregada pelo Skill tool; usada como método (mapa, fluxos de ponta a ponta, achado só com caso concreto, relatório com "Not checked"). A prioridade é a do usuário: Catalyst e escopo prevalecem.
+- **Taste** (`taste-skill` 2.1.4, commit `6010f91`, MIT, já instalado no computador e **desativado no projeto**, permanece assim): lidos `SKILL.md`, `references/app-screens.md` (telas de trabalho) e `references/critique.md` (passes de olhar). Usado só como lista de passes na análise da interface (hierarquia, bordas, vazio, colisões, estados, celular), **sem** os scripts de geração de direção e sem trocar identidade, fontes, ícones ou biblioteca. Como a skill está desativada no projeto, não foi carregada pelo Skill tool: foi lida em arquivo e aplicada como roteiro. A pontuação por "jurado" não foi usada (não substitui a avaliação do usuário).
+- **Método de verificação** (`verification-before-completion`, `systematic-debugging`) e testes próprios. O `code-review` não foi acionado: não havia diff de PR para revisar e a leitura completa o substituiu.
+
+### 18.2 Cobertura efetiva
+- **Lido por inteiro, linha a linha:** `src/proxy.ts`, `src/lib/{sessao,demandas,login,cores-barra}.ts`, `src/lib/supabase/*`, `src/servidor/{banco,demandas,entrar}.ts`, `src/nucleo/*`, rotas `api/{cron,exportar,sessao}` e `auth/callback`, `src/app/(app)` (layouts, páginas, login), `src/ui/*` (contexto, Casca, páginas, janelas, cartões, visões, MenuConta, Capsula, Icone), `manifest.ts`, `next.config.ts`, `vercel.json`, as 7 migrações e `supabase/restaurar-copia.sql`, `package.json`.
+- **Por amostragem e por medição, não linha a linha:** CSS em `src/estilos/` (cerca de 180 KB; avaliado pelo resultado renderizado, por medições no navegador e por busca de cores soltas), `src/lib/icones-dados.ts` (dados), scripts de teste (executados, não relidos), `src/app/(antigo)` e `src/components` (só para provar que são código sem uso).
+- **Interface:** 5 tamanhos (computador 1440, iPad horizontal 1180, janela média 1000, iPad vertical 820, celular 390) nos 2 modos, cerca de 14 telas e estados por combinação (Início e Início filtrado, quatro visões, janela nova com e sem erro, janela de edição, menu da conta, menu "+", Arquivo, Configurações, Mais), mais o login real em produção local. Medições automáticas: rolagem lateral, elementos fora da tela, controles sem nome, texto cortado, contraste (377 textos no claro e 369 no escuro). Foram **vistas por mim** cerca de 12 capturas (computador, iPad, janela média e celular, nos dois modos); as demais passaram só pelas medições. Banco de teste com dados fictícios; nada visto no Supabase real.
+- **Não foi possível:** iPhone e iPad reais (instalação como PWA, download da cópia dentro do app instalado, teclado do iOS, toque de verdade), publicação na Vercel (região, cron e pacote das funções só se confirmam publicada), expiração real de 6 h e primeira execução automática, o efeito do vidro (desfoque) sobre o contraste calculado.
+
+### 18.3 Achados
+**Bloqueadores:** nenhum encontrado. Não declaro ausência absoluta de defeitos nem segurança garantida.
+
+**Correções importantes (corrigidas e verificadas):**
+
+| # | Local | Evidência | Consequência | Correção |
+|---|---|---|---|---|
+| I1 | `src/ui/contexto.tsx` (`recarregar` e a atualização ao voltar à tela) | Amostragem a cada 25 ms: em 8 de 8 cargas os cards apareciam por cerca de 200 ms com a data provisória de 2000 ("faltam 9789 d", "Chegou há -9796 d", "0 atrasadas"); com CPU 4 vezes mais lenta, durante toda a carga | Prazo errado na tela em toda abertura, mais visível no celular | A data de hoje entra no mesmo lote das demandas. Depois: 0 quadros errados em 8 cargas, inclusive com CPU 4 vezes mais lenta. Verificação nova no `testar:app` |
+| I2 | `src/ui/janelas.tsx` | O Tab percorria a janela e saía para o fundo (24ª tecla); o Esc não devolvia o foco ao card | Quem usa teclado perde a posição; a janela é modal | Foco preso na janela e devolvido a quem a abriu. Verificações novas |
+| I3 | `src/ui/paginas.tsx` | O campo diz "Filtrar demandas ( / )", mas nenhum código tratava a tecla (o protótipo aprovado trata) | Atalho anunciado que não existe | Atalho "/" como no protótipo. Verificações novas |
+| I4 | `src/ui/Casca.tsx` | `suppressHydrationWarning` no `.app`, contra a regra de hidratação do projeto | Poderia esconder divergência real | Removido: 6 rotas em 4 contextos (claro, escuro, toque) sem aviso; `testar:app` sem erro de console |
+| I5 | `next.config.ts` | O rastreio das funções de produção incluía o PGlite de teste (26 MB, 611 itens) em `/api/exportar` e `/api/cron/diaria` | Pacote maior e partida a frio mais lenta na Vercel, por código que só o teste local usa | `outputFileTracingExcludes`: de 611 para 261 itens |
+| I6 | `next.config.ts` | `coresDaBarra()` lê `catalyst.css` com `turbopackIgnore` (não entra no rastreio sozinho). Hoje roda na build, mas, se alguma página rodar a leitura no servidor da Vercel, o arquivo não estaria no pacote | Possível erro 500 só em produção, **não confirmado** | `outputFileTracingIncludes` (preventivo, só confirmável publicado) |
+| I7 | `src/app/(app)/login/page.tsx` | "Você saiu" e "o login vale por 6 horas" apareciam em vermelho negrito | O vermelho é reservado ao crítico; tom de alerta onde só há informação | Tom neutro; vermelho só para recusa, falha e saída não confirmada pelo servidor |
+| I8 | `src/ui/janelas.tsx` | Variável calculada e descartada (`void n`) | Código morto | Removida |
+
+**Melhorias posteriores (registradas; nenhuma bloqueia o primeiro uso):**
+
+| # | O quê | Observação |
+|---|---|---|
+| P1 | Design antigo sem uso: `src/app/(antigo)` (rotas `/marca`, `/pecas`, `/tokens`, protegidas pelo login) e `src/components`: 18 arquivos, 1 463 linhas e 3 dependências (`lucide-react`, `tailwindcss`, `@tailwindcss/turbopack`), além da regra de CSS no `next.config.ts` e dos scripts `capturar` e `verificar:cores` | Só o código antigo os usa. Excluir exige a sua autorização; o histórico fica no Git |
+| P2 | `npm run verificar:cores` aponta para um arquivo que não existe e acusa 173 cores soltas do design antigo | A regra "nenhuma cor solta" não tem verificação automática hoje; nenhuma cor solta foi achada nos `.tsx` da aplicação |
+| P3 | Tabela na janela média (1000 px): coluna Assunto estreita (até 4 linhas) e Andamento cortado, com rolagem interna | Acabamento; avaliar no uso |
+| P4 | Controles de áreas não construídas aparecem: busca global com "Ctrl K", sino, 4 de 6 itens do "+", 5 áreas "Em construção" | Segue o desenho aprovado. **Decisão sua:** manter ou ocultar até existirem |
+| P5 | Regra do Início para "Aguardando retorno": a demanda só entra nos grupos quando faltam 3 dias ou menos para a data de acompanhamento; **sem data de acompanhamento, nunca entra**, mesmo com prazo vencendo hoje ou vencido (o card em Demandas mostra o prazo) | Regra já decidida em `DECISOES.md`; é lacuna, não defeito. **Decisão sua:** usar o menor entre prazo e acompanhamento, ou manter |
+| P6 | Dois acessos ao Auth por operação (porta de entrada e ação); `getClaims()` evitaria um | Medir a latência depois de publicado |
+| P7 | Sem Content-Security-Policy (o script do tema é embutido e exigiria hash ou nonce) | Risco baixo (usuário único, sem dados sigilosos); os cabeçalhos de segurança existentes ficam |
+| P8 | Atualizações de patch: Next 16.4.3, React 19.3.1, PGlite 0.5.12 | `npm audit` de produção: 0 vulnerabilidades. Atualizar com os testes, em bloco próprio |
+| P9 | Alvos de toque: o lápis das tarefas mede 28 px, e o texto da tarefa e o filtro, 25 px de altura (regra do projeto: 44 px de área de toque) | A área efetiva de toque não ficou medida de forma conclusiva; conferir no iPhone (Issue #2) |
+
+### 18.4 Planos gratuitos (restrição financeira definida)
+Vercel Hobby e Supabase Free; nada pago. Compatibilidade conferida na documentação oficial (fontes e efeitos em `supabase/LEIA-ME.md`, "Planos gratuitos"): limites técnicos do Hobby compatíveis (300 s por função, 100 implantações por dia, rotina diária, repositório de conta pessoal). **Dois pontos concretos:** (1) a regra de "uso não comercial" do Hobby cita "paid employee ... writing the code" sem esclarecer o caso de servidor público sem receita; se a Vercel entendesse que não cabe, o efeito seria a pausa da conta ou do deployment (mitigação gratuita: a cópia em arquivo; a pergunta ao suporte é opcional e não bloqueia); (2) o Supabase Free pode pausar o projeto depois de uma semana de pouca atividade e **não oferece backup para baixar**, então a cópia dos dados em arquivo é o único backup (Issue #4).
+
+### 18.5 Verificações executadas nesta etapa
+
+| Verificação | Resultado |
+|---|---|
+| `npx tsc --noEmit`, `npx eslint src scripts` | exit 0 nos dois |
+| `npm run testar:regras` | 26 de 26 |
+| `npm run testar:banco` | 118 de 118 (SQL lido e inalterado) |
+| `npm run testar:app` | 74 de 74 (69 anteriores mais 5 novas: data provisória, foco preso, foco devolvido, atalho "/", barra no filtro), sem erro de console |
+| `npm run testar:sessao` | 57 de 57 |
+| `npm run build` e produção local (`npm run start`) | exit 0; `/login`, manifesto e ícones 200; `/demandas`, `/arquivo`, `/marca`, `/pecas`, `/tokens`, `/api/exportar` e `/api/sessao` redirecionam ao login; `/api/cron/diaria` 401 sem segredo e com segredo errado; cabeçalhos de segurança presentes; nenhum segredo nos arquivos do cliente; `npm audit` de produção sem vulnerabilidades |
+| Medições no navegador | sem rolagem lateral, sem elemento fora da tela e sem controle sem nome nos 5 tamanhos e 2 modos; contraste mínimo 4,58 (claro) e 4,87 (escuro), todos acima de 4,5 (aproximação: o desfoque do vidro não entra no cálculo) |
+| Não repetidos | `testar:senha-terminal` (nada do terminal mudou) e a rotina diária por HTTP real (código inalterado, prova de 25/10) |
+| Limite do teste novo | a verificação da data provisória usa o mesmo amostrador que reproduziu o defeito; ela não foi executada contra o código antigo |
+
+### 18.6 Parecer de prontidão
+O código está **pronto para a publicação gratuita** no que a auditoria alcança: nenhum bloqueador, correções importantes aplicadas e verificadas, e os fluxos de entrada, gravação, leitura posterior, edição simultânea, dois aparelhos e cópia dos dados cobertos por testes e por leitura. **Dependem de coisas que só existem depois de publicar ou no seu aparelho:** pacote das funções e região na Vercel, cron registrado e primeira execução automática, instalação da PWA, download da cópia no app instalado, 6 h reais e a sua avaliação visual (Issue #2). Isto não é garantia de ausência de defeitos.

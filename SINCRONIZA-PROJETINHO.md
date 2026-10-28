@@ -2,7 +2,7 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 27/10/2026, bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Última atualização:** 27/10/2026 (noite), auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
@@ -37,16 +37,31 @@ npm run dev
 ```
 `conferir:env` mostra só ok, VAZIA ou ATENÇÃO, nunca valores, e lê o painel em modo leitura (deve mostrar Email LIGADO, Google desligado, cadastro público desligado, 1 usuário). `npm run dev` abre a aplicação real em http://localhost:7100/login (só um `next dev` por vez). O `.env.local` e a CLI do Supabase não vão para o Git: o computador do trabalho já tem os seus. Se a CLI pedir login: `npx supabase login` e `npx supabase link --project-ref gmxoosvgfcydccyeudej`. O binário do Impeccable (`.claude/skills/impeccable/scripts/bin`) é por computador e não vai para o Git.
 
-**ATUALIZAÇÃO 27/10/2026 (bloco "publicação controlada", em casa):** preparado, **nada publicado, nada contratado**.
+**ATUALIZAÇÃO 27/10/2026 (noite): REALINHAMENTO E AUDITORIA COMPLETA. Esta atualização vale mais que o roteiro de publicação anterior (que previa decisão de plano e Pro).**
+- **Decisões do usuário:** Vercel Hobby e Supabase Free; nada pago, nem teste pago; o Pro não é decisão presumida. Quer usar o núcleo o quanto antes, com o Catalyst aprovado. Desenvolvimento pelo iPhone (nuvem) **não bloqueia** a entrega. Blocos completos, sem rodadas de pequenas preparações. Decisões 19 a 23 em `DECISOES.md`.
+- **Feito neste bloco:** auditoria completa (`AUDITORIA.md`, seção 18): 0 bloqueadores; 8 correções importantes aplicadas e verificadas (data provisória de 2000 aparecendo nos cards em toda carga, foco do teclado na janela, atalho "/", `suppressHydrationWarning` indevido, PGlite de teste fora do pacote das funções, CSS dos tokens no pacote, aviso de saída em tom neutro, código morto); 9 melhorias posteriores registradas (P1 a P9). Ponytail (`ponytail-audit`, `ponytail-review`) copiado para `.claude/skills/` com licença MIT e origem; Taste lido como roteiro, plugin continua desativado.
+- **Verificado:** `tsc`, `eslint`, `testar:regras` 26, `testar:banco` 118, `testar:app` 74, `testar:sessao` 57, `build` e produção local (rotas, cron 401, cabeçalhos, nenhum segredo no cliente), `npm audit` de produção 0, medições de interface em 5 tamanhos e 2 modos.
+- **Não alterado:** `main` (c314b53), `producao` (a0eaa46, não avançou), o banco real, `.env.local`. Os commits deste bloco estão só no checkpoint; **a `producao` só avança com a autorização do usuário**, e as correções acima só chegam ao ar quando ela avançar.
+- **Decisões que o usuário pode tomar sem pressa (não bloqueiam):** (a) manter ou ocultar os controles de áreas não construídas; (b) regra do Início para "Aguardando retorno" sem data de acompanhamento; (c) autorizar a exclusão do design antigo sem uso (`AUDITORIA.md`, P1, P4, P5).
+- **Planos gratuitos (fontes em `supabase/LEIA-ME.md`, "Planos gratuitos"):** o texto do Hobby sobre uso não comercial não esclarece o servidor público sem receita (efeito, se a Vercel entender que não cabe: pausa; pergunta opcional ao suporte, que não bloqueia); o Supabase Free pode pausar o projeto depois de uma semana de pouca atividade e **não tem backup para baixar**, então a cópia dos dados em arquivo é o único backup (Issue #4).
+- **PRÓXIMO BLOCO (publicação gratuita, rotina diária e PWA), roteiro único:**
+  1. **Usuário (vercel.com):** criar a conta Hobby entrando com o GitHub, autorizar **só** o repositório `Dmanda`, importar o projeto, cadastrar as cinco variáveis só em Produção (chave de serviço como sensível), Settings > Environments > Production > Branch Tracking = `producao`, e avisar o endereço. A primeira implantação sai da `main` e é descartável.
+  2. **Claude, com autorização:** avançar a `producao` por fast-forward a partir do commit verificado (traz as correções e dispara a implantação certa), conferir o publicado sem sessão (200 e redirecionamentos, cron 401, cabeçalhos, região `gru1`, rotina registrada em Settings > Cron Jobs).
+  3. **Usuário:** entrar com e-mail e senha no endereço publicado e apagar a primeira implantação (Deployments > ⋯ > Delete).
+  4. **Claude:** conferir a sessão no banco real, criar e remover uma demanda TESTE pelo endereço, chamar a rotina manualmente (resposta 200 e linha em `execucoes_rotina`).
+  5. **Usuário, no dia seguinte:** conferir no Início a última execução automática; instalar a PWA no iPhone e no iPad (Safari > Compartilhar > Adicionar à Tela de Início); baixar a cópia dos dados dentro do app instalado e dizer se funcionou; avaliar a aplicação (Issue #2).
+  6. Então: destino das cópias (#4) e, se quiser, o desenvolvimento pelo iPhone (guia abaixo).
+
+**ATUALIZAÇÃO 27/10/2026 (bloco "publicação controlada", em casa; o item do plano foi superado, ver a atualização acima):** preparado, **nada publicado, nada contratado**.
 - `vercel.json` agora tem região `gru1`, a regra "só a branch `producao` implanta" (`git.deploymentEnabled`) e o cron diário (09:00 UTC). Branch `producao` criada a partir do commit verificado (conferir com `git ls-remote origin refs/heads/producao`); regra de avanço em `CLAUDE.md` e `DECISOES.md` 16.
 - Verificado hoje: `tsc`, `eslint`, `testar:regras` 26, `npm run build`, `conferir:env` (tudo ok, Email ligado, Google desligado, cadastro público desligado, 1 usuário) e produção local (`npm run start`): `/login`, manifesto e ícones 200; `/demandas`, `/marca`, `/api/exportar` redirecionam ao login; cron 401 sem segredo e com segredo errado; cabeçalhos de segurança presentes. `testar:banco` e `testar:app` não repetidos (SQL e telas não mudaram).
-- **Plano da Vercel: recomendação Pro (US$ 20 por mês), decisão do usuário pendente.** Fundamento, tabela e alternativa (perguntar ao suporte antes) em `supabase/LEIA-ME.md`, seção "Plano da Vercel".
+- **Plano da Vercel:** a recomendação de Pro foi **superada** pela decisão do usuário de usar Hobby e Free (decisão 19). Regra, limites e efeitos em `supabase/LEIA-ME.md`, "Planos gratuitos".
 - **Aviso:** a primeira implantação de um projeto novo na Vercel é sempre de produção e sai da `main` (protótipo antigo, dados fictícios). Roteiro em `supabase/LEIA-ME.md` ("Ações exatas para publicar").
 - **Ainda pendente:** publicação, agendamento implantado, primeira execução automática, 6 h reais, avaliação visual da aplicação React (#2), destino e automação das cópias (#4).
 - Guia do iPhone (Claude Code na nuvem): seção "Claude Code na nuvem" logo abaixo.
 
 **Pendências que exigem ação ANTES da publicação:**
-1. Usuário: decidir o plano da Vercel (recomendação: Pro) ou perguntar ao suporte e esperar a resposta por escrito. Nada foi contratado.
+1. Plano decidido: Hobby (gratuito). Nada será contratado; a pergunta ao suporte da Vercel é opcional e não bloqueia.
 2. Usuário: criar o projeto na Vercel conforme "Ações exatas para publicar" no `LEIA-ME`, cadastrar as variáveis só em Produção e avisar o endereço.
 3. Claude, depois do endereço: avançar a `producao` (só com autorização), conferir o publicado, o cron e o banco.
 
@@ -54,7 +69,7 @@ npm run dev
 
 **PRÓXIMO BLOCO (já definido): publicação controlada, rotina diária em nuvem e conferência da PWA.**
 - **Checkpoint não é liberação (mecanismo aplicado em 27/10/2026).** A Vercel publica só a branch `producao`, que avança por fast-forward a partir de um commit verificado (`git push origin <commit-verificado>:refs/heads/producao`, nunca force). As outras branches não implantam, por regra no próprio `vercel.json`. Na Vercel, a Production Branch é definida em Settings > Environments > Production > Branch Tracking. A `main` continua intocada.
-- **Roteiro:** (1) decidir o plano; (2) criar o projeto na Vercel com a Production Branch definida acima, região São Paulo (gru1) e as variáveis `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`, `SUPABASE_SERVICE_ROLE_KEY` (sensível) e `CRON_SECRET` (16 ou mais caracteres); não definir `DMANDA_BANCO` nem `DMANDA_LOGIN_GOOGLE`; (3) Claude confere o publicado sem sessão (login, manifesto, ícones, `/api/exportar` barrado, cron 401 sem segredo), depois da entrada por senha confere o banco; (4) execução manual do cron pelo painel (Cron Jobs, Run) ou a automática do dia seguinte, lida em `execucoes_rotina` e no Início; (5) PWA no iPhone e no iPad e avaliação (#2).
+- **Roteiro:** (1) plano já decidido (Hobby); (2) criar o projeto na Vercel com a Production Branch definida acima, região São Paulo (gru1) e as variáveis `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`, `SUPABASE_SERVICE_ROLE_KEY` (sensível) e `CRON_SECRET` (16 ou mais caracteres); não definir `DMANDA_BANCO` nem `DMANDA_LOGIN_GOOGLE`; (3) Claude confere o publicado sem sessão (login, manifesto, ícones, `/api/exportar` barrado, cron 401 sem segredo), depois da entrada por senha confere o banco; (4) execução manual do cron pelo painel (Cron Jobs, Run) ou a automática do dia seguinte, lida em `execucoes_rotina` e no Início; (5) PWA no iPhone e no iPad e avaliação (#2).
 - **Depois, quando o usuário decidir:** destino privado das cópias (então armazenamento e, se quiser, automação) e uma demonstração da restauração em projeto descartável.
 
 ---

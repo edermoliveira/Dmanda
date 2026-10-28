@@ -18,10 +18,22 @@ function Janela({ titulo, larga, extraCab, aoFechar, sujo, rodape, children }: {
   const fechar = useRef(aoFechar);
   useEffect(() => { fechar.current = aoFechar; });
   useEffect(() => {
+    const origem = document.activeElement as HTMLElement | null;
     ref.current?.querySelector<HTMLElement>('input:not([type=checkbox]):not([type=date]), textarea')?.focus();
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.mv-menu')) { e.stopImmediatePropagation(); fechar.current(); } };
+    const tecla = (e: KeyboardEvent) => {
+      if (document.querySelector('.mv-menu')) return; // o menu aberto sobre a janela cuida do próprio teclado
+      if (e.key === 'Escape') { e.stopImmediatePropagation(); fechar.current(); return; }
+      // o foco não sai da janela com o Tab: do último campo volta ao primeiro, e ao contrário
+      if (e.key === 'Tab' && ref.current) {
+        const itens = Array.from(ref.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter((x) => x.getClientRects().length);
+        if (!itens.length) return;
+        const atual = itens.indexOf(document.activeElement as HTMLElement);
+        const alvo = e.shiftKey ? (atual <= 0 ? itens[itens.length - 1] : null) : (atual === -1 || atual === itens.length - 1 ? itens[0] : null);
+        if (alvo) { e.preventDefault(); alvo.focus(); }
+      }
+    };
     document.addEventListener('keydown', tecla, true);
-    return () => document.removeEventListener('keydown', tecla, true);
+    return () => { document.removeEventListener('keydown', tecla, true); origem?.focus?.(); }; // ao fechar, o foco volta a quem abriu a janela
   }, []);
   return (
     <div className="modal-ov" onMouseDown={(e) => { if (e.target === e.currentTarget && !sujo) aoFechar(); }}>
@@ -135,10 +147,8 @@ function EditarInterna({ d, hoje, rasc, guardarRascunho, fechar, salvar, arquiva
   };
 
   const adicionarNt = () => { const v = nt.trim(); if (!v) return; setTarefas((l) => [...l, { chave: chaveTarefa(), texto: v, concluida: false }]); setNt(''); };
-  const n = d.prazo ? diasAte(c.prazo || d.prazo, hoje) : null;
   const prazoAtual = c.prazo || null;
   const cont = !prazoAtual ? 'Sem prazo cadastrado' : (() => { const k = diasAte(prazoAtual, hoje); return k < 0 ? `Atrasada há ${plural(-k, 'dia')}` : k === 0 ? 'Vence hoje' : `Faltam ${plural(k, 'dia')}`; })();
-  void n;
   const desde = diasDesde(c.chegou_em || d.chegou_em, hoje);
   const feitas = tarefas.filter((t) => t.concluida).length;
 

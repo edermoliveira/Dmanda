@@ -44,3 +44,21 @@ Os pontos não mudaram em 25/10/2026 (segunda revisão do dia): a validação re
 **Nota de 26/10/2026 (noite):** o percentual continua 18%. Entrada por senha provada no Supabase real, migrações 6 e 7 aplicadas e a perda de tarefas corrigida são marcos de verificação registrados em `AUDITORIA.md` (seção 15); o critério de cálculo não mudou e o percentual não substitui esses marcos.
 
 **Nota de 27/10/2026:** o percentual continua 18%. A base Supabase do núcleo (acesso por senha, saída e nova entrada, gravação e leitura persistentes, restrições de acesso) tem evidência no Supabase real e foi fechada tecnicamente (`AUDITORIA.md`, seção 17), mas pelo critério acima nenhuma etapa soma pontos ainda: faltam a publicação protegida, a primeira execução automática e a avaliação do usuário da aplicação (Issue #2). O percentual não substitui esses marcos.
+
+**Nota de 27/10/2026 (noite):** o percentual continua 18%. A auditoria completa (`AUDITORIA.md`, seção 18) corrigiu defeitos e confirmou a prontidão técnica, mas nenhuma etapa cumpre ainda o critério de contagem (verificada no ambiente real publicado **e** avaliada pelo usuário).
+
+## Prontidão da primeira versão utilizável (lista, sem percentual próprio)
+
+Estados reais em 27/10/2026. "Feito" quer dizer verificado nos testes e, onde indicado, no Supabase real; "Depende de" aponta o que só existe depois de publicar ou no aparelho do usuário.
+
+| Critério | Estado | Depende de |
+|---|---|---|
+| Entrar e sair por senha | Feito no Supabase real (26 e 27/10) e no Auth falso (57 verificações) | Conferir de novo no endereço publicado |
+| Cadastrar e editar demandas e tarefas | Feito (`testar:app` 74, `testar:banco` 118; gravação real em 26/10) | Nada além da publicação |
+| Mover etapas, concluir, reabrir e as quatro visões | Feito nos testes | Avaliação visual do usuário (Issue #2) |
+| Dados preservados ao recarregar e entre aparelhos | Feito (recarga real, dois aparelhos simulados, edição simultânea recusada) | Conferir com computador e iPhone reais |
+| Início com dados reais | Feito com banco de teste; banco real tem 0 demandas | Uso real; regra de "Aguardando retorno" pendente de decisão (`AUDITORIA.md`, P5) |
+| Aplicação publicada | **Não feito** | Criar o projeto Vercel Hobby e avançar a `producao` |
+| Instalar como PWA online | Manifesto, ícones e metadados prontos e conferidos em produção local | Instalar no iPhone e no iPad |
+| Exportar uma cópia dos dados | Feito (rota, menu da conta, restauração provada só em banco local) | Destino e rotina de guarda (Issue #4); o Supabase Free não tem backup para baixar |
+| Rotina diária | Código e prova HTTP de 25/10 | Cron registrado e primeira execução automática, depois de publicar |

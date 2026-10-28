@@ -47,6 +47,11 @@ await pg.waitForSelector('.dcard');
 ok((await assuntos()).join() === 'Resposta ao TCE sobre diárias' && /1 demanda, 1 atrasada/.test(await pg.textContent('.pagehead')), 'a demanda aparece em Cards e a contagem do cabeçalho conta a atrasada');
 await ir('/demandas');
 ok((await assuntos()).join() === 'Resposta ao TCE sobre diárias', 'depois de recarregar a página a demanda continua (veio do banco)');
+// a data de hoje chega junto das demandas: nenhum quadro da carga pode mostrar a data provisória (2000-01-01) como se fosse prazo real
+await pg.addInitScript(() => { window.__amostras = []; setInterval(() => { window.__amostras.push(document.querySelector('.dcard') ? [...document.querySelectorAll('.dcard .pz, .tempo')].map((e) => e.textContent).join('|') : ''); }, 25); });
+await pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await pg.waitForSelector('.dcard'); await pg.waitForTimeout(1500);
+const amostras = await pg.evaluate(() => window.__amostras);
+ok(amostras.some((x) => x) && !amostras.some((x) => /faltam \d{4,}|há -\d/.test(x)), 'na carga, nenhum quadro mostra prazo calculado com a data provisória (faltam milhares de dias)');
 
 // 2) segunda demanda e tarefas pela janela de edição
 await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('.modal');
@@ -137,6 +142,17 @@ ok((await pg.inputValue('#d-assunto')) === 'Rascunho guardado com Esc' && !!(awa
 await pg.fill('#d-assunto', '   '); await pg.click('.modal .btn.pri');
 ok(await avisoRe(/assunto não pode ficar vazio/) && !!(await pg.$('.modal')), 'salvar com assunto vazio é recusado e a janela continua aberta');
 await pg.click('.modal .btn:has-text("Cancelar")'); await pg.waitForTimeout(300);
+// teclado: o Tab não sai da janela, o Esc devolve o foco a quem a abriu e "/" foca o filtro
+await pg.focus('.mini-card:has-text("Resposta ao TCE") .assunto'); await pg.keyboard.press('Enter'); await pg.waitForSelector('.modal');
+let saiuDaJanela = false;
+for (let i = 0; i < 60 && !saiuDaJanela; i++) { await pg.keyboard.press('Tab'); saiuDaJanela = !(await pg.evaluate(() => !!document.activeElement?.closest('.modal'))); }
+for (let i = 0; i < 5 && !saiuDaJanela; i++) { await pg.keyboard.press('Shift+Tab'); saiuDaJanela = !(await pg.evaluate(() => !!document.activeElement?.closest('.modal'))); }
+ok(!saiuDaJanela, 'o Tab e o Shift+Tab circulam dentro da janela aberta (o foco não vai para o fundo)');
+await pg.keyboard.press('Escape'); await pg.waitForTimeout(300);
+ok(await pg.evaluate(() => !!document.activeElement?.closest('.mini-card')), 'ao fechar a janela com Esc o foco volta ao card que a abriu');
+await pg.keyboard.press('/'); await pg.waitForTimeout(150);
+ok((await pg.evaluate(() => document.activeElement?.id)) === 'fq', 'a tecla "/" leva o foco ao filtro de demandas');
+await pg.keyboard.press('/'); ok((await pg.inputValue('#fq')) === '/', 'com o foco no filtro, a barra é escrita normalmente (o atalho não atrapalha a digitação)'); await pg.fill('#fq', '');
 
 // 8) falha de gravação: a interface não pode mostrar sucesso
 falhaProposital = true;
