@@ -34,7 +34,7 @@ Relatório único em [`AUDITORIA.md`](AUDITORIA.md): achados confirmados, corrig
 
 ## Como continuar em outro computador
 
-1. `git clone https://github.com/edermoliveira/Dmanda.git` (ou `git pull` na branch de trabalho, `checkpoint/2026-10-23-ajustes-a-d`).
+1. `git clone https://github.com/edermoliveira/Dmanda.git` (ou `git pull --ff-only origin main` se já houver a pasta). A `main` é a única branch de trabalho desde 27/10/2026.
 2. `npm install` (só na primeira vez).
 3. `npm run dev:teste` (banco de teste, sem credenciais) ou `npm run dev` (Supabase real, exige `.env.local`). Protótipo: `python -m http.server 7200 --bind 127.0.0.1` dentro de `prototipo`.
 4. O `.env.local`, o banco de teste (`.dados-teste/`) e os dados reais **não** vão para o GitHub.
