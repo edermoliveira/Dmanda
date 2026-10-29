@@ -14,6 +14,8 @@ Este arquivo não registra o hash do commit que o contém, de propósito. Para s
 
 **Repositório:** https://github.com/edermoliveira/Dmanda (privado). **Única branch: `main`**, que é a de trabalho e a de publicação.
 
+**Código deste bloco (29/10/2026):** o commit `6175a27a495352509d99308692ef5d45aefa4e0c` foi enviado à `main` (hash local igual ao remoto, conferido com `git ls-remote`) e a Vercel passou a servi-lo: observado no endereço publicado, sem sessão, que a resposta de `/demandas` já limpa o cookie antigo `dmanda-ultimo-uso` (comportamento só da versão nova), `/login`, manifesto e ícones 200, `/demandas`, `/config`, `/api/exportar`, `/api/sessao` e `/marca` redirecionam ao login, `/api/cron/diaria` 401 sem segredo, cabeçalhos de segurança presentes, região `gru1`. O status "success" da Vercel no GitHub desse commit **não foi consultado** (sem `gh` e sem acesso ao painel); a conclusão vem da resposta do endereço. **Depende de autenticação (seu login):** tudo o que está no roteiro da seção G.
+
 **Versão verificada e servida em 28/10/2026:** commit `58fc8ec938a4b0874f7d7c1c4ea452295090ab85`. O GitHub registra o status "Vercel, success, Deployment has completed" para esse commit. Commits posteriores a ele só alteram documentação (inclusive este arquivo) e geram uma nova implantação cada um.
 
 **Utilizável hoje (aplicação em `src/`):**
