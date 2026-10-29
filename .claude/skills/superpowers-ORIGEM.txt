@@ -1,0 +1,4 @@
+Origem: https://github.com/obra/superpowers (licença MIT, arquivo LICENSE-superpowers.txt)
+Skills copiadas: systematic-debugging, test-driven-development, verification-before-completion (pastas inteiras, em .claude/skills/).
+Conferência de 29/10/2026 contra a revisão 2ce8aa15d05bd57213e6f746f953aafb7ded7a8b: tdd e verification idênticos (exceto fim de linha); systematic-debugging diferia em duas linhas de um exemplo de diagnóstico que imprimia o valor de uma variável secreta (IDENTITY). Essas duas linhas foram atualizadas para a versão da origem (só informam se a variável existe). Sem outras diferenças locais.
+Não copiado de propósito: o restante do Superpowers (hooks, agentes, comandos e demais skills).
