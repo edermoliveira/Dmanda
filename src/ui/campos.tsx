@@ -5,7 +5,7 @@ import { type ReactNode } from 'react';
 import { Icone } from './Icone';
 import { Opcoes } from './janela-base';
 import {
-  areasDoTipo, dataBR, diasAte, numeroDe, origemDe, permanencia, plural, PRAZOS, TEM_AREA, TIPOS, type Area, type DadosDemanda, type Demanda, type Etapa, type PrazoTipo, type Tipo,
+  areasDoTipo, dataBR, diasAte, numeroDe, origemDe, permanencia, plural, PRAZOS, TEM_AREA, TIPOS, type Area, type DadosDemanda, type Demanda, type PrazoTipo, type Tipo,
 } from '@/lib/demandas';
 import { ajustarPrazo, BOTOES_PRAZO, dataComSemana, prazoPorDias, type DiaIndisponivel } from '@/lib/prazos';
 import type { TarefaEdicao } from '@/nucleo/operacoes';
@@ -164,4 +164,3 @@ export function EditorTarefas({ tarefas, setTarefas, nt, setNt, idNt = 'm-nt', a
   );
 }
 
-export type { Etapa };

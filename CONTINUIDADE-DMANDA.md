@@ -1,6 +1,6 @@
 # CONTINUIDADE DO DMANDA
 
-Documento consolidado para uma sessão nova, em qualquer computador, entender o projeto e continuar do ponto certo. Escrito em 28/10/2026 a partir dos arquivos do repositório e das evidências coletadas nesse dia. Os demais documentos têm o detalhe de cada assunto; este aponta para eles e não os substitui. Se algo divergir, vale `DECISOES.md` (decisões) e o que o próprio repositório mostrar (código).
+Documento consolidado para uma sessão nova, em qualquer computador, entender o projeto e continuar do ponto certo. Escrito em 28/10/2026 e atualizado em 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos: seção G). Os demais documentos têm o detalhe de cada assunto; este aponta para eles e não os substitui. Se algo divergir, vale `DECISOES.md` (decisões) e o que o próprio repositório mostrar (código).
 
 Este arquivo não registra o hash do commit que o contém, de propósito. Para saber o commit atual: `git ls-remote origin refs/heads/main`. Para saber o commit que a Vercel serve: ver a seção E.
 
@@ -17,18 +17,19 @@ Este arquivo não registra o hash do commit que o contém, de propósito. Para s
 **Versão verificada e servida em 28/10/2026:** commit `58fc8ec938a4b0874f7d7c1c4ea452295090ab85`. O GitHub registra o status "Vercel, success, Deployment has completed" para esse commit. Commits posteriores a ele só alteram documentação (inclusive este arquivo) e geram uma nova implantação cada um.
 
 **Utilizável hoje (aplicação em `src/`):**
-- Entrar por e-mail e senha, sair, sessão que expira após 6 horas sem uso.
-- Demandas: cadastro rápido, edição, etapas (mover, concluir, reabrir, arquivar, excluir), tarefas dentro da demanda, filtros e ordenação, quatro visões (Cards, Tabela, Lista, Quadro com arrastar).
-- Início com indicadores, grupos por prazo e Foco do dia (a partir das datas originais, em America/Sao_Paulo).
+- Entrar por e-mail e senha, sair (só neste navegador) e **sessão persistente**: o Supabase Auth a renova e o servidor regrava os cookies; não existe mais encerramento por inatividade (decisão 27).
+- Demandas: **cadastro guiado em três passos** (só o assunto é obrigatório; a demanda é criada ao fim do passo 2, em Cadastro; concluir com tarefas leva a Vistos), **consulta organizada com lápis por seção**, etapas (mover, concluir, reabrir, arquivar, excluir), tarefas, filtros e ordenação, quatro visões (Cards, Tabela, Lista, Quadro com arrastar).
+- **Prazos** (decisão 31): prazo original (data ou 5, 10, 20, 30 dias a partir de hoje) e vencimento ajustado (antecipa para o primeiro dia disponível se cair em fim de semana, feriado ou evento externo de dia inteiro), recalculado no banco quando o calendário muda. **Configurações > Dias indisponíveis** (decisão 32).
+- Início com indicadores, grupos por prazo e Foco do dia (a partir do vencimento ajustado, em America/Sao_Paulo).
 - Dados guardados no Supabase; atualização ao voltar à tela; proteção contra edição simultânea (aviso `DM409`, nada é gravado pela metade); rascunho automático dos textos digitados.
-- Cópia dos dados em JSON (menu do avatar, "Baixar cópia dos dados") e restauração por SQL (`supabase/restaurar-copia.sql`).
+- Cópia dos dados em JSON versão 2, com os dias indisponíveis (menu do avatar, "Baixar cópia dos dados"), e restauração por SQL (`supabase/restaurar-copia.sql`, aceita também cópias da versão 1).
 - PWA somente online: manifesto, ícones, metadados para iPhone e iPad. Sem service worker, sem cache de dados, sem edição offline.
 - Rotina diária na nuvem (código pronto): `GET /api/cron/diaria`, às 09:00 UTC, protegida por `CRON_SECRET`.
 
-**Em construção (aparecem como "Em construção" ou só existem no protótipo):** Entradas (post-its), Agenda (com Google Calendar), Documentos (com Drive), IA, Configurações (paletas, fontes, tamanhos), Perfil (humor, energia, produtividade), busca global e itens do botão "+". Nenhum desses módulos foi iniciado na aplicação funcional.
+**Em construção (aparecem como "Em construção" ou só existem no protótipo):** Entradas (post-its), Agenda (com Google Calendar), Documentos (com Drive), IA, Configurações além dos dias indisponíveis (paletas, fontes, tamanhos), Perfil (humor, energia, produtividade), busca global e itens do botão "+". Nenhum desses módulos foi iniciado na aplicação funcional.
 
 **Integração real:**
-- **Supabase** (projeto `gmxoosvgfcydccyeudej`, São Paulo, plano Free): 7 migrações aplicadas e correspondentes às versionadas; login por e-mail e senha; Google desativado; cadastro público desligado; 1 usuário.
+- **Supabase** (projeto `gmxoosvgfcydccyeudej`, São Paulo, plano Free): **8 migrações aplicadas** e correspondentes às versionadas (a 8, `20261029000000_prazos_e_dias_indisponiveis`, aplicada em 29/10/2026 com dry-run antes, sem reset e sem reaplicar as anteriores); login por e-mail e senha; Google desativado; cadastro público desligado; 1 usuário.
 - **Vercel Hobby:** publicada na região `gru1`, `main` como origem de produção. Valores das variáveis ficam só na plataforma.
 
 ---
@@ -45,15 +46,16 @@ Este arquivo não registra o hash do commit que o contém, de propósito. Para s
 8. **27/10, consolidação.** O checkpoint foi integrado à `main` por fast-forward e removido; a `main` passou a ser a referência única (decisão 24).
 9. **27/10, publicação pela main.** `vercel.json` passou a implantar só a `main`; a branch `producao` foi removida (decisão 25). O usuário importou o projeto na Vercel.
 10. **28/10, conferência da publicação** e criação deste documento.
+11. **29/10, bloco de melhorias** (decisões 27 a 33): sessão persistente (fim da regra das 6 horas), cadastro guiado em três passos, consulta com lápis por seção, prazo original e ajustado, dias indisponíveis em Configurações, migração 8 e cópia versão 2. Detalhes na seção G.
 
-Decisões antigas que **não valem mais** e podem aparecer em documentos históricos: login exclusivo pelo Google; recomendação de plano Pro da Vercel (decisão 17); branch `checkpoint/2026-10-23-ajustes-a-d` como branch de trabalho; branch `producao` como portão de publicação (decisão 16); o direcionamento "primeira implantação descartável vinda da `main`". As seções históricas de `SINCRONIZA-PROJETINHO.md` e `AUDITORIA.md` (1 a 17) preservam esses registros.
+Decisões antigas que **não valem mais** e podem aparecer em documentos históricos: **a sessão que expira após 6 horas sem uso (superada pela decisão 27)**; cadastro rápido com número e origem preenchidos por padrão e prazo único digitado (superado pelas decisões 28, 30 e 31); login exclusivo pelo Google; recomendação de plano Pro da Vercel (decisão 17); branch `checkpoint/2026-10-23-ajustes-a-d` como branch de trabalho; branch `producao` como portão de publicação (decisão 16); o direcionamento "primeira implantação descartável vinda da `main`". As seções históricas de `SINCRONIZA-PROJETINHO.md` e `AUDITORIA.md` (1 a 17) preservam esses registros.
 
 ---
 
 ## C. Decisões que continuam válidas
 
 - **Planos gratuitos:** Vercel Hobby e Supabase Free. Nada pago, nem teste pago, e o Pro não é decisão presumida. Limites com fonte em `supabase/LEIA-ME.md`, "Planos gratuitos". Dois pontos reais: a regra de uso não comercial do Hobby não esclarece o caso (efeito possível: pausa da conta; pergunta opcional ao suporte, que não bloqueia) e o Supabase Free pode pausar após uma semana de pouca atividade e **não oferece backup para baixar**.
-- **Acesso:** e-mail e senha ao usuário existente (o mesmo identificador de sempre), definida pelo script `npm run definir:senha` e nunca registrada em arquivo. **Google desligado** no painel do Supabase (o botão só aparece com `DMANDA_LOGIN_GOOGLE=sim`); **cadastro público desligado**; hook de cadastro continua só Google, de propósito, para ninguém criar usuário por senha. Restrição em três camadas: hook, servidor (sessão, provedor, e-mail, 6 horas) e RLS por `conta_autorizada()`.
+- **Acesso:** e-mail e senha ao usuário existente (o mesmo identificador de sempre), definida pelo script `npm run definir:senha` e nunca registrada em arquivo. **Google desligado** no painel do Supabase (o botão só aparece com `DMANDA_LOGIN_GOOGLE=sim`); **cadastro público desligado**; hook de cadastro continua só Google, de propósito, para ninguém criar usuário por senha. Restrição em três camadas: hook, servidor (sessão, provedor, e-mail; **sem limite de inatividade**, decisão 27) e RLS por `conta_autorizada()`.
 - **Git e publicação:** `main` é a única branch de continuidade e de publicação. Cada envio à `main` implanta o painel real. Nada de force push nem de reescrever histórico. `producao` e checkpoint não existem mais.
 - **Dados e credenciais:** valores reais só no `.env.local` (nunca no Git, nunca no chat) e nas variáveis da Vercel. Chave de serviço do Supabase só no servidor. Dados fictícios do protótipo nunca entram no banco real. Cópias `dmanda-copia-*.json` ficam fora do Git. O assistente não lê nem imprime `.env*`; conferência por `npm run conferir:env`.
 - **Referência visual:** o protótipo Catalyst aprovado no commit `cd7b03f` é a referência. A aprovação vale para o **protótipo**. A **aplicação React ainda não recebeu aprovação visual do usuário** (Issue #2); conferências feitas por ferramenta não equivalem a essa aprovação.
@@ -61,20 +63,23 @@ Decisões antigas que **não valem mais** e podem aparecer em documentos histór
 - **Cópias e recuperação (estado real):** exportação disponível e restauração por SQL **demonstrada só em banco local**, com dados fictícios. Armazenamento externo e execução automática **não existem**; o destino privado é decisão pendente do usuário (Issue #4). Como o Supabase Free não tem backup para baixar, **a cópia em arquivo é o único backup**. Orientação enquanto isso: uma cópia por dia de uso, guardada fora do projeto.
 - **Produto:** cadastro rápido com poucos campos; prazos derivados das datas originais; falha de gravação nunca mostra sucesso; nunca mensagem de cobrança ou culpa; cards sem barra de rolagem; texto digitado nunca se perde.
 
-**Ferramentas: instaladas, habilitadas e efetivamente usadas** (plugins, MCPs e o binário do Impeccable são **por computador** e não vêm pelo Git; o que vem é `.claude/settings.json` e `.claude/skills/`):
+**Ferramentas: instaladas, habilitadas, carregadas e efetivamente usadas** (plugins, MCPs e o binário do Impeccable são **por computador** e não vêm pelo Git; o que vem é `.claude/settings.json` e `.claude/skills/`). Conferência única de 29/10/2026 para o bloco de sessão, cadastro e prazos:
 
-| Ferramenta | Instalada | Habilitada no projeto | Uso real |
-|---|---|---|---|
-| Ponytail (`ponytail-audit`, `ponytail-review`) | Dois `SKILL.md` copiados sem alteração para `.claude/skills/` (revisão `09c434a`, licença MIT, origem em `ponytail-ORIGEM.txt`; sem hooks nem telemetria) | Sim, como skills do projeto | **Lidos e seguidos manualmente como roteiro na auditoria de 27/10. Não foram invocados pelo comando de skills.** |
-| Taste (`taste-skill`) | Plugin 2.1.4 no computador | **Não** (desativado em `.claude/settings.json`) | **Lido manualmente** (`references/app-screens.md` e `critique.md`) como lista de pontos de olhar; não invocado; nada do Catalyst foi trocado |
-| Impeccable | Skill em `.claude/skills/impeccable` e agentes em `.claude/agents/`, sem hooks, telemetria desligada, binário local ignorado pelo Git | Sim | Avalia e refina a direção aprovada, nunca gera novas direções. Não foi usado na auditoria de 27/10 |
-| `systematic-debugging`, `test-driven-development`, `verification-before-completion` | Copiadas em `.claude/skills/` (licença em `LICENSE-superpowers.txt`) | Sim | Método de trabalho |
-| Playwright | Plugin de usuário; **os testes do projeto usam `playwright-core` com o Edge**, sem o plugin | Sim | Os scripts `testar:app` e `testar:sessao` rodam sem o plugin. Nesta sessão o servidor MCP do plugin falhou ao conectar (timeout) e não foi necessário |
-| Context7 | Plugin de usuário | Sim | Documentação externa, quando necessário |
-| code-review | Plugin de usuário | Sim | Revisão concentrada; usada na auditoria de 26/10 (`AUDITORIA.md` 3.5) |
-| Figma MCP | Escopo local do projeto (`https://mcp.figma.com/mcp`) | Sim | Consultas pontuais; não usado nesta fase |
-| `ui-ux-pro-max`, `code-simplifier` | Instalados no computador | **Não** (as duas chaves de `code-simplifier` ficam desativadas) | Não usados |
-| Extensão do Chrome (claude-in-chrome) | Disponível nesta sessão | Por sessão | Em 28/10 só abriu a página de login (sem sessão) |
+| Ferramenta | Instalada (versão) | Habilitada | Carregada nesta sessão | Uso real |
+|---|---|---|---|---|
+| Impeccable | **4.8.0** (atualizado em 29/10 pelo `impeccable update --project --no-hooks`; antes 4.7.0; motor 0.1.18; sem hooks, telemetria desligada, `settings.json` intacto) | Sim, skill do projeto | A skill foi listada no início da sessão (4.7.0); a 4.8.0 vale a partir da próxima sessão | **Não invocado** neste bloco. A revisão da interface foi feita à mão sobre as capturas e as medições (hierarquia, transbordo, rodapé, alvos), o que achou e corrigiu três defeitos do celular |
+| `systematic-debugging` | Atualizado em 29/10 (2 linhas de um exemplo que imprimiam o valor de um segredo, corrigidas como na origem `obra/superpowers`, revisão `2ce8aa1`); origem em `superpowers-ORIGEM.txt` | Sim | Sim | Método da investigação da perda de sessão e dos defeitos de login |
+| `test-driven-development`, `verification-before-completion` | Idênticos à origem (só fim de linha) | Sim | Sim | Testes escritos antes das correções; verificação antes de concluir |
+| Ponytail (`ponytail-audit`, `ponytail-review`) | Idênticos à origem `DietrichGebert/ponytail` (conferido em 29/10: só o README mudou depois da revisão `09c434a`) | Sim, skills do projeto | Sim | **`ponytail-review` invocado** sobre o bloco |
+| code-review | Plugin atualizado em 29/10 para **1.0.1** (antes `58267944f921`); a skill embutida `code-review` é a usada | Sim | A skill embutida sim; o plugin novo só após reiniciar | **`/code-review medium` executado** sobre o bloco: 5 apontamentos, 1 procedente (erro do `refreshSession` na entrada, corrigido) |
+| Context7 | Plugin atualizado em 29/10 para `f8c5e7a1dcb7` | Sim | O servidor MCP carregado é o anterior; o novo só após reiniciar | Consultado para o `@supabase/ssr` (cookies, cabeçalhos de cache, `getClaims` x `getUser`) |
+| Playwright | Plugin atualizado em 29/10 para `f8c5e7a1dcb7`. **Os testes do projeto usam `playwright-core` com o Edge** (1.64.1), sem o plugin | Sim | Plugin: só após reiniciar | Todos os testes de navegador e as capturas do bloco usaram `playwright-core` + Edge |
+| Taste (`taste-skill` 2.1.4) | Marketplace atualizado em 29/10; plugin **não** foi atualizado | **Não** (desativado) | Não | Não usado neste bloco |
+| `ui-ux-pro-max`, `code-simplifier` | Instalados no computador | **Não** (as duas chaves do `code-simplifier` ficam desativadas) | Não | Não usados |
+| Figma MCP | Escopo local do projeto | Sim | Disponível | Não usado |
+| GitHub CLI (`gh`) | **Não instalado neste computador** | n/a | n/a | As Issues não puderam ser atualizadas daqui: texto pronto em `AUDITORIA.md` 19.4 |
+
+**Para carregar as versões novas dos plugins:** fechar e reabrir o Claude Code neste projeto (`claude` na pasta do projeto). Nada disso bloqueia o projeto.
 
 Não instalar, sem necessidade concreta: Superpowers completo, ferramentas de memória, o restante do Ponytail, Trail-code, Playwright CLI. `ANALISE-FERRAMENTAS.md` e `AUDITORIA.md` (seções 4, 16 e 18.1) têm o histórico.
 
@@ -88,13 +93,13 @@ Não instalar, sem necessidade concreta: Superpowers completo, ferramentas de me
 |---|---|
 | `src/nucleo/` | Operações validadas de demandas e a lógica da rotina diária (reutilizáveis pela futura IA) |
 | `src/servidor/` | Transporte (Supabase real ou banco de teste) e ações do servidor |
-| `src/lib/` | Regras puras (datas, grupos do Início, sessão, conta autorizada) e clientes Supabase |
-| `src/ui/` | Interface (contexto, janelas, páginas, cápsula de seleção) |
+| `src/lib/` | Regras puras (datas, `prazos.ts`, grupos do Início, sessão, conta autorizada) e clientes Supabase |
+| `src/ui/` | Interface (contexto, janelas, páginas, cápsula de seleção); `cadastro.tsx` (cadastro guiado), `detalhe.tsx` (consulta com lápis), `campos.tsx` (campos e prévia do prazo), `config.tsx` (dias indisponíveis) |
 | `src/estilos/` | CSS do Catalyst reaproveitado do protótipo |
-| `src/proxy.ts` | Porta de entrada: sessão, e-mail autorizado, expiração de 6 horas |
+| `src/proxy.ts` | Porta de entrada: confere e renova a sessão do Supabase, regrava os cookies (resposta, redirecionamentos e pedido), e-mail autorizado, 503 sem apagar a sessão em falha de rede |
 | `src/app/api/cron/diaria` | Rotina diária (autenticação própria por `CRON_SECRET`, isenta do proxy) |
 | `src/app/(antigo)` e `src/components` | Design antigo sem uso (referência; exclusão aguarda autorização, melhoria P1) |
-| `supabase/migrations/` | 7 migrações em ordem; `supabase/restaurar-copia.sql`; `supabase/LEIA-ME.md` |
+| `supabase/migrations/` | 8 migrações em ordem; `supabase/restaurar-copia.sql`; `supabase/LEIA-ME.md` |
 | `scripts/` | Testes, `conferir-env`, `definir-senha`, captura de telas, `dev-teste` |
 | `prototipo/` | Protótipo Catalyst aprovado (referência), com testes próprios (`prototipo/CLAUDE.md`) |
 | `public/` e `imagens/` | Ícones da PWA e imagens |
@@ -111,10 +116,10 @@ Não instalar, sem necessidade concreta: Superpowers completo, ferramentas de me
 | `npm run dev:teste` | Mesma porta, **banco local descartável** (`.dados-teste/`), sem credenciais |
 | `npm run build` e `npm run start` | Produção local na 7100 |
 | `npx tsc --noEmit` e `npx eslint src scripts` | Tipos e lint |
-| `npm run testar:regras` | Regras puras (26) |
-| `npm run testar:banco` | SQL, RLS, rotina, acesso, hook no PGlite (118) |
-| `npm run testar:app` | Navegador e banco de teste (74); sobe o próprio servidor na 7103 |
-| `npm run testar:sessao` | Sessão e entrada por senha com Auth **falso** (57) |
+| `npm run testar:regras` | Regras puras (51) |
+| `npm run testar:banco` | SQL, RLS, rotina, acesso, hook, prazos, calendário e migração 8 sobre dados antigos no PGlite (164) |
+| `npm run testar:app` | Navegador e banco de teste (131); sobe o próprio servidor na 7103 |
+| `npm run testar:sessao` | Sessão persistente, renovação, revogação, falhas de rede, Sair local e entrada por senha com Auth **falso** (78) |
 | `npm run testar:senha-terminal` | `definir:senha` em console Windows (10 cenários) |
 | `npm run conferir:env` | Confere o `.env.local` sem mostrar valores e lê configurações do Supabase em modo leitura |
 | `npm run definir:senha` | Define a senha do usuário existente (digitada no terminal, nunca gravada) |
@@ -123,8 +128,8 @@ Só pode haver um `next dev` por vez (a pasta `.next` tem trava). Portas: 7100 a
 
 **Variáveis (só os nomes; valores nunca no Git):** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`, `SUPABASE_SERVICE_ROLE_KEY` (só servidor, sensível), `CRON_SECRET` (16 ou mais caracteres). Opcional: `DMANDA_LOGIN_GOOGLE` (vazia por padrão). Só em desenvolvimento: `DMANDA_BANCO=teste` (recusada em produção). Modelo em `.env.example`. Na Vercel, as cinco primeiras ficam **só em Production**.
 
-**Migrações** (todas aplicadas no projeto real; histórico remoto igual ao versionado em 28/10/2026):
-`20261025000000_nucleo_demandas`, `20261025000100_salvar_demanda`, `20261025000200_rotina_diaria`, `20261025000300_acesso_exclusivo`, `20261025000400_revogar_funcao_da_plataforma`, `20261026000000_login_email_senha`, `20261026000100_protecao_edicao_simultanea`. Nunca reescrever uma migração aplicada nem usar `db reset` no projeto real; novas migrações só com dry-run (`npx supabase db push --linked --dry-run`).
+**Migrações** (todas aplicadas no projeto real; histórico remoto igual ao versionado em 29/10/2026 (`db push --dry-run`: "Remote database is up to date")):
+`20261025000000_nucleo_demandas`, `20261025000100_salvar_demanda`, `20261025000200_rotina_diaria`, `20261025000300_acesso_exclusivo`, `20261025000400_revogar_funcao_da_plataforma`, `20261026000000_login_email_senha`, `20261026000100_protecao_edicao_simultanea`, `20261029000000_prazos_e_dias_indisponiveis` (aditiva: campos opcionais, prazo original e ajustado, dias indisponíveis; testada sobre dados antigos; compatível com o aplicativo anterior). Nunca reescrever uma migração aplicada nem usar `db reset` no projeto real; novas migrações só com dry-run (`npx supabase db push --linked --dry-run`).
 
 **Onde estão as decisões, auditorias e tarefas**
 - Decisões: `DECISOES.md` (a mais recente é a fonte). Auditorias e mapa de persistência: `AUDITORIA.md` (seção 18 é a auditoria completa de 27/10; 17 fecha a base Supabase).
@@ -135,6 +140,8 @@ Só pode haver um `next dev` por vez (a pasta `.next` tem trava). Portas: 7100 a
 ---
 
 ## E. Validação e pendências
+
+**Atualização de 29/10/2026 (bloco de sessão, cadastro e prazos):** *verificado localmente (automatizado)*: `tsc` e `eslint` sem erros; `testar:regras` 51 de 51; `testar:banco` 164 de 164; `testar:app` 131 de 131 (Edge, banco de teste); `testar:sessao` 78 de 78 (Auth falso); `build` com saída 0. *Emulação de aparelho* (Edge, não é o aparelho): computador 1360x800, iPad 820x1100 e iPhone 390x844, nos temas claro e escuro, com capturas examinadas e medições (sem rolagem lateral, rodapé à vista; os campos de tarefa têm linha de 48 px de altura, desenho aprovado). *Supabase real:* migração 8 aplicada e conferida (3 demandas, 7 tarefas e 1 usuário preservados; os 3 prazos viraram referência original legada; 0 dias indisponíveis). **Não validado (depende de você ou do aparelho):** teste no iPhone real e na PWA instalada, a persistência da sessão por horas reais, avaliação visual do usuário (Issue #2), validação autenticada em produção feita pelo assistente (sem a sua senha), cron.
 
 **Distinção usada neste documento:** *verificado localmente* (testes e build no computador), *observado em produção* (no endereço publicado) e *aprovação visual do usuário* (só ele concede).
 
@@ -160,7 +167,7 @@ Só pode haver um `next dev` por vez (a pasta `.next` tem trava). Portas: 7100 a
 
 **Estado do cron:** código pronto e testado localmente; `vercel.json` com o agendamento `0 9 * * *` e rota correta; **implantação do agendamento não comprovada**; **chamada manual não feita**; **primeira execução automática não observada**. No Hobby a chamada ocorre em qualquer minuto da hora marcada (09:00 a 09:59 UTC, ou 06:00 a 06:59 em Brasília). A prova da rotina é a linha "Rotina diária na nuvem: última execução em..." no Início (vem da tabela `execucoes_rotina`; os dois registros que existem hoje são testes locais de 25/10).
 
-**Nunca validado de ponta a ponta:** expiração real de 6 horas; restauração da cópia em projeto real; download da cópia dentro do app instalado; instalação da PWA no iPhone e no iPad; **aprovação visual da aplicação React**; desempenho e latência em produção.
+**Nunca validado de ponta a ponta:** a sessão persistente por horas reais no iPhone (a antiga expiração de 6 horas deixou de existir); restauração da cópia em projeto real; download da cópia dentro do app instalado; instalação da PWA no iPhone e no iPad; **aprovação visual da aplicação React**; desempenho e latência em produção.
 
 **Pendências realmente necessárias para o primeiro uso**
 1. Confirmar a persistência real (recarregar e a demanda continuar) e a saída e nova entrada no endereço publicado: do usuário, em segundos.
@@ -207,14 +214,45 @@ Depois: criar o `.env.local` copiando o modelo `.env.example` e preencher **sem 
 
 **O que o `git pull` atualiza:** só o **código**. Os **dados** (demandas, tarefas, usuário, sessões) ficam no Supabase e são os mesmos em qualquer computador e no endereço publicado. O `.env.local` e o banco de teste (`.dados-teste/`) são por computador e não vão para o Git. **Atenção:** enviar um commit à `main` publica o painel real; enviar só o que foi verificado.
 
+**O que este bloco mudou fora do Git (para continuar em casa)**
+- **`.env.local` e variáveis da Vercel: nenhuma foi alterada nem criada** neste bloco. Nenhuma variável nova é necessária. O que você já tem continua valendo.
+- **Supabase (remoto, vale em qualquer computador):** a migração `20261029000000_prazos_e_dias_indisponiveis` já está aplicada no projeto real. Em casa não aplique nada: `git pull` e `npx supabase db push --linked --dry-run` deve dizer "Remote database is up to date".
+- **Nada foi mudado no painel do Supabase nem da Vercel** (Google segue desligado, cadastro público desligado).
+- **Só neste computador de trabalho (repetir em casa se quiser as mesmas versões):** os plugins `code-review` (1.0.1), `context7` e `playwright` (`f8c5e7a1dcb7`) foram atualizados com `claude plugin marketplace update claude-plugins-official` e `claude plugin update <plugin>@claude-plugins-official`; as skills do projeto (Impeccable 4.8.0 e `systematic-debugging`) **vêm pelo Git** com o `git pull`; só o binário do Impeccable é por computador (`.claude/skills/impeccable/scripts/impeccable.cmd update -y --project --no-hooks` baixa o motor 0.1.18). O `gh` não está instalado neste computador de trabalho.
+- **Fora do Git de propósito:** `.env.local`, `.dados-teste/` (bancos de teste descartáveis) e cópias `dmanda-copia-*.json`. Tudo o mais foi enviado.
+
 **Primeira ação concreta da próxima sessão**
-1. **Usuário, no endereço publicado:** entrar com e-mail e senha, recarregar a página e conferir se a demanda "Portarias Comissões" continua; sair e entrar de novo. Isso valida persistência e sessão em produção.
-2. **Usuário, na Vercel (projeto `dmanda`, Settings > Cron Jobs):** conferir que `/api/cron/diaria` com `0 9 * * *` aparece registrada e clicar em **Run**. Se a execução automática de 28/10 já tiver ocorrido, o Início mostra a última execução.
-3. **Assistente:** `git pull`, conferir no banco (`npx supabase db query --linked "select ok, erro, iniciou_em from public.execucoes_rotina order by iniciou_em desc limit 3"`) e registrar o resultado nas Issues #3 e neste documento. Se o Chrome da extensão estiver com a sessão aberta, fazer a conferência curta com registros TESTE identificados e removê-los em seguida.
+1. **Você, no computador e no iPhone, no endereço publicado:** seguir o **roteiro de avaliação** da seção G (dura poucos minutos). Reabra a PWA no iPhone horas depois e confirme que não pede login.
+2. **Você, na Vercel (projeto `dmanda`, Settings > Cron Jobs):** conferir que `/api/cron/diaria` com `0 9 * * *` aparece registrada e clicar em **Run**.
+3. **Assistente:** `git pull`, conferir no banco (`npx supabase db query --linked "select ok, erro, iniciou_em from public.execucoes_rotina order by iniciou_em desc limit 3"`) e registrar o resultado. Só depois da sua aprovação deste bloco avançar para Entradas, Agenda, Documentos, IA e demais módulos.
+4. **Reconciliação pendente:** o commit `eae8337` (só documentação) ficou local no computador de casa e não está no `afadf14`; em casa, conferir `git log eae8337` e reconciliar com a `main` (sem force push).
 
 ---
 
-## G. Últimas alterações (27 e 28/10/2026)
+## G. Últimas alterações (29/10/2026: sessão persistente, cadastro guiado, consulta e prazos)
+
+**Causa da perda de sessão no iPhone (investigada antes de corrigir):** a regra das 6 horas dependia de um cookie próprio, `dmanda-ultimo-uso`, renovado só em navegações, cuja ausência ou idade maior que 6 h encerrava a sessão do Supabase mesmo válida. A PWA reaberta depois de horas caía no login. Além disso o proxy não entregava os cookies renovados à renderização e aos redirecionamentos, tratava qualquer falha de rede como "sem sessão" e a primeira entrada escrevia os cookies por script (limitados a 7 dias no Safari). Correção: sessão do Supabase renovada pelo SDK e regravada nos cookies (resposta, redirecionamentos e pedido), falha de rede responde 503 "tente de novo" sem apagar nem liberar, o login regrava a sessão pelo servidor, o cookie antigo só é apagado. Detalhes e limites em `supabase/LEIA-ME.md` ("Sessão persistente") e `AUDITORIA.md` 19.
+
+**O que foi implementado e onde encontrar:**
+- **Cadastro guiado:** botão "Nova demanda" (Demandas, botão "+", Início, colunas do Quadro). Três passos; a demanda é criada ao fim do passo 2; concluir com tarefas leva a Vistos. `src/ui/cadastro.tsx`.
+- **Consulta com lápis:** clique em qualquer card, linha ou item. Cinco seções (Identificação, Descrição, Chegada e prazo, Andamento, Tarefas), um lápis em cada, Cancelar e Salvar na seção. `src/ui/detalhe.tsx`.
+- **Prazos:** prazo original, vencimento ajustado e explicação em Chegada e prazo; Cards, Quadro, Tabela, Lista, Início e a rotina diária leem o vencimento ajustado. Regra em `src/lib/prazos.ts` e na migração 8.
+- **Dias indisponíveis:** Configurações (menu lateral ou "Mais" no celular). Cadastro de feriados e eventos externos de dia inteiro, com edição e exclusão; recalcula os vencimentos no servidor.
+- **Cópia dos dados versão 2** (`/api/exportar`) e restauração (`supabase/restaurar-copia.sql`, aceita versões 1 e 2).
+
+**Comportamento definitivo dos prazos:** permanência = dias corridos desde a chegada (sem chegada, não há contagem); prazo original = data escolhida ou hoje + 5, 10, 20 ou 30 dias corridos (exclui o dia de hoje, inclui o último; nunca parte da chegada); vencimento ajustado = original antecipado, dia a dia, até o primeiro dia que não seja sábado, domingo, feriado ou evento externo cadastrado (vale para data digitada); recálculo automático e persistido no Supabase ao cadastrar, alterar ou excluir um dia, nos dois sentidos, sem passar do original e sem tocar nas finalizadas; reabrir usa o calendário de então; demandas antigas viram "legado" (o prazo de então é a referência original).
+
+**Testes executados (resultados reais):** `tsc` e `eslint` limpos; `testar:regras` 51/51; `testar:banco` 164/164 (inclui migração sobre dados antigos, equivalência com a prévia em TypeScript em 150 datas e concorrência); `testar:app` 131/131; `testar:sessao` 78/78; `build` exit 0. **Limitações:** Auth falso (não é o Supabase real), Edge emulando aparelhos (não é iPhone), banco PGlite (não é o Postgres do Supabase).
+
+**Ferramentas:** ver a tabela da seção C. Revisões: `ponytail-review` (1 sobra de código removida) e `/code-review medium` (1 apontamento procedente, corrigido: o erro do `refreshSession` na entrada).
+
+**Roteiro único de avaliação (computador e iPhone, no endereço publicado, com a sua senha):**
+1. *Computador:* entrar; Demandas > Nova demanda; passo 1 só com o assunto > Próximo; passo 2 clicar "10 dias" e conferir a prévia; escolher um sábado e ver a antecipação para sexta; **Pular e salvar demanda** (ou salvar) e ver o aviso "criada e salva em Cadastro"; passo 3 adicionar uma tarefa > Concluir cadastro (deve ir para Vistos). Apague essa demanda de teste depois.
+2. *Computador:* abrir um card; tocar no lápis de cada seção, editar e salvar; Cancelar descarta. Em Configurações cadastrar um feriado numa sexta e ver o vencimento de uma demanda de sábado recuar; excluir o feriado e ver voltar.
+3. *iPhone:* abrir o app instalado, entrar uma vez, fechar totalmente, esperar algumas horas (o ideal é um dia) e reabrir: **não deve pedir senha**. Conferir também o teclado virtual no cadastro e na consulta, os botões do rodapé e o modo escuro.
+4. *Avise o que estranhar:* qualquer tela confusa, texto, ou data que não bata com a sua conta.
+
+**Registro anterior (27 e 28/10/2026):**
 
 **Correções da auditoria (commit `ba6b33a`, em `main`):** (1) data provisória de 2000 aparecia por cerca de 0,2 s nos cards em toda carga ("faltam 9789 d", "0 atrasadas"); corrigida (`src/ui/contexto.tsx`: `setHoje(hojeISO())` junto de `setDemandas`). (2) Foco do teclado preso na janela e devolvido a quem a abriu (`src/ui/janelas.tsx`). (3) Atalho "/" que foca o filtro, como no protótipo (`src/ui/paginas.tsx`). (4) Removido `suppressHydrationWarning` indevido (`src/ui/Casca.tsx`). (5) PGlite de teste fora do pacote das funções da Vercel, de 611 para 261 itens (`next.config.ts`). (6) `catalyst.css` incluído no pacote das funções (`next.config.ts`). (7) Avisos "Você saiu" e "login vale 6 horas" em tom neutro e não em vermelho. (8) Variável morta removida. Verificações novas em `testar:app` (74).
 

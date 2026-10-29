@@ -29,6 +29,8 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const publico = pathname.startsWith('/login') || pathname.startsWith('/auth');
   const tinhaCookieLegado = request.cookies.has(COOKIE_LEGADO_ULTIMO_USO);
+  // lido antes de conferir a sessão: o SDK limpa os cookies de uma sessão que o Auth recusa, e depois disso não dá mais para saber se existia sessão
+  const tinhaSessao = request.cookies.getAll().some((k) => ehCookieDeSessao(k.name) && k.value);
 
   let resposta = NextResponse.next({ request });
   const gravacoes: Gravacao[] = [];
@@ -65,18 +67,19 @@ export async function proxy(request: NextRequest) {
   }
   if (!user) {
     if (publico) return aplicar(resposta);
-    const tinhaSessao = request.cookies.getAll().some((k) => ehCookieDeSessao(k.name) && k.value);
     // sem sessão alguma é a primeira visita; com cookies de sessão que o Auth recusou, a sessão foi encerrada ou revogada
     if (tinhaSessao && situacao === 'invalida') await sb.auth.signOut({ scope: 'local' }).catch(() => undefined); // limpa só os cookies deste navegador
     return redirecionar(tinhaSessao || situacao === 'invalida' ? '/login?encerrada=1' : '/login');
   }
-  if (!contaAutorizada(user)) {
+  // as páginas públicas não barram a conta fora da lista: a ação de entrada do próprio /login confere a conta e responde "e-mail ou senha incorretos"
+  if (!publico && !contaAutorizada(user)) {
     // escopo local: encerra só a sessão deste navegador
     await sb.auth.signOut({ scope: 'local' });
     return redirecionar('/login?negado=1');
   }
-  // com sessão válida o login não faz sentido
-  if (pathname.startsWith('/login')) return redirecionar('/');
+  // com sessão válida o login não faz sentido. Só para quem navega até lá (GET): a ação que conclui a entrada é um POST para /login e precisa rodar
+  // (é ela que confere a conta e regrava a sessão pelo servidor); uma tela de login que ficou velha também a chama e termina no painel.
+  if (pathname.startsWith('/login') && request.method === 'GET' && contaAutorizada(user)) return redirecionar('/');
   return aplicar(resposta);
 }
 

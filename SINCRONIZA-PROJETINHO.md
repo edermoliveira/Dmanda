@@ -2,9 +2,22 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Última atualização:** 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos: ver o bloco logo abaixo); antes, 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
+
+---
+
+## BLOCO DE 29/10/2026: SESSÃO PERSISTENTE, CADASTRO GUIADO E PRAZOS (leia primeiro)
+
+Resumo técnico e retomada: `CONTINUIDADE-DMANDA.md` (seção G). Decisões 27 a 33 em `DECISOES.md`.
+
+- **Sessão:** a regra das 6 horas foi removida. Causa do relato do iPhone, correção e como ficou: `supabase/LEIA-ME.md` ("Sessão persistente") e `AUDITORIA.md` seção 19.
+- **Cadastro guiado:** `src/ui/cadastro.tsx` (três passos; a demanda é criada ao fim do passo 2, em Cadastro). **Consulta com lápis:** `src/ui/detalhe.tsx`. **Dias indisponíveis:** `src/ui/config.tsx` (Configurações).
+- **Prazos:** migração `supabase/migrations/20261029000000_prazos_e_dias_indisponiveis.sql`; regra pura em `src/lib/prazos.ts` (a mesma do banco, com teste de equivalência).
+- **Estado remoto e publicação deste bloco:** ver `CONTINUIDADE-DMANDA.md` (seção G).
+- **Referência ao commit `eae8337` (somente documentação), que ficou local no computador de casa e não está no `afadf14` recebido neste computador:** na próxima vez que o computador de casa for usado, conferir `git log eae8337` lá, reconciliar com a `main` (sem force push) e só então decidir o que aproveitar. Este bloco não presume acesso a esse commit nem depende dele.
+- **Comandos de retomada:** `git fetch origin`, `git checkout main`, `git pull --ff-only origin main`, `npm ci`, `npm run conferir:env`.
 
 ---
 

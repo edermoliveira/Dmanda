@@ -251,7 +251,7 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
   // entrada correta (usuário criado pelo Google, que ganhou senha: provider continua google); o servidor regrava a sessão por Set-Cookie
   provedorSenha = 'google';
   const acoes = [];
-  p0.on('response', async (resp) => { if (resp.request().method() === 'POST' && resp.request().headers()['next-action']) acoes.push(await resp.headerValues('set-cookie').catch(() => [])); });
+  p0.on('response', async (resp) => { if (resp.request().method() === 'POST' && resp.request().headers()['next-action']) acoes.push(String((await resp.allHeaders().catch(() => ({})))['set-cookie'] ?? '').split(String.fromCharCode(10))); });
   await Promise.all([p0.waitForURL((u) => u.pathname === '/', { timeout: 120000 }), entrar(EMAIL, SENHA)]);
   await p0.waitForSelector('.app .main', { timeout: 120000 });
   const ck = await c0.cookies();

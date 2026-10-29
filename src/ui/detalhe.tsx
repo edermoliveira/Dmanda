@@ -67,9 +67,8 @@ function Detalhe({ d }: { d: Demanda }) {
   const fecharGuardando = () => {
     if (sujo) guardarRascunho(chave, { dados: { ...c, etapa }, tarefas: abertas.includes('tarefas') ? lista : undefined, nt: '', versao: versaoBase, secoes: abertas });
     else guardarRascunho(chave, null);
-    fecharJanelaSeguro();
+    fecharJanela();
   };
-  const fecharJanelaSeguro = () => fecharJanela();
 
   const abrir = (s: Secao) => {
     if (abertas.length === 0) { setVersaoBase(d.versao); setConflito(false); }
@@ -161,7 +160,7 @@ function Detalhe({ d }: { d: Demanda }) {
       </Bloco>
 
       <Bloco ctx={ctx} s="descricao" editor={<Descricao c={c} mudar={mudar} prefixo="d" />}>
-        <dl className="ler"><Linha rotulo="Descrição" valor={d.descricao.trim()} longo /></dl>
+        <p className={`ler-texto${d.descricao.trim() ? '' : ' vazio'}`}>{d.descricao.trim() || 'Sem descrição'}</p>
       </Bloco>
 
       <Bloco ctx={ctx} s="chegada" editor={<CamposChegadaPrazo c={c} mudar={mudar} prefixo="d" hoje={hoje} dias={dias} legado={d.prazo_legado} />}>

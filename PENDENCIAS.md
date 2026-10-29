@@ -1,6 +1,6 @@
 # Pendências do Dmanda
 
-Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 28/10/2026. O resumo consolidado do estado, da validação e da retomada está em `CONTINUIDADE-DMANDA.md`.
+Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 29/10/2026. O resumo consolidado do estado, da validação e da retomada está em `CONTINUIDADE-DMANDA.md`.
 
 **Desde 25/10/2026 as tarefas, o estado, os bloqueios e os critérios de conclusão ficam nas GitHub Issues** (repositório privado edermoliveira/Dmanda). Este arquivo é só um índice curto e o histórico. Decisões duradouras continuam em `DECISOES.md`; ambiente e retomada, em `SINCRONIZA-PROJETINHO.md`. Uma Issue só é fechada quando os seus critérios são atendidos, incluindo a avaliação do usuário quando ela faz parte.
 
@@ -16,6 +16,10 @@ https://github.com/edermoliveira/Dmanda/milestone/1
 | [#4](https://github.com/edermoliveira/Dmanda/issues/4) | Implantar cópia privada dos dados | Usuário: mecanismo e destino |
 
 Etiquetas: `bug`, `funcionalidade`, `acabamento`, `em-andamento`, `aguarda-usuario`. Nos commits, referenciar o número real (por exemplo, "#1"), sem fechamento automático.
+
+## Bloco de 29/10/2026 (sessão persistente, cadastro guiado, consulta, prazos e dias indisponíveis)
+
+Implementado e testado; **aguarda a sua avaliação** no computador e no iPhone (roteiro único em `CONTINUIDADE-DMANDA.md`, seção G). Não foi criada Issue nova porque o `gh` não está instalado neste computador: o texto pronto de **uma Issue consolidada** está em `AUDITORIA.md` 19.4 (criar pelo site, marco "Base real e primeiro uso", ou instalar o `gh` portátil e `gh auth login`). Ele também alimenta as Issues #2 (avaliação visual) e #3 (validação autenticada em produção).
 
 ## Auditoria de 26/10/2026 (consolidada)
 

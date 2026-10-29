@@ -3,7 +3,7 @@
 // tentativas do Auth conta pelo endereço de quem tenta, e não pelo endereço do servidor, que é um só e esgotaria o limite para o próprio Secretário.
 // Esta ação roda depois, já com a sessão nos cookies, e faz duas coisas:
 //  1. confere que a conta é a autorizada (e-mail e provedor); se não for, encerra só esta sessão e responde como credencial incorreta (não revela qual existe);
-//  2. regrava a sessão pelo servidor (Set-Cookie). Os cookies que o navegador escreve por script (document.cookie) valem pouco no Safari do iPhone e do iPad
+//  2. regrava a sessão pelo servidor (Set-Cookie), renovando-a uma vez. Os cookies que o navegador escreve por script (document.cookie) valem pouco no Safari do iPhone e do iPad
 //     (a prevenção de rastreamento limita a 7 dias os cookies escritos por script); os escritos pelo servidor mantêm a validade inteira. Se a regravação falhar,
 //     a entrada continua valendo com os cookies que já existem: nada disso é motivo para recusar uma senha correta.
 import { modoTeste } from '@/lib/supabase/config';
@@ -26,8 +26,10 @@ export async function concluirEntrada(): Promise<ResultadoEntrada> {
       return { ok: false, erro: MSG_CREDENCIAIS };
     }
     try {
-      const { data: { session } } = await sb.auth.getSession();
-      if (session) await sb.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
+      // renovar a sessão aqui troca os tokens, então os cookies mudam e o SDK os grava na resposta (com os mesmos valores ele não regravaria nada)
+      const { error: erroRenovar } = await sb.auth.refreshSession();
+      // se a renovação falhou de forma que o SDK apagou a sessão, a entrada que acabou de ser aceita não vale: avisa em vez de levar a um painel que pediria login de novo
+      if (erroRenovar && !(await sb.auth.getSession()).data.session) return { ok: false, erro: MSG_GENERICA };
     } catch {
       /* regravação é reforço de durabilidade; a sessão já está nos cookies do navegador */
     }
