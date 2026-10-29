@@ -4,16 +4,16 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import {
-  atrasada, corCard, dataCurta, diasAte, diasDesde, diasDesdeInstante, ETAPA_COR, feitas, hojeISO, percentual, proximaTarefa, SIGLA_TIPO, TIPO_COR, type Demanda, type Tarefa,
+  atrasada, corCard, dataCurta, diasAte, diasDesde, diasDesdeInstante, ETAPA_COR, feitas, hojeISO, numeroDe, origemDe, percentual, proximaTarefa, SIGLA_TIPO, TIPO_COR, titulo, type Demanda, type Tarefa,
 } from '@/lib/demandas';
 
 const curto = (n: number) => `${n} d`;
 const matiz = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; };
 const AREA_NOME = { Geral: 'geral', Pessoal: 'de pessoal', Compras: 'de compras' } as const;
 
-export const OrigemP = ({ d }: { d: Demanda }) => (
-  <span className="origem-p"><i className="pt" style={{ '--h': matiz(d.origem) } as React.CSSProperties} />{d.origem}</span>
-);
+// origem é opcional: sem origem não aparece nada (nem "Não informada")
+export const OrigemP = ({ d }: { d: Demanda }) => (origemDe(d) ? <span className="origem-p"><i className="pt" style={{ '--h': matiz(origemDe(d)) } as React.CSSProperties} />{origemDe(d)}</span> : <span className="origem-p" />);
+const Numero = ({ d }: { d: Demanda }) => (numeroDe(d) ? <span className="num mono">{numeroDe(d)}</span> : null);
 export const ChipTipo = ({ d }: { d: Demanda }) => (
   <span className="tag" title={d.tipo === 'Processo' || d.tipo === 'Protocolo' ? `${d.tipo} ${AREA_NOME[d.area]}` : undefined} style={{ '--h': TIPO_COR[d.tipo] ?? 212 } as React.CSSProperties}>{d.tipo}</span>
 );
@@ -30,7 +30,7 @@ export function ChipPrazo({ d }: { d: Demanda }) {
 export const ChipSelo = ({ d }: { d: Demanda }) => (d.prazo ? <span className={`selo${d.prazo_tipo === 'Legal' ? ' legal' : ''}`}><Icone nome="flag" />{d.prazo_tipo}</span> : null);
 function ChipTempo({ d }: { d: Demanda }) {
   const { hoje } = useApp();
-  if (!d.prazo) return null;
+  if (!d.prazo || !d.chegou_em) return null; // sem prazo, ou sem a data de chegada, nada é mostrado nem inventado
   if (d.etapa === 'Finalizado' && d.concluida_em) return <span className="tempo mono" title="Da chegada à conclusão"><Icone nome="clock" />Resolvida em {curto(Math.max(0, diasDesde(d.chegou_em, hoje) - diasDesde(d.concluida_em, hoje)))}</span>;
   const n = diasDesde(d.chegou_em, hoje);
   return <span className="tempo mono" title="Desde que chegou"><Icone nome="clock" />{n === 0 ? 'Chegou hoje' : `Chegou há ${curto(n)}`}</span>;
@@ -144,7 +144,7 @@ export function CardDemanda({ d }: { d: Demanda }) {
         <div className={`face front${corCard(d)}`}>
           <div className="cab"><OrigemP d={d} />{girar('verso')}</div>
           <div className="tags">
-            <ChipTipo d={d} /><span className="num mono">{d.numero}</span>
+            <ChipTipo d={d} /><Numero d={d} />
             {fin ? <span className="chip">Finalizada</span> : <span className="chip neutro">{d.etapa}{d.etapa === 'Aguardando retorno' && d.setor ? ` · ${d.setor} ${curto(dias)}` : ''}</span>}
           </div>
           <div className="assunto fit" role="link" tabIndex={0} onClick={abrirEd} onKeyDown={teclaAbrir}>{d.assunto}</div>
@@ -154,12 +154,12 @@ export function CardDemanda({ d }: { d: Demanda }) {
           <BarraProg d={d} />
         </div>
         <div className="face back">
-          <div className="cab"><span className="num mono">{d.tipo} {d.numero}</span>{girar('frente')}</div>
+          <div className="cab"><span className="num mono">{titulo(d)}</span>{girar('frente')}</div>
           {d.tarefas.length ? <ul className="tarefas">{d.tarefas.map((t) => <ItemTarefa key={t.id} t={t} />)}<li className="mais-t" style={{ display: 'none' }} /></ul>
             : <div className="proxima vazia"><span>Nenhuma tarefa cadastrada</span><NovaTarefaInline demandaId={d.id} /></div>}
           <div className="meta">
-            <div>Chegou em<b>{dataCurta(d.chegou_em)}</b></div>
-            <div>{fin ? 'Resolvida em' : 'Parada há'}<b>{fin && d.concluida_em ? curto(Math.max(0, diasDesde(d.chegou_em, hoje) - diasDesde(d.concluida_em, hoje))) : curto(dias)}</b></div>
+            <div>Chegou em<b>{d.chegou_em ? dataCurta(d.chegou_em) : 'não informada'}</b></div>
+            <div>{fin && d.chegou_em ? 'Resolvida em' : 'Parada há'}<b>{fin && d.chegou_em && d.concluida_em ? curto(Math.max(0, diasDesde(d.chegou_em, hoje) - diasDesde(d.concluida_em, hoje))) : curto(dias)}</b></div>
             <div>Tipo<b>{d.tipo}</b></div>
             {d.setor ? <div>Setor<b>{d.setor} · {dias} dias</b></div> : null}
             {d.acompanhar_em ? <div>Acompanhar em<b>{dataCurta(d.acompanhar_em)}</b></div> : null}
@@ -184,7 +184,7 @@ export function MiniCard({ d }: { d: Demanda }) {
   return (
     <article className={`mini-card${corCard(d)}${atrasada(d, hoje) ? ' atrasada' : ''}${fin ? ' feita' : ''}`} data-id={d.id}>
       <div className="m-top"><OrigemP d={d} /><button className="mais" aria-haspopup="menu" aria-label="Mais ações: mover de etapa" title="Mover de etapa" onClick={(e) => abrirMenuMover(d.id, e.currentTarget)}><Icone nome="ellipsis" /></button></div>
-      <div className="tags"><ChipTipo d={d} /><span className="num mono">{d.numero}</span></div>
+      <div className="tags"><ChipTipo d={d} /><Numero d={d} /></div>
       <div className="assunto" role="link" tabIndex={0} onClick={abrirEd} onKeyDown={(e) => { if (e.key === 'Enter') abrirEd(); }}>{d.assunto}</div>
       <Desc d={d} />
       <ChipsRow d={d} />

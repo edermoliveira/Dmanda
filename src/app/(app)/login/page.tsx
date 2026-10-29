@@ -10,8 +10,8 @@ import { PainelLogin } from './PainelLogin';
 async function Aviso({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   if (modoTeste()) redirect('/');
   const p = await searchParams;
-  const aviso = p.saiu === 'parcial' ? 'Você saiu do Dmanda neste navegador, mas o servidor não confirmou o encerramento da sessão. Se este computador não é seu, entre e saia de novo.' : p.saiu ? 'Você saiu do Dmanda neste navegador.' : p.expirou ? 'Por segurança, o login vale por 6 horas sem uso. Entre de novo.' : p.negado ? 'Esta conta não tem acesso ao Dmanda.' : p.erro ? 'Não foi possível entrar. Tente de novo.' : '';
-  // avisos de saída e de sessão vencida são informação (tom neutro); só recusa, falha e saída não confirmada pelo servidor usam o vermelho, que a interface reserva ao que é crítico
+  const aviso = p.saiu === 'parcial' ? 'Você saiu do Dmanda neste navegador, mas o servidor não confirmou o encerramento da sessão. Se este computador não é seu, entre e saia de novo.' : p.saiu ? 'Você saiu do Dmanda neste navegador.' : p.encerrada || p.expirou ? 'Sua sessão foi encerrada ou deixou de ser válida (por exemplo, depois de sair em outro aparelho). Entre de novo.' : p.negado ? 'Esta conta não tem acesso ao Dmanda.' : p.erro ? 'Não foi possível entrar. Tente de novo.' : '';
+  // avisos de saída e de sessão encerrada são informação (tom neutro); só recusa, falha e saída não confirmada pelo servidor usam o vermelho, que a interface reserva ao que é crítico
   const erro = !!(p.negado || p.erro || p.saiu === 'parcial');
   return aviso ? <p className={erro ? 'login-aviso' : 'login-info'} role={erro ? 'alert' : 'status'}>{aviso}</p> : null;
 }

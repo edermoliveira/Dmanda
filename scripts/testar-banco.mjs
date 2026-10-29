@@ -16,10 +16,10 @@ const erro = async (u, f, a) => { try { await c(u, f, a); return null; } catch (
 
 // criar e validar
 ok(/Informe o assunto/.test(await erro(A, 'criar_demanda', { p: { assunto: '  ' } })), 'criar sem assunto é recusado com mensagem clara');
-const d1 = await c(A, 'criar_demanda', { p: { assunto: ' Resposta ao TCE ', tipo: 'Processo', numero: '1842/2026', origem: 'TCE-RS', descricao: 'Texto', prazo: '2026-10-18', prazo_tipo: 'Legal' } });
-ok(d1.etapa === 'Cadastro' && d1.assunto === 'Resposta ao TCE' && d1.numero === '1842/2026' && d1.prazo === '2026-10-18' && d1.prazo_tipo === 'Legal' && !('user_id' in d1) && d1.tarefas.length === 0, 'criar grava os campos informados, começa em Cadastro e não expõe user_id');
+const d1 = await c(A, 'criar_demanda', { p: { assunto: ' Resposta ao TCE ', tipo: 'Processo', numero: '1842/2026', origem: 'TCE-RS', descricao: 'Texto', prazo_original: '2026-10-16', prazo_tipo: 'Legal' } });
+ok(d1.etapa === 'Cadastro' && d1.assunto === 'Resposta ao TCE' && d1.numero === '1842/2026' && d1.prazo === '2026-10-16' && d1.prazo_original === '2026-10-16' && d1.prazo_legado === false && d1.prazo_tipo === 'Legal' && !('user_id' in d1) && d1.tarefas.length === 0, 'criar grava os campos informados, começa em Cadastro e não expõe user_id');
 const d2 = await c(A, 'criar_demanda', { p: { assunto: 'Só o assunto' } });
-ok(d2.numero === 's/n' && d2.origem === 'Não informada' && d2.prazo === null && d2.setor === null && d2.acompanhar_em === null && d2.tipo === 'Processo' && d2.area === 'Geral' && /^\d{4}-\d\d-\d\d$/.test(d2.chegou_em), 'só o assunto é obrigatório: números e origem seguem o padrão do protótipo e nada de prazo, setor ou acompanhamento é inventado');
+ok(d2.numero === '' && d2.origem === '' && d2.chegou_em === null && d2.prazo === null && d2.prazo_original === null && d2.setor === null && d2.acompanhar_em === null && d2.tipo === 'Processo' && d2.area === 'Geral', 'só o assunto é obrigatório: número, origem e chegada ficam vazios (nada de "s/n", "Não informada" nem data de hoje inventados) e nada de prazo, setor ou acompanhamento é inventado');
 ok(/Protocolo só pode/.test(await erro(A, 'criar_demanda', { p: { assunto: 'x', tipo: 'Protocolo', area: 'Compras' } })), 'Protocolo de Compras é recusado');
 ok(/não nasce finalizada/.test(await erro(A, 'criar_demanda', { p: { assunto: 'x', etapa: 'Finalizado' } })), 'demanda nova não nasce finalizada');
 
@@ -47,7 +47,7 @@ ok(/não encontrada/.test(await erro(B, 'marcar_tarefa', { p_id: t2.id, p_conclu
 
 // etapas
 let m = await c(A, 'mover_etapa', { p_id: d1.id, p_etapa: 'Aguardando retorno' });
-ok(m.etapa === 'Aguardando retorno' && m.setor === null && m.acompanhar_em === null && m.prazo === '2026-10-18', 'mover para Aguardando retorno não inventa setor, acompanhamento nem prazo');
+ok(m.etapa === 'Aguardando retorno' && m.setor === null && m.acompanhar_em === null && m.prazo === '2026-10-16', 'mover para Aguardando retorno não inventa setor, acompanhamento nem prazo');
 m = await c(A, 'mover_etapa', { p_id: d1.id, p_etapa: 'Finalizado' });
 ok(m.etapa === 'Finalizado' && /^\d{4}-/.test(m.concluida_em) && m.tarefas.every((x) => x.concluida), 'concluir marca todas as tarefas e registra a data de conclusão');
 m = await c(A, 'reabrir_demanda', { p_id: d1.id });
@@ -62,9 +62,9 @@ const direto = await db.transaction(async (tx) => { try { await entrarComo(tx, A
 ok(/concluida_so_finalizada/.test(direto || ''), 'a restrição do banco impede Finalizado sem data de conclusão mesmo por escrita direta');
 
 // atualizar
-let u = await c(A, 'atualizar_demanda', { p_id: d1.id, p: { assunto: 'Novo assunto', origem: '', prazo: null, descricao: 'Nova descrição' } });
-ok(u.assunto === 'Novo assunto' && u.origem === 'Não informada' && u.prazo === null && u.descricao === 'Nova descrição' && u.numero === '1842/2026' && u.prazo_tipo === 'Legal' && u.tarefas.length === 2, 'atualizar muda só os campos informados, limpa o prazo com null e preserva o resto');
-u = await c(A, 'atualizar_demanda', { p_id: d1.id, p: { prazo: '2026-11-05', prazo_tipo: 'Próprio', setor: ' PGM ', acompanhar_em: '2026-10-28' } });
+let u = await c(A, 'atualizar_demanda', { p_id: d1.id, p: { assunto: 'Novo assunto', origem: '', prazo_original: null, descricao: 'Nova descrição' } });
+ok(u.assunto === 'Novo assunto' && u.origem === '' && u.prazo === null && u.prazo_original === null && u.descricao === 'Nova descrição' && u.numero === '1842/2026' && u.prazo_tipo === 'Legal' && u.tarefas.length === 2, 'atualizar muda só os campos informados, limpa o prazo com null e preserva o resto');
+u = await c(A, 'atualizar_demanda', { p_id: d1.id, p: { prazo_original: '2026-11-05', prazo_tipo: 'Próprio', setor: ' PGM ', acompanhar_em: '2026-10-28' } });
 ok(u.prazo === '2026-11-05' && u.prazo_tipo === 'Próprio' && u.setor === 'PGM' && u.acompanhar_em === '2026-10-28', 'atualizar prazo, tipo de prazo, setor e acompanhamento');
 ok(/assunto não pode/.test(await erro(A, 'atualizar_demanda', { p_id: d1.id, p: { assunto: '' } })) && /Protocolo só pode/.test(await erro(A, 'atualizar_demanda', { p_id: d1.id, p: { tipo: 'Protocolo', area: 'Compras' } })), 'atualizar valida assunto vazio e Protocolo de Compras');
 ok(/não encontrada/.test(await erro(B, 'atualizar_demanda', { p_id: d1.id, p: { assunto: 'sequestro' } })), 'RLS: B não altera a demanda de A');
@@ -83,7 +83,7 @@ ok(r.excluida === true && resto.rows[0].n === 0 && (await c(A, 'listar_demandas'
 // salvar a janela de edição de uma vez (atômico)
 const ver = async (id) => (await c(A, 'buscar_demanda', { p_id: id })).versao; // versão atual da demanda (o salvar exige a versão em que a janela foi aberta)
 const e1 = await c(A, 'criar_demanda', { p: { assunto: 'Edição em lote', tipo: 'Memorando' } });
-let sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { assunto: 'Edição salva', descricao: 'Texto novo', prazo: '2026-12-01' }, p_tarefas: [{ texto: 'Primeira', concluida: false }, { texto: 'Segunda', concluida: true }] });
+let sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { assunto: 'Edição salva', descricao: 'Texto novo', prazo_original: '2026-12-01' }, p_tarefas: [{ texto: 'Primeira', concluida: false }, { texto: 'Segunda', concluida: true }] });
 ok(sv.assunto === 'Edição salva' && sv.prazo === '2026-12-01' && sv.tarefas.map((x) => x.texto).join() === 'Primeira,Segunda' && sv.tarefas[1].concluida === true && sv.etapa === 'Vistos', 'salvar grava campos e tarefas novas, na ordem, e Cadastro vai para Vistos com a primeira tarefa');
 const [s1, s2] = sv.tarefas;
 sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: {}, p_tarefas: [{ id: s2.id, texto: 'Segunda (editada)', concluida: false }, { id: s1.id, texto: 'Primeira', concluida: true }, { texto: 'Terceira', concluida: false }] });
@@ -112,7 +112,10 @@ const mais = async (n) => (await sql('select (public.hoje() + $1::int)::text as 
 // ambiente limpo para a rotina: usuários novos com datas relativas a hoje
 const R = '33333333-3333-4333-8333-333333333333', S = '44444444-4444-4444-8444-444444444444';
 await db.exec(`insert into auth.users (id, email) values ('${R}', 'r@teste'), ('${S}', 's@teste')`);
-const mk = (p) => c(R, 'criar_demanda', { p });
+// Estas demandas testam a LEITURA do prazo pela rotina, com datas relativas a hoje: o prazo é fixado direto, sem o ajuste de fim de semana (que tem testes próprios mais abaixo),
+// para o resultado não depender do dia da semana em que o teste roda.
+const fixarPrazo = async (id, data) => { await sql('update public.demandas set prazo = $2::date, prazo_original = $2::date where id = $1', [id, data]); return c(R, 'buscar_demanda', { p_id: id }); };
+const mk = async (p) => { const { prazo, ...resto } = p; const d = await c(R, 'criar_demanda', { p: resto }); return prazo ? fixarPrazo(d.id, prazo) : d; };
 const venc = await mk({ assunto: 'Vencida', prazo: await mais(-4), prazo_tipo: 'Legal' });
 const hojeD = await mk({ assunto: 'Vence hoje', prazo: await mais(0) });
 const em3 = await mk({ assunto: 'Em três dias', prazo: await mais(3) });
@@ -158,13 +161,13 @@ let ex = await sql('select ok, usuarios, erro from public.execucoes_rotina order
 ok(ex.length === 2 && ex.every((x) => x.ok && x.usuarios === n1 && x.erro === null) && r2.usuarios === n1, 'rotina: cada execução bem-sucedida fica registrada');
 
 // RLS: cada usuário vê só o próprio resumo; o registro de execuções não tem dado pessoal
-await c(S, 'criar_demanda', { p: { assunto: 'Outro usuário', prazo: await mais(-1) } });
+await c(S, 'criar_demanda', { p: { assunto: 'Outro usuário', prazo_original: await mais(-1) } });
 await serv('rotina_diaria', {});
 const veR = await db.transaction(async (tx) => { await entrarComo(tx, R); return (await tx.query('select user_id from public.resumos_operacionais')).rows; });
 ok(veR.length === 1 && veR[0].user_id === R, 'rotina: RLS, cada usuário vê só o próprio resumo');
 
 // dias restantes derivados das datas: mudar o prazo muda o resumo na hora, sem esperar o dia seguinte
-await c(R, 'atualizar_demanda', { p_id: em9.id, p: { prazo: await mais(-1) } });
+await fixarPrazo(em9.id, await mais(-1));
 rs = (await sql('select dados from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [R]))[0];
 ok(rs.dados.atrasadas === 2 && rs.dados.sete_dias === 2, 'rotina: alterar um prazo recalcula o resumo de hoje (atrasadas 2)');
 await c(R, 'mover_etapa', { p_id: venc.id, p_etapa: 'Finalizado' });
@@ -347,7 +350,7 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const origem = await novoBanco([O, 'origem@teste']);
   const co = (f, a) => chamarComoUsuario(origem, O, f, a);
   const TEXTOS = ['Primeira á', 'Segunda "q"', "Terceira 'a'"];
-  const x1 = await co('criar_demanda', { p: { assunto: 'Ofício "especial" d\'Água $$ ção', descricao: 'linha 1\nlinha 2 com $dmanda e \\ barra', numero: '77/2026', prazo: '2026-12-01', prazo_tipo: 'Legal', origem: 'Câmara' } });
+  const x1 = await co('criar_demanda', { p: { assunto: 'Ofício "especial" d\'Água $$ ção', descricao: 'linha 1\nlinha 2 com $dmanda e \\ barra', numero: '77/2026', prazo_original: '2026-12-01', prazo_tipo: 'Legal', origem: 'Câmara' } });
   for (const tx of TEXTOS) await co('adicionar_tarefa', { p_demanda: x1.id, p_texto: tx });
   const x2 = await co('criar_demanda', { p: { assunto: 'Finalizada TESTE', tipo: 'Portaria' } });
   await co('adicionar_tarefa', { p_demanda: x2.id, p_texto: 'única' }); await co('concluir_demanda', { p_id: x2.id });
@@ -380,7 +383,7 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
 
   // recusas: nada é gravado
   const vazio = await novoBanco([N, 'destino@teste']);
-  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 2 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
+  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 3 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
   const dois = await novoBanco([N, 'destino@teste'], [O, 'origem@teste']);
   ok(/exatamente 1 usuário/.test(await tentar(dois, copia)) && await contar(dois) === '0/0', 'restauração: com mais de um usuário no projeto, nada é gravado');
   const nenhum = await novoBanco();
@@ -388,6 +391,196 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const quebrada = JSON.parse(JSON.stringify(copia)); quebrada.demandas[0].tarefas[0].texto = '   ';
   ok(await tentar(vazio, quebrada) !== null && await contar(vazio) === '0/0', 'restauração: uma tarefa inválida derruba a restauração inteira (transação única, nada fica pela metade)');
   for (const d of [origem, destino, vazio, dois, nenhum]) await d.close();
+}
+
+
+// ---------- prazo original e ajustado, dias indisponíveis (migração 8) ----------
+// Datas fixas de 2027 para o resultado não depender do dia em que o teste roda: 04/03 quinta, 05/03 sexta, 06/03 sábado, 07/03 domingo, 08/03 segunda.
+{
+  const U = 'a6666666-6666-4666-8666-666666666666', V = 'a7777777-7777-4777-8777-777777777777';
+  await db.exec(`insert into auth.users (id, email) values ('${U}', 'u@teste'), ('${V}', 'v@teste')`);
+  await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('u@teste'), ('v@teste')");
+  const cu = (f, a) => c(U, f, a), eu = (f, a) => erro(U, f, a);
+  const nova = (p) => cu('criar_demanda', { p: { assunto: 'Prazo TESTE', ...p } });
+  const busca = (id) => cu('buscar_demanda', { p_id: id });
+  const dia = (data, descricao, categoria = 'Feriado', id) => cu('salvar_dia_indisponivel', { p: { ...(id ? { id } : {}), data, descricao, categoria } });
+  const limparDias = async () => { for (const x of await cu('listar_dias_indisponiveis', {})) await cu('excluir_dia_indisponivel', { p_id: x.id }); };
+  const sqlq = async (q, p = []) => (await db.query(q, p)).rows;
+
+  // fim de semana
+  let x = await nova({ prazo_original: '2027-03-06' });
+  ok(x.prazo === '2027-03-05' && x.prazo_original === '2027-03-06' && x.prazo_ajuste === '06/03 sábado' && x.prazo_dias === null && x.prazo_base_em === null && x.prazo_legado === false, 'prazo: sábado é antecipado para a sexta; o original e o motivo ficam guardados à parte');
+  x = await nova({ prazo_original: '2027-03-07' });
+  ok(x.prazo === '2027-03-05' && x.prazo_ajuste === '07/03 domingo; 06/03 sábado', 'prazo: domingo volta pelo sábado até a sexta, e o texto lista os dois dias');
+  x = await nova({ prazo_original: '2027-03-04' });
+  ok(x.prazo === '2027-03-04' && x.prazo_original === '2027-03-04' && x.prazo_ajuste === null, 'prazo: dia útil sem restrição não muda e não tem explicação');
+  x = await nova({ prazo_original: '2027-03-08', prazo_tipo: 'Legal' });
+  ok(x.prazo === '2027-03-08', 'prazo: segunda-feira é dia útil');
+
+  // botões de 5, 10, 20 e 30 dias: a partir de hoje, nunca de "quando chegou"; excluem o dia inicial e incluem o último
+  const hoje0 = (await sqlq('select public.hoje()::text as h'))[0].h;
+  const somaHoje = async (n) => (await sqlq('select ($1::date + $2::int)::text as d', [hoje0, n]))[0].d;
+  x = await nova({ prazo_dias: 10, chegou_em: '2020-01-02' });
+  ok(x.prazo_original === (await somaHoje(10)) && x.prazo_dias === 10 && x.prazo_base_em === hoje0 && x.chegou_em === '2020-01-02', 'prazo: o botão de 10 dias parte de hoje (não da chegada, que era de 2020), exclui o dia inicial e guarda dias e dia de partida');
+  const sem = await Promise.all([5, 10, 20, 30].map(async (n) => (await nova({ prazo_dias: n })).prazo_original));
+  const esperados = await Promise.all([5, 10, 20, 30].map(somaHoje));
+  ok(sem.join() === esperados.join(), 'prazo: 5, 10, 20 e 30 dias corridos somam exatamente isso a hoje');
+  const cinco = await nova({ prazo_dias: 5 });
+  ok(cinco.prazo !== null && cinco.prazo <= cinco.prazo_original && (await sqlq('select extract(isodow from $1::date)::int as w', [cinco.prazo]))[0].w < 6, 'prazo: o vencimento por dias também é antecipado se cair em fim de semana (nunca passa do original)');
+
+  // repetir a chamada com o mesmo identificador não cria outra demanda
+  const idFixo = '88888888-8888-4888-8888-888888888888';
+  const r1 = await nova({ id: idFixo, assunto: 'Idempotente' }), r2 = await nova({ id: idFixo, assunto: 'Idempotente' });
+  ok(r1.id === idFixo && r2.id === idFixo && (await cu('listar_demandas', {})).filter((y) => y.id === idFixo).length === 1, 'criar: repetir a chamada com o mesmo identificador (resposta perdida, clique duplo) devolve a mesma demanda, sem duplicar');
+
+  // calendário: validações
+  ok(/Informe a data/.test(await eu('salvar_dia_indisponivel', { p: { descricao: 'x', categoria: 'Feriado' } })) && /Descreva o dia/.test(await eu('salvar_dia_indisponivel', { p: { data: '2027-03-05', descricao: '  ', categoria: 'Feriado' } }))
+    && /Escolha Feriado/.test(await eu('salvar_dia_indisponivel', { p: { data: '2027-03-05', descricao: 'x', categoria: 'Outro' } })), 'calendário: data, descrição e categoria (Feriado ou Evento externo) são exigidas');
+
+  // incluir feriado recalcula; excluir devolve ao original
+  const sab = await nova({ prazo_original: '2027-03-06' }), qui = await nova({ prazo_original: '2027-03-04' }), seg = await nova({ prazo_original: '2027-03-08' });
+  const dFeriado = await dia('2027-03-05', 'Feriado de teste');
+  ok(dFeriado.recalculadas >= 1 && dFeriado.dia.categoria === 'Feriado', 'calendário: cadastrar um feriado informa quantos vencimentos mudaram');
+  let s = await busca(sab.id);
+  ok(s.prazo === '2027-03-04' && s.prazo_original === '2027-03-06' && s.prazo_ajuste === '06/03 sábado; 05/03 feriado: Feriado de teste', 'calendário: com a sexta indisponível o vencimento recua para quinta, e o motivo lista sábado e o feriado');
+  ok((await busca(qui.id)).prazo === '2027-03-04' && (await busca(seg.id)).prazo === '2027-03-08' && (await busca(qui.id)).versao === qui.versao, 'calendário: demandas que a mudança não afeta ficam intactas (nem a versão sobe)');
+  await cu('excluir_dia_indisponivel', { p_id: dFeriado.dia.id });
+  s = await busca(sab.id);
+  ok(s.prazo === '2027-03-05' && s.prazo_ajuste === '06/03 sábado', 'calendário: excluir o feriado devolve a sexta (a data permitida mais próxima do original)');
+  const fer4 = await dia('2027-03-04', 'Feriado na quinta');
+  ok((await busca(qui.id)).prazo === '2027-03-03' && (await busca(qui.id)).prazo_ajuste === '04/03 feriado: Feriado na quinta', 'calendário: feriado no dia original antecipa para a quarta (dia 4 vira 3)');
+  const exc = await cu('excluir_dia_indisponivel', { p_id: fer4.dia.id });
+  ok(exc.recalculadas >= 1 && (await busca(qui.id)).prazo === '2027-03-04' && (await busca(qui.id)).prazo_ajuste === null, 'calendário: excluir o feriado volta o vencimento ao dia original (o dia 20 antecipado para 19 volta a 20)');
+
+  // sequência: sábado, sexta feriado, quinta evento externo, quarta feriado
+  await dia('2027-03-05', 'Feriado A'); const ev = await dia('2027-03-04', 'Congresso', 'Evento externo'); await dia('2027-03-03', 'Feriado B');
+  s = await busca(sab.id);
+  ok(s.prazo === '2027-03-02' && s.prazo_ajuste === '06/03 sábado; 05/03 feriado: Feriado A; 04/03 evento externo: Congresso; 03/03 feriado: Feriado B', 'prazo: antecipação em sequência (fim de semana, feriado, evento externo, feriado) até o primeiro dia disponível');
+  // alterar a data de um dia recalcula nos dois sentidos
+  const moveu = await dia('2027-03-10', 'Congresso', 'Evento externo', ev.dia.id);
+  s = await busca(sab.id);
+  ok(moveu.recalculadas >= 1 && s.prazo === '2027-03-04' && s.prazo_ajuste === '06/03 sábado; 05/03 feriado: Feriado A', 'calendário: mover o evento do dia 4 para o dia 10 libera a quinta, e o vencimento que estava no dia 2 volta para o dia 4');
+  s = await busca(qui.id);
+  ok(s.prazo === '2027-03-04', 'calendário: a demanda de quinta volta ao dia 4 quando o evento sai dessa data');
+  await limparDias();
+  ok((await busca(sab.id)).prazo === '2027-03-05' && (await busca(qui.id)).prazo === '2027-03-04', 'calendário: sem nenhum dia cadastrado, só o fim de semana ajusta (nada de feriado presumido)');
+
+  // data manual no formulário: mesma antecipação
+  s = await cu('atualizar_demanda', { p_id: seg.id, p: { prazo_original: '2027-03-07' } });
+  ok(s.prazo === '2027-03-05' && s.prazo_original === '2027-03-07' && s.prazo_dias === null, 'prazo: data digitada ou escolhida no calendário também é antecipada');
+
+  // referência da contagem: mantida enquanto a data original não muda; trocada ao escolher outra data
+  const porDias = await nova({ prazo_dias: 20 });
+  const mesmaData = await cu('atualizar_demanda', { p_id: porDias.id, p: { prazo_original: porDias.prazo_original, prazo_tipo: 'Legal' } });
+  ok(mesmaData.prazo_dias === 20 && mesmaData.prazo_base_em === hoje0 && mesmaData.prazo_tipo === 'Legal', 'prazo: gravar de novo a mesma data original mantém os dias e o dia de partida da contagem');
+  const outraData = await cu('atualizar_demanda', { p_id: porDias.id, p: { prazo_original: '2027-06-01' } });
+  ok(outraData.prazo_dias === null && outraData.prazo_base_em === null && outraData.prazo_original === '2027-06-01', 'prazo: escolher outra data à mão desfaz a referência de "N dias a partir de hoje"');
+  const limpo = await cu('atualizar_demanda', { p_id: porDias.id, p: { prazo_original: null } });
+  ok(limpo.prazo === null && limpo.prazo_original === null && limpo.prazo_ajuste === null, 'prazo: tirar o prazo limpa vencimento, original e explicação');
+  const passaDias = await cu('atualizar_demanda', { p_id: porDias.id, p: { prazo_original: null, prazo_dias: 5 } });
+  ok(passaDias.prazo_dias === 5 && passaDias.prazo_base_em === hoje0 && passaDias.prazo_original === (await somaHoje(5)), 'prazo: definir 5 dias depois de não ter prazo parte de hoje');
+
+  // compatibilidade com o aplicativo antigo: a chave "prazo" é tratada como data original; o eco do vencimento atual não muda nada
+  const antiga = await nova({ prazo_original: '2027-03-06' });
+  const eco = await cu('atualizar_demanda', { p_id: antiga.id, p: { assunto: 'Eco do formulário antigo', prazo: antiga.prazo } });
+  ok(eco.prazo_original === '2027-03-06' && eco.prazo === '2027-03-05' && eco.assunto === 'Eco do formulário antigo', 'compatibilidade: o aplicativo antigo devolvendo o vencimento atual não destrói o prazo original');
+  const nova2 = await cu('atualizar_demanda', { p_id: antiga.id, p: { prazo: '2027-04-02' } });
+  ok(nova2.prazo_original === '2027-04-02' && nova2.prazo === '2027-04-02', 'compatibilidade: o aplicativo antigo mudando o prazo define a nova data original');
+  const cria = await nova({ prazo: '2027-03-07' });
+  ok(cria.prazo_original === '2027-03-07' && cria.prazo === '2027-03-05', 'compatibilidade: o aplicativo antigo criando com "prazo" também é ajustado');
+
+  // finalizadas ficam como estão; reabrir usa o calendário vigente
+  const fz = await nova({ prazo_original: '2027-03-04' });
+  await cu('concluir_demanda', { p_id: fz.id });
+  const aoFinal = await dia('2027-03-04', 'Feriado depois de finalizar');
+  s = await busca(fz.id);
+  ok(s.prazo === '2027-03-04' && s.prazo_ajuste === null && s.etapa === 'Finalizado', 'finalizadas: o calendário novo não mexe no vencimento de uma demanda finalizada');
+  s = await cu('reabrir_demanda', { p_id: fz.id });
+  ok(s.etapa === 'Fazendo' && s.prazo === '2027-03-03' && s.prazo_original === '2027-03-04' && s.prazo_ajuste === '04/03 feriado: Feriado depois de finalizar', 'reabrir: o vencimento é recalculado com o calendário de agora (original 4, ajustado 3)');
+  await cu('concluir_demanda', { p_id: fz.id });
+  await cu('excluir_dia_indisponivel', { p_id: aoFinal.dia.id });
+  ok((await busca(fz.id)).prazo === '2027-03-03', 'finalizadas: remover a restrição também não mexe no vencimento de quem está finalizada');
+  s = await cu('mover_etapa', { p_id: fz.id, p_etapa: 'Vistos' });
+  ok(s.prazo === '2027-03-04' && s.prazo_ajuste === null, 'reabrir: com a restrição removida, o vencimento volta ao original');
+
+  // sem prazo e sem chegada: nada inventado, nada recalculado
+  const sp = await nova({});
+  const f3 = await dia('2027-03-05', 'qualquer'); await cu('excluir_dia_indisponivel', { p_id: f3.dia.id });
+  s = await busca(sp.id);
+  ok(s.prazo === null && s.prazo_original === null && s.chegou_em === null && s.numero === '' && s.origem === '' && s.versao === sp.versao, 'sem prazo e sem chegada: mudar o calendário não toca a demanda (nem sobe a versão)');
+
+  // edição simultânea: o recálculo só mexe no prazo e uma janela aberta com o prazo antigo é recusada sem sobrescrever
+  const ed = await nova({ prazo_original: '2027-03-04', descricao: 'original' });
+  const janela = await busca(ed.id);
+  const f2 = await dia('2027-03-04', 'Feriado concorrente');
+  const depoisDoRecalculo = await busca(ed.id);
+  ok(depoisDoRecalculo.prazo === '2027-03-03' && depoisDoRecalculo.versao > janela.versao && depoisDoRecalculo.descricao === 'original' && depoisDoRecalculo.assunto === janela.assunto, 'concorrência: o recálculo altera só o prazo (os outros campos ficam como estavam) e sobe a versão');
+  const cod = async (f, a) => { try { await cu(f, a); return null; } catch (e) { return e.code; } };
+  ok(await cod('salvar_demanda', { p_id: ed.id, p: { descricao: 'da janela antiga', prazo_original: '2027-03-04' }, p_tarefas: null, p_versao: janela.versao }) === 'DM409' && (await busca(ed.id)).prazo === '2027-03-03' && (await busca(ed.id)).descricao === 'original', 'concorrência: a janela aberta antes do recálculo é recusada (DM409) e não desfaz o vencimento novo');
+  await cu('excluir_dia_indisponivel', { p_id: f2.dia.id });
+
+  // RLS: o calendário e o recálculo são de cada usuário
+  const dV = await c(V, 'salvar_dia_indisponivel', { p: { data: '2027-03-05', descricao: 'do V', categoria: 'Feriado' } });
+  ok((await c(U, 'listar_dias_indisponiveis', {})).length === 0 && (await c(V, 'listar_dias_indisponiveis', {})).length === 1, 'RLS: cada usuário vê só os próprios dias indisponíveis');
+  ok(/não encontrado/.test(await eu('excluir_dia_indisponivel', { p_id: dV.dia.id })) && /não encontrado/.test(await eu('salvar_dia_indisponivel', { p: { id: dV.dia.id, data: '2027-03-09', descricao: 'sequestro', categoria: 'Feriado' } })) && (await c(V, 'listar_dias_indisponiveis', {}))[0].data === '2027-03-05', 'RLS: U não altera nem exclui dia de V');
+  const sabU = await nova({ prazo_original: '2027-03-06' });
+  ok((await busca(sabU.id)).prazo === '2027-03-05', 'RLS: o feriado de V não afeta os prazos de U');
+  const anonDia = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_dias_indisponiveis()'); return null; } catch (e) { return e.message; } });
+  ok(/permission denied/i.test(anonDia || ''), 'sem login, nenhuma função de calendário executa');
+
+  // equivalência com src/lib/prazos.ts (a prévia do formulário usa a cópia em TypeScript): mesmas datas e mesmo texto, por 150 dias seguidos
+  {
+    const { ajustarPrazo, somarDias } = await import('../src/lib/prazos.ts');
+    await limparDias();
+    const fixos = [['2027-04-02', 'Sexta-feira Santa', 'Feriado'], ['2027-04-01', 'Reunião externa', 'Evento externo'], ['2027-04-21', 'Tiradentes', 'Feriado'], ['2027-04-20', 'Ponte', 'Feriado'], ['2027-04-20', 'Seminário', 'Evento externo'], ['2027-05-03', 'Evento', 'Evento externo'], ['2027-05-01', 'Dia do Trabalho', 'Feriado']];
+    for (const [d, t, k] of fixos) await dia(d, t, k);
+    const criado = new Map((await sqlq('select id::text, criado_em::text as criado_em from public.dias_indisponiveis where user_id = $1', [U])).map((y) => [y.id, y.criado_em]));
+    const dias = (await cu('listar_dias_indisponiveis', {})).map((y) => ({ ...y, criado_em: criado.get(y.id) }));
+    let diferentes = 0;
+    for (let i = 0; i < 150; i++) {
+      const orig = somarDias('2027-03-20', i);
+      const a = await cu('ajustar_prazo', { p_original: orig }), b = ajustarPrazo(orig, dias);
+      if (a.prazo !== b.prazo || (a.ajuste ?? null) !== b.ajuste) { diferentes++; if (diferentes < 3) console.log('  diferença em', orig, JSON.stringify(a), JSON.stringify(b)); }
+    }
+    ok(diferentes === 0, 'equivalência: a prévia em TypeScript e a função do banco dão o mesmo vencimento e o mesmo texto em 150 datas seguidas (com feriados e eventos, inclusive no mesmo dia)');
+    await limparDias();
+  }
+}
+
+// ---------- migração sobre dados antigos: nada se perde ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig-'));
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const nova8 = todas.find((f) => f.includes('prazos_e_dias_indisponiveis'));
+  for (const f of todas.filter((f) => f !== nova8)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
+  const W = 'a9999999-9999-4999-8999-999999999999';
+  await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
+  await antigo.exec("insert into dmanda_privado.acesso_autorizado (email) values ('w@teste')");
+  const cw = (f, a) => chamarComoUsuario(antigo, W, f, a);
+  const comPrazo = await cw('criar_demanda', { p: { assunto: 'Antiga com prazo', prazo: '2027-03-06', numero: '10/2026', origem: 'Câmara', chegou_em: '2026-09-01' } }); // sábado: no sistema antigo o prazo era gravado como veio
+  const semPrazo = await cw('criar_demanda', { p: { assunto: 'Antiga sem prazo' } });
+  await cw('adicionar_tarefa', { p_demanda: comPrazo.id, p_texto: 'Tarefa antiga' });
+  const antes = (await antigo.query('select id, assunto, numero, origem, chegou_em::text, prazo::text, etapa, versao, atualizado_em::text, criado_em::text from public.demandas order by id')).rows;
+  const tarefasAntes = (await antigo.query('select id, texto, concluida, posicao from public.tarefas order by id')).rows;
+  await antigo.exec(readFileSync(join('supabase/migrations', nova8), 'utf8'));
+  const depois = (await antigo.query('select id, assunto, numero, origem, chegou_em::text, prazo::text, etapa, versao, atualizado_em::text, criado_em::text, prazo_original::text, prazo_legado, prazo_dias, prazo_base_em, prazo_ajuste from public.demandas order by id')).rows;
+  const semNovas = depois.map((linha) => Object.fromEntries(Object.entries(linha).filter(([k]) => !['prazo_original', 'prazo_legado', 'prazo_dias', 'prazo_base_em', 'prazo_ajuste'].includes(k))));
+  ok(JSON.stringify(semNovas) === JSON.stringify(antes), 'migração 8 sobre dados existentes: identificadores, textos, "s/n" e "Não informada", datas, etapa, versão e datas de criação e de atualização ficam idênticos');
+  const dp = depois.find((y) => y.id === comPrazo.id), ds = depois.find((y) => y.id === semPrazo.id);
+  ok(dp.prazo_original === '2027-03-06' && dp.prazo === '2027-03-06' && dp.prazo_legado === true && dp.prazo_dias === null && dp.prazo_base_em === null && dp.prazo_ajuste === null, 'migração 8: o prazo que já existia vira a referência original, marcado como legado, sem reconstruir dias nem ajustar nada (mesmo caindo em sábado)');
+  ok(ds.prazo_original === null && ds.prazo_legado === false && ds.chegou_em !== null, 'migração 8: demanda sem prazo continua sem prazo e não é marcada como legado');
+  ok(JSON.stringify((await antigo.query('select id, texto, concluida, posicao from public.tarefas order by id')).rows) === JSON.stringify(tarefasAntes), 'migração 8: as tarefas ficam idênticas');
+  const leg = await cw('buscar_demanda', { p_id: comPrazo.id });
+  ok(leg.prazo_legado === true && leg.prazo === '2027-03-06', 'migração 8: a leitura devolve o legado identificável');
+  const e = await cw('atualizar_demanda', { p_id: comPrazo.id, p: { assunto: 'Antiga com prazo (editada)' } });
+  ok(e.prazo === '2027-03-06' && e.prazo_legado === true, 'legado: editar outro campo não mexe no prazo nem no marcador');
+  const m = await cw('atualizar_demanda', { p_id: comPrazo.id, p: { prazo_original: '2027-03-09' } });
+  ok(m.prazo === '2027-03-09' && m.prazo_legado === false, 'legado: escolher uma data nova passa a valer pelas regras novas e tira o marcador');
+  await antigo.close();
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
