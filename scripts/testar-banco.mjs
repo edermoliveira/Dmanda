@@ -198,7 +198,7 @@ await db.exec('alter table public.demandas_x rename to demandas');
 ok(!!eFalha && (await sql('select count(*)::int as n from public.execucoes_rotina'))[0].n === nExAntes, 'rotina: com o banco em falha a execução termina com erro e não registra sucesso falso');
 
 // ---------- acesso exclusivo à conta autorizada (hook de cadastro, RLS por e-mail do JWT, privilégios explícitos) ----------
-const X = '55555555-5555-4555-8555-555555555555', Z = '66666666-6666-4666-8666-666666666666';
+const X = '55555555-5555-4555-8555-555555555555', Z = '6e6e6e6e-6666-4666-8666-6e6e6e6e6e6e';
 await db.exec(`insert into auth.users (id, email) values ('${X}', 'intruso@teste'), ('${Z}', null)`);   // usuários que NÃO estão na lista (e um sem e-mail)
 const doUsuario = async (id, opcoes, q, p = []) => db.transaction(async (tx) => { await entrarComo(tx, id, opcoes); try { return { rows: (await tx.query(q, p)).rows }; } catch (e) { return { erro: e.message }; } });
 // RLS: um usuário fora da lista não lê, não grava e não executa nada, mesmo com sessão válida e user_id dele
@@ -357,40 +357,58 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const x3 = await co('criar_demanda', { p: { assunto: 'Arquivada TESTE', area: 'Compras', setor: 'PGM', acompanhar_em: '2026-11-03' } });
   await co('adicionar_tarefa', { p_demanda: x3.id, p_texto: 'tarefa arquivada' }); await co('mover_etapa', { p_id: x3.id, p_etapa: 'Aguardando retorno' }); await co('arquivar_demanda', { p_id: x3.id });
   await co('criar_demanda', { p: { assunto: 'Sem tarefas TESTE' } });
-  const copia = JSON.parse(JSON.stringify({ formato: 'dmanda-exportacao', versao: 1, exportado_em: new Date().toISOString(), fuso: 'America/Sao_Paulo', demandas: await co('listar_demandas', { p_arquivadas: false }), arquivadas: await co('listar_demandas', { p_arquivadas: true }) }));
+  // entradas da cópia (versão 3): uma ativa fixada com acento e aspas, uma arquivada e uma convertida em demanda (o vínculo deve voltar junto com a demanda)
+  const en1 = await co('criar_entrada', { p: { titulo: 'Título "com" aspas', texto: 'Texto á $$ \\ #tag\nsegunda linha', cor: 3, fixada: true } });
+  const en2 = await co('criar_entrada', { p: { texto: 'Arquivada TESTE #velha', cor: 1 } }); await co('arquivar_entrada', { p_id: en2.id });
+  const en3 = await co('criar_entrada', { p: { titulo: 'Virou demanda', texto: 'Conteúdo original preservado', cor: 5 } });
+  const demEn = await co('criar_demanda_de_entrada', { p_entrada: en3.id, p: { id: 'abababab-1212-4212-8212-abababababab', assunto: 'Virou demanda', descricao: 'Conteúdo original preservado' } });
+  const copia = JSON.parse(JSON.stringify({ formato: 'dmanda-exportacao', versao: 3, exportado_em: new Date().toISOString(), fuso: 'America/Sao_Paulo', demandas: await co('listar_demandas', { p_arquivadas: false }), arquivadas: await co('listar_demandas', { p_arquivadas: true }), entradas: await co('listar_entradas', { p_arquivadas: false }), entradas_arquivadas: await co('listar_entradas', { p_arquivadas: true }) }));
   const original = await todas(origem, O);
-  ok(copia.demandas.length === 3 && copia.arquivadas.length === 1 && copia.demandas.concat(copia.arquivadas).reduce((n, d) => n + d.tarefas.length, 0) === 5, 'restauração: a cópia fictícia tem 3 ativas e 1 arquivada, com 5 tarefas no total');
+  const entradasDe = async (d, u) => JSON.stringify([...(await chamarComoUsuario(d, u, 'listar_entradas', { p_arquivadas: false })), ...(await chamarComoUsuario(d, u, 'listar_entradas', { p_arquivadas: true }))].sort((a, b) => a.id.localeCompare(b.id)));
+  const entradasOriginais = await entradasDe(origem, O);
+  ok(copia.demandas.length === 4 && copia.arquivadas.length === 1 && copia.demandas.concat(copia.arquivadas).reduce((n, d) => n + d.tarefas.length, 0) === 5 && copia.entradas.length === 1 && copia.entradas_arquivadas.length === 2, 'restauração: a cópia fictícia tem 4 demandas ativas e 1 arquivada (5 tarefas) e 1 entrada ativa e 2 no Arquivo (arquivada e convertida)');
 
   // destino novo: outro projeto, com a conta de outro identificador, ainda sem dados
   const destino = await novoBanco([N, 'destino@teste']);
-  ok(await tentar(destino, copia) === null && await contar(destino) === '4/5', 'restauração: a cópia entra num projeto novo (4 demandas e 5 tarefas)');
+  ok(await tentar(destino, copia) === null && await contar(destino) === '5/5', 'restauração: a cópia entra num projeto novo (5 demandas e 5 tarefas)');
   ok(await todas(destino, N) === original, 'restauração: tudo volta igual (campos, datas, etapas, tarefas e ordem), visto pela conta nova com a RLS valendo');
   const r1 = await achar(destino, N, x1.id);
   ok(r1.tarefas.map((t) => t.texto).join('|') === TEXTOS.join('|') && r1.assunto === x1.assunto && r1.descricao === x1.descricao, 'restauração: acentos, aspas, cifrão, barra e quebra de linha chegam sem alteração');
   ok((await destino.query('select count(*)::int as n from public.demandas where user_id <> $1', [N])).rows[0].n === 0, 'restauração: tudo pertence à conta do projeto (nenhuma linha com outro dono)');
-  ok(await tentar(destino, copia) === null && await contar(destino) === '4/5' && await todas(destino, N) === original, 'restauração: rodar de novo com o mesmo arquivo não duplica nem altera nada');
+  ok(await tentar(destino, copia) === null && await contar(destino) === '5/5' && await todas(destino, N) === original && await entradasDe(destino, N) === entradasOriginais, 'restauração: rodar de novo com o mesmo arquivo não duplica nem altera nada');
+  ok(await entradasDe(destino, N) === entradasOriginais && (await achar(destino, N, demEn.id)).entrada_id === en3.id, 'restauração: as entradas (ativa fixada, arquivada e convertida) voltam iguais, com acentos e aspas, e o vínculo da convertida com a sua demanda');
+  ok((await destino.query('select count(*)::int as n from public.entradas where user_id <> $1', [N])).rows[0].n === 0, 'restauração: as entradas pertencem à conta do projeto');
 
   // o que já existe não é sobrescrito nem recebe tarefas de volta
   await chamarComoUsuario(destino, N, 'atualizar_demanda', { p_id: x1.id, p: { assunto: 'ALTERADA DEPOIS' } });
   await chamarComoUsuario(destino, N, 'excluir_tarefa', { p_id: r1.tarefas[0].id });
+  await chamarComoUsuario(destino, N, 'salvar_entrada', { p_id: en1.id, p: { texto: 'ENTRADA ALTERADA DEPOIS' }, p_versao: en1.versao });
   const antes = await todas(destino, N);
   const r1b = await achar(destino, N, x1.id);
-  ok(await tentar(destino, copia) === null && await todas(destino, N) === antes && r1b.assunto === 'ALTERADA DEPOIS' && r1b.tarefas.length === 2, 'restauração: uma demanda que já existe não é sobrescrita nem recebe de volta a tarefa que foi excluída');
+  ok(await tentar(destino, copia) === null && await todas(destino, N) === antes && r1b.assunto === 'ALTERADA DEPOIS' && r1b.tarefas.length === 2 && JSON.parse(await entradasDe(destino, N)).find((x) => x.id === en1.id).texto === 'ENTRADA ALTERADA DEPOIS', 'restauração: uma demanda ou entrada que já existe não é sobrescrita nem recebe de volta a tarefa que foi excluída');
 
   // perda total no mesmo projeto: apaga tudo e restaura
-  await destino.exec('delete from public.demandas');
-  ok(await contar(destino) === '0/0' && await tentar(destino, copia) === null && await todas(destino, N) === original, 'restauração: depois de perder tudo no mesmo projeto, a cópia devolve as demandas e as tarefas idênticas');
+  await destino.exec('delete from public.entradas; delete from public.demandas');
+  ok(await contar(destino) === '0/0' && await tentar(destino, copia) === null && await todas(destino, N) === original && await entradasDe(destino, N) === entradasOriginais, 'restauração: depois de perder tudo no mesmo projeto, a cópia devolve as demandas, as tarefas e as entradas idênticas');
+  // cópia sem a demanda de uma entrada convertida: a anotação volta como ativa, com o conteúdo original (nada se perde, nenhum vínculo solto)
+  const semDemanda = await novoBanco([N, 'destino@teste']);
+  const parcial = JSON.parse(JSON.stringify(copia)); parcial.demandas = parcial.demandas.filter((x) => x.id !== demEn.id);
+  ok(await tentar(semDemanda, parcial) === null && (await chamarComoUsuario(semDemanda, N, 'buscar_entrada', { p_id: en3.id })).demanda_id === null && (await chamarComoUsuario(semDemanda, N, 'buscar_entrada', { p_id: en3.id })).texto === 'Conteúdo original preservado', 'restauração: entrada convertida cuja demanda não está na cópia volta como ativa, sem vínculo solto');
+  // cópia da versão 2 (antes das entradas) continua sendo aceita
+  const v2 = await novoBanco([N, 'destino@teste']);
+  const copiaV2 = JSON.parse(JSON.stringify(copia)); copiaV2.versao = 2; delete copiaV2.entradas; delete copiaV2.entradas_arquivadas;
+  ok(await tentar(v2, copiaV2) === null && await contar(v2) === '5/5' && (await v2.query('select count(*)::int as n from public.entradas')).rows[0].n === 0, 'restauração: cópia da versão 2 (sem entradas) continua aceita');
 
   // recusas: nada é gravado
   const vazio = await novoBanco([N, 'destino@teste']);
-  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 3 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
+  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 4 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
   const dois = await novoBanco([N, 'destino@teste'], [O, 'origem@teste']);
   ok(/exatamente 1 usuário/.test(await tentar(dois, copia)) && await contar(dois) === '0/0', 'restauração: com mais de um usuário no projeto, nada é gravado');
   const nenhum = await novoBanco();
   ok(/exatamente 1 usuário/.test(await tentar(nenhum, copia)) && await contar(nenhum) === '0/0', 'restauração: sem nenhum usuário no projeto, nada é gravado');
   const quebrada = JSON.parse(JSON.stringify(copia)); quebrada.demandas[0].tarefas[0].texto = '   ';
   ok(await tentar(vazio, quebrada) !== null && await contar(vazio) === '0/0', 'restauração: uma tarefa inválida derruba a restauração inteira (transação única, nada fica pela metade)');
-  for (const d of [origem, destino, vazio, dois, nenhum]) await d.close();
+  for (const d of [origem, destino, vazio, dois, nenhum, semDemanda, v2]) await d.close();
 }
 
 
@@ -547,6 +565,107 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   }
 }
 
+// ---------- Entradas: anotações em post-its, conversão em demanda, versão e privilégios (migração 10) ----------
+{
+  const ec = (u, f, a) => chamarComoUsuario(db, u, f, a);
+  const ee = async (u, f, a) => { try { await ec(u, f, a); return null; } catch (e) { return e; } };
+  const msg = async (u, f, a) => (await ee(u, f, a))?.message ?? null;
+  const U = '7e7e7e7e-7777-4777-8777-7e7e7e7e7e7e', V = '8d8d8d8d-8888-4888-8888-8d8d8d8d8d8d';
+  await db.exec(`insert into auth.users (id, email) values ('${U}', 'u-ent@teste'), ('${V}', 'v-ent@teste')`);
+  await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('u-ent@teste'), ('v-ent@teste')");
+  const nEnt = async (u, arq) => (await ec(u, 'listar_entradas', { p_arquivadas: arq })).length;
+
+  // criar: nenhum registro vazio, título opcional, texto opcional se houver título, espaços das pontas aparados
+  ok(/Escreva um título ou o texto/.test(await msg(U, 'criar_entrada', { p: { titulo: '  ', texto: ' \n ' } })) && /Escreva um título ou o texto/.test(await msg(U, 'criar_entrada', { p: {} })) && await nEnt(U, false) === 0, 'entradas: anotação completamente vazia é recusada e nada é gravado');
+  const e1 = await ec(U, 'criar_entrada', { p: { texto: '  Ligar para o RH #rh \n' } });
+  const e2 = await ec(U, 'criar_entrada', { p: { titulo: ' Só título ' } });
+  ok(e1.titulo === '' && e1.texto === 'Ligar para o RH #rh' && e1.fixada === false && e1.arquivada_em === null && e1.demanda_id === null && e1.versao === 1 && !('user_id' in e1) && e2.titulo === 'Só título' && e2.texto === '', 'entradas: título e texto são opcionais um sem o outro, o texto é aparado e nasce ativa, sem vínculo e na versão 1');
+  ok(/passa de 20000/.test(await msg(U, 'criar_entrada', { p: { texto: 'x'.repeat(20001) } })) && /passa de 200/.test(await msg(U, 'criar_entrada', { p: { titulo: 'x'.repeat(201) } })) && /Cor inválida/.test(await msg(U, 'criar_entrada', { p: { texto: 'a', cor: 6 } })), 'entradas: limites de tamanho e cor fora de 0 a 5 são recusados');
+
+  // cor automática: distribui antes de repetir (6 notas, 6 cores); com escolha, vale a escolha
+  const n6 = [];
+  for (let i = 0; i < 6; i++) n6.push(await ec(V, 'criar_entrada', { p: { texto: 'nota ' + i } }));
+  ok(new Set(n6.map((x) => x.cor)).size === 6 && n6.every((x) => x.cor >= 0 && x.cor <= 5), 'entradas: sem escolha de cor, as seis primeiras notas recebem seis cores diferentes');
+  const n7 = await ec(V, 'criar_entrada', { p: { texto: 'sétima', cor: 4 } });
+  ok(n7.cor === 4, 'entradas: a cor escolhida é respeitada');
+
+  // idempotência pelo identificador gerado no aplicativo
+  const idE = 'aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa';
+  const [ia, ib] = await Promise.all([ec(U, 'criar_entrada', { p: { id: idE, texto: 'Repetida', cor: 2 } }), ec(U, 'criar_entrada', { p: { id: idE, texto: 'Repetida', cor: 2 } })]);
+  const ic = await ec(U, 'criar_entrada', { p: { id: idE, texto: 'Texto diferente na nova tentativa', cor: 5 } });
+  ok(ia.id === idE && ib.id === idE && ic.id === idE && ic.texto === 'Repetida' && ic.cor === 2 && (await db.query('select count(*)::int as n from public.entradas where id = $1', [idE])).rows[0].n === 1, 'entradas: clique repetido, resposta perdida e nova tentativa com o mesmo identificador não duplicam');
+
+  // isolamento por usuário e visitante sem acesso
+  const eV = n6[0];
+  ok(await nEnt(U, false) === 3 && await nEnt(V, false) === 7, 'entradas: cada usuário lista só as próprias anotações');
+  ok(/não encontrada/.test(await msg(U, 'buscar_entrada', { p_id: eV.id })) && /não encontrada/.test(await msg(U, 'fixar_entrada', { p_id: eV.id, p_fixada: true })) && /não encontrada/.test(await msg(U, 'arquivar_entrada', { p_id: eV.id })) && /não encontrada/.test(await msg(U, 'salvar_entrada', { p_id: eV.id, p: { texto: 'invasão' }, p_versao: 1 })), 'entradas: RLS, uma conta não lê nem altera a anotação de outra');
+  const anonE = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_entradas()'); return null; } catch (e) { return e.message; } });
+  const tabE = await db.query("select has_table_privilege('authenticated', 'public.entradas', 'select, insert, update, delete') as crud, has_table_privilege('authenticated', 'public.entradas', 'truncate') as trunc, has_table_privilege('anon', 'public.entradas', 'select') as anon_sel, has_table_privilege('service_role', 'public.entradas', 'select') as svc_sel");
+  ok(/permission denied/i.test(anonE || '') && tabE.rows[0].crud && !tabE.rows[0].trunc && !tabE.rows[0].anon_sel && !tabE.rows[0].svc_sel, 'entradas: visitante e papel de serviço não tocam na tabela; o usuário logado tem só select, insert, update e delete');
+
+  // salvar com versão, mudança parcial e sem mudança
+  const s1 = await ec(U, 'salvar_entrada', { p_id: e1.id, p: { titulo: 'Escalas', texto: 'Ligar para o RH sobre as escalas #rh #fim' }, p_versao: 1 });
+  ok(s1.versao === 2 && s1.titulo === 'Escalas' && s1.texto.includes('#fim') && s1.cor === e1.cor && s1.fixada === false, 'entradas: salvar com a versão certa grava e sobe a versão, sem tocar no que não foi enviado');
+  const velho = await ee(U, 'salvar_entrada', { p_id: e1.id, p: { texto: 'versão velha' }, p_versao: 1 });
+  const aposVelho = await ec(U, 'buscar_entrada', { p_id: e1.id });
+  ok(velho?.code === 'DM409' && aposVelho.texto === s1.texto && aposVelho.versao === 2, 'entradas: salvar com versão antiga é recusado (DM409) e nada é gravado');
+  const semMud = await ec(U, 'salvar_entrada', { p_id: e1.id, p: { titulo: 'Escalas', texto: s1.texto }, p_versao: 2 });
+  ok(semMud.versao === 2 && semMud.atualizado_em === s1.atualizado_em, 'entradas: salvar sem mudança real não sobe a versão nem a data de atualização');
+  const sCor = await ec(U, 'salvar_entrada', { p_id: e1.id, p: { cor: 5, fixada: true }, p_versao: 2 });
+  ok(sCor.cor === 5 && sCor.fixada === true && sCor.versao === 3 && sCor.texto === s1.texto, 'entradas: cor e fixação entram no mesmo salvamento versionado');
+  ok(/não pode ficar vazia/.test(await msg(U, 'salvar_entrada', { p_id: e1.id, p: { titulo: '', texto: '  ' }, p_versao: 3 })) && (await ec(U, 'buscar_entrada', { p_id: e1.id })).versao === 3, 'entradas: esvaziar tudo ao salvar é recusado e a anotação segue como estava');
+  ok(/Versão da anotação não informada/.test(await msg(U, 'salvar_entrada', { p_id: e1.id, p: { texto: 'a' }, p_versao: null })), 'entradas: salvar exige a versão');
+
+  // fixar, desafixar, arquivar e recuperar
+  const f1 = await ec(U, 'fixar_entrada', { p_id: e2.id, p_fixada: true }), f2 = await ec(U, 'fixar_entrada', { p_id: e2.id, p_fixada: true }), f3 = await ec(U, 'fixar_entrada', { p_id: e2.id, p_fixada: false });
+  ok(f1.fixada === true && f2.versao === f1.versao && f3.fixada === false, 'entradas: fixar e desafixar funcionam e repetir não faz mal');
+  const ar = await ec(U, 'arquivar_entrada', { p_id: e2.id }), ar2 = await ec(U, 'arquivar_entrada', { p_id: e2.id });
+  ok(ar.arquivada_em !== null && ar2.arquivada_em === ar.arquivada_em && await nEnt(U, false) === 2 && await nEnt(U, true) === 1, 'entradas: arquivar tira da lista de Entradas e põe no Arquivo (repetir mantém a data)');
+  const de = await ec(U, 'desarquivar_entrada', { p_id: e2.id });
+  ok(de.arquivada_em === null && de.titulo === 'Só título' && await nEnt(U, false) === 3 && await nEnt(U, true) === 0, 'entradas: recuperar devolve a anotação a Entradas com o mesmo conteúdo');
+  ok(/Arquive a anotação antes/.test(await msg(U, 'excluir_entrada', { p_id: e2.id, p_confirmado: true })) && /precisa de confirmação/.test(await msg(U, 'excluir_entrada', { p_id: e2.id })), 'entradas: excluir exige arquivar antes e confirmação');
+  await ec(U, 'arquivar_entrada', { p_id: e2.id });
+  ok((await ec(U, 'excluir_entrada', { p_id: e2.id, p_confirmado: true })).excluida === true && /não encontrada/.test(await msg(U, 'buscar_entrada', { p_id: e2.id })), 'entradas: exclusão definitiva de anotação arquivada, com confirmação');
+
+  // virar demanda: a demanda e o vínculo nascem juntos, a anotação sai de Entradas e fica preservada
+  const orig = await ec(U, 'criar_entrada', { p: { titulo: 'Portaria', texto: 'Assinar a portaria do horário de verão #portaria\nSegunda linha', cor: 1, fixada: true } });
+  const idDem = 'bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb';
+  const dem = await ec(U, 'criar_demanda_de_entrada', { p_entrada: orig.id, p: { id: idDem, assunto: 'Portaria', descricao: orig.texto } });
+  const depois = await ec(U, 'buscar_entrada', { p_id: orig.id });
+  ok(dem.id === idDem && dem.etapa === 'Cadastro' && dem.entrada_id === orig.id && dem.tarefas.length === 0 && dem.prazo === null && dem.origem === '' && dem.chegou_em === null, 'virar demanda: cria a demanda em Cadastro, ligada à anotação, sem inventar origem, chegada, prazo nem tarefas');
+  ok(depois.demanda_id === idDem && depois.titulo === orig.titulo && depois.texto === orig.texto && depois.cor === orig.cor && depois.fixada === true && !(await ec(U, 'listar_entradas', { p_arquivadas: false })).some((x) => x.id === orig.id) && (await ec(U, 'listar_entradas', { p_arquivadas: true })).some((x) => x.id === orig.id), 'virar demanda: a anotação sai de Entradas, vai para o Arquivo e o conteúdo original fica intacto');
+  const repetida = await ec(U, 'criar_demanda_de_entrada', { p_entrada: orig.id, p: { id: idDem, assunto: 'Portaria', descricao: orig.texto } });
+  ok(repetida.id === idDem && (await db.query("select count(*)::int as n from public.demandas where assunto = 'Portaria'")).rows[0].n === 1, 'virar demanda: repetir a conversão (resposta perdida) devolve a mesma demanda, sem duplicar');
+  const outra = await msg(U, 'criar_demanda_de_entrada', { p_entrada: orig.id, p: { id: 'cccccccc-3333-4333-8333-cccccccccccc', assunto: 'Outra tentativa' } });
+  ok(/já virou outra demanda/.test(outra) && (await db.query("select count(*)::int as n from public.demandas where assunto = 'Outra tentativa'")).rows[0].n === 0, 'virar demanda: uma segunda conversão com outro identificador é recusada e não cria demanda');
+  ok(/preservada como estava/.test(await msg(U, 'salvar_entrada', { p_id: orig.id, p: { texto: 'mudou' }, p_versao: depois.versao })) && /preservada como estava/.test(await msg(U, 'fixar_entrada', { p_id: orig.id, p_fixada: false })) && /já virou demanda/.test(await msg(U, 'arquivar_entrada', { p_id: orig.id })) && /virou demanda/.test(await msg(U, 'desarquivar_entrada', { p_id: orig.id })) && /virou demanda/.test(await msg(U, 'excluir_entrada', { p_id: orig.id, p_confirmado: true })) && (await ec(U, 'buscar_entrada', { p_id: orig.id })).texto === orig.texto, 'virar demanda: a anotação convertida não se altera, não se arquiva nem se exclui');
+
+  // falha na criação: a anotação continua ativa e nenhuma demanda nasce
+  const orig2 = await ec(U, 'criar_entrada', { p: { texto: 'Esta fica ativa se a conversão falhar' } });
+  const antesDem = (await db.query('select count(*)::int as n from public.demandas')).rows[0].n;
+  ok(/Informe o assunto/.test(await msg(U, 'criar_demanda_de_entrada', { p_entrada: orig2.id, p: { id: 'dddddddd-4444-4444-8444-dddddddddddd', assunto: '  ' } })) && /Identificador da demanda/.test(await msg(U, 'criar_demanda_de_entrada', { p_entrada: orig2.id, p: { assunto: 'sem id' } })), 'virar demanda: pedido inválido é recusado');
+  ok((await ec(U, 'buscar_entrada', { p_id: orig2.id })).demanda_id === null && (await db.query('select count(*)::int as n from public.demandas')).rows[0].n === antesDem && (await ec(U, 'listar_entradas', { p_arquivadas: false })).some((x) => x.id === orig2.id), 'virar demanda: se a criação falha, a anotação continua ativa e nenhuma demanda sobra (mesma transação)');
+  // a demanda já criada pelo passo 2 e a conversão repetida depois de recarregar continuam ligando à mesma anotação
+  const dem2 = await ec(U, 'criar_demanda_de_entrada', { p_entrada: orig2.id, p: { id: 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee', assunto: 'Primeira linha útil', descricao: 'resto' } });
+  const dem2b = await ec(U, 'criar_demanda_de_entrada', { p_entrada: orig2.id, p: { id: 'eeeeeeee-5555-4555-8555-eeeeeeeeeeee', assunto: 'Primeira linha útil, editada', descricao: 'resto' } });
+  ok(dem2b.id === dem2.id && dem2b.entrada_id === orig2.id, 'virar demanda: nova tentativa depois da criação devolve a mesma demanda, ainda ligada à anotação');
+
+  // anotação inexistente (excluída em outro aparelho): a demanda é criada do mesmo jeito, sem vínculo
+  const semNota = await ec(U, 'criar_demanda_de_entrada', { p_entrada: 'ffffffff-6666-4666-8666-ffffffffffff', p: { id: '99999999-7777-4777-8777-999999999999', assunto: 'Sem anotação' } });
+  ok(semNota.etapa === 'Cadastro' && semNota.entrada_id === null, 'virar demanda: se a anotação já não existe, a demanda é criada sem vínculo (o que foi digitado não se perde)');
+  // outra conta não converte anotação alheia: a RLS a esconde, então vira demanda comum de quem chamou, sem tocar na anotação de A
+  const alheia = await ec(V, 'criar_demanda_de_entrada', { p_entrada: orig2.id, p: { id: '8c8c8c8c-9999-4999-8999-8c8c8c8c8c8c', assunto: 'Tentativa alheia' } });
+  ok(alheia.entrada_id === null && (await ec(U, 'buscar_entrada', { p_id: orig2.id })).demanda_id === dem2.id, 'virar demanda: uma conta não liga a demanda dela à anotação de outra');
+
+  // excluir a demanda de vez devolve a anotação a Entradas, com o conteúdo original
+  await ec(U, 'excluir_demanda', { p_id: dem2.id, p_confirmado: true });
+  const volta = await ec(U, 'buscar_entrada', { p_id: orig2.id });
+  ok(volta.demanda_id === null && volta.texto === orig2.texto && (await ec(U, 'listar_entradas', { p_arquivadas: false })).some((x) => x.id === orig2.id), 'virar demanda: se a demanda é excluída de vez, a anotação volta para Entradas com o conteúdo original');
+  const salvaDeNovo = await ec(U, 'salvar_entrada', { p_id: orig2.id, p: { texto: 'editável de novo' }, p_versao: volta.versao });
+  ok(salvaDeNovo.texto === 'editável de novo', 'virar demanda: a anotação liberada volta a ser editável');
+  ok((await db.query('select count(*)::int as n from public.entradas where demanda_id is not null')).rows[0].n === 1, 'entradas: uma demanda nasce de no máximo uma anotação (índice único) e só a convertida da Portaria segue ligada');
+}
+
 // ---------- migração sobre dados antigos: nada se perde ----------
 {
   const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
@@ -556,7 +675,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
   const nova8 = todas.find((f) => f.includes('prazos_e_dias_indisponiveis'));
   const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
-  for (const f of todas.filter((f) => f !== nova8 && f !== nova9)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const nova10 = todas.find((f) => f.includes('_entradas'));
+  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -607,6 +727,12 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(e.prazo === '2027-03-05' && e.prazo_original === '2027-03-06' && e.prazo_legado === true, 'legado: editar outro campo não mexe no prazo nem no marcador');
   const m = await cw('atualizar_demanda', { p_id: comPrazo.id, p: { prazo_original: '2027-03-09' } });
   ok(m.prazo === '2027-03-09' && m.prazo_legado === false, 'legado: escolher uma data nova passa a valer pelas regras novas e tira o marcador');
+  // migração 10 (entradas) sobre os mesmos dados: as demandas e as tarefas ficam idênticas e a tabela nova nasce vazia
+  const demandasAntes10 = JSON.stringify((await antigo.query('select * from public.demandas order by id')).rows), tarefasAntes10 = JSON.stringify((await antigo.query('select * from public.tarefas order by id')).rows);
+  await antigo.exec(readFileSync(join('supabase/migrations', nova10), 'utf8'));
+  ok(JSON.stringify((await antigo.query('select * from public.demandas order by id')).rows) === demandasAntes10 && JSON.stringify((await antigo.query('select * from public.tarefas order by id')).rows) === tarefasAntes10 && (await antigo.query('select count(*)::int as n from public.entradas')).rows[0].n === 0, 'migração 10: demandas e tarefas existentes ficam idênticas e a tabela de entradas nasce vazia');
+  const lido10 = await cw('buscar_demanda', { p_id: comPrazo.id });
+  ok(lido10.entrada_id === null && lido10.prazo === '2027-03-09' && lido10.tarefas.length === 1, 'migração 10: a leitura da demanda ganha o campo entrada_id (nulo) sem alterar o resto');
   await antigo.close();
 }
 

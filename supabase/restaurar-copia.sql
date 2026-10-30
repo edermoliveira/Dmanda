@@ -1,5 +1,5 @@
 -- Restaura uma cópia dos dados do Dmanda (arquivo "dmanda-copia-AAAA-MM-DD.json", menu do avatar > "Baixar cópia dos dados") em um projeto Supabase.
--- Aceita cópias da versão 2 (demandas, tarefas e dias indisponíveis) e da versão 1 (antigas, sem dias indisponíveis; o prazo delas vira a referência original, marcada como legado).
+-- Aceita cópias da versão 3 (demandas, tarefas, dias indisponíveis e entradas), da versão 2 (sem entradas) e da versão 1 (antigas, sem dias indisponíveis; o prazo delas vira a referência original, marcada como legado).
 -- Procedimento completo e limites: supabase/LEIA-ME.md, seção "Cópia dos dados e restauração".
 --
 -- Como usar (no SQL Editor do painel do Supabase, do projeto Dmanda, ou em um banco de teste):
@@ -10,7 +10,7 @@
 --   4. Confira: select count(*) from public.demandas; select count(*) from public.tarefas;
 --
 -- Garantias e limites:
---   - Só grava demandas, tarefas (com as arquivadas) e dias indisponíveis. Uma demanda que já existe com o mesmo identificador NÃO é tocada nem sobrescrita, nem recebe tarefas.
+--   - Só grava demandas, tarefas (com as arquivadas), dias indisponíveis e entradas (ativas, arquivadas e já convertidas, com o vínculo à demanda). Uma demanda ou entrada que já existe com o mesmo identificador NÃO é tocada nem sobrescrita, nem recebe tarefas.
 --   - Tudo é atribuído ao único usuário do projeto (a conta do Secretário): serve ao mesmo projeto e também a um projeto novo, com outro identificador de usuário.
 --   - Se o projeto não tiver exatamente 1 usuário, nada é gravado. A conta, a senha, a lista de acesso e as migrações NÃO fazem parte da cópia e precisam existir antes.
 --   - Exige o dono da tabela (no SQL Editor do Supabase você já é): o script desliga e religa um gatilho dentro da própria transação.
@@ -26,9 +26,10 @@ declare
   n_dem integer;
   n_tar integer;
   n_dias integer;
+  n_ent integer;
 begin
-  if j ->> 'formato' is distinct from 'dmanda-exportacao' or j ->> 'versao' not in ('1', '2') then
-    raise exception 'Este arquivo não é uma cópia do Dmanda (esperado formato dmanda-exportacao, versão 1 ou 2).';
+  if j ->> 'formato' is distinct from 'dmanda-exportacao' or j ->> 'versao' not in ('1', '2', '3') then
+    raise exception 'Este arquivo não é uma cópia do Dmanda (esperado formato dmanda-exportacao, versão 1, 2 ou 3).';
   end if;
   select count(*) into qtd from auth.users;
   if qtd <> 1 then
@@ -74,6 +75,17 @@ begin
   on conflict (id) do nothing;
   get diagnostics n_dias = row_count;
 
-  raise notice 'Restauradas % demanda(s), % tarefa(s) e % dia(s) indisponível(is); o que já existia não foi tocado.', n_dem, n_tar, n_dias;
+  -- entradas (cópias da versão 3), depois das demandas porque uma entrada convertida aponta para a sua demanda: o vínculo só é refeito se a demanda existe neste projeto
+  -- (senão a anotação volta como ativa, com o conteúdo original). Versão e datas vêm como estavam na cópia; o que já existe com o mesmo identificador não é tocado.
+  insert into public.entradas (id, user_id, titulo, texto, cor, fixada, arquivada_em, demanda_id, versao, criado_em, atualizado_em)
+  select (x ->> 'id')::uuid, dono, coalesce(x ->> 'titulo', ''), coalesce(x ->> 'texto', ''), (x ->> 'cor')::smallint, coalesce((x ->> 'fixada')::boolean, false),
+         (x ->> 'arquivada_em')::timestamptz,
+         case when (x ->> 'demanda_id')::uuid in (select id from public.demandas) then (x ->> 'demanda_id')::uuid end,
+         coalesce((x ->> 'versao')::integer, 1), coalesce((x ->> 'criado_em')::timestamptz, now()), coalesce((x ->> 'atualizado_em')::timestamptz, now())
+  from jsonb_array_elements(coalesce(j -> 'entradas', '[]'::jsonb) || coalesce(j -> 'entradas_arquivadas', '[]'::jsonb)) x
+  on conflict (id) do nothing;
+  get diagnostics n_ent = row_count;
+
+  raise notice 'Restauradas % demanda(s), % tarefa(s), % dia(s) indisponível(is) e % entrada(s); o que já existia não foi tocado.', n_dem, n_tar, n_dias, n_ent;
 end
 $restaurar$;
