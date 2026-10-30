@@ -8,7 +8,11 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 ---
 
-## BLOCO DE 29/10/2026: SESSÃO PERSISTENTE, CADASTRO GUIADO E PRAZOS (leia primeiro)
+## BLOCO DE 29/10/2026 (TARDE): INTEGRAÇÃO, CORREÇÕES, CARDS E ESCALA TIPOGRÁFICA (leia primeiro)
+
+Merge dos dois computadores (`d9c1328`), três achados corrigidos (Quadro sempre em Cadastro, rascunho do passo 3 retomável sem duplicar, migração 9 dos prazos legados abertos), cards com título priorizado e escala de texto de 85% (`--esc`). Decisões 34 a 36 em `DECISOES.md`; resumo e roteiro do iPhone em `CONTINUIDADE-DMANDA.md`, seção G. Para continuar em casa: `git pull --ff-only origin main`, `npm ci`; a migração 9 já está no Supabase real. Teste novo: `npm run testar:interface` (porta 7104, para o `next dev` da 7100 antes, pois a pasta `.next` tem trava).
+
+## BLOCO DE 29/10/2026: SESSÃO PERSISTENTE, CADASTRO GUIADO E PRAZOS
 
 Resumo técnico e retomada: `CONTINUIDADE-DMANDA.md` (seção G). Decisões 27 a 33 em `DECISOES.md`.
 

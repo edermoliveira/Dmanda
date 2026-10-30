@@ -393,3 +393,24 @@ Banco 164, regras 51, aplicação no navegador 131, sessão 78 (contagens finais
 
 ### 19.4 Texto pronto da Issue consolidada do bloco (o `gh` não está instalado neste computador)
 Título: **Bloco: sessão persistente, cadastro guiado em três passos, consulta com lápis, prazo original e ajustado, dias indisponíveis**. Marco: "Base real e primeiro uso". Conteúdo: decisões 27 a 33 de `DECISOES.md`; migração `20261029000000_prazos_e_dias_indisponiveis`; testes (banco, regras, aplicação, sessão); pendências: avaliação no iPhone real (roteiro em `CONTINUIDADE-DMANDA.md`), avaliação visual do usuário (Issue #2), validação autenticada em produção (Issue #3). Critério de fechamento: avaliação do usuário no computador e no iPhone. Sem credenciais, e-mail pessoal nem dados reais.
+
+## 20. Bloco de integração e correções (29/10/2026, tarde)
+
+Escopo restrito (não é auditoria geral): três achados, cards e escala tipográfica. Cada defeito foi reproduzido antes da correção.
+
+### 20.1 Achados reproduzidos e corrigidos
+| # | Achado | Reprodução | Correção |
+|---|---|---|---|
+| 1 | Quadro criava demanda na etapa da coluna | Navegador: botão da coluna Vistos, aviso "criada e salva em Vistos" | Só a coluna Cadastro oferece o botão; a janela não recebe etapa |
+| 2 | Passo 3 perdido na recarga; risco de duplicar | `dmanda:rascunhos` vazio e cadastro volta ao passo 1 | Rascunho do cadastro inteiro, identificador gravado antes da chamada, versão de origem |
+| 3 | Legados abertos em fim de semana | Banco de teste: legado em sábado seguia no sábado | Migração 9 (nova), testada em dados antigos |
+| 4 | Título do card em faixa ou cortado | Medição: 5 a 6 linhas necessárias, 1 visível, descrição em 3 | Título sem encolhimento por flexão; ajuste com prioridade explícita |
+| 5 | Texto 15% menor | Linha de base medida: 3765 textos em 26 estados | Escala `--esc`; medição final 3795 textos, todos a 0,85 ou exceção |
+| 6 | "Não informado" centralizado e cabeçalhos do Quadro desalinhados | Revisão visual | `dd.vazio` à esquerda; altura mínima igual nos cabeçalhos |
+| 7 | Cadastro retomado com lista não carregada duplicaria (achado do `ponytail-review`) | Raciocínio sobre o fluxo e teste novo | Reutilizar sempre o identificador do rascunho |
+
+### 20.2 Ferramentas efetivamente usadas
+`ponytail-review` (invocado; 4 achados, todos tratados), Impeccable 4.8.0 `critique` em modo enxuto (detector limpo; sem subagentes isolados, por regra de não criá-los sem pedido), `systematic-debugging`, TDD e `verification-before-completion` como método. Ponytail conferido contra a origem por hash. Taste, ui-ux-pro-max e code-simplifier seguem desativados.
+
+### 20.3 Observação de risco aceito
+O piso de 10 px e o texto de descrição mono em 11 px no iPhone são o efeito direto dos 15% pedidos. A legibilidade em aparelho real só o usuário confirma (Issue #2). O ajuste é um número (`--esc`) ou o piso em `app.css`.

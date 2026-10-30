@@ -316,3 +316,7 @@ Cada demanda tem uma `versao`. Se a mesma demanda for alterada em outro aparelho
 ## Teste local sem Supabase
 
 `npm run dev:teste` usa o banco local descartável (`.dados-teste/`, não vai para o Git). As migrações novas são aplicadas sozinhas a um banco de teste já existente. Testes: `npm run testar:banco` (118), `testar:regras` (25), `testar:app` (69), `testar:sessao` (57, Auth falso). Eles **não** substituem a validação no Supabase real.
+
+## Migração 9: prazos legados abertos (29/10/2026)
+
+`20261029000100_normalizar_prazos_legados.sql` só mexe em dados: nas demandas não finalizadas com prazo legado, o vencimento efetivo (`prazo`) passa a seguir o calendário do próprio usuário; `prazo_original` e `prazo_legado` ficam. Finalizadas e quem já está num dia disponível não mudam. Reaplicar é inofensivo. Aplicada com `npx supabase db push --linked --dry-run` e depois sem `--dry-run`, sem reset. Depois de **restaurar uma cópia da versão 1** (`restaurar-copia.sql`), rode de novo o conteúdo desta migração com `npx supabase db query --linked -f supabase/migrations/20261029000100_normalizar_prazos_legados.sql`.
