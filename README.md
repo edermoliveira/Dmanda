@@ -6,8 +6,8 @@ Painel pessoal de demandas do Secretário de Administração da Prefeitura de Ta
 
 - **Publicado:** https://dmanda-adm.vercel.app (Vercel Hobby, Supabase Free). Acesso restrito por e-mail e senha ao usuário único. A `main` é a única branch e a que publica.
 - **Design:** Catalyst único (claro e escuro), aprovado no protótipo em `prototipo/`. A aplicação React ainda aguarda a avaliação visual do usuário.
-- **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: demandas e tarefas com as quatro visões, Início, cópia dos dados em JSON, PWA online e rotina diária na nuvem. As demais áreas (Entradas, Agenda, Documentos, IA, Configurações) ainda não foram construídas.
-- **Supabase:** 7 migrações aplicadas, segurança validada, entrada por e-mail e senha, Google desligado. **Ainda não validado em produção:** cron registrado e primeira execução, 6 horas reais, instalação da PWA.
+- **Aplicação funcional** (Next.js 16, React 19, Supabase) em `src/`: demandas e tarefas com as quatro visões, cadastro guiado em três passos, consulta com lápis por seção, prazo original e ajustado, Início, dias indisponíveis em Configurações, cópia dos dados em JSON, PWA online e rotina diária na nuvem. As demais áreas (Entradas, Agenda, Documentos, IA, Configurações) ainda não foram construídas.
+- **Supabase:** 8 migrações aplicadas (a 8, de 29/10/2026, traz o prazo original e ajustado e os dias indisponíveis), segurança validada, entrada por e-mail e senha, Google desligado. A sessão persiste (sem limite de inatividade). **Ainda não validado em produção:** cron registrado e primeira execução, a sessão persistente por horas reais no iPhone, instalação da PWA.
 - **Resumo consolidado, validação e retomada em outro computador:** `CONTINUIDADE-DMANDA.md`.
 
 ## Como rodar

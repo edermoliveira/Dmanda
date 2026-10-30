@@ -363,3 +363,33 @@ Vercel Hobby e Supabase Free; nada pago. Compatibilidade conferida na documenta�
 
 ### 18.6 Parecer de prontidão
 O código está **pronto para a publicação gratuita** no que a auditoria alcança: nenhum bloqueador, correções importantes aplicadas e verificadas, e os fluxos de entrada, gravação, leitura posterior, edição simultânea, dois aparelhos e cópia dos dados cobertos por testes e por leitura. **Dependem de coisas que só existem depois de publicar ou no seu aparelho:** pacote das funções e região na Vercel, cron registrado e primeira execução automática, instalação da PWA, download da cópia no app instalado, 6 h reais e a sua avaliação visual (Issue #2). Isto não é garantia de ausência de defeitos.
+
+## 19. Revisão focada do bloco "sessão persistente, cadastro guiado e prazos" (29/10/2026)
+
+Revisão deste bloco apenas; **não** é outra auditoria geral. Método: leitura do fluxo anterior antes de alterar, reprodução por teste, correção, repetição.
+
+### 19.1 Problemas do fluxo anterior (registrados antes da alteração)
+| # | Onde | Problema | Efeito |
+|---|---|---|---|
+| S1 | `src/proxy.ts`, `src/lib/sessao.ts` | A regra das 6 horas dependia de um cookie próprio (`dmanda-ultimo-uso`) renovado só em navegações; ausente, ilegível ou antigo valia como "expirado" e encerrava a sessão do Supabase mesmo válida | **Causa do relato do iPhone:** a PWA reaberta depois de horas caía no login |
+| S2 | `src/proxy.ts` | `NextResponse.next({ request })` era criado **antes** da renovação: os cookies renovados não chegavam à página nem à ação da mesma requisição (renovação possivelmente em duplicidade, com o token de renovação já gasto) | Risco de revogação da sessão pelo Auth |
+| S3 | `src/proxy.ts` | Os redirecionamentos (login, saída, negado) não levavam os cookies renovados | Token novo perdido, token antigo já gasto |
+| S4 | `src/proxy.ts`, `src/servidor/banco.ts` | Qualquer falha de rede em `getUser()` virava "sem sessão": redirecionava ao login (proxy) ou dizia "Sua sessão terminou" (operação) | Perda aparente da sessão por queda de conexão |
+| S5 | `FormularioSenha` + cookies do navegador | Na primeira entrada, os cookies são escritos por script no navegador; o Safari limita a 7 dias os cookies escritos por script | Possível novo login semanal no iPhone e no iPad |
+| S6 | `src/proxy.ts` (`setAll`) | Ignorava o segundo argumento (cabeçalhos de cache) que o `@supabase/ssr` 0.12 entrega com os cookies | Respostas com cookie de sessão sem `Cache-Control: private, no-store` |
+| C1 | `criar_demanda` | `numero` e `origem` ganhavam "s/n" e "Não informada" e `chegou_em` ganhava a data de hoje | Informação inventada; contagem de permanência falsa |
+| C2 | Janela "Nova demanda" | Formulário único com muitos campos e prazo opcional só por "Sugerir 30 dias" (a partir de hoje, sem ajuste por fim de semana ou feriado) | Cadastro poluído; vencimento em dia sem expediente |
+| C3 | Janela de edição | Abrir um card já abria um formulário completo de edição | Sem consulta organizada |
+| P1 | Prazos | Uma única data de prazo, digitada; sem prazo original, sem ajuste, sem calendário | Vencimento podia cair em sábado, domingo ou feriado |
+
+### 19.2 Descobertas durante a implementação (corrigidas)
+- **Ação de entrada pulada:** com a sessão válida, o proxy redirecionava qualquer pedido a `/login`, inclusive o POST da ação `concluirEntrada` (a ação nunca rodava; antes o carimbo ausente impedia isso por acaso). Agora só redireciona GET.
+- **Cookie idêntico não é regravado:** o SDK só emite `Set-Cookie` quando o valor muda; por isso a regravação no login usa `refreshSession()` (troca os tokens) e não `setSession()` (mesmos valores, nenhuma escrita).
+- **Aviso de sessão encerrada perdido:** o SDK limpa os cookies de uma sessão recusada antes de o proxy checar "havia sessão?"; a leitura passou a vir antes da conferência.
+- **Conta fora da lista no login:** a recusa não pode valer para as páginas públicas, senão a ação de entrada não responde "e-mail ou senha incorretos".
+
+### 19.3 Verificações (resultado no fim do documento de continuidade, seção E)
+Banco 164, regras 51, aplicação no navegador 131, sessão 78 (contagens finais: ver `CONTINUIDADE-DMANDA.md`). Ferramentas usadas neste bloco: ver `CONTINUIDADE-DMANDA.md`, seção C.
+
+### 19.4 Texto pronto da Issue consolidada do bloco (o `gh` não está instalado neste computador)
+Título: **Bloco: sessão persistente, cadastro guiado em três passos, consulta com lápis, prazo original e ajustado, dias indisponíveis**. Marco: "Base real e primeiro uso". Conteúdo: decisões 27 a 33 de `DECISOES.md`; migração `20261029000000_prazos_e_dias_indisponiveis`; testes (banco, regras, aplicação, sessão); pendências: avaliação no iPhone real (roteiro em `CONTINUIDADE-DMANDA.md`), avaliação visual do usuário (Issue #2), validação autenticada em produção (Issue #3). Critério de fechamento: avaliação do usuário no computador e no iPhone. Sem credenciais, e-mail pessoal nem dados reais.

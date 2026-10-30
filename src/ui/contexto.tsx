@@ -5,11 +5,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { FILTRO_VAZIO, hojeISO, type Coluna, type DadosDemanda, type Demanda, type Etapa, type Filtro } from '@/lib/demandas';
 import * as srv from '@/servidor/demandas';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
+import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';
 
 export type Visao = 'cards' | 'quadro' | 'tabela' | 'lista';
 export type Janela = { t: 'nova'; etapa?: Etapa } | { t: 'editar'; id: string } | { t: 'tarefa' } | null;
 // versao: a versão da demanda sobre a qual o rascunho foi digitado (se a demanda mudou depois, o salvamento é recusado em vez de sobrescrever)
-export type Rascunho = { dados: DadosDemanda; tarefas?: TarefaEdicao[]; nt?: string; versao?: number };
+// passo: em que passo do cadastro guiado a pessoa estava. secoes: quais seções da consulta estavam em edição (o cadastro guiado deixa isso quando fecha com algo não salvo).
+export type Rascunho = { dados: DadosDemanda & Record<string, unknown>; tarefas?: TarefaEdicao[]; nt?: string; versao?: number; passo?: 1 | 2; secoes?: string[] };
 /** Resultado de salvar a janela de edição: gravou, foi recusado por conflito de versão (nada gravado, a edição local fica) ou falhou por outro motivo. */
 export type ResultadoSalvar = { ok: true; demanda: Demanda } | { ok: false; conflito: boolean };
 type Aviso = { n: number; msg: string; erro: boolean } | null;
@@ -19,6 +21,10 @@ export type EstadoRotina = { ultima_ok: string | null; ultima_falha: string | nu
 type Ctx = {
   demandas: Demanda[];
   arquivadas: Demanda[] | null;
+  /** Feriados e eventos externos de dia inteiro cadastrados: a prévia do vencimento usa a mesma regra do banco. */
+  dias: DiaIndisponivel[];
+  salvarDia: (dia: { id?: string; data: string; descricao: string; categoria: CategoriaDia }) => Promise<boolean>;
+  excluirDia: (id: string) => Promise<boolean>;
   hoje: string;
   carregando: boolean;
   erroCarga: string | null;
@@ -49,7 +55,7 @@ type Ctx = {
   rascunhos: Record<string, Rascunho>;
   guardarRascunho: (chave: string, r: Rascunho | null) => void;
   // operações (devolvem a demanda gravada, ou null se falhou; o erro já foi avisado)
-  criar: (dados: DadosDemanda) => Promise<Demanda | null>;
+  criar: (dados: DadosDemanda & { id?: string }, msg?: string) => Promise<Demanda | null>;
   salvar: (id: string, dados: DadosDemanda, tarefas: TarefaEdicao[] | null, versao: number, msg?: string) => Promise<ResultadoSalvar>;
   mover: (id: string, etapa: Etapa) => Promise<Demanda | null>;
   concluir: (id: string) => Promise<Demanda | null>;
@@ -71,9 +77,9 @@ const MSG_SEM_REDE = 'Sem conexão com o servidor. Nada foi gravado. Confira a i
 async function explicarFalha(): Promise<string> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return MSG_SEM_REDE;
   try {
-    // sonda leve da porta de entrada: se ela redireciona, a sessão terminou (expirou por inatividade ou foi encerrada) e o login assume
+    // sonda leve da porta de entrada: se ela redireciona, a sessão terminou (saída, revogação ou sessão inválida) e o login assume; uma resposta 503 é só falha de conexão com o Auth
     const r = await fetch('/api/sessao', { redirect: 'manual', cache: 'no-store' });
-    if (r.type === 'opaqueredirect') { window.location.replace('/login?expirou=1'); return 'Sua sessão terminou. Entre de novo.'; }
+    if (r.type === 'opaqueredirect') { window.location.replace('/login?encerrada=1'); return 'Sua sessão terminou. Entre de novo.'; }
   } catch { return MSG_SEM_REDE; }
   return 'Não foi possível falar com o servidor agora. Nada foi gravado. Tente de novo.';
 }
@@ -90,6 +96,7 @@ const gravarLS = (chave: string, v: unknown) => { try { localStorage.setItem(cha
 export function ProvedorApp({ children }: { children: ReactNode }) {
   const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [arquivadas, setArquivadas] = useState<Demanda[] | null>(null);
+  const [dias, setDias] = useState<DiaIndisponivel[]>([]);
   // Data de hoje (Brasília). Começa num valor fixo e passa a valer depois de montar no navegador, para o servidor não depender do relógio; renova na virada do dia.
   const [hoje, setHoje] = useState('2000-01-01');
   const [carregando, setCarregando] = useState(true);
@@ -168,6 +175,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     const virada = setInterval(() => setHoje(hojeISO()), 60_000);
     void recarregar();
     void srv.ambiente().then(setAmbiente).catch(() => {});
+    void srv.listarDias().then((x) => { if (x.ok) setDias(x.dados); }).catch(() => {});
     void srv.estadoRotina().then((x) => { if (x.ok) setRotina(x.dados); }).catch(() => {});
     return () => clearInterval(virada);
   }, [recarregar]);
@@ -180,8 +188,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     const atualizar = async () => {
       if (document.visibilityState !== 'visible' || janelaAberta.current || pendentes.current > 0) return;
       const antes = gravacoes.current;
-      const r = await protegido(() => srv.listarDemandas(false));
-      if (r.ok && gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); }
+      const [r, d] = await Promise.all([protegido(() => srv.listarDemandas(false)), protegido(() => srv.listarDias())]);
+      if (r.ok && gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) setDias(d.dados); }
     };
     document.addEventListener('visibilitychange', atualizar); addEventListener('online', atualizar);
     return () => { document.removeEventListener('visibilitychange', atualizar); removeEventListener('online', atualizar); };
@@ -203,7 +211,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   }, [aplicar, avisar, gravando]);
 
   const valor = useMemo<Ctx>(() => ({
-    demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema,
+    demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema,
     alternarTema: () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')),
     menuAberto,
     alternarMenu: () => setMenuAberto((v) => { gravarLS('dmanda:menu-aberto', !v); return !v; }),
@@ -216,7 +224,28 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     fecharMenuMover: () => setMenuMover(null),
     rascunhos,
     guardarRascunho,
-    criar: (dados) => rodar(() => srv.criarDemanda(dados), 'Demanda cadastrada'),
+    salvarDia: async (dia) => {
+      const r = await gravando(() => protegido(() => srv.salvarDia(dia)));
+      if (!r.ok) { avisar(r.erro, true); return false; }
+      setDias((l) => [...l.filter((x) => x.id !== r.dados.dia.id), r.dados.dia].sort((a, b) => a.data.localeCompare(b.data)));
+      // o servidor já recalculou os vencimentos afetados: relê as demandas para a tela mostrar os novos
+      const lista = await protegido(() => srv.listarDemandas(false));
+      if (lista.ok) setDemandas(lista.dados);
+      const n = r.dados.recalculadas;
+      avisar(`${dia.id ? 'Dia alterado' : 'Dia cadastrado'}. ${n === 0 ? 'Nenhum vencimento precisou mudar.' : n === 1 ? '1 vencimento foi recalculado.' : `${n} vencimentos foram recalculados.`}`);
+      return true;
+    },
+    excluirDia: async (diaId) => {
+      const r = await gravando(() => protegido(() => srv.excluirDia(diaId)));
+      if (!r.ok) { avisar(r.erro, true); return false; }
+      setDias((l) => l.filter((x) => x.id !== diaId));
+      const lista = await protegido(() => srv.listarDemandas(false));
+      if (lista.ok) setDemandas(lista.dados);
+      const n = r.dados.recalculadas;
+      avisar(`Dia excluído. ${n === 0 ? 'Nenhum vencimento precisou mudar.' : n === 1 ? '1 vencimento foi recalculado.' : `${n} vencimentos foram recalculados.`}`);
+      return true;
+    },
+    criar: (dados, msg = 'Demanda cadastrada') => rodar(() => srv.criarDemanda(dados), msg),
     salvar: async (id, dados, tarefas, versao, msg = 'Alterações salvas') => {
       const r = await gravando(() => protegido(() => srv.salvarDemanda(id, dados, tarefas, versao)));
       if (r.ok) { aplicar(r.dados); if (msg) avisar(msg); return { ok: true, demanda: r.dados }; }
@@ -244,7 +273,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [demandas, arquivadas, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar]);
+  }), [demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

@@ -8,7 +8,7 @@ import { Icone } from './Icone';
 import { useApp, type EstadoRotina } from './contexto';
 import { CardDemanda, ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
 import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
-import { atrasada, filtrar, focoDoDia, FILTRO_VAZIO, plural, porGrupo, TIPOS, type Demanda, type Tipo } from '@/lib/demandas';
+import { atrasada, filtrar, focoDoDia, FILTRO_VAZIO, plural, porGrupo, TIPOS, titulo, type Demanda, type Tipo } from '@/lib/demandas';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
 function Carregando() { return <div className="vazio-c" role="status">Carregando as demandas...</div>; }
@@ -147,7 +147,7 @@ export function PaginaArquivo() {
         <div className="lista">
           {arquivadas.map((d: Demanda) => (
             <div key={d.id} className="linha"><div className="linha-c">
-              <span className="mono num">{d.tipo} {d.numero}</span><span className="ass">{d.assunto}</span><OrigemP d={d} /><ChipTipo d={d} /><span className="chip neutro">{d.etapa === 'Finalizado' ? 'Finalizada' : d.etapa}</span><ChipPrazo d={d} /><ChipSelo d={d} />
+              <span className="mono num">{titulo(d)}</span><span className="ass">{d.assunto}</span><OrigemP d={d} /><ChipTipo d={d} /><span className="chip neutro">{d.etapa === 'Finalizado' ? 'Finalizada' : d.etapa}</span><ChipPrazo d={d} /><ChipSelo d={d} />
               <button className="btn mini" onClick={() => abrirJanela({ t: 'editar', id: d.id })}>Abrir</button>
               <button className="btn mini" onClick={() => void desarquivar(d.id)}>Desarquivar</button>
               {confirmando === d.id

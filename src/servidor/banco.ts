@@ -3,7 +3,7 @@
 import { criarClienteServidor } from '@/lib/supabase/servidor';
 import { createClient } from '@supabase/supabase-js';
 import { configSupabase, modoTeste } from '@/lib/supabase/config';
-import { contaAutorizada } from '@/lib/sessao';
+import { contaAutorizada, situacaoDoErroAuth } from '@/lib/sessao';
 import { ErroConflito, ErroDmanda, type Chamar } from '@/nucleo/operacoes';
 
 export const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
@@ -43,7 +43,11 @@ const chamarTeste: Chamar = async (funcao, args) => {
 const chamarSupabase: Chamar = async (funcao, args) => {
   const sb = await criarClienteServidor();
   const { data: { user }, error: erroUser } = await sb.auth.getUser();
-  if (erroUser || !user) throw new ErroDmanda('Sua sessão terminou. Entre de novo.');
+  if (erroUser || !user) {
+    // falha de conexão com o Auth não é sessão encerrada: a sessão continua nos cookies e nada foi gravado (a tela explica pela sonda de sessão)
+    if (situacaoDoErroAuth(erroUser) === 'transitoria') throw Object.assign(new Error('Não foi possível confirmar a sessão agora.'), { code: 'auth-indisponivel' });
+    throw new ErroDmanda('Sua sessão terminou. Entre de novo.');
+  }
   if (!contaAutorizada(user)) throw new ErroDmanda('Esta conta não tem acesso ao Dmanda.');
   const { data, error } = await sb.rpc(funcao, args);
   if (error) throw traduzir(error);

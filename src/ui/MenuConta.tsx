@@ -48,7 +48,7 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
     setBaixando(true);
     try {
       const r = await fetch('/api/exportar', { cache: 'no-store', redirect: 'manual' });
-      if (r.type === 'opaqueredirect') { window.location.replace('/login?expirou=1'); return; }
+      if (r.type === 'opaqueredirect') { window.location.replace('/login?encerrada=1'); return; }
       if (!r.ok) throw new Error('falha');
       const nome = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') ?? '')?.[1] ?? 'dmanda-copia.json';
       const url = URL.createObjectURL(await r.blob());

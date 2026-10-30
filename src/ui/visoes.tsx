@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { AcaoCard, BarraProg, CardDemanda, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
-import { atrasada, ETAPA_COR, ETAPAS, ordenar, percentual, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
+import { atrasada, ETAPA_COR, ETAPAS, numeroDe, ordenar, percentual, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
 
 /** Ajuste ao espaço (card e nota nunca têm barra de rolagem): sem espaço, some primeiro o que é secundário e o título preenche o que sobrar. Mesma regra do protótipo. */
 export function ajustar() {
@@ -189,7 +189,7 @@ export function Tabela({ lista }: { lista: Demanda[] }) {
         <tbody>
           {linhas.map((d) => (
             <tr key={d.id} className={atrasada(d, hoje) ? 'atrasada' : ''}>
-              <td className="mono"><ChipTipo d={d} /> {d.numero}</td>
+              <td className="mono"><ChipTipo d={d} /> {numeroDe(d)}</td>
               <td><b role="link" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => abrirJanela({ t: 'editar', id: d.id })} onKeyDown={(e) => { if (e.key === 'Enter') abrirJanela({ t: 'editar', id: d.id }); }}>{d.assunto}</b></td>
               <td><OrigemP d={d} /></td>
               <td><ChipPrazo d={d} /> <ChipSelo d={d} /></td>
@@ -219,7 +219,7 @@ export function Lista({ lista }: { lista: Demanda[] }) {
               return (
                 <div key={d.id} className={`linha${atrasada(d, hoje) ? ' atrasada' : ''}${d.etapa === 'Finalizado' ? ' feita' : ''}`}>
                   <div className="linha-c">
-                    <button className="linha-m" aria-expanded={ab} onClick={() => setAberto((a) => ({ ...a, [d.id]: !a[d.id] }))}><span className="mono num">#{d.numero}</span><span className="ass">{d.assunto}</span><OrigemP d={d} /><ChipTipo d={d} /></button>
+                    <button className="linha-m" aria-expanded={ab} onClick={() => setAberto((a) => ({ ...a, [d.id]: !a[d.id] }))}><span className="mono num">{numeroDe(d) ? `#${numeroDe(d)}` : ''}</span><span className="ass">{d.assunto}</span><OrigemP d={d} /><ChipTipo d={d} /></button>
                     <span className="dir"><ChipSelo d={d} /><ChipPrazo d={d} /><b className="mono pc">{p === null ? '—' : `${p}%`}</b></span>
                   </div>
                   {ab ? (
@@ -273,7 +273,7 @@ export function MenuMover() {
   if (!menuMover || !d) return null;
   const escolher = (et: Etapa) => { fecharMenuMover(); if (et === d.etapa) return; void (et === 'Finalizado' ? concluir(d.id) : d.etapa === 'Finalizado' ? reabrir(d.id, et) : mover(d.id, et)); };
   return (
-    <div ref={ref} className="mv-menu" role="menu" aria-label={`Mover ${d.tipo} ${d.numero} para a etapa`}>
+    <div ref={ref} className="mv-menu" role="menu" aria-label={`Mover ${titulo(d)} para a etapa`}>
       <div className="mv-t">Mover para</div>
       {ETAPAS.map((et) => {
         const atual = et === d.etapa;

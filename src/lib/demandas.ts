@@ -20,8 +20,19 @@ export type Demanda = {
   origem: string;
   etapa: Etapa;
   etapa_desde: string;
-  chegou_em: string; // AAAA-MM-DD
+  /** Quando chegou à Secretaria (AAAA-MM-DD). Opcional: sem a data, não existe contagem de permanência. */
+  chegou_em: string | null;
+  /** Vencimento AJUSTADO (a data que vale em todas as telas): o prazo original antecipado para o primeiro dia disponível. */
   prazo: string | null;
+  /** Prazo original: a data escolhida à mão ou calculada pelos botões de dias. */
+  prazo_original: string | null;
+  /** Quando o prazo veio de um botão (5, 10, 20 ou 30 dias): quantos dias e a partir de que dia a contagem partiu. */
+  prazo_dias: number | null;
+  prazo_base_em: string | null;
+  /** Explica o ajuste ("21/11 sábado; 20/11 feriado: Nome"); nulo quando o vencimento é o próprio original. */
+  prazo_ajuste: string | null;
+  /** Prazo que já existia antes da regra do prazo original: o prazo de então virou a referência original. */
+  prazo_legado: boolean;
   prazo_tipo: PrazoTipo;
   setor: string | null;
   acompanhar_em: string | null;
@@ -35,7 +46,13 @@ export type Demanda = {
 };
 
 /** Campos que o formulário pode gravar (a etapa, as tarefas e o arquivamento têm operações próprias). */
-export type DadosDemanda = Partial<Pick<Demanda, 'tipo' | 'area' | 'numero' | 'assunto' | 'descricao' | 'origem' | 'chegou_em' | 'prazo' | 'prazo_tipo' | 'setor' | 'acompanhar_em'>> & { etapa?: Etapa };
+export type DadosDemanda = Partial<Pick<Demanda, 'tipo' | 'area' | 'numero' | 'assunto' | 'descricao' | 'origem' | 'chegou_em' | 'prazo_original' | 'prazo_dias' | 'prazo_tipo' | 'setor' | 'acompanhar_em'>> & { etapa?: Etapa };
+
+/** Número e origem são opcionais: vazio (ou os marcadores antigos "s/n" e "Não informada", gravados antes do cadastro guiado) significa que não foram informados. */
+export const numeroDe = (d: Pick<Demanda, 'numero'>) => (d.numero.trim() === '' || d.numero === 's/n' ? '' : d.numero);
+export const origemDe = (d: Pick<Demanda, 'origem'>) => (d.origem.trim() === '' || d.origem === 'Não informada' ? '' : d.origem);
+/** Identificação curta da demanda para títulos e listas: "Processo 1842/2026", ou só o tipo quando não há número. */
+export const titulo = (d: Pick<Demanda, 'tipo' | 'numero'>) => [d.tipo, numeroDe(d)].filter(Boolean).join(' ');
 
 export const TEM_AREA: readonly Tipo[] = ['Processo', 'Protocolo'];
 export const areasDoTipo = (tipo: Tipo): readonly Area[] => (tipo === 'Protocolo' ? ['Geral', 'Pessoal'] : AREAS);
@@ -50,6 +67,8 @@ const emMs = (iso: string) => { const [a, m, d] = iso.slice(0, 10).split('-').ma
 export const diasAte = (iso: string, hoje: string) => Math.round((emMs(iso) - emMs(hoje)) / MS_DIA);
 export const diasDesde = (iso: string, hoje: string) => -diasAte(iso, hoje);
 /** Dias desde um instante (timestamptz), pela data de Brasília. */
+/** Dias corridos que a demanda está na Secretaria desde a chegada, ou null quando a chegada não foi informada (nada de contagem inventada). */
+export const permanencia = (d: Pick<Demanda, 'chegou_em'>, hoje: string): number | null => (d.chegou_em ? Math.max(0, diasDesde(d.chegou_em, hoje)) : null);
 export const diasDesdeInstante = (instante: string, hoje: string) => diasDesde(hojeISO(new Date(instante)), hoje);
 
 export const atrasada = (d: Demanda, hoje: string) => !!d.prazo && diasAte(d.prazo, hoje) < 0 && d.etapa !== 'Finalizado' && !d.arquivada_em;
@@ -90,6 +109,8 @@ export function ordenar(lista: Demanda[], coluna: Coluna, sentido: 1 | -1): Dema
     if (coluna === 'prazo') return d.prazo ?? '9999-12-31';
     if (coluna === 'etapa') return ETAPAS.indexOf(d.etapa);
     if (coluna === 'pct') return percentual(d) ?? -1;
+    if (coluna === 'numero') return numeroDe(d).toLowerCase();
+    if (coluna === 'origem') return origemDe(d).toLowerCase();
     return d[coluna].toLowerCase();
   };
   return [...lista].sort((a, b) => { const x = chave(a), y = chave(b); return (x < y ? -1 : x > y ? 1 : a.criado_em.localeCompare(b.criado_em)) * (x === y ? 1 : sentido); });
@@ -115,7 +136,7 @@ export function grupoFiltro(d: Demanda, hoje: string): GrupoInicio | null {
 export const porGrupo = (lista: Demanda[], grupo: GrupoInicio, hoje: string) =>
   lista
     .filter((d) => grupoFiltro(d, hoje) === grupo)
-    .sort((a, b) => diasAte(dataFiltro(a, hoje)!, hoje) - diasAte(dataFiltro(b, hoje)!, hoje) || diasDesde(b.chegou_em, hoje) - diasDesde(a.chegou_em, hoje));
+    .sort((a, b) => diasAte(dataFiltro(a, hoje)!, hoje) - diasAte(dataFiltro(b, hoje)!, hoje) || (permanencia(b, hoje) ?? -1) - (permanencia(a, hoje) ?? -1));
 
 /** Foco do dia: até 3 demandas, atrasadas primeiro, depois hoje, depois os próximos 7 dias. */
 export const focoDoDia = (lista: Demanda[], hoje: string): Demanda[] =>

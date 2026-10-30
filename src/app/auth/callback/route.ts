@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { criarClienteServidor } from '@/lib/supabase/servidor';
-import { COOKIE_ULTIMO_USO, contaAutorizada, opcoesCookieUltimoUso } from '@/lib/sessao';
+import { contaAutorizada } from '@/lib/sessao';
 
 // Volta do login com o Google: troca o código pela sessão e só deixa entrar a conta autorizada.
 export async function GET(request: NextRequest) {
@@ -19,7 +19,5 @@ export async function GET(request: NextRequest) {
     await sb.auth.signOut({ scope: 'local' });
     return NextResponse.redirect(`${origin}/login?negado=1`);
   }
-  const r = NextResponse.redirect(`${origin}/`);
-  r.cookies.set(COOKIE_ULTIMO_USO, String(Date.now()), opcoesCookieUltimoUso(origin.startsWith('https://')));
-  return r;
+  return NextResponse.redirect(`${origin}/`);
 }

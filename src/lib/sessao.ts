@@ -1,24 +1,35 @@
-// Regra de sessão do Dmanda (DECISOES.md): novo login depois de 6 horas sem uso. Sem dependências, para poder ser testada isoladamente.
-export const LIMITE_SEM_USO_MS = 6 * 60 * 60 * 1000;
-export const COOKIE_ULTIMO_USO = 'dmanda-ultimo-uso';
-
-/** Diferença de relógio tolerada entre o carimbo e o servidor (marca "no futuro" além disso é adulteração). */
-const TOLERANCIA_RELOGIO_MS = 60_000;
+// Regras de sessão e de conta autorizada do Dmanda (DECISOES.md, decisão 27). Sem dependências, para poder ser testada isoladamente.
+//
+// A sessão é a do próprio Supabase Auth: o token de acesso dura pouco e é renovado sozinho pelo token de renovação (que não expira por inatividade), e os cookies são
+// regravados pelo servidor a cada renovação. Não existe mais o encerramento artificial após 6 horas sem uso: a sessão só termina na saída explícita (Sair, que vale só
+// neste navegador), quando o Supabase a revoga ou a invalida, ou quando a conta deixa de ser a autorizada.
 
 /**
- * true se a sessão deve terminar: passou mais que o limite desde o último uso, ou a marca não existe, é ilegível ou está no futuro.
- * Sem marca vale como expirada (falha fechada): quem apaga o cookie não prolonga a sessão. O login grava a marca ao entrar.
+ * Cookie da regra antiga das 6 horas. Não é mais lido para decidir nada: a ausência ou o vencimento dele nunca encerra uma sessão válida. O nome existe só para
+ * o servidor apagá-lo dos navegadores onde ele ficou gravado.
  */
-export function sessaoExpirou(ultimoUso: string | undefined | null, agora: number = Date.now()): boolean {
-  if (!ultimoUso) return true;
-  const t = Number(ultimoUso);
-  if (!Number.isFinite(t)) return true;
-  if (t > agora + TOLERANCIA_RELOGIO_MS) return true;
-  return agora - t > LIMITE_SEM_USO_MS;
-}
+export const COOKIE_LEGADO_ULTIMO_USO = 'dmanda-ultimo-uso';
 
-/** Atributos do cookie do último uso (só o servidor lê; não é legível por scripts da página). "secure" só quando a conexão é HTTPS (no localhost em http o cookie seria descartado por alguns navegadores). */
-export const opcoesCookieUltimoUso = (https: boolean) => ({ httpOnly: true, sameSite: 'lax', secure: https, maxAge: 60 * 60 * 24 * 30, path: '/' }) as const;
+/** Cookies de sessão do Supabase (um ou vários pedaços): "sb-<projeto>-auth-token" e "sb-<projeto>-auth-token.0". */
+export const ehCookieDeSessao = (nome: string) => /^sb-.+-auth-token(\.\d+)?$/.test(nome);
+
+export type SituacaoAuth = 'ok' | 'sem-sessao' | 'transitoria' | 'invalida';
+type ErroAuth = { name?: string; status?: number; code?: string } | null | undefined;
+
+/**
+ * Classifica o resultado de uma conferência da sessão no Supabase Auth.
+ *  - "ok": sem erro.
+ *  - "sem-sessao": não há sessão (nenhum cookie, ou a sessão foi removida do aparelho).
+ *  - "transitoria": falha de rede, servidor de Auth fora do ar (5xx) ou limite de requisições: a sessão pode estar perfeita, só não foi possível confirmar agora.
+ *    Nunca se apaga a sessão por isso e nunca se libera o acesso sem a confirmação.
+ *  - "invalida": o Auth recusou a sessão (token de renovação inexistente ou já usado, sessão revogada, token inválido): é preciso entrar de novo.
+ */
+export function situacaoDoErroAuth(erro: ErroAuth): SituacaoAuth {
+  if (!erro) return 'ok';
+  if (erro.name === 'AuthSessionMissingError') return 'sem-sessao';
+  if (erro.name === 'AuthRetryableFetchError' || erro.status === 0 || erro.status === 429 || erro.status === 408 || (typeof erro.status === 'number' && erro.status >= 500) || erro.code === 'over_request_rate_limit') return 'transitoria';
+  return 'invalida';
+}
 
 /** Conta única autorizada, por e-mail (DMANDA_EMAIL_AUTORIZADO). Sem a variável, ninguém passa: o padrão é fechado. */
 export function emailAutorizado(email: string | undefined | null, configurado: string | undefined = process.env.DMANDA_EMAIL_AUTORIZADO): boolean {

@@ -3,9 +3,10 @@
 import { chamar } from './banco';
 import { criarOperacoes, executar, type TarefaEdicao } from '@/nucleo/operacoes';
 import type { DadosDemanda, Etapa } from '@/lib/demandas';
+import type { CategoriaDia } from '@/lib/prazos';
 import { modoTeste } from '@/lib/supabase/config';
 import { criarClienteServidor } from '@/lib/supabase/servidor';
-import { COOKIE_ULTIMO_USO } from '@/lib/sessao';
+import { COOKIE_LEGADO_ULTIMO_USO } from '@/lib/sessao';
 import { cookies } from 'next/headers';
 
 const op = () => criarOperacoes(chamar);
@@ -53,6 +54,15 @@ export async function desarquivarDemanda(id: string) {
 export async function excluirDemanda(id: string, confirmado: boolean) {
   return executar(() => op().excluir(id, confirmado));
 }
+export async function listarDias() {
+  return executar(() => op().listarDias());
+}
+export async function salvarDia(dia: { id?: string; data: string; descricao: string; categoria: CategoriaDia }) {
+  return executar(() => op().salvarDia(dia));
+}
+export async function excluirDia(diaId: string) {
+  return executar(() => op().excluirDia(diaId));
+}
 export async function adicionarTarefa(demandaId: string, texto: string) {
   return executar(() => op().adicionarTarefa(demandaId, texto));
 }
@@ -82,12 +92,12 @@ export async function sairDaConta(): Promise<{ ok: true } | { ok: false; erro: s
   try {
     const sb = await criarClienteServidor();
     const { error } = await sb.auth.signOut({ scope: 'local' });
-    if (!error) { (await cookies()).delete(COOKIE_ULTIMO_USO); return { ok: true }; }
+    if (!error) { (await cookies()).delete(COOKIE_LEGADO_ULTIMO_USO); return { ok: true }; }
     // O SDK apaga a sessão deste navegador mesmo quando o servidor de Auth não confirma o encerramento: se for o caso, a tela precisa ir ao login
     // (com aviso honesto) em vez de continuar parecendo autenticada. Se a sessão local continua, nada mudou e é só erro.
     const { data } = await sb.auth.getSession();
     if (data.session) return { ok: false, erro: falha, sessaoLocalEncerrada: false };
-    (await cookies()).delete(COOKIE_ULTIMO_USO);
+    (await cookies()).delete(COOKIE_LEGADO_ULTIMO_USO);
     return { ok: false, erro: falha, sessaoLocalEncerrada: true };
   } catch {
     return { ok: false, erro: falha, sessaoLocalEncerrada: false };

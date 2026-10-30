@@ -1,6 +1,6 @@
 # Andamento do Dmanda
 
-Última revisão da fórmula e das evidências: 25/10/2026. **Total mantido: 18%** (os pontos abaixo não mudaram: nenhuma etapa nova cumpre ainda o critério de contagem, ver adiante).
+Última revisão da fórmula e das evidências: 29/10/2026. **Total mantido: 18%** (os pontos abaixo não mudaram: nenhuma etapa nova cumpre ainda o critério de contagem, ver adiante).
 
 Em 21/10/2026 o escopo cresceu muito (Entradas, Agenda com Google, Documentos, IA, Configurações, humor, clima, PWA) e o design system será refeito do zero. Por isso o percentual caiu de 24% para 6%: o cálculo agora considera o plano novo, ainda pendente de aprovação (ver `QUESTIONARIO.md`). O número volta a subir conforme as etapas forem entregues.
 
@@ -64,3 +64,5 @@ Estados reais em 27/10/2026. "Feito" quer dizer verificado nos testes e, onde in
 | Rotina diária | Código e prova HTTP local de 25/10; agendamento no `vercel.json` validado no esquema da Vercel; rota publicada responde 401 sem segredo | Cron registrado no painel, Run manual e primeira execução automática (não comprovados) |
 
 **Nota de 28/10/2026:** o percentual continua 18%. A aplicação foi publicada e conferida sem sessão, mas nenhuma etapa cumpre o critério de contagem (verificada no ambiente real publicado **e** avaliada pelo usuário). Detalhes e evidências em `CONTINUIDADE-DMANDA.md`.
+
+**Nota de 29/10/2026:** o percentual continua 18%. O bloco de sessão persistente, cadastro guiado, consulta com lápis, prazo original e ajustado e dias indisponíveis está implementado e testado (banco, regras, aplicação e sessão), mas nenhuma etapa cumpre o critério de contagem (verificada no ambiente real publicado **e** avaliada pelo usuário): a avaliação no iPhone real e no computador, a validação autenticada em produção e a avaliação visual da aplicação React (Issue #2) continuam pendentes. Estimativas e testes automatizados não substituem esses marcos.

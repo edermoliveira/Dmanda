@@ -32,7 +32,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 ### Demandas
 - Visões, cada uma com função própria: **Cards** (leitura visual), **Quadro** (mover entre etapas), **Tabela** (análise detalhada, colunas ordenáveis e filtros) e **Lista** (consulta rápida, linhas expansíveis para ver e marcar tarefas).
 - Cinco etapas: **Cadastro, Vistos, Fazendo, Aguardando retorno, Finalizado**.
-- Cadastro rápido (número, prazo, assunto, origem, tipo opcional) em qualquer etapa.
+- Cadastro guiado em três passos (identificação, chegada e prazo, tarefas), com só o assunto obrigatório, em qualquer etapa (decisão 28). Consulta da demanda com lápis por seção (decisão 29). Prazo original e vencimento ajustado, dias indisponíveis em Configurações (decisões 31 e 32).
 - Mover card entre etapas. Botão **"Já vi"** leva de Cadastro para Vistos (com ou sem tarefas). Cadastrar a primeira tarefa também leva para Vistos.
 - Quando todas as tarefas forem concluídas, o card sugere "Finalizar?". Sem tarefas, há o botão Concluir.
 - Contagem de cards por etapa. Filtros (prazo, origem, só atrasadas, legal, próprio, sem prazo) e filtro de texto.

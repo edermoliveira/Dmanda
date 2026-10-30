@@ -20,7 +20,8 @@ Para **uma pessoa só**: o Secretário, no trabalho e na organização pessoal. 
 Mais: **Arquivo** (página à parte), **Perfil** (avatar no topo), **botão "+"** flutuante (nova entrada, demanda, tarefa, evento, documento, chat) e **busca global** (lupa no canto superior direito).
 
 ## Regras de negócio que continuam
-- Cadastro rápido com **número, prazo, assunto e origem**, e tipo de documento opcional (processo, memorando, ofício, reunião, pedido pessoal; ampliável).
+- Cadastro guiado em **três passos curtos** (decisão 28): identificação (tipo, número, origem, **assunto**, breve descrição; só o assunto é obrigatório), chegada e prazo (opcionais; ao confirmar a demanda é criada em Cadastro) e tarefas (opcionais; concluir com tarefas leva a Vistos). Tipo de documento: processo, protocolo, memorando, ofício, pedido de informação, projeto de lei, portaria, outro (ampliável).
+- **Prazos** (decisão 31): prazo original (data ou 5, 10, 20, 30 dias a partir de hoje) e vencimento ajustado (antecipa para o primeiro dia disponível se cair em fim de semana, feriado ou evento externo de dia inteiro cadastrados em Configurações); permanência desde a chegada, sem inventar quando a chegada não foi informada.
 - Prazo **legal** (TCE, Câmara, MP, Judiciário) prevalece sobre o **próprio**. Sem prazo, o sistema não inventa data: a demanda fica fora dos filtros de prazo (o formulário pode sugerir 30 dias, que só valem se o usuário escolher).
 - Em **Aguardando retorno** aparecem o setor e os dias parado.
 - Todo campo é editável e o sistema se ajusta à mudança.
@@ -42,7 +43,7 @@ Desenvolvido local e publicado na **Vercel com login Google** assim que existir 
 
 ## Cuidados que valem para tudo
 - Poucos campos e poucas cores por tela. Cor forte só para o que é atrasado ou crítico. (Exceções combinadas: post-its pastel em Entradas e cores de demanda e evento na Agenda.)
-- Cadastro rápido nunca pode virar formulário grande, senão vira outra planilha abandonada.
+- O cadastro nunca pode virar formulário grande, senão vira outra planilha abandonada: por isso são três passos, com um único campo obrigatório.
 - Funcionar bem no celular, no iPad e no computador, com computador primeiro.
 - Texto sobre vidro precisa ser legível. Cards de demanda mais sólidos. Janelas e caixas de preenchimento quase opacas (claras no modo claro, escuras no escuro).
 - Uma só direção visual, o Catalyst (estilo Apple Mac e iPad), com claro e escuro e com cores (10 paletas), fontes, ícones e tamanhos ajustáveis. As direções Aurora, Papel e Grafite foram retiradas em 23/10/2026.
