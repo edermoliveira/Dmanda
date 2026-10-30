@@ -145,7 +145,7 @@ export function PaginaArquivo() {
     <>
       <CabecaPagina titulo="Arquivo" sub={abaArquivo === 'entradas' ? 'Entradas arquivadas e as que já viraram demanda.' : 'Demandas arquivadas.'} />
       <div className="toolbar">
-        <div className="tabs" role="group" aria-label="O que mostrar">
+        <div className="tabs so-texto" role="group" aria-label="O que mostrar">
           <Capsula sel='button[aria-pressed="true"]' chave={abaArquivo} />
           <button data-aba="demandas" aria-pressed={abaArquivo === 'demandas'} onClick={() => setAbaArquivo('demandas')}><span className="tx">Demandas</span></button>
           <button data-aba="entradas" aria-pressed={abaArquivo === 'entradas'} onClick={() => setAbaArquivo('entradas')}><span className="tx">Entradas</span></button>

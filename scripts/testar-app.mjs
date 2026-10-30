@@ -194,6 +194,9 @@ ok(await sobre('.tabs', 'button[aria-pressed="true"]'), 'ao trocar de visão a c
 await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.waitForTimeout(150);
 await pg.click('.toolbar .tabs button[data-v="tabela"]');
 ok(/Prazo vencido/.test(await pg.textContent('#vista')) && (await pg.$$('.tabela tr.atrasada')).length === 1, 'a Tabela marca a demanda atrasada');
+await pg.click('.toolbar .tabs button[data-v="lista"]'); await pg.waitForSelector('.lista-dem .linha');
+ok((await pg.$$('.lista-dem .linha.atrasada')).length === 1 && /Prazo vencido/.test(await pg.textContent('.lista-dem .linha.atrasada .ld-prazo')), 'a Lista marca a demanda atrasada, com "Prazo vencido" na coluna do vencimento');
+await pg.click('.toolbar .tabs button[data-v="tabela"]');
 await pg.click('.tabela th button >> text=Assunto'); await pg.waitForTimeout(200);
 const ordem1 = await pg.$$eval('.tabela tbody tr td:nth-child(2)', (e) => e.map((x) => x.textContent.trim()));
 await pg.click('.tabela th button >> text=Assunto'); await pg.waitForTimeout(200);

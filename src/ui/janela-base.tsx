@@ -1,16 +1,18 @@
 'use client';
 // Peças comuns das janelas (moldura, grupo e escolha de opções), com o desenho e as regras de teclado do protótipo aprovado:
 // o foco não sai da janela com o Tab, Esc fecha, e ao fechar o foco volta a quem abriu.
+// Ao abrir, o foco vai ao primeiro campo (janelas de preencher) ou à própria janela (foco="janela": janelas de leitura, que não devem abrir o teclado do celular).
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Icone } from './Icone';
 
-export function Janela({ titulo, larga, extraCab, aoFechar, sujo, rodape, children }: { titulo: string; larga?: boolean; extraCab?: ReactNode; aoFechar: () => void; sujo: boolean; rodape: ReactNode; children: ReactNode }) {
+export function Janela({ titulo, larga, extraCab, aoFechar, sujo, rodape, foco = 'campo', children }: { titulo: string; larga?: boolean; extraCab?: ReactNode; aoFechar: () => void; sujo: boolean; rodape: ReactNode; foco?: 'campo' | 'janela'; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const fechar = useRef(aoFechar);
   useEffect(() => { fechar.current = aoFechar; });
   useEffect(() => {
     const origem = document.activeElement as HTMLElement | null;
-    ref.current?.querySelector<HTMLElement>('input:not([type=checkbox]):not([type=date]), textarea')?.focus();
+    if (foco === 'janela') ref.current?.focus({ preventScroll: true });
+    else ref.current?.querySelector<HTMLElement>('input:not([type=checkbox]):not([type=date]), textarea')?.focus();
     const tecla = (e: KeyboardEvent) => {
       if (document.querySelector('.mv-menu')) return; // o menu aberto sobre a janela cuida do próprio teclado
       if (e.key === 'Escape') { e.stopImmediatePropagation(); fechar.current(); return; }
@@ -25,10 +27,10 @@ export function Janela({ titulo, larga, extraCab, aoFechar, sujo, rodape, childr
     };
     document.addEventListener('keydown', tecla, true);
     return () => { document.removeEventListener('keydown', tecla, true); origem?.focus?.(); }; // ao fechar, o foco volta a quem abriu a janela
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- o foco inicial vale só na abertura
   return (
     <div className="modal-ov" onMouseDown={(e) => { if (e.target === e.currentTarget && !sujo) aoFechar(); }}>
-      <div ref={ref} className={`modal lg${larga ? ' larga' : ''}`} role="dialog" aria-modal="true" aria-labelledby="m-tit">
+      <div ref={ref} className={`modal lg${larga ? ' larga' : ''}`} role="dialog" aria-modal="true" aria-labelledby="m-tit" tabIndex={-1}>
         <header className="m-h"><h3 id="m-tit">{titulo}</h3><button className="icbtn-s" aria-label="Fechar" onClick={aoFechar}><Icone nome="x" /></button>{extraCab}</header>
         {children}
         <footer className="m-f">{rodape}</footer>

@@ -147,8 +147,7 @@ h3, h4 { font-weight: 700; }
 
 /* correções da varredura automática */
 .icbtn-s, .mais { flex: none; min-width: 44px; }
-.lista, .grupo, .linha, .linha-c, .linha-m, .coluna, .mini-card, .painel, .cfg > section { min-width: 0; }
-.linha-m .ass { min-width: 0; }
+.lista, .grupo, .linha, .linha-c, .coluna, .mini-card, .painel, .cfg > section { min-width: 0; }
 .tip { white-space: normal; width: max-content; max-width: 190px; text-align: center; }
 .gcol:first-child .tip { left: 0; transform: none; text-align: left; }
 .gcol:last-child .tip { left: auto; right: 0; transform: none; text-align: right; }

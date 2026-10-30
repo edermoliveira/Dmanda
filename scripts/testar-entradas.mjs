@@ -84,13 +84,13 @@ const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
   await ir(pg);
   lista = await notas(pg);
   ok(lista.length === 1 && lista[0].txt === 'Ligar para o RH', 'depois de recarregar a entrada continua lá (veio do banco)');
-  await pg.click('.postit .p-abrir'); await pg.waitForSelector('#e-texto');
+  await pg.click('.postit .p-abrir'); await pg.waitForSelector('[data-leitura]'); await pg.click('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto');
   ok((await pg.inputValue('#e-titulo')) === 'Ligar para o RH' && (await pg.inputValue('#e-texto')) === 'Sobre as escalas de fim de ano #rh #Escalas' && await estado(pg) === 'salvo', 'abrir a entrada mostra título e texto exatos e o estado "salvo"');
   await pg.fill('#e-texto', 'Sobre as escalas de fim de ano #rh #Escalas\nSegunda linha editada');
   await esperaEstado(pg, 'salvo');
   await pg.click('.modal .btn.pri'); await janelaFechada(pg);
   await ir(pg);
-  await pg.click('.postit .p-abrir'); await pg.waitForSelector('#e-texto');
+  await pg.click('.postit .p-abrir'); await pg.waitForSelector('[data-leitura]'); await pg.click('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto');
   ok((await pg.inputValue('#e-texto')).endsWith('Segunda linha editada'), 'a edição foi salva no banco e sobrevive à recarga');
   await pg.click('.modal .btn.pri'); await janelaFechada(pg);
 
@@ -112,7 +112,7 @@ const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
   const { pg } = t1;
   const esconder = () => pg.evaluate(() => { Object.defineProperty(document, 'visibilityState', { get: () => 'hidden', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
   const mostrar = () => pg.evaluate(() => { Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
-  await pg.click('.postit .p-abrir'); await pg.waitForSelector('#e-texto');
+  await pg.click('.postit .p-abrir'); await pg.waitForSelector('[data-leitura]'); await pg.click('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto');
   await esconder(); await pg.waitForTimeout(700);
   ok(Object.keys(await rascunhos(pg)).length === 0, 'sair de cena com uma entrada aberta e sem alteração não deixa rascunho nem marca "Só neste aparelho"');
   await mostrar();
@@ -180,7 +180,7 @@ const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
 {
   const { pg } = t1;
   await ir(pg);
-  await pg.click('.postit:has(.p-txt:has-text("Painel")) .p-abrir'); await pg.waitForSelector('#e-texto');
+  await pg.click('.postit:has(.p-txt:has-text("Painel")) .p-abrir'); await pg.waitForSelector('[data-leitura]'); await pg.click('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto');
   await pg.click('.modal .acoes-entrada button:has-text("Arquivar")'); await janelaFechada(pg);
   ok(!(await notas(pg)).some((n) => /Painel/.test(n.txt)), 'arquivar tira a entrada de Entradas');
   await pg.click('.toolbar .btn[aria-label="Ver entradas arquivadas"]'); await pg.waitForSelector('.tabs [data-aba="entradas"][aria-pressed="true"]');
@@ -191,7 +191,7 @@ const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
   await ir(pg);
   ok((await notas(pg)).some((n) => /Painel/.test(n.txt)), 'recuperar devolve a entrada a Entradas, com o mesmo conteúdo');
   // exclusão definitiva só pelo Arquivo, com segunda confirmação
-  await pg.click('.postit:has(.p-txt:has-text("Diárias")) .p-abrir'); await pg.waitForSelector('#e-texto');
+  await pg.click('.postit:has(.p-txt:has-text("Diárias")) .p-abrir'); await pg.waitForSelector('[data-leitura]'); await pg.click('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto');
   await pg.click('.modal .acoes-entrada button:has-text("Arquivar")'); await janelaFechada(pg);
   await ir(pg, '/arquivo'); await pg.click('.tabs [data-aba="entradas"]'); await pg.waitForSelector('.linha:has-text("Diárias")');
   await pg.click('.linha:has-text("Diárias") .btn:has-text("Excluir")');
@@ -220,7 +220,7 @@ const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
 
 // ---------- apoio da segunda parte ----------
 const nota = (txt) => `.postit:has(.p-txt:has-text("${txt}"))`;
-const abrirNota = async (pg, txt) => { await pg.click(`${nota(txt)} .p-abrir`); await pg.waitForSelector('#e-texto'); };
+const abrirNota = async (pg, txt) => { await pg.click(`${nota(txt)} .p-abrir`); await pg.waitForSelector('[data-leitura]'); await pg.click('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto'); };
 // derruba as chamadas ao servidor (ações do Next); com entregar = true o servidor executa, mas a resposta nunca chega (resposta perdida)
 const derrubar = async (pg, { entregar = false } = {}) => {
   const c = { n: 0 };
@@ -349,7 +349,7 @@ const passoAtual = (pg) => pg.$$eval('.modal .passos li', (e) => e.findIndex((x)
   await criar(A, { titulo: 'Concorrente', texto: 'Texto base' });
   await ir(B);
   const idConc = (await notas(B)).find((n) => n.txt === 'Concorrente').id;
-  const abrirConc = async (pg) => { await pg.click(`.postit[data-id="${idConc}"] .p-abrir`); await pg.waitForSelector('#e-texto'); };
+  const abrirConc = async (pg) => { await pg.click(`.postit[data-id="${idConc}"] .p-abrir`); await pg.waitForSelector('[data-leitura]'); await pg.click('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto'); };
   await abrirConc(A);
   await abrirConc(B);
   // B grava o texto; A (janela já aberta, versão antiga) só fixa: campos diferentes, os dois cabem juntos
@@ -536,8 +536,8 @@ const aviso = (pg) => pg.waitForFunction(() => document.querySelector('#toast')?
   await pg.keyboard.press('Escape'); await janelaFechada(pg);
   await ir(pg, '/arquivo'); await pg.click('.tabs [data-aba="entradas"]'); await pg.waitForSelector('.linha:has-text("Título explícito")');
   ok(/Virou demanda/.test(await pg.textContent('.linha:has-text("Título explícito")')) && !(await pg.$('.linha:has-text("Título explícito") .btn:has-text("Recuperar")')) && !(await pg.$('.linha:has-text("Título explícito") .btn:has-text("Excluir")')), 'no Arquivo a entrada convertida aparece como "Virou demanda", sem recuperar nem excluir');
-  await pg.click('.linha:has-text("Título explícito") .btn:has-text("Abrir")'); await pg.waitForSelector('#e-texto');
-  ok(await pg.$eval('#e-texto', (e) => e.readOnly) && await pg.$eval('#e-titulo', (e) => e.readOnly) && /virou a demanda/.test(await pg.textContent('.modal')) && !!(await pg.$('.modal .btn:has-text("Abrir a demanda")')), 'a entrada convertida abre só para leitura, ligada à demanda');
+  await pg.click('.linha:has-text("Título explícito") .btn:has-text("Abrir")'); await pg.waitForSelector('[data-leitura]');
+  ok(!(await pg.$('#e-texto')) && !(await pg.$('#e-titulo')) && !(await pg.$('.modal [aria-label="Editar a entrada"]')) && /virou a demanda/.test(await pg.textContent('.modal')) && !!(await pg.$('.modal .btn:has-text("Abrir a demanda")')), 'a entrada convertida abre só para leitura, ligada à demanda');
   await pg.click('.modal .btn:has-text("Abrir a demanda")'); await pg.waitForFunction(() => !!document.querySelector('.modal .resumo-chips'), null, { timeout: 10000 });
   ok(/Título explícito da conversão/.test(await pg.textContent('.modal')), 'e leva à demanda');
   await pg.keyboard.press('Escape'); await janelaFechada(pg);
@@ -599,7 +599,7 @@ for (const [nome, opcoes, tema, toque] of aparelhos) {
     ok(await fixa(pg, 'Portaria horário'), `${nome}: tocar em fixar funciona`);
     await pg.tap(`${nota('Portaria horário')} .pin-b:not(.virar)`);
     await pg.waitForFunction(() => ![...document.querySelectorAll('.postits .postit')].find((p) => p.querySelector('.p-txt')?.textContent.includes('Portaria horário'))?.classList.contains('fixado'), null, { timeout: 10000 });
-    await pg.tap(`${nota('Cor escolhida')} .p-abrir`); await pg.waitForSelector('#e-texto');
+    await pg.tap(`${nota('Cor escolhida')} .p-abrir`); await pg.waitForSelector('[data-leitura]'); await pg.tap('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto');
     const campos = await pg.$$eval('.modal input:not([type=checkbox]), .modal textarea', (e) => e.map((x) => parseFloat(getComputedStyle(x).fontSize)));
     ok(campos.length >= 2 && campos.every((s) => s === 16), `${nome}: os campos da janela têm 16 px no toque (sem zoom ao focar)`);
     await pg.waitForTimeout(1100); // a janela termina a animação de abertura

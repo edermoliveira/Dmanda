@@ -8,6 +8,7 @@
 // salvou antes, só pergunta quando os dois mexeram no mesmo campo (src/lib/entradas.ts, camposEmConflito).
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
+import { flushSync } from 'react-dom';
 import { Icone } from './Icone';
 import { Janela } from './janela-base';
 import { novoUuid } from './campos';
@@ -171,8 +172,13 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
   const [conflito, setConflito] = useState<{ atual: Entrada; campos: (keyof CamposEntrada)[] } | null>(null);
   const [fechandoFalhou, setFechandoFalhou] = useState(false);
   const [recuperado] = useState(!!rasc);
+  // Uma anotação que já existe abre em leitura (sem campo focado, sem teclado); o lápis leva à edição. Nova anotação abre direto em edição.
+  const [modo, setModo] = useState<'ler' | 'editar'>(entrada ? 'ler' : 'editar');
+  const [retomado, setRetomado] = useState(false);
+  const lapisRef = useRef<HTMLButtonElement>(null);
   const fila = useRef<Promise<boolean>>(Promise.resolve(true));
   const estadoRef = useRef({ salva, local, tocados, baseDe, conflito });
+  const emEsperaRef = useRef(false);
   const foraDoBancoRef = useRef(false); // há algo só neste aparelho, com falha ou em conflito (só então vale gravar o rascunho ao sair de cena)
   const executarRef = useRef<() => Promise<boolean>>(async () => true);
 
@@ -182,10 +188,13 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
   const patch = salva ? diferencas(efetivo, camposDe(salva)) : null;
   const vaziaExistente = !!salva && !convertida && vazia(efetivo);
   const pendente = !convertida && !vaziaExistente && (salva ? Object.keys(patch ?? {}).length > 0 : !vazia(efetivo));
+  // Rascunho de um aparelho que ainda não foi enviado, encontrado ao abrir uma anotação existente: fica em espera até a pessoa tocar em Retomar edição.
+  // Em espera nada é enviado nem sobrescrito (nem salvamento automático, nem ao fechar, nem pelas ações da janela); a leitura mostra a versão salva.
+  const emEspera = !!entrada && recuperado && !retomado && pendente;
   const estado: Estado = convertida ? 'salvo' : conflito ? 'conflito' : gravando ? 'salvando' : vaziaExistente ? 'vazia-existente' : erro ? 'erro' : pendente ? (online ? 'pendente' : 'offline') : salva ? 'salvo' : 'vazio';
   const chave = salva ? `e:${salva.id}` : 'e:nova';
 
-  useEffect(() => { estadoRef.current = { salva, local, tocados, baseDe, conflito }; foraDoBancoRef.current = pendente || !!erro || !!conflito; });
+  useEffect(() => { estadoRef.current = { salva, local, tocados, baseDe, conflito }; foraDoBancoRef.current = pendente || !!erro || !!conflito; emEsperaRef.current = emEspera; });
 
   const rascunhoAgora = useCallback(() => {
     const e = estadoRef.current;
@@ -240,11 +249,11 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
 
   // salvamento automático 1,2 s depois da última alteração; falha não repete sozinha (só com nova alteração, com a conexão de volta ou no botão)
   useEffect(() => {
-    if (!pendente || conflito) return;
+    if (!pendente || conflito || emEspera) return;
     const t = setTimeout(() => void gravar(), 1200);
     return () => clearTimeout(t);
-  }, [pendente, conflito, efetivo.titulo, efetivo.texto, efetivo.cor, efetivo.fixada, salva?.versao, gravar]);
-  useEffect(() => { if (online && (erro || pendente) && !conflito && !gravando) void gravar(); }, [online]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pendente, conflito, emEspera, efetivo.titulo, efetivo.texto, efetivo.cor, efetivo.fixada, salva?.versao, gravar]);
+  useEffect(() => { if (online && (erro || pendente) && !conflito && !gravando && !emEspera) void gravar(); }, [online]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // rascunho deste aparelho: guardado em meio segundo enquanto houver algo fora do banco; some quando o banco tem tudo
   useEffect(() => {
@@ -258,7 +267,8 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
       if (ev.type !== 'pagehide' && document.visibilityState !== 'hidden') return;
       // sem alteração fora do banco não há rascunho a guardar (senão a grade mostraria "Só neste aparelho" sem motivo)
       if (!foraDoBancoRef.current || estadoRef.current.salva?.demanda_id) return;
-      rascunhoAgora(); void gravar();
+      rascunhoAgora();
+      if (!emEsperaRef.current) void gravar();
     };
     document.addEventListener('visibilitychange', sair); addEventListener('pagehide', sair);
     return () => { document.removeEventListener('visibilitychange', sair); removeEventListener('pagehide', sair); };
@@ -271,11 +281,19 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
     setErro(null); setFechandoFalhou(false);
   };
 
+  // Entra na edição dentro do mesmo toque (o foco só abre o teclado do celular se for dado no gesto da pessoa) e leva o cursor ao fim do texto
+  const entrarEdicao = () => {
+    flushSync(() => { setRetomado(true); setModo('editar'); });
+    const campo = document.getElementById('e-texto') as HTMLTextAreaElement | null;
+    campo?.focus(); campo?.setSelectionRange(campo.value.length, campo.value.length);
+  };
+  const voltarLeitura = () => { flushSync(() => setModo('ler')); lapisRef.current?.focus(); };
+
   const limparRascunhos = () => { guardarRascunho('e:nova', null); if (salva) guardarRascunho(`e:${salva.id}`, null); };
 
   const tentarFechar = async () => {
     if (gravando) return;
-    if (convertida) { fecharJanela(); return; }
+    if (convertida || emEspera) { fecharJanela(); return; } // em espera o rascunho do aparelho continua guardado e nada é enviado
     if (vaziaExistente) { limparRascunhos(); fecharJanela(); avisar('A entrada continua como estava salva: ela não pode ficar vazia.'); return; }
     if (conflito) { rascunhoAgora(); fecharJanela(); avisar('Sua alteração não foi salva porque outro aparelho mudou a entrada. Ela ficou guardada neste aparelho.', true); return; }
     if (!pendente && !erro) { limparRascunhos(); fecharJanela(); return; }
@@ -316,7 +334,7 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
     <div className="confirma-fechar" role="alertdialog" aria-label="A entrada não foi salva">
       <span className="data">{erro ?? 'A entrada não foi salva no Dmanda.'} O texto está guardado neste aparelho.</span><span className="esp" />
       <button className="btn" onClick={() => { setFechandoFalhou(false); void gravar(); }}>Tentar de novo</button>
-      <button className="btn" onClick={() => setFechandoFalhou(false)}>Continuar editando</button>
+      <button className="btn" onClick={() => { setFechandoFalhou(false); if (modo === 'ler') entrarEdicao(); }}>Continuar editando</button>
       <button className="btn pri" onClick={fecharMantendo}>Fechar e manter neste aparelho</button>
     </div>
   ) : (
@@ -324,13 +342,23 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
       <span className="data estado-entrada" role="status" data-estado={estado}>{estado === 'erro' && erro ? `Não salvo no Dmanda: ${erro} O texto continua neste aparelho.` : TEXTO_ESTADO[estado]}{estado === 'erro' ? <> <button className="btn mini" onClick={() => void gravar()}>Tentar de novo</button></> : null}</span>
       <span className="esp" />
       {!salva && !convertida ? <button className="btn" onClick={cancelarNova}>Cancelar</button> : null}
+      {salva && !convertida && modo === 'editar' ? <button className="btn" onClick={voltarLeitura}>Voltar à leitura</button> : null}
       <button className="btn pri" disabled={gravando} onClick={() => void tentarFechar()}>{salva || convertida ? 'Fechar' : 'Guardar'}</button>
     </>
   );
 
+  const lido = emEspera && salva ? camposDe(salva) : efetivo; // em espera, a leitura mostra o que está salvo no Dmanda, nunca o rascunho
+  const lapis = salva && !convertida && modo === 'ler'
+    ? <button ref={lapisRef} type="button" className="icbtn-s" aria-label="Editar a entrada" title="Editar" onClick={entrarEdicao}><Icone nome="pencil" /></button> : null;
+  const editando = modo === 'editar' && !convertida;
+
   return (
-    <Janela titulo={salva ? 'Entrada' : 'Nova entrada'} aoFechar={() => void tentarFechar()} sujo={pendente || !!erro || !!conflito || gravando} rodape={rodape}>
-      {recuperado && !convertida ? <p className="data rec">{salva ? 'Alterações que estavam só neste aparelho foram recuperadas.' : 'Rascunho recuperado.'}</p> : null}
+    <Janela titulo={salva ? 'Entrada' : 'Nova entrada'} foco={entrada ? 'janela' : 'campo'} extraCab={lapis} aoFechar={() => void tentarFechar()} sujo={(pendente && !emEspera) || !!erro || !!conflito || gravando} rodape={rodape}>
+      {editando && recuperado ? <p className="data rec">{salva ? 'Alterações que estavam só neste aparelho foram recuperadas.' : 'Rascunho recuperado.'}</p> : null}
+      {emEspera ? (
+        <p className="aviso-passo" role="status"><b>Há alterações só neste aparelho.</b> Elas ainda não foram enviadas ao Dmanda e não aparecem abaixo, que mostra a versão salva. Nada será enviado até você retomar a edição.{' '}
+          <button className="btn mini pri" onClick={entrarEdicao}>Retomar edição</button></p>
+      ) : null}
       {convertida ? (
         <p className="aviso-passo" role="note">Esta entrada <b>virou a demanda{demandaLigada ? ` ${tituloDemanda(demandaLigada)}: ${demandaLigada.assunto}` : ''}</b>. Ela fica preservada como estava, só para consulta.{' '}
           {salva?.demanda_id ? <button className="btn mini" onClick={() => abrirJanela({ t: 'editar', id: salva.demanda_id! })}>Abrir a demanda</button> : null}</p>
@@ -345,24 +373,34 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
           </div>
         </div>
       ) : null}
-      <div className="fld"><label htmlFor="e-titulo">Título (opcional)</label>
-        <input id="e-titulo" value={efetivo.titulo} maxLength={LIMITE_TITULO} readOnly={convertida} placeholder="Sem título, aparecem as primeiras frases" autoComplete="off" onChange={(e) => editar('titulo', e.target.value)} /></div>
-      <div className="fld"><label htmlFor="e-texto">Texto</label>
-        <textarea id="e-texto" rows={7} value={efetivo.texto} maxLength={LIMITE_TEXTO} readOnly={convertida} placeholder="Escreva rápido. Use # para tags, em qualquer lugar." onChange={(e) => editar('texto', e.target.value)} />
-        {tagsAgora.length ? <span className="data mono tags-detectadas">{tagsAgora.map((t) => `#${t}`).join(' ')}</span> : null}</div>
-      {!convertida ? (
+      {editando ? (
         <>
+          <div className="fld"><label htmlFor="e-titulo">Título (opcional)</label>
+            <input id="e-titulo" value={efetivo.titulo} maxLength={LIMITE_TITULO} placeholder="Sem título, aparecem as primeiras frases" autoComplete="off" onChange={(e) => editar('titulo', e.target.value)} /></div>
+          <div className="fld"><label htmlFor="e-texto">Texto</label>
+            <textarea id="e-texto" rows={7} value={efetivo.texto} maxLength={LIMITE_TEXTO} placeholder="Escreva rápido. Use # para tags, em qualquer lugar." onChange={(e) => editar('texto', e.target.value)} />
+            {tagsAgora.length ? <span className="data mono tags-detectadas">{tagsAgora.map((t) => `#${t}`).join(' ')}</span> : null}</div>
           <div className="fld"><span id="e-cor-r">Cor</span>
             <div className="cores" role="group" aria-labelledby="e-cor-r">
               <button type="button" className="cor-b auto" aria-pressed={efetivo.cor === COR_AUTOMATICA} aria-label="Cor automática" title="Automática" onClick={() => editar('cor', COR_AUTOMATICA)} disabled={!!salva}><Icone nome="sparkles" /></button>
               {Array.from({ length: QTD_CORES }, (_, c) => <button key={c} type="button" className="cor-b nota-fundo" style={{ '--nota-i': c } as CSSProperties} aria-pressed={efetivo.cor === c} aria-label={`Cor ${c + 1}`} onClick={() => editar('cor', c)} />)}
             </div>
             <span className="data">{salva ? 'Escolha a cor desta entrada.' : 'Sem escolha, uma cor é aplicada sozinha.'}</span></div>
+        </>
+      ) : (
+        <div className={`ler-entrada${lido.cor >= 0 ? ' nota-fundo' : ''}`} style={{ '--nota-i': Math.max(0, lido.cor) } as CSSProperties} data-leitura>
+          {lido.titulo.trim() ? <h4 className="ler-titulo">{lido.titulo}</h4> : null}
+          {lido.texto.trim() ? <p className="ler-corpo">{lido.texto}</p> : null}
+          {tagsDe(lido).length ? <p className="ler-tags mono" aria-label="Tags">{tagsDe(lido).map((t) => <span key={t}>#{t}</span>)}</p> : null}
+        </div>
+      )}
+      {!convertida ? (
+        <>
           <div className="fld acoes-entrada">
-            <button type="button" className="btn mini" aria-pressed={efetivo.fixada} onClick={() => editar('fixada', !efetivo.fixada)}><Icone nome="pin" />{efetivo.fixada ? 'Fixada no topo' : 'Fixar no topo'}</button>
-            {salva && !arquivada ? <button type="button" className="btn mini" disabled={gravando} onClick={virarDemanda}><Icone nome="arrow-right" />Virar demanda</button> : null}
-            {salva && !arquivada ? <button type="button" className="btn mini" disabled={gravando} onClick={arquivar}><Icone nome="archive" />Arquivar</button> : null}
-            {arquivada ? <button type="button" className="btn mini" disabled={gravando} onClick={recuperar}><Icone nome="undo" />Recuperar para Entradas</button> : null}
+            <button type="button" className="btn mini" aria-pressed={lido.fixada} disabled={emEspera} onClick={() => editar('fixada', !efetivo.fixada)}><Icone nome="pin" />{lido.fixada ? 'Fixada no topo' : 'Fixar no topo'}</button>
+            {salva && !arquivada ? <button type="button" className="btn mini" disabled={gravando || emEspera} onClick={virarDemanda}><Icone nome="arrow-right" />Virar demanda</button> : null}
+            {salva && !arquivada ? <button type="button" className="btn mini" disabled={gravando || emEspera} onClick={arquivar}><Icone nome="archive" />Arquivar</button> : null}
+            {arquivada ? <button type="button" className="btn mini" disabled={gravando || emEspera} onClick={recuperar}><Icone nome="undo" />Recuperar para Entradas</button> : null}
           </div>
           {arquivada ? <p className="data">Esta entrada está arquivada. Recupere para ela voltar a Entradas.</p> : null}
         </>

@@ -35,7 +35,8 @@ function ChipTempo({ d }: { d: Demanda }) {
   const n = diasDesde(d.chegou_em, hoje);
   return <span className="tempo mono" title="Desde que chegou"><Icone nome="clock" />{n === 0 ? 'Chegou hoje' : `Chegou há ${curto(n)}`}</span>;
 }
-export const ChipsRow = ({ d }: { d: Demanda }) => (d.prazo ? <div className="chips"><ChipPrazo d={d} /><ChipSelo d={d} /><ChipTempo d={d} /></div> : null);
+// O selo Legal/Próprio saiu do resumo dos cards (poluía); o tipo do prazo continua nos dados, no cadastro, na consulta, nos filtros e na Tabela.
+export const ChipsRow = ({ d }: { d: Demanda }) => (d.prazo ? <div className="chips"><ChipPrazo d={d} /><ChipTempo d={d} /></div> : null);
 
 export function BarraProg({ d }: { d: Demanda }) {
   const p = percentual(d);

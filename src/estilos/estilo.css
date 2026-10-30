@@ -383,11 +383,6 @@ h1, h2, h3, h4 { font-family: var(--font-h); margin: 0; line-height: 1.2; }
 .linha { box-shadow: none; }
 .linha.feita .ass { color: var(--text2); text-decoration: line-through; }
 .linha-c { padding: 0 12px; gap: 12px; min-height: 56px; }
-.linha-m { flex: 1; min-width: 0; min-height: 56px; border: 0; background: transparent; display: flex; align-items: center; gap: 12px; text-align: left; padding: 0; }
-.linha-m .ass { font-weight: 600; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.linha-m .origem-p, .linha-m .tag { flex: none; }
-.linha-c .dir { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-.linha-c .pc { min-width: 42px; text-align: right; font-size: calc(13px * var(--esc)); }
 .linha-d { padding: 0 14px 10px 50px; }
 .vazio .grande { width: 40px; height: 40px; }
 
@@ -408,10 +403,7 @@ h1, h2, h3, h4 { font-family: var(--font-h); margin: 0; line-height: 1.2; }
   .quadro { display: block; overflow: visible; }
   .etapas-tabs { display: flex; }
   .coluna:not(.sel) { display: none; }
-  .linha-m .origem-p, .linha-m .tag, .linha-c .dir .selo { display: none; }
   .linha-c { flex-wrap: wrap; padding: 6px 12px; }
-  .linha-c .dir { flex-basis: 100%; margin: -8px 0 6px 36px; }
-  .linha-m { min-height: 48px; }
 }
 @container tela (min-width: 900px) and (max-width: 1099px) {
   .tabs .tx { display: none; }

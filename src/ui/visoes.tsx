@@ -4,11 +4,11 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { AcaoCard, BarraProg, CardDemanda, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
-import { atrasada, ETAPA_COR, ETAPAS, numeroDe, ordenar, percentual, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
+import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordenar, origemDe, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
 
 // O título é a informação principal do card: ele nunca é espremido para dar lugar ao resto. Linhas que o título mantém: o que o texto precisar, até TETO_TITULO, e nunca
-// menos que MINIMO_TITULO (ou o que o texto tiver, se for curto). Quando falta altura, cede primeiro a descrição (menos linhas, depois some), depois o tempo e o selo, só
-// então o título perde linhas (até o mínimo) e por último saem a etapa e a barra de progresso. O título sempre ocupa linhas inteiras (nunca uma letra cortada ao meio).
+// menos que MINIMO_TITULO (ou o que o texto tiver, se for curto). Quando falta altura, cede primeiro a descrição (menos linhas, depois some), depois o tempo, só
+// então o título perde linhas (até o mínimo) e por último saem a etapa e a barra de progresso. (O selo Legal/Próprio não aparece mais nos cards: fica na Tabela e nos detalhes.) O título sempre ocupa linhas inteiras (nunca uma letra cortada ao meio).
 // Tudo é recalculado do zero a cada ajuste: ao voltar a existir espaço (janela maior, menu recolhido, zoom menor), o que saiu reaparece.
 const TETO_TITULO = 4;
 const MINIMO_TITULO = 2;
@@ -32,7 +32,7 @@ export function ajustar() {
     }
     const tirarLinhaDoTitulo = () => { if (t && tit > minT) { tit--; t.style.webkitLineClamp = String(tit); } };
     if (ds) { let n = cw >= 640 && cw < 900 ? 2 : 3; ds.style.webkitLineClamp = String(n); while (n > 1 && sobra()) { n--; ds.style.webkitLineClamp = String(n); } if (sobra()) ds.classList.add('oculto'); }
-    for (const q of ['.tempo', '.selo']) { const x = f.querySelector(q); if (x && sobra()) x.classList.add('oculto'); }
+    { const x = f.querySelector('.tempo'); if (x && sobra()) x.classList.add('oculto'); }
     while (t && tit > minT && sobra()) tirarLinhaDoTitulo();
     for (const q of ['.tags .chip', '.prog']) { const x = f.querySelector(q); if (x && sobra()) x.classList.add('oculto'); }
   });
@@ -225,22 +225,33 @@ export function Lista({ lista }: { lista: Demanda[] }) {
   const { gruposFechados, alternarGrupo, abrirJanela, hoje } = useApp();
   const [aberto, setAberto] = useState<Record<string, boolean>>({});
   return (
-    <div className="lista">
+    <div className="lista lista-dem">
       {ETAPAS.map((et) => {
         const itens = lista.filter((d) => d.etapa === et), fechado = !!gruposFechados[et];
         return (
           <section key={et} className="grupo" style={{ '--et': ETAPA_COR[et] } as CSSProperties}>
             <button className="grupo-h" aria-expanded={!fechado} onClick={() => alternarGrupo(et)}><Icone nome="expandir-grupo" extra={fechado ? 'fechado' : ''} /><i className="dot" /><b>{et}</b><span className="cnt">{itens.length}</span></button>
             {fechado ? null : itens.length ? itens.map((d) => {
-              const ab = !!aberto[d.id], p = percentual(d);
+              const ab = !!aberto[d.id], n = d.tarefas.length, num = numeroDe(d), origem = origemDe(d);
               return (
-                <div key={d.id} className={`linha${atrasada(d, hoje) ? ' atrasada' : ''}${d.etapa === 'Finalizado' ? ' feita' : ''}`}>
-                  <div className="linha-c">
-                    <button className="linha-m" aria-expanded={ab} onClick={() => setAberto((a) => ({ ...a, [d.id]: !a[d.id] }))}><span className="mono num">{numeroDe(d) ? `#${numeroDe(d)}` : ''}</span><span className="ass">{d.assunto}</span><OrigemP d={d} /><ChipTipo d={d} /></button>
-                    <span className="dir"><ChipSelo d={d} /><ChipPrazo d={d} /><b className="mono pc">{p === null ? '—' : `${p}%`}</b></span>
+                <div key={d.id} className={`linha ld${atrasada(d, hoje) ? ' atrasada' : ''}${d.etapa === 'Finalizado' ? ' feita' : ''}`}>
+                  <div className="ld-c">
+                    {/* dois controles separados: a seta mostra ou esconde as tarefas aqui mesmo; o lápis abre a consulta completa */}
+                    <button className="ld-m" aria-expanded={ab} aria-controls={`ld-d-${d.id}`} aria-label={`${ab ? 'Recolher' : 'Mostrar'} as tarefas: ${d.assunto}`} onClick={() => setAberto((a) => ({ ...a, [d.id]: !a[d.id] }))}>
+                      <Icone nome="expandir-grupo" extra={ab ? '' : 'fechado'} />
+                      <span className="ld-t">
+                        <span className="ld-ass">{d.assunto}</span>
+                        <span className="ld-sec">{num ? <span className="mono num">#{num}</span> : null}<ChipTipo d={d} />{origem ? <OrigemP d={d} /> : null}</span>
+                      </span>
+                    </button>
+                    <span className="ld-fim">
+                      <span className="ld-prazo"><ChipPrazo d={d} /></span>
+                      <span className="ld-prog mono" title={n ? `${feitas(d)} de ${n} tarefas concluídas` : undefined}>{n ? `${feitas(d)}/${n} ${n === 1 ? 'tarefa' : 'tarefas'}` : 'Sem tarefas'}</span>
+                    </span>
+                    <button className="btn mini ld-abrir" aria-label={`Abrir a demanda: ${d.assunto}`} title="Abrir a demanda completa" onClick={() => abrirJanela({ t: 'editar', id: d.id })}><Icone nome="pencil" /><span className="tx">Abrir</span></button>
                   </div>
                   {ab ? (
-                    <div className="linha-d">
+                    <div className="linha-d" id={`ld-d-${d.id}`}>
                       {d.descricao.trim() ? <p className="desc cheia">{d.descricao.trim()}</p> : null}
                       {d.tarefas.length ? <ul className="tarefas">{d.tarefas.map((t) => <ItemTarefa key={t.id} t={t} />)}</ul> : <div className="proxima vazia"><span>Nenhuma tarefa cadastrada</span><NovaTarefaInline demandaId={d.id} /></div>}
                       <AcaoCard d={d} />

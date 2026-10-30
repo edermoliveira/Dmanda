@@ -16,6 +16,7 @@
     "testar:app": "node scripts/testar-app.mjs",
     "testar:interface": "node scripts/testar-interface.mjs",
     "testar:entradas": "node scripts/testar-entradas.mjs",
+    "testar:ajustes": "node scripts/testar-ajustes.mjs",
     "testar:sessao": "node scripts/testar-sessao.mjs",
     "conferir:env": "node scripts/conferir-env.mjs",
     "testar:senha-terminal": "python -I scripts/terminal-senha/testar.py",

@@ -95,8 +95,12 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .cfg-lista li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 52px; padding: 8px 14px; border-radius: 14px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
 .cfg-lista .cfg-dia { font-variant-numeric: tabular-nums; min-width: 112px; font-weight: 600; }
 .cfg-lista .cfg-desc { flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
-.cfg-form { display: grid; gap: 8px 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); align-items: end; margin: 12px 0 0; padding: 14px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
-.cfg-form .fld { margin: 0; }
+.cfg-form { display: grid; gap: 8px 12px; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); align-items: end; margin: 12px 0 0; padding: 14px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
+.cfg-form .fld { margin: 0; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+/* Campo Data (bloco de 30/10/2026): o controle nativo de data tem largura mínima própria (no Safari do iPhone e do iPad o campo passava da lateral do quadro). A coluna e o campo podem encolher
+   até o espaço que existe (min-width 0, trilho minmax(0, 1fr), sem largura mínima de 190 px maior que a tela) e o campo ocupa só a largura da coluna. O seletor nativo continua o mesmo. */
+.cfg-form input[type="date"] { display: block; min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; text-align: left; }
+.cfg-form input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.4em; }
 .cfg-form .acoes { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .cfg-form input, .cfg-form select { background: var(--grp-campo); color: var(--text); border: 0; border-radius: 12px; min-height: 44px; padding: 0 14px; width: 100%; }
 .cfg-form input:focus, .cfg-form select:focus { box-shadow: 0 0 0 2px var(--acc); outline: 0; }
@@ -144,3 +148,45 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 @media (hover: none), (pointer: coarse) { .app .postit .pin-b { opacity: 1; } }
 /* no iPhone, duas colunas de post-its (uma só deixaria cada nota quase da largura da tela) */
 @media (max-width: 520px) { .app .postits { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; } }
+
+/* ---------- Entradas: janela em modo de leitura (bloco de 30/10/2026) ----------
+   A anotação aberta é lida, não editada: título, texto completo (com as quebras de linha) e tags no mesmo tamanho do post-it (título em negrito). O lápis do cabeçalho leva à edição. */
+.app[data-dir="d"] .modal:focus, .app[data-dir="d"] .modal:focus-visible { outline: none; }
+.app[data-dir="d"] .modal .ler-entrada { margin: 0 0 14px; padding: 16px 18px; border-radius: 12px; color: var(--text); font-size: calc(15px * var(--esc)); line-height: 1.45; text-align: left; overflow-wrap: anywhere; }
+.app[data-dir="d"] .modal .ler-entrada > * { margin: 0; }
+.app[data-dir="d"] .modal .ler-entrada > * + * { margin-top: 10px; }
+.app[data-dir="d"] .modal .ler-titulo { font-family: var(--font); font-size: inherit; font-weight: 700; line-height: inherit; }
+.app[data-dir="d"] .modal .ler-corpo { font-weight: 500; white-space: pre-wrap; }
+.app[data-dir="d"] .modal .ler-tags { display: flex; flex-wrap: wrap; gap: 2px 10px; font-family: var(--font); font-size: inherit; font-weight: 600; opacity: .72; line-height: inherit; }
+
+/* ---------- Arquivo: as abas Demandas e Entradas não têm ícone, então o texto aparece em todas as larguras ---------- */
+.app .tabs.so-texto .tx { display: inline; }
+
+/* ---------- Lista de Demandas (bloco de 30/10/2026) ----------
+   Uma linha por demanda: seta (mostra as tarefas), assunto à esquerda com quebra de linha, depois número, tipo e origem quando existem (sem espaço reservado para o que falta),
+   vencimento e quantidade de tarefas em posição fixa e o lápis (abre a consulta completa). Tudo sob .lista-dem: o Arquivo e Entradas continuam com .linha-c. */
+.app .lista-dem .ld-c { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 2px 12px; padding: 4px 8px 4px 4px; min-height: 56px; }
+.app .lista-dem .ld-m { display: flex; align-items: flex-start; gap: 6px; min-width: 0; min-height: 44px; padding: 7px 8px 7px 8px; border: 0; border-radius: 12px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.app .lista-dem .ld-m .ic { flex: none; width: 18px; height: 18px; margin-top: 3px; color: var(--text2); transition: transform .2s; }
+.app .lista-dem .ld-m .ic.fechado { transform: rotate(-90deg); }
+.app .lista-dem .ld-m:focus-visible, .app .lista-dem .ld-abrir:focus-visible { outline: 3px solid var(--foco); outline-offset: -3px; }
+.app .lista-dem .ld-t { display: grid; flex: 1; gap: 4px; min-width: 0; }
+.app .lista-dem .ld-ass { font-family: var(--font); font-size: calc(15px * var(--esc)); font-weight: 600; line-height: 1.35; text-align: left; overflow-wrap: anywhere; }
+.app .lista-dem .ld-sec { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; font-size: calc(12px * var(--esc)); color: var(--text2); }
+.app .lista-dem .ld-sec .num { min-width: 0; font-size: inherit; color: inherit; overflow-wrap: anywhere; }
+.app .lista-dem .ld-sec .origem-p { max-width: 100%; font-size: inherit; white-space: normal; overflow: visible; overflow-wrap: anywhere; } /* a origem quebra a linha em vez de ser cortada */
+.app .lista-dem .ld-fim { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.app .lista-dem .ld-prazo { display: flex; justify-content: flex-end; width: 210px; }
+.app .lista-dem .ld-prog { width: 104px; text-align: right; font-size: calc(12px * var(--esc)); color: var(--text2); white-space: nowrap; }
+.app .lista-dem .linha.feita .ld-ass { color: var(--text2); text-decoration: line-through; }
+.app .lista-dem .ld-abrir { flex: none; }
+.app .lista-dem .linha-d { padding: 0 14px 12px 40px; }
+@container tela (max-width: 899px) {
+  .app .lista-dem .ld-c { grid-template-columns: minmax(0, 1fr) auto; }
+  .app .lista-dem .ld-fim { grid-column: 1; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; gap: 4px 12px; padding: 0 0 6px 34px; }
+  .app .lista-dem .ld-prazo, .app .lista-dem .ld-prog { width: auto; justify-content: flex-start; text-align: left; }
+  .app .lista-dem .ld-prazo:empty, .app .lista-dem .ld-prazo:not(:has(*)) { display: none; }
+  .app .lista-dem .ld-abrir { grid-column: 2; grid-row: 1; align-self: start; width: var(--bt-s); padding: 0; justify-content: center; }
+  .app .lista-dem .ld-abrir .tx { display: none; }
+  .app .lista-dem .linha-d { padding-left: 14px; }
+}
