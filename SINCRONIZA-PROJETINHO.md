@@ -8,7 +8,13 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 ---
 
-## COMPLEMENTO DE NAVEGAÇÃO DE 30/10/2026 (leia primeiro)
+## ENTRADAS: DESCRIÇÃO, CARIMBO E CINCO CORES, 30/10/2026 (leia primeiro)
+
+Commit `2d6d368` (decisão 42, migração 11 aplicada no real, 11 migrações): texto como descrição no post-it, carimbo de `criado_em` (sem segundos, Brasília), cinco cores. Aguarda a conferência no iPhone. Andamento 37% (sem mudança). Agenda só depois.
+
+---
+
+## COMPLEMENTO DE NAVEGAÇÃO DE 30/10/2026
 
 O usuário aprovou os ajustes da `ddef462`. Entrou o botão "Arquivadas" em Demandas (`d1cac39`, decisão 41): abre `/arquivo` na aba certa; aguarda a conferência no iPhone. Andamento 37% (`ANDAMENTO.md`). Agenda só depois.
 

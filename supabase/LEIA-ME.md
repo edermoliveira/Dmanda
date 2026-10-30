@@ -331,3 +331,7 @@ Cada demanda tem uma `versao`. Se a mesma demanda for alterada em outro aparelho
 - **Aplicação:** `npx supabase db push --linked --dry-run` e depois `npx supabase db push --linked` (feito em 30/10/2026). Conferência depois: `migration list` com 10 de 10, contagens iguais, `db advisors --linked` só com o aviso conhecido de senhas vazadas, e prova com a conta autorizada em transação desfeita (criar entrada e converter em demanda, nada sobra).
 - **Restauração:** `supabase/restaurar-copia.sql` aceita as versões 1, 2 e 3; as entradas voltam com a versão e as datas da cópia e o vínculo só é refeito se a demanda existe no projeto (senão a anotação volta ativa, com o conteúdo original). Não restaure por cima de um banco em uso.
 - **Compatibilidade:** a versão do código publicada antes da migração (`2714937`) continua funcionando com ela aplicada, porque a migração só acrescenta. O inverso não vale: o código novo chama as funções de Entradas, então a migração precisa estar aplicada antes de publicar.
+
+## Migração 11: cinco cores em Entradas (30/10/2026)
+
+`20261030000100_entradas_cinco_cores.sql`: redefine só `cor_entrada_automatica` (sorteio de 0 a 4). Aditiva: não altera dados nem a restrição da tabela (0 a 5), então notas antigas com a cor 5 e cópias anteriores continuam válidas. Aplicada com dry-run em 30/10/2026; contagens e resumo das entradas idênticos antes e depois.

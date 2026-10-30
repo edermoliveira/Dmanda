@@ -26,6 +26,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 ### Entradas
 - Notas em post-its pastel (até 6 tons), em cards, com tags `#` e fixar no topo.
 - Criar, consultar e editar nota rápida (título opcional, texto, cor, fixar), com salvamento automático no Supabase e rascunho no aparelho. **Implementado em 30/10/2026** (decisões 37 a 39, Issue #5); **funcionamento aprovado pelo usuário em 30/10/2026**.
+- **Post-it (decisão 42):** título e, abaixo, o texto como descrição (estilo das demandas); no pé, a data da primeira criação (`criado_em`, "30/10/2026 às 14:48"); cinco cores mais a automática.
 - **Abrir uma entrada é ler, não editar (decisão 40):** a janela de leitura mostra título, texto completo e tags sem abrir o teclado; o **lápis** liga a edição. Rascunho não enviado fica em espera, com aviso e botão "Retomar edição". Entrada convertida só abre em leitura, com "Abrir a demanda".
 - **Virar demanda:** abre o cadastro guiado preenchido e editável (título explícito vira o assunto; sem título, a primeira linha útil; o resto vai para a descrição, com as tags). A nota sai de Entradas quando a demanda é criada no passo 2, na mesma transação do banco; cancelar antes mantém a nota. A demanda guarda o vínculo e a nota original fica preservada no Arquivo.
 - Arquivar nota (manual) e recuperar pelo Arquivo (aba Entradas). Buscar dentro das entradas e filtrar por tag. Atalho N no computador e "Nova entrada" no botão "+".
