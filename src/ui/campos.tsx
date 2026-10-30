@@ -1,7 +1,7 @@
 'use client';
 // Campos compartilhados do cadastro guiado e da consulta da demanda: identificação, chegada e prazo (com a prévia do vencimento ajustado) e o editor de tarefas.
 // Só o assunto é obrigatório. Número, origem, descrição, chegada e prazo são opcionais e nunca são preenchidos por conta própria.
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Icone } from './Icone';
 import { Opcoes } from './janela-base';
 import {
@@ -62,6 +62,19 @@ export const novoUuid = (): string =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (n) => (Number(n) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(n) / 4)))).toString(16));
+
+/**
+ * Identidade de uma tentativa de gravar um texto digitado. Repetir com o MESMO texto (depois de uma resposta perdida, por exemplo) reaproveita o identificador, e o banco devolve o que já
+ * gravou em vez de criar outro; outro texto é outra tentativa. Chamar `limpar` quando a gravação for confirmada.
+ */
+function novaTentativa() {
+  let atual: { texto: string; id: string } | null = null;
+  return {
+    id: (texto: string) => { if (atual?.texto !== texto) atual = { texto, id: novoUuid() }; return atual.id; },
+    limpar: () => { atual = null; },
+  };
+}
+export const useTentativa = () => useState(novaTentativa)[0];
 
 // ---------- identificação ----------
 export function CamposIdentificacao({ c, mudar, prefixo, comDescricao, nota }: { c: Campos; mudar: (p: Partial<Campos>) => void; prefixo: string; comDescricao?: boolean; nota?: boolean }) {

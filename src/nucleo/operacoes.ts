@@ -51,7 +51,8 @@ export function criarOperacoes(chamar: Chamar) {
       if (!dados?.id) throw new ErroDmanda('Identificador da demanda não informado.');
       return demanda('criar_demanda_de_entrada', { p_entrada: id(entradaId, 'Anotação'), p: validarDados(dados, { criando: true }) });
     },
-    adicionarTarefa: (demandaId: string, t: string) => demanda('adicionar_tarefa', { p_demanda: id(demandaId, 'Demanda'), p_texto: texto(t, 'Tarefa', 1000) }),
+    /** `tarefaId` (opcional) é a identidade da tentativa: repetir com o mesmo identificador, depois de uma resposta perdida, devolve a tarefa já gravada em vez de criar outra. */
+    adicionarTarefa: (demandaId: string, t: string, tarefaId?: string) => demanda('adicionar_tarefa', { p_demanda: id(demandaId, 'Demanda'), p_texto: texto(t, 'Tarefa', 1000), ...(tarefaId ? { p_id: id(tarefaId, 'Tarefa') } : {}) }),
     editarTarefa: (tarefaId: string, t: string) => demanda('editar_tarefa', { p_id: id(tarefaId, 'Tarefa'), p_texto: texto(t, 'Tarefa', 1000) }),
     marcarTarefa: (tarefaId: string, concluida: boolean) => demanda('marcar_tarefa', { p_id: id(tarefaId, 'Tarefa'), p_concluida: concluida === true }),
     excluirTarefa: (tarefaId: string) => demanda('excluir_tarefa', { p_id: id(tarefaId, 'Tarefa') }),

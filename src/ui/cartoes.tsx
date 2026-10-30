@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
+import { useTentativa } from './campos';
 import {
   atrasada, corCard, dataCurta, diasAte, diasDesde, diasDesdeInstante, feitas, numeroDe, origemDe, percentual, proximaTarefa, TIPO_COR, titulo, type Demanda, type Tarefa,
 } from '@/lib/demandas';
@@ -93,15 +94,16 @@ export function NovaTarefaInline({ demandaId, rotulo = '+ Adicionar tarefa' }: {
   const [valor, setValor] = useState('');
   const ref = useRef<HTMLInputElement>(null);
   const salvando = useRef(false);
+  const tentativa = useTentativa();
   useEffect(() => { if (aberto) ref.current?.focus(); }, [aberto]);
   const guardar = async () => {
     if (salvando.current) return;
     const v = valor.trim();
     if (!v) { setAberto(false); return; }
     salvando.current = true;
-    const r = await adicionarTarefa(demandaId, v);
+    const r = await adicionarTarefa(demandaId, v, tentativa.id(v));
     salvando.current = false;
-    if (r) { setValor(''); setAberto(false); } else ref.current?.focus();
+    if (r) { tentativa.limpar(); setValor(''); setAberto(false); } else ref.current?.focus();
   };
   if (!aberto) return <button onClick={() => setAberto(true)}>{rotulo}</button>;
   return (

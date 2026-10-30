@@ -284,6 +284,32 @@ for (const tema of ['claro', 'escuro']) {
   await fecharJanela(pg); await ctx.close();
 }
 
+// ================= 3c) resposta perdida ao adicionar tarefa: resultado incerto, sem duplicar, sem apagar o texto =================
+{
+  const { ctx, pg } = await novoContexto({ viewport: { width: 1360, height: 800 } }, { visao: 'lista' });
+  await ir(pg);
+  await cadastrar(pg, { assunto: 'Tarefa perdida' }); await pg.waitForSelector('.lista-dem .linha:has(.ld-ass:has-text("Tarefa perdida"))');
+  const linha = '.lista-dem .linha:has(.ld-ass:has-text("Tarefa perdida"))';
+  const tarefas = () => pg.$$eval(`${linha} .linha-d .tarefas li`, (l) => l.map((x) => x.textContent.trim())).catch(() => []);
+  await pg.click(`${linha} .ld-m`); await pg.waitForSelector(`${linha} .linha-d .proxima.vazia button`);
+  await pg.click(`${linha} .linha-d .proxima.vazia button`); await pg.fill(`${linha} .linha-d input.t-ed`, 'Tarefa de resposta perdida');
+  // o servidor grava, mas a resposta nunca chega à tela
+  let perdidas = 0;
+  await pg.route('**/*', async (route) => { const r = route.request(); if (r.method() === 'POST' && r.headers()['next-action'] && perdidas === 0) { perdidas++; await route.fetch(); await route.abort('failed'); return; } await route.continue(); });
+  await pg.press(`${linha} .linha-d input.t-ed`, 'Enter');
+  await pg.waitForFunction(() => (document.querySelector('#toast.erro')?.textContent ?? '').trim().length > 0, null, { timeout: 15000 });
+  const aviso = await pg.textContent('#toast');
+  ok(perdidas === 1 && !/Nada foi gravado/.test(aviso) && /não dá para saber|Sem confirmação/i.test(aviso) && /Confira/i.test(aviso), 'resposta perdida: a mensagem diz que o resultado é incerto e pede para conferir, sem afirmar que nada foi gravado ("' + aviso.slice(0, 60) + '...")');
+  ok((await pg.inputValue(`${linha} .linha-d input.t-ed`)) === 'Tarefa de resposta perdida', 'resposta perdida: o texto digitado continua no campo');
+  await pg.unroute('**/*');
+  await pg.press(`${linha} .linha-d input.t-ed`, 'Enter');
+  await pg.waitForFunction(() => [...document.querySelectorAll('.lista-dem .linha')].some((l) => l.textContent.includes('Tarefa perdida') && l.querySelectorAll('.linha-d .tarefas li').length >= 1), null, { timeout: 15000 }); await pg.waitForTimeout(600);
+  ok((await tarefas()).filter((x) => /Tarefa de resposta perdida/.test(x)).length === 1, 'resposta perdida: repetir a mesma tentativa mostra uma só tarefa (a gravada antes), sem duplicar');
+  const campoNovo = await pg.$(`${linha} .linha-d .proxima.vazia button`);
+  ok(campoNovo === null, 'a lista agora mostra as tarefas (a demanda deixou de estar sem tarefas)');
+  await ctx.close();
+}
+
 // ================= 4) tipografia =================
 {
   const { ctx, pg } = await novoContexto({ viewport: { width: 1360, height: 900 } });
@@ -329,6 +355,7 @@ const db = await abrirBancoTeste({ pasta: PASTA });
 const linhas = (await db.query("select assunto, etapa, (select count(*)::int from public.tarefas t where t.demanda_id = d.id) as n_tarefas from public.demandas d order by criado_em")).rows;
 const conta = (a) => linhas.filter((l) => l.assunto === a);
 ok(conta('Cadastro interrompido').length === 1 && conta('Cadastro interrompido')[0].etapa === 'Vistos' && conta('Cadastro interrompido')[0].n_tarefas === 2, 'banco: "Cadastro interrompido" existe uma vez, em Vistos, com as 2 tarefas');
+ok(conta('Tarefa perdida').length === 1 && conta('Tarefa perdida')[0].n_tarefas === 1, 'banco: a tarefa de resposta perdida existe uma só vez (repetir a tentativa não duplicou)');
 ok(conta('Resposta perdida').length === 1 && conta('Resposta perdida')[0].etapa === 'Cadastro', 'banco: "Resposta perdida" existe uma só vez, em Cadastro');
 ok(conta('Criada pelo botão da coluna').length === 1 && conta('Criada pelo botão da coluna')[0].etapa === 'Vistos', 'banco: a demanda do botão da coluna foi criada uma vez e foi para Vistos só pela conclusão do cadastro');
 await db.close();

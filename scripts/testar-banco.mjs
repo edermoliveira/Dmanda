@@ -37,6 +37,20 @@ t = await c(A, 'adicionar_tarefa', { p_demanda: d1.id, p_texto: 'Conferir com a 
 ok(t.etapa === 'Vistos' && t.tarefas.map((x) => x.posicao).join() === '1,2,3' && t.tarefas.map((x) => x.texto).join('|') === 'Levantar diárias|Conferir com a Contabilidade|Redigir a resposta', 'tarefas seguintes mantêm a ordem de inclusão');
 ok(/Escreva a tarefa/.test(await erro(A, 'adicionar_tarefa', { p_demanda: d1.id, p_texto: ' ' })), 'tarefa vazia é recusada');
 const [t1, t2, t3] = t.tarefas;
+// resposta perdida (migração 13): repetir a inclusão com a MESMA identidade da tentativa devolve a tarefa que já existe; texto igual com outra identidade é outra tarefa (nada é deduplicado pelo conteúdo)
+{
+  const T1 = 'c1111111-1111-4111-8111-111111111111', T2 = 'c2222222-2222-4222-8222-222222222222', antes = t.tarefas.length;
+  const p1 = await c(A, 'adicionar_tarefa', { p_demanda: d1.id, p_texto: 'Tarefa com identidade', p_id: T1 });
+  const p2 = await c(A, 'adicionar_tarefa', { p_demanda: d1.id, p_texto: 'Tarefa com identidade', p_id: T1 });
+  ok(p1.tarefas.length === antes + 1 && p2.tarefas.length === antes + 1 && p2.tarefas.filter((x) => x.id === T1).length === 1, 'tarefa: repetir a inclusão com a mesma identidade (resposta perdida) não duplica');
+  const p3 = await c(A, 'adicionar_tarefa', { p_demanda: d1.id, p_texto: 'Tarefa com identidade', p_id: T2 });
+  const p4 = await c(A, 'adicionar_tarefa', { p_demanda: d1.id, p_texto: 'Tarefa com identidade' });
+  ok(p3.tarefas.length === antes + 2 && p4.tarefas.length === antes + 3 && p4.tarefas.filter((x) => x.texto === 'Tarefa com identidade').length === 3, 'tarefa: o mesmo texto com outra identidade (ou sem identidade) é outra tarefa; o banco não deduplica pelo conteúdo');
+  ok(/não encontrada|já existe|outra demanda/i.test(await erro(A, 'adicionar_tarefa', { p_demanda: d2.id, p_texto: 'x', p_id: T1 })), 'tarefa: a mesma identidade em outra demanda é recusada');
+  for (const x of [T1, T2]) await c(A, 'excluir_tarefa', { p_id: x });
+  await c(A, 'excluir_tarefa', { p_id: p4.tarefas.find((x) => x.texto === 'Tarefa com identidade' && x.id !== T1 && x.id !== T2).id });
+  t = await c(A, 'buscar_demanda', { p_id: d1.id });
+}
 t = await c(A, 'editar_tarefa', { p_id: t3.id, p_texto: '  Redigir a resposta final ' }); ok(t.tarefas[2].texto === 'Redigir a resposta final', 'editar tarefa grava o texto novo');
 t = await c(A, 'marcar_tarefa', { p_id: t1.id, p_concluida: true }); t = await c(A, 'marcar_tarefa', { p_id: t2.id, p_concluida: true });
 ok(t.tarefas.filter((x) => x.concluida).length === 2 && t.etapa === 'Vistos', 'marcar tarefas atualiza só as marcadas e não muda a etapa');
@@ -251,6 +265,10 @@ const privTab = await sql("select has_table_privilege('authenticated', 'public.d
 ok(privTab[0].crud && !privTab[0].trunc && !privTab[0].anon_sel && !privTab[0].svc_sel, 'privilégios: usuário logado tem só select, insert, update e delete (sem truncate); visitante e papel de serviço não tocam as demandas');
 const privFn = await sql("select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))");
 ok(privFn.length === 0, 'privilégios: nenhuma função do Dmanda é executável por visitante nem por "public" (' + privFn.map((x) => x.proname).join(',') + ')');
+// atualizar_demanda (gravação parcial, sem versão) é uma operação do usuário logado: autorização e concorrência são coisas diferentes. Quem não é a conta autorizada não a executa (acima e pela RLS);
+// a conta autorizada a executa de propósito (é o que salvar_demanda usa por dentro e o que simula "o outro aparelho" nos testes de versão), e ela sobe a versão, então a janela antiga que depois salvar é recusada.
+const privAtualizar = (await sql("select has_function_privilege('anon', 'public.atualizar_demanda(uuid, jsonb)', 'execute') as anon, has_function_privilege('public', 'public.atualizar_demanda(uuid, jsonb)', 'execute') as pub, has_function_privilege('authenticated', 'public.atualizar_demanda(uuid, jsonb)', 'execute') as logado"))[0];
+ok(privAtualizar.anon === false && privAtualizar.pub === false && privAtualizar.logado === true, 'privilégios: atualizar_demanda só é executável pelo usuário logado (nunca anônimo nem público)');
 const privSvc = await sql("select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and has_function_privilege('service_role', p.oid, 'execute') order by 1");
 ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diaria', 'privilégios: o papel de serviço executa somente rotina_diaria e registrar_falha_rotina');
 

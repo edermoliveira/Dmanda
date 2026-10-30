@@ -90,7 +90,7 @@ type Ctx = {
   arquivar: (id: string) => Promise<Demanda | null>;
   desarquivar: (id: string) => Promise<Demanda | null>;
   excluir: (id: string) => Promise<boolean>;
-  adicionarTarefa: (demandaId: string, texto: string) => Promise<Demanda | null>;
+  adicionarTarefa: (demandaId: string, texto: string, tarefaId?: string) => Promise<Demanda | null>;
   editarTarefa: (tarefaId: string, texto: string) => Promise<Demanda | null>;
   marcarTarefa: (tarefaId: string, concluida: boolean) => Promise<Demanda | null>;
   excluirTarefa: (tarefaId: string) => Promise<Demanda | null>;
@@ -101,16 +101,19 @@ const Contexto = createContext<Ctx | null>(null);
 // Falha ao falar com o servidor (sem internet, servidor fora do ar, sessão encerrada pelo proxy): a chamada lança em vez de devolver { ok: false }.
 // Nenhuma dessas falhas vira sucesso: a tela mostra o motivo, nada muda e o que foi digitado continua nos campos e nos rascunhos.
 const MSG_SEM_REDE = 'Sem conexão com o servidor. Nada foi gravado. Confira a internet e tente de novo; o que você digitou continua na tela.';
-async function explicarFalha(): Promise<string> {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) return MSG_SEM_REDE;
+// Só "Nada foi gravado" quando é certo: sem conexão ANTES de enviar (o pedido nem saiu) ou recusa do servidor. Se o pedido saiu e a resposta não voltou, o servidor pode ter gravado:
+// o resultado é incerto, e a pessoa confere antes de repetir (as repetições que importam usam a identidade da tentativa e não duplicam).
+const MSG_INCERTA = 'Sem confirmação do servidor: não dá para saber se foi gravado. Confira a lista antes de repetir; o que você digitou continua na tela.';
+async function explicarFalha(offlineAntes: boolean): Promise<string> {
+  if (offlineAntes) return MSG_SEM_REDE;
   try {
     // sonda leve da porta de entrada: se ela redireciona, a sessão terminou (saída, revogação ou sessão inválida) e o login assume; uma resposta 503 é só falha de conexão com o Auth
     const r = await fetch('/api/sessao', { redirect: 'manual', cache: 'no-store' });
     if (r.type === 'opaqueredirect') { window.location.replace('/login?encerrada=1'); return 'Sua sessão terminou. Entre de novo.'; }
   } catch { return MSG_SEM_REDE; }
-  return 'Não foi possível falar com o servidor agora. Nada foi gravado. Tente de novo.';
+  return MSG_INCERTA;
 }
-const protegido = async <T,>(f: () => Promise<Resultado<T>>): Promise<Resultado<T>> => { try { return await f(); } catch { return { ok: false, erro: await explicarFalha() }; } };
+const protegido = async <T,>(f: () => Promise<Resultado<T>>): Promise<Resultado<T>> => { const offlineAntes = typeof navigator !== 'undefined' && !navigator.onLine; try { return await f(); } catch { return { ok: false, erro: await explicarFalha(offlineAntes) }; } };
 
 const assinarConexao = (aviso: () => void) => { addEventListener('online', aviso); addEventListener('offline', aviso); return () => { removeEventListener('online', aviso); removeEventListener('offline', aviso); }; };
 /** true enquanto o navegador diz que há conexão (no servidor e na hidratação vale true, para as duas telas serem iguais). */
@@ -364,7 +367,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       avisar('Demanda excluída');
       return true;
     },
-    adicionarTarefa: (demandaId, texto) => rodar(() => srv.adicionarTarefa(demandaId, texto), 'Tarefa adicionada'),
+    adicionarTarefa: (demandaId, texto, tarefaId) => rodar(() => srv.adicionarTarefa(demandaId, texto, tarefaId), 'Tarefa adicionada'),
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),

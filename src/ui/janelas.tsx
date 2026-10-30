@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from './contexto';
 import { Janela } from './janela-base';
+import { useTentativa } from './campos';
 import { JanelaNova } from './cadastro';
 import { JanelaDemanda } from './detalhe';
 import { JanelaEntradaRoteada } from './entradas';
@@ -17,6 +18,7 @@ export function JanelaTarefa() {
   const [dem, setDem] = useState<string>(((rasc?.dados as { dem?: string } | undefined)?.dem) ?? abertas[0]?.id ?? '');
   const [texto, setTexto] = useState(rasc?.nt ?? '');
   const [salvando, setSalvando] = useState(false);
+  const tentativa = useTentativa();
   const sujo = !!texto.trim();
   // rascunho automático (ver a janela de edição)
   useEffect(() => {
@@ -26,7 +28,7 @@ export function JanelaTarefa() {
   }, [sujo, texto, guardarRascunho]);
   const fecharGuardando = () => { guardarRascunho('tarefa', sujo ? { dados: { assunto: '' }, nt: texto } : null); fecharJanela(); };
   const cancelar = () => { guardarRascunho('tarefa', null); fecharJanela(); };
-  const adicionar = async () => { if (!dem || !texto.trim()) return; setSalvando(true); const r = await adicionarTarefa(dem, texto.trim()); setSalvando(false); if (r) { guardarRascunho('tarefa', null); fecharJanela(); } };
+  const adicionar = async () => { if (!dem || !texto.trim()) return; setSalvando(true); const r = await adicionarTarefa(dem, texto.trim(), tentativa.id(`${dem}|${texto.trim()}`)); setSalvando(false); if (r) { tentativa.limpar(); guardarRascunho('tarefa', null); fecharJanela(); } };
   return (
     <Janela titulo="Nova tarefa" aoFechar={fecharGuardando} sujo={sujo}
       rodape={<><span className="esp" /><button className="btn" onClick={cancelar}>Cancelar</button><button className="btn pri" disabled={salvando || !dem || !texto.trim()} onClick={() => void adicionar()}>Adicionar</button></>}>

@@ -60,8 +60,8 @@ export async function salvarDia(dia: { id?: string; data: string; descricao: str
 export async function excluirDia(diaId: string) {
   return executar(() => op().excluirDia(diaId));
 }
-export async function adicionarTarefa(demandaId: string, texto: string) {
-  return executar(() => op().adicionarTarefa(demandaId, texto));
+export async function adicionarTarefa(demandaId: string, texto: string, tarefaId?: string) {
+  return executar(() => op().adicionarTarefa(demandaId, texto, tarefaId));
 }
 export async function editarTarefa(tarefaId: string, texto: string) {
   return executar(() => op().editarTarefa(tarefaId, texto));
