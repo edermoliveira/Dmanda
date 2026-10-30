@@ -307,6 +307,13 @@ for (const tema of ['claro', 'escuro']) {
   ok((await tarefas()).filter((x) => /Tarefa de resposta perdida/.test(x)).length === 1, 'resposta perdida: repetir a mesma tentativa mostra uma só tarefa (a gravada antes), sem duplicar');
   const campoNovo = await pg.$(`${linha} .linha-d .proxima.vazia button`);
   ok(campoNovo === null, 'a lista agora mostra as tarefas (a demanda deixou de estar sem tarefas)');
+  // depois de uma inclusão confirmada, o mesmo texto numa nova tentativa recebe outra identidade e cria outra tarefa (nada é deduplicado pelo conteúdo)
+  await pg.evaluate(() => [...document.querySelectorAll('[aria-label="Criar novo"]')].find((e) => e.offsetParent)?.click());
+  await pg.evaluate(() => [...document.querySelectorAll('.menuplus [role="menuitem"], .menuplus button')].find((e) => /^\s*Tarefa\s*$/.test(e.textContent))?.click());
+  await pg.waitForSelector('#t-texto'); await pg.selectOption('#t-dem', { label: (await pg.$$eval('#t-dem option', (o) => o.map((x) => x.textContent))).find((x) => /Tarefa perdida/.test(x)) });
+  await pg.fill('#t-texto', 'Tarefa de resposta perdida'); await pg.click('.modal .btn.pri:has-text("Adicionar")');
+  await pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 }); await pg.waitForTimeout(600);
+  ok((await tarefas()).filter((x) => /Tarefa de resposta perdida/.test(x)).length === 2, 'depois de uma inclusão confirmada, o mesmo texto vira outra tarefa (identidade nova, sem deduplicar pelo conteúdo)');
   await ctx.close();
 }
 
@@ -355,7 +362,7 @@ const db = await abrirBancoTeste({ pasta: PASTA });
 const linhas = (await db.query("select assunto, etapa, (select count(*)::int from public.tarefas t where t.demanda_id = d.id) as n_tarefas from public.demandas d order by criado_em")).rows;
 const conta = (a) => linhas.filter((l) => l.assunto === a);
 ok(conta('Cadastro interrompido').length === 1 && conta('Cadastro interrompido')[0].etapa === 'Vistos' && conta('Cadastro interrompido')[0].n_tarefas === 2, 'banco: "Cadastro interrompido" existe uma vez, em Vistos, com as 2 tarefas');
-ok(conta('Tarefa perdida').length === 1 && conta('Tarefa perdida')[0].n_tarefas === 1, 'banco: a tarefa de resposta perdida existe uma só vez (repetir a tentativa não duplicou)');
+ok(conta('Tarefa perdida').length === 1 && conta('Tarefa perdida')[0].n_tarefas === 2, 'banco: a tarefa de resposta perdida existe uma vez (repetir a tentativa não duplicou) e a nova inclusão com o mesmo texto é a segunda');
 ok(conta('Resposta perdida').length === 1 && conta('Resposta perdida')[0].etapa === 'Cadastro', 'banco: "Resposta perdida" existe uma só vez, em Cadastro');
 ok(conta('Criada pelo botão da coluna').length === 1 && conta('Criada pelo botão da coluna')[0].etapa === 'Vistos', 'banco: a demanda do botão da coluna foi criada uma vez e foi para Vistos só pela conclusão do cadastro');
 await db.close();
