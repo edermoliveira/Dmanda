@@ -438,3 +438,19 @@ Incerteza residual (falha 1): a falha original dentro da bateria completa não f
 
 ### 21.5 Pendências (dependem do usuário)
 Avaliação de Entradas na PWA (Issue #5, roteiro em `CONTINUIDADE-DMANDA.md` H); avaliação do Início, Tabela, Lista e demais itens listados em `ANDAMENTO.md`; PWA instalada; cron registrado; sessão por horas reais; restauração da cópia em projeto real; destino da cópia (Issue #4).
+
+## 22. Ajustes depois da aprovação funcional de Entradas (30/10/2026)
+
+Escopo restrito (não é auditoria geral): cinco ajustes de interface pedidos pelo usuário depois de testar Entradas no iPhone (commit `c932dac`, decisão 40). Os prints citados pelo usuário (IMG_4108 a IMG_4111) não estavam no computador; os defeitos foram diagnosticados pelo código e reproduzidos no navegador.
+
+| # | Defeito | Causa (evidência) | Tratamento |
+|---|---|---|---|
+| 1 | Entrada abre com teclado | `Janela` focava o primeiro campo ao abrir e a janela da entrada nascia em edição | Janela de leitura com foco na própria janela; lápis liga a edição; rascunho não enviado em espera (nada enviado em silêncio) |
+| 2 | Seletor do Arquivo sem texto | `@container` esconde `.tabs .tx` em telas estreitas e o seletor do Arquivo não tem ícones | Classe `so-texto` só nesse seletor |
+| 3 | Campo Data fora do quadro | Controle nativo de data com largura mínima própria (a 360 px a coluna principal media 363 px: reproduzido) | Trilho `minmax(min(190px, 100%), 1fr)`, `min-width: 0`, `appearance: none` no campo |
+| 4 | Lista confusa | Classes `.linha-c` e `.linha-m` compartilhadas, número com 80 px reservados, traço de porcentagem solto | Linha própria sob `.lista-dem`; regras antigas removidas |
+| 5 | Selo Legal/Próprio nos cards | `ChipsRow` reaproveitado em Cards, Quadro e Início | Removido do resumo; mantido em Tabela, detalhes, dados, filtros e cópia |
+
+Fora do bloco, observado: abaixo de 360 px a barra superior do app (marca e botões) ultrapassa a largura da tela (anterior a este bloco).
+
+**Revisão `ponytail-review`** (invocada): sem achado que exigisse correção de comportamento. Um ponto de limpeza tratado (regra de área de toque do lápis, redundante porque a área já era de 44 px) e um teste acrescentado (Lista marcando a demanda atrasada); um risco sem prova: o rendering do campo de data no Safari real. **Impeccable:** crítica enxuta, detector sem achados; contraste e piso de 10 px medidos nos testes. **Limite:** o WebKit do Playwright no Windows não é o Safari do iPhone.

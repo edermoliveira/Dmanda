@@ -25,12 +25,13 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 
 ### Entradas
 - Notas em post-its pastel (até 6 tons), em cards, com tags `#` e fixar no topo.
-- Criar, consultar e editar nota rápida (título opcional, texto, cor, fixar), com salvamento automático no Supabase e rascunho no aparelho. **Implementado em 30/10/2026** (decisões 37 a 39; avaliação do usuário pendente, Issue #5).
+- Criar, consultar e editar nota rápida (título opcional, texto, cor, fixar), com salvamento automático no Supabase e rascunho no aparelho. **Implementado em 30/10/2026** (decisões 37 a 39, Issue #5); **funcionamento aprovado pelo usuário em 30/10/2026**.
+- **Abrir uma entrada é ler, não editar (decisão 40):** a janela de leitura mostra título, texto completo e tags sem abrir o teclado; o **lápis** liga a edição. Rascunho não enviado fica em espera, com aviso e botão "Retomar edição". Entrada convertida só abre em leitura, com "Abrir a demanda".
 - **Virar demanda:** abre o cadastro guiado preenchido e editável (título explícito vira o assunto; sem título, a primeira linha útil; o resto vai para a descrição, com as tags). A nota sai de Entradas quando a demanda é criada no passo 2, na mesma transação do banco; cancelar antes mantém a nota. A demanda guarda o vínculo e a nota original fica preservada no Arquivo.
 - Arquivar nota (manual) e recuperar pelo Arquivo (aba Entradas). Buscar dentro das entradas e filtrar por tag. Atalho N no computador e "Nova entrada" no botão "+".
 
 ### Demandas
-- Visões, cada uma com função própria: **Cards** (leitura visual), **Quadro** (mover entre etapas), **Tabela** (análise detalhada, colunas ordenáveis e filtros) e **Lista** (consulta rápida, linhas expansíveis para ver e marcar tarefas).
+- Visões, cada uma com função própria: **Cards** (leitura visual), **Quadro** (mover entre etapas), **Tabela** (análise detalhada, colunas ordenáveis e filtros) e **Lista** (consulta rápida: uma linha por demanda, com seta para ver e marcar tarefas, lápis para a consulta completa, assunto à esquerda, número, tipo e origem quando existem, vencimento e tarefas em posição fixa).
 - Cinco etapas: **Cadastro, Vistos, Fazendo, Aguardando retorno, Finalizado**.
 - Cadastro guiado em três passos (identificação, chegada e prazo, tarefas), com só o assunto obrigatório, em qualquer etapa (decisão 28). Consulta da demanda com lápis por seção (decisão 29). Prazo original e vencimento ajustado, dias indisponíveis em Configurações (decisões 31 e 32).
 - Mover card entre etapas. Botão **"Já vi"** leva de Cadastro para Vistos (com ou sem tarefas). Cadastrar a primeira tarefa também leva para Vistos.
@@ -40,7 +41,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Atalho "Arquivo" ao final da tela.
 
 ### Card (dois lados)
-- **Frente:** número do processo/memorando, assunto e origem, prazo com selo legal ou próprio (atraso em vermelho), próxima tarefa (nunca a concluída) e porcentagem pronta.
+- **Frente:** número do processo/memorando, assunto e origem, vencimento e contagem regressiva (atraso em vermelho; o selo legal ou próprio **não** aparece mais nos cards, só na Tabela e nos detalhes), próxima tarefa (nunca a concluída) e porcentagem pronta.
 - **Verso:** lista de tarefas com marcar, data de chegada, dias parado, tipo de documento, setor e dias em Aguardando retorno, e ações (Já vi, Concluir, Arquivar, Mover, Editar).
 - Giro: passar o mouse no computador. Botão de girar no celular e no iPad. Toque no corpo do card abre a demanda completa.
 - Sem tarefas: mostra "Sem próxima tarefa" com atalho. Porcentagem só aparece quando há tarefas.

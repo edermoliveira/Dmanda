@@ -10,7 +10,7 @@ Para **uma pessoa só**: o Secretário, no trabalho e na organização pessoal. 
 
 ## O que o sistema tem (sete áreas)
 1. **Início:** quantitativos, demandas em atraso, alertas, "foco do dia" (até 3 demandas), mensagem motivacional e bem-humorada (uma por dia), clima da cidade e acesso rápido ao humor.
-2. **Entradas:** notas rápidas em post-its pastel (rascunhos, anotações, registros). Uma nota pode virar demanda, abrindo o cadastro guiado já preenchido (implementado em 30/10/2026, avaliação do usuário pendente).
+2. **Entradas:** notas rápidas em post-its pastel (rascunhos, anotações, registros). Uma nota pode virar demanda, abrindo o cadastro guiado já preenchido (implementado em 30/10/2026, funcionamento aprovado pelo usuário; abre em leitura e o lápis liga a edição).
 3. **Demandas:** o coração do sistema. Cards de dois lados (frente com o essencial, verso com detalhes), nas visões Cards, Quadro, Tabela e Lista. Cinco etapas: Cadastro, Vistos, Fazendo, Aguardando retorno, Finalizado. Tarefas dentro de cada demanda, com porcentagem pronta.
 4. **Agenda:** semana e mês. Demandas aparecem no vencimento (amarelo) e compromissos na grade de horários (azul). Sincroniza do Dmanda para o Google Calendar.
 5. **Documentos:** modelos e arquivos ligados ao Google Drive (estrutura pronta na primeira versão).

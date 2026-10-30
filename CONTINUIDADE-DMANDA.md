@@ -181,12 +181,12 @@ Só pode haver um `next dev` por vez (a pasta `.next` tem trava). Portas: 7100 a
 
 **Estado do cron:** código pronto e testado localmente; `vercel.json` com o agendamento `0 9 * * *` e rota correta; **Atualização de 28/10/2026 (consulta ao banco real, ao fim do dia): há uma execução registrada em `execucoes_rotina`, `data_ref` 2026-10-28, `ok = true`, sem erro, 1 usuário, iniciada às 09:34:10 UTC (06:34 em Brasília), dentro da janela do Hobby (06:00 a 06:59).** É compatível com a primeira execução automática do cron, mas o banco não distingue disparo automático de botão Run, então a origem exata e o registro do cron em Settings > Cron Jobs continuam a conferir no painel da Vercel. Antes dessa, só existem os testes locais de 25 e 26/10. **Atualização de 29/10/2026 (consulta somente leitura ao banco real):** segunda execução registrada, `data_ref` 2026-10-29, `ok = true`, sem erro, iniciada às 09:34:10 UTC, no mesmo minuto e segundo da de 28/10. Dois dias seguidos no mesmo instante, sem intervenção, indicam disparo agendado (o Hobby sorteia o minuto, mas ele se repete). O banco ainda não distingue agendamento de botão Run, então o registro em Settings > Cron Jobs continua a conferir no painel da Vercel. No Hobby a chamada ocorre em qualquer minuto da hora marcada (09:00 a 09:59 UTC, ou 06:00 a 06:59 em Brasília). A prova da rotina é a linha "Rotina diária na nuvem: última execução em..." no Início (vem da tabela `execucoes_rotina`; os dois registros que existem hoje são testes locais de 25/10).
 
-**Nunca validado de ponta a ponta:** a sessão persistente por horas reais no iPhone (a antiga expiração de 6 horas deixou de existir); restauração da cópia em projeto real; download da cópia dentro do app instalado; instalação da PWA no iPhone e no iPad; **aprovação visual da aplicação React**; desempenho e latência em produção.
+**Nunca validado de ponta a ponta:** a sessão persistente por horas reais no iPhone (a antiga expiração de 6 horas deixou de existir); restauração da cópia em projeto real; download da cópia dentro do app instalado; instalação da PWA no iPad (o iPhone já tem, confirmado pelo usuário em 30/10/2026); **aprovação visual da aplicação React**; desempenho e latência em produção.
 
 **Pendências realmente necessárias para o primeiro uso**
 1. Confirmar a persistência real (recarregar e a demanda continuar) e a saída e nova entrada no endereço publicado: do usuário, em segundos.
 2. Confirmar na Vercel que o cron está registrado e disparar o Run manual; o assistente confere o resultado no banco.
-3. Instalar a PWA no iPhone e no iPad e baixar uma cópia dos dados dentro do app instalado.
+3. PWA: **já instalada no iPhone** (confirmado pelo usuário em 30/10/2026); instalar no iPad só se for usar (não presumido). Baixar uma cópia dos dados dentro do app instalado.
 4. Avaliação visual da aplicação (Issue #2).
 
 **Melhorias posteriores (não bloqueiam o uso; detalhe em `AUDITORIA.md` 18.3):** P1 excluir o design antigo sem uso (aguarda autorização); P2 `verificar:cores` aponta para arquivo inexistente; P3 Tabela em janela média; P4 controles de áreas ainda não construídas; P5 regra do Início para "Aguardando retorno" sem data de acompanhamento; P6 um acesso a menos ao Auth por operação; P7 sem Content-Security-Policy; P8 atualizações de patch (Next 16.4.3, React 19.3.1, PGlite 0.5.12); P9 alvos de toque do lápis das tarefas e do filtro no iPhone.
@@ -317,3 +317,21 @@ Depois: criar o `.env.local` copiando o modelo `.env.example` e preencher **sem 
 4. Toque em **Virar demanda** numa nota: o cadastro deve abrir com assunto e descrição preenchidos. Cancele: a nota continua em Entradas. Faça de novo, avance até o passo 2 (a demanda é criada) e pule as tarefas: a nota sai de Entradas e a demanda fica em Cadastro.
 5. Em **Mais > Arquivo > Entradas** (ou "Arquivadas" na tela de Entradas) a nota convertida aparece como "Virou demanda"; arquive e recupere outra nota.
 6. Diga se os post-its (duas colunas no iPhone), o texto e os botões estão legíveis e fáceis de tocar. Se tiver dois aparelhos, edite a mesma nota nos dois e confira o aviso de conflito.
+
+---
+
+## I. Ajustes depois da aprovação funcional de Entradas (30/10/2026, decisão 40)
+
+**Aprovação.** O usuário testou **Entradas** na versão `1aecf40` (PWA do iPhone) e aprovou o **funcionamento**; pediu cinco ajustes, entregues no commit `c932dac` (sem migração, sem mexer em dados). Não é aprovação visual. A Issue #5 segue aberta só para a conferência desses ajustes; a #2 recebe a observação de que o usuário já usa a PWA no iPhone.
+
+**O que mudou.** (1) Entrada abre em **leitura** (sem campo focado nem teclado; foco na janela, Tab preso à janela, foco devolvido a quem abriu); o **lápis** liga a edição e foca o texto no mesmo toque; "Voltar à leitura"; rascunho não enviado fica **em espera** com aviso e "Retomar edição" (nada é enviado em silêncio); convertida só em leitura. (2) Seletor do Arquivo com texto visível em todas as larguras (classe `so-texto`, só ali). (3) Campo Data cabe no quadro (o controle nativo tinha largura mínima própria; reproduzido a 360 px). (4) Lista de Demandas reorganizada (`.lista-dem`). (5) Selo Legal/Próprio fora dos cards (Cards, Quadro, Início, Lista); continua na Tabela, nos detalhes, nos dados e na cópia.
+
+**Verificado localmente (automatizado), no mesmo estado de código:** `tsc` e `eslint` limpos; `testar:ajustes` **563 de 563** (Edge e WebKit do Playwright; novo); `testar:entradas` 173 de 173 (abrindo pelo lápis); `testar:app` 132 de 132 (agora com a Lista marcando a demanda atrasada); `testar:interface` 140 de 140; `testar:regras` 79 de 79; `build` com saída 0. `testar:banco` e `testar:sessao` não rodaram de novo: nada de banco, sessão ou Auth mudou neste bloco. **Revisão `ponytail-review`** invocada; o Impeccable foi usado em crítica enxuta (detector sem achados). **Limite:** o WebKit do Playwright no Windows é o motor do Safari, **não** o Safari do iPhone: o rendering real do campo de data nativo (e se o campo vazio aparece em branco com `appearance: none`) só se confirma no aparelho.
+
+**Roteiro curto para conferir só estes ajustes no iPhone (cerca de 4 minutos).**
+1. **Entradas:** toque numa nota. Deve abrir **sem teclado**, com título, texto completo (quebras de linha) e tags. Toque no **lápis** (no alto da janela, à esquerda do X): aparecem os campos e o teclado. "Voltar à leitura" mostra o que você digitou. Feche e confirme "Salvo no Dmanda".
+2. **Nova entrada** ("+" ou o botão): abre pronta para digitar. **Virar demanda**, **Arquivar** e **Fixar** continuam na janela de leitura.
+3. **Mais > Arquivo:** as abas **Demandas** e **Entradas** devem mostrar o texto, nos temas claro e escuro. Troque de aba.
+4. **Mais > Configurações > Dias indisponíveis:** o campo **Data** deve ficar dentro do quadro, vazio e depois de escolher uma data, e também ao girar o aparelho. Veja se o campo vazio se identifica bem. Cadastre, edite e exclua um dia.
+5. **Demandas > Lista:** assunto à esquerda, número/tipo/origem só quando existem, vencimento e tarefas alinhados, **seta** (mostra as tarefas) e **lápis** (consulta completa) fazendo coisas diferentes. Abra uma linha, marque uma tarefa.
+6. **Cards** e **Quadro** (e o Início): sem o selo "Legal"/"Próprio", com vencimento e contagem; a **Tabela** e a consulta da demanda ainda mostram o tipo do prazo.

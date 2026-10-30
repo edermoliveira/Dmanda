@@ -2,13 +2,19 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 30/10/2026 (aprovação do bloco anterior e Entradas: ver o bloco de 30/10 logo abaixo); antes, 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos); antes, 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
-**Andamento do projeto: 29%** (cálculo item a item em `ANDAMENTO.md`, reavaliado em 30/10/2026; era 18%).
+**Última atualização:** 30/10/2026 (ajustes depois da aprovação funcional de Entradas: ver o bloco "AJUSTES DE 30/10/2026" logo abaixo; e antes, o bloco de Entradas); antes, 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos); antes, 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Andamento do projeto: 33%** (cálculo item a item em `ANDAMENTO.md`, segunda reavaliação de 30/10/2026; 29% na primeira; era 18%).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
 ---
 
-## BLOCO DE 30/10/2026: APROVAÇÃO DO BLOCO ANTERIOR E ENTRADAS (leia primeiro)
+## AJUSTES DE 30/10/2026 DEPOIS DA APROVAÇÃO FUNCIONAL DE ENTRADAS (leia primeiro)
+
+**Ponto de retomada.** O usuário **aprovou o funcionamento de Entradas** (versão `1aecf40`, PWA do iPhone, que ele confirmou usar; o iPad não é presumido) e pediu cinco ajustes, entregues no commit `c932dac` e **aguardando a conferência dele no iPhone** (roteiro em `CONTINUIDADE-DMANDA.md`, seção I; decisão 40): Entradas abre em leitura com lápis (rascunho não enviado em espera), texto do seletor do Arquivo, campo Data dentro do quadro, Lista de Demandas reorganizada, selo Legal/Próprio fora dos cards. Sem migração. Andamento: 33%. **Agenda e os demais módulos só começam depois da conferência.** Teste novo: `npm run testar:ajustes` (563, Edge e WebKit do Playwright).
+
+---
+
+## BLOCO DE 30/10/2026: APROVAÇÃO DO BLOCO ANTERIOR E ENTRADAS
 
 **Ponto de retomada.** O usuário aprovou o bloco `2714937` (cadastro, cards, tipografia e prazos) e autorizou **Entradas**, entregue em 30/10/2026 e **aguardando a avaliação dele na PWA** (Issue #5; roteiro curto em `CONTINUIDADE-DMANDA.md`, seção H). **Agenda e os demais módulos só começam depois dessa avaliação.** Código publicado: commit de código `7bf06ef5eb89b85ef54f452cd25ee4bc5997026b` na `main` (o commit de documentação logo depois não altera código). Migração 10 (`entradas`) aplicada no Supabase real. Andamento: 29%.
 
@@ -62,7 +68,7 @@ npm run dev
 **PUBLICAÇÃO E FECHAMENTO (28/10/2026): https://dmanda-adm.vercel.app** (Vercel Hobby, equipe EDER, projeto `dmanda`, Production, `main`, `gru1`). Resumo consolidado e primeira ação da próxima sessão: `CONTINUIDADE-DMANDA.md`.
 - **Publicado:** commit `58fc8ec938a4b0874f7d7c1c4ea452295090ab85`, status "Vercel, success, Deployment has completed" no GitHub. Commits posteriores são só de documentação e geram novas implantações; o commit servido em cada momento se confere no painel Deployments da Vercel.
 - **Validado em produção (sem sessão, 28/10):** login 200; `/`, `/demandas`, `/marca`, `/pecas`, `/tokens`, `/config`, `/arquivo`, `/api/exportar`, `/api/sessao` redirecionam ao login; manifesto, ícones e estilos 200; cron 401 sem segredo e com segredo errado; cabeçalhos de segurança; função em `gru1`. Supabase: migrações 7 de 7, nada pendente.
-- **Ainda não validado:** validação autenticada pelo assistente (sem sessão no navegador), cron registrado no painel, Run manual, primeira execução automática, 6 horas reais, PWA instalada no iPhone e no iPad, cópia baixada no app instalado, avaliação visual da aplicação (Issue #2).
+- **Ainda não validado:** validação autenticada pelo assistente (sem sessão no navegador), cron registrado no painel, Run manual, primeira execução automática, 6 horas reais, PWA instalada no iPad (o iPhone já tem, confirmado em 30/10/2026), cópia baixada no app instalado, avaliação visual da aplicação (Issue #2).
 - **Dado real do usuário (não é teste):** demanda "Portarias Comissões" criada em 28/10 às 03:11 UTC. Não alterar nem remover.
 
 ## PONTO DE RETOMADA ATUAL (27/10/2026, em casa: publicação preparada, aguardando o plano da Vercel e a conexão da nuvem)
@@ -106,7 +112,7 @@ npm run dev
   2. **Claude, com autorização:** avançar a `producao` por fast-forward a partir do commit verificado (traz as correções e dispara a implantação certa), conferir o publicado sem sessão (200 e redirecionamentos, cron 401, cabeçalhos, região `gru1`, rotina registrada em Settings > Cron Jobs).
   3. **Usuário:** entrar com e-mail e senha no endereço publicado e apagar a primeira implantação (Deployments > ⋯ > Delete).
   4. **Claude:** conferir a sessão no banco real, criar e remover uma demanda TESTE pelo endereço, chamar a rotina manualmente (resposta 200 e linha em `execucoes_rotina`).
-  5. **Usuário, no dia seguinte:** conferir no Início a última execução automática; instalar a PWA no iPhone e no iPad (Safari > Compartilhar > Adicionar à Tela de Início); baixar a cópia dos dados dentro do app instalado e dizer se funcionou; avaliar a aplicação (Issue #2).
+  5. **Usuário, no dia seguinte:** conferir no Início a última execução automática; a PWA já está instalada no iPhone (confirmado em 30/10/2026); instalar no iPad só se for usar (Safari > Compartilhar > Adicionar à Tela de Início); baixar a cópia dos dados dentro do app instalado e dizer se funcionou; avaliar a aplicação (Issue #2).
   6. Então: destino das cópias (#4) e, se quiser, o desenvolvimento pelo iPhone (guia abaixo).
 
 **ATUALIZAÇÃO 27/10/2026 (bloco "publicação controlada", em casa; o item do plano e o mecanismo da `producao` foram superados, ver a decisão 25):** preparado, **nada publicado, nada contratado**.
