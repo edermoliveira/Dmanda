@@ -270,6 +270,20 @@ for (const tema of ['claro', 'escuro']) {
   await ctx.close();
 }
 
+// ================= 3b) marcar tarefa na leitura não pode bloquear a seção que está aberta =================
+{
+  const { ctx, pg } = await novoContexto({ viewport: { width: 1360, height: 800 } }, { visao: 'lista' });
+  await ir(pg);
+  const linha = '.lista-dem .linha:has(.ld-ass:has-text("Cadastro interrompido"))';
+  await pg.click(`${linha} .ld-abrir`); await pg.waitForSelector('.modal .t-ler input');
+  await pg.click('.modal [aria-label="Editar descrição"]'); await pg.waitForSelector('.modal textarea'); await pg.fill('.modal textarea', 'texto digitado na seção aberta');
+  const travados = await pg.$$eval('.modal .t-ler input[type="checkbox"]', (c) => c.map((x) => x.disabled));
+  ok(travados.length === 2 && travados.every(Boolean), 'consulta: com uma seção aberta para editar, as caixas de tarefa da leitura ficam desativadas (marcar uma subiria a versão e travaria o Salvar com um falso aviso de outro aparelho)');
+  await pg.click('.modal .btn:has-text("Salvar")'); await pg.waitForFunction(() => !document.querySelector('.modal textarea'), null, { timeout: 10000 });
+  ok(!(await pg.$('#m-conflito')) && (await pg.$$eval('.modal .t-ler input[type="checkbox"]', (c) => c.every((x) => !x.disabled))), 'consulta: salva a seção e as caixas de tarefa voltam a funcionar, sem aviso de conflito');
+  await fecharJanela(pg); await ctx.close();
+}
+
 // ================= 4) tipografia =================
 {
   const { ctx, pg } = await novoContexto({ viewport: { width: 1360, height: 900 } });

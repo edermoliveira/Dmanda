@@ -335,3 +335,7 @@ Cada demanda tem uma `versao`. Se a mesma demanda for alterada em outro aparelho
 ## Migração 11: cinco cores em Entradas (30/10/2026)
 
 `20261030000100_entradas_cinco_cores.sql`: redefine só `cor_entrada_automatica` (sorteio de 0 a 4). Aditiva: não altera dados nem a restrição da tabela (0 a 5), então notas antigas com a cor 5 e cópias anteriores continuam válidas. Aplicada com dry-run em 30/10/2026; contagens e resumo das entradas idênticos antes e depois.
+
+## Migração 12: conta autorizada na RLS de Entradas e dos dias indisponíveis (revisão de 30/10/2026)
+
+`20261030000200_rls_conta_autorizada_entradas_dias.sql`: troca só as políticas `entradas_dono` e `dias_indisponiveis_dono` para também exigirem `dmanda_privado.conta_autorizada()`, como a migração 4 já fazia em demandas, tarefas e rotina (a terceira camada de acesso valia só para parte dos dados). Não toca em dados. **Criada e provada no banco de teste; ainda NÃO aplicada no Supabase real** (aguarda autorização). Quando aplicar: `npx supabase db push --linked --dry-run`, depois sem `--dry-run`, e conferir contagens e `db push --dry-run` em dia.

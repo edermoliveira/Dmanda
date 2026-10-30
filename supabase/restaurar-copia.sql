@@ -43,7 +43,7 @@ begin
     insert into public.demandas
     select r.*
     from jsonb_populate_recordset(null::public.demandas,
-      (select coalesce(jsonb_agg(x || jsonb_build_object('user_id', dono, 'versao', coalesce(x -> 'versao', '1'::jsonb))
+      (select coalesce(jsonb_agg(x || jsonb_build_object('user_id', dono, 'versao', coalesce(x -> 'versao', '1'::jsonb), 'prazo_legado', coalesce(x -> 'prazo_legado', 'false'::jsonb))
         -- cópia antiga (sem prazo original): o prazo que ela tinha vira a referência original, marcada como legado
         || case when x ? 'prazo_original' or x ->> 'prazo' is null then '{}'::jsonb else jsonb_build_object('prazo_original', x -> 'prazo', 'prazo_legado', true) end), '[]'::jsonb) from jsonb_array_elements(todas) x)) r
     on conflict (id) do nothing

@@ -1,6 +1,6 @@
 'use client';
 // Telas do aplicativo funcional: Início (resumos e Foco do dia), Demandas (quatro visões), Arquivo, Mais e as áreas ainda não construídas.
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Capsula } from './Capsula';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
@@ -193,4 +193,3 @@ export function EmConstrucao({ titulo, sub, icone, texto }: { titulo: string; su
     </>
   );
 }
-export type { CSSProperties };

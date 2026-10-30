@@ -239,6 +239,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   // Não mexe com uma janela de edição aberta, não pisca o "carregando" e descarta a leitura se uma gravação aconteceu enquanto ela vinha.
   useEffect(() => {
     const atualizar = async () => {
+      if (document.visibilityState === 'visible') setHoje(hojeISO()); // o dia pode ter virado enquanto o aplicativo estava em segundo plano, com ou sem rede para reler
       if (document.visibilityState !== 'visible' || janelaAberta.current || pendentes.current > 0) return;
       const antes = gravacoes.current;
       const [r, d, en] = await Promise.all([protegido(() => srv.listarDemandas(false)), protegido(() => srv.listarDias()), protegido(() => srvE.listarEntradas(false))]);
@@ -252,7 +253,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   }, []);
 
   // estável (identidade fixa): as janelas a usam em efeitos que gravam o rascunho sozinhos
-  const guardarRascunho = useCallback((chave: string, r: Rascunho | null) => setRascunhos((m) => { const n = { ...m }; if (r) n[chave] = r; else delete n[chave]; gravarLS('dmanda:rascunhos', n); return n; }), []);
+  // parte do que está guardado no navegador, não só da memória desta aba: outra aba ou a PWA do mesmo aparelho pode ter guardado um rascunho que esta não conhece, e gravar o mapa da memória o apagaria
+  const guardarRascunho = useCallback((chave: string, r: Rascunho | null) => setRascunhos((m) => { const n = { ...(lerLS<Record<string, Rascunho> | null>('dmanda:rascunhos', null) ?? m) }; if (r) n[chave] = r; else delete n[chave]; gravarLS('dmanda:rascunhos', n); return n; }), []);
 
   const gravando = useCallback(async <T,>(f: () => Promise<T>): Promise<T> => {
     gravacoes.current++; pendentes.current++;
@@ -279,6 +281,15 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (msg) avisar(msg);
     return r.entrada;
   }, [rodarEntrada, avisar]);
+
+  // O servidor já recalculou os vencimentos afetados (inclusive os das demandas arquivadas): relê as demandas para a tela mostrar os novos. Se a leitura falhar, a tela diz isso em vez de
+  // anunciar o recálculo com os prazos antigos à vista. As arquivadas voltam a ser lidas quando o Arquivo abrir.
+  const aposCalendario = useCallback(async (inicio: string, n: number) => {
+    const lista = await protegido(() => srv.listarDemandas(false));
+    setArquivadas(null);
+    const resumo = n === 0 ? 'Nenhum vencimento precisou mudar.' : n === 1 ? '1 vencimento foi recalculado.' : `${n} vencimentos foram recalculados.`;
+    if (lista.ok) { setDemandas(lista.dados); avisar(`${inicio}. ${resumo}`); } else avisar(`${inicio}. ${resumo} A tela não conseguiu ler os novos vencimentos: recarregue para vê-los.`, true);
+  }, [avisar]);
 
   const valor = useMemo<Ctx>(() => ({
     demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, setAbaArquivo,
@@ -312,21 +323,14 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       const r = await gravando(() => protegido(() => srv.salvarDia(dia)));
       if (!r.ok) { avisar(r.erro, true); return false; }
       setDias((l) => [...l.filter((x) => x.id !== r.dados.dia.id), r.dados.dia].sort((a, b) => a.data.localeCompare(b.data)));
-      // o servidor já recalculou os vencimentos afetados: relê as demandas para a tela mostrar os novos
-      const lista = await protegido(() => srv.listarDemandas(false));
-      if (lista.ok) setDemandas(lista.dados);
-      const n = r.dados.recalculadas;
-      avisar(`${dia.id ? 'Dia alterado' : 'Dia cadastrado'}. ${n === 0 ? 'Nenhum vencimento precisou mudar.' : n === 1 ? '1 vencimento foi recalculado.' : `${n} vencimentos foram recalculados.`}`);
+      await aposCalendario(dia.id ? 'Dia alterado' : 'Dia cadastrado', r.dados.recalculadas);
       return true;
     },
     excluirDia: async (diaId) => {
       const r = await gravando(() => protegido(() => srv.excluirDia(diaId)));
       if (!r.ok) { avisar(r.erro, true); return false; }
       setDias((l) => l.filter((x) => x.id !== diaId));
-      const lista = await protegido(() => srv.listarDemandas(false));
-      if (lista.ok) setDemandas(lista.dados);
-      const n = r.dados.recalculadas;
-      avisar(`Dia excluído. ${n === 0 ? 'Nenhum vencimento precisou mudar.' : n === 1 ? '1 vencimento foi recalculado.' : `${n} vencimentos foram recalculados.`}`);
+      await aposCalendario('Dia excluído', r.dados.recalculadas);
       return true;
     },
     criar: async (dados, msg = 'Demanda cadastrada', entradaId) => {
@@ -354,7 +358,9 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     excluir: async (id) => {
       const r = await gravando(() => protegido(() => srv.excluirDemanda(id, true)));
       if (!r.ok) { avisar(r.erro, true); return false; }
-      setDemandas((l) => l.filter((x) => x.id !== id)); setArquivadas((l) => (l ? l.filter((x) => x.id !== id) : l));
+      setDemandas((l) => l.filter((x) => x.id !== id)); setArquivadas((l) => (l ? l.filter((x) => x.id !== id) : l)); guardarRascunho(`d:${id}`, null);
+      // se uma entrada tinha virado esta demanda, o banco a devolve a Entradas: as listas de entradas (e a do Arquivo, se já foi lida) são relidas no lugar, sem voltar ao "carregando"
+      void recarregarEntradas(); if (entradasArquivadas) void carregarEntradasArquivadas();
       avisar('Demanda excluída');
       return true;
     },
@@ -362,7 +368,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar]);
+  }), [demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

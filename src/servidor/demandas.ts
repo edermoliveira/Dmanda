@@ -27,9 +27,6 @@ export async function listarDemandas(arquivadas = false) {
 export async function criarDemanda(dados: DadosDemanda) {
   return executar(() => op().criar(dados));
 }
-export async function atualizarDemanda(id: string, dados: DadosDemanda) {
-  return executar(() => op().atualizar(id, dados));
-}
 export async function salvarDemanda(id: string, dados: DadosDemanda, tarefas: TarefaEdicao[] | null, versao: number) {
   return executar(() => op().salvar(id, dados, tarefas, versao));
 }

@@ -206,6 +206,9 @@ ok((await doUsuario(X, {}, 'select count(*)::int as n from public.demandas')).ro
 ok(/row-level security/i.test((await doUsuario(X, {}, "insert into public.demandas (assunto) values ('invasão')")).erro || ''), 'acesso: usuário fora da lista não consegue gravar demanda (RLS recusa)');
 ok(/row-level/i.test(await erro(X, 'criar_demanda', { p: { assunto: 'invasão' } })), 'acesso: usuário fora da lista não cria demanda pelas funções');
 ok((await doUsuario(X, {}, 'select count(*)::int as n from public.execucoes_rotina')).rows?.[0].n === 0, 'acesso: usuário fora da lista não lê nem o registro de execuções da rotina');
+// a terceira camada (conta autorizada na RLS) vale também para Entradas e dias indisponíveis (migração 12)
+ok(/row-level security/i.test((await doUsuario(X, {}, "insert into public.entradas (titulo, texto) values ('', 'invasão')")).erro || '') && /row-level/i.test(await erro(X, 'criar_entrada', { p: { texto: 'invasão' } })), 'acesso: usuário fora da lista não grava entradas (RLS, nem pelas funções)');
+ok(/row-level security/i.test((await doUsuario(X, {}, "insert into public.dias_indisponiveis (data, descricao, categoria) values ('2027-01-01', 'invasão', 'Feriado')")).erro || '') && /row-level/i.test(await erro(X, 'salvar_dia_indisponivel', { p: { data: '2027-01-01', descricao: 'invasão', categoria: 'Feriado' } })), 'acesso: usuário fora da lista não grava dias indisponíveis (RLS, nem pelas funções)');
 // provedor e e-mail vêm do JWT assinado: Google ou e-mail e senha, sempre com e-mail da lista
 ok((await doUsuario(A, { provedor: 'email' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0, 'acesso: conta da lista entrando por e-mail e senha lê e grava como no Google (mesmo usuário e mesmos dados)');
 ok((await doUsuario(A, { provedor: 'github' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0 && (await doUsuario(A, { provedor: 'anonymous' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0 && (await doUsuario(A, { provedor: '' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: conta da lista por outro provedor (GitHub, anônimo, sem provedor) não lê nada');
@@ -399,6 +402,16 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const copiaV2 = JSON.parse(JSON.stringify(copia)); copiaV2.versao = 2; delete copiaV2.entradas; delete copiaV2.entradas_arquivadas;
   ok(await tentar(v2, copiaV2) === null && await contar(v2) === '5/5' && (await v2.query('select count(*)::int as n from public.entradas')).rows[0].n === 0, 'restauração: cópia da versão 2 (sem entradas) continua aceita');
 
+  // cópia da versão 1 (antes dos prazos original e ajustado, dos dias e das entradas), com demanda sem prazo e com prazo: precisa restaurar, o prazo vira legado
+  const v1 = await novoBanco([N, 'destino@teste']);
+  const copiaV1 = JSON.parse(JSON.stringify(copia)); copiaV1.versao = 1; delete copiaV1.entradas; delete copiaV1.entradas_arquivadas; delete copiaV1.dias_indisponiveis;
+  for (const x of [...copiaV1.demandas, ...copiaV1.arquivadas]) for (const k of ['prazo_original', 'prazo_ajuste', 'prazo_dias', 'prazo_base_em', 'prazo_legado', 'versao']) delete x[k];
+  const comPrazoV1 = [...copiaV1.demandas, ...copiaV1.arquivadas].filter((x) => x.prazo).length, semPrazoV1 = [...copiaV1.demandas, ...copiaV1.arquivadas].filter((x) => !x.prazo).length;
+  const erroV1 = await tentar(v1, copiaV1);
+  ok(comPrazoV1 > 0 && semPrazoV1 > 0 && erroV1 === null && await contar(v1) === '5/5', 'restauração: cópia da versão 1 restaura com demandas com e sem prazo' + (erroV1 ? ' (' + erroV1.slice(0, 80) + ')' : ''));
+  const legV1 = (await v1.query('select count(*) filter (where prazo is not null and prazo_legado and prazo_original = prazo)::int as com, count(*) filter (where prazo is null and not prazo_legado)::int as sem from public.demandas')).rows[0];
+  ok(legV1.com === comPrazoV1 && legV1.sem === semPrazoV1, 'restauração: na cópia versão 1 o prazo vira a referência original marcada como legado e quem não tinha prazo continua sem prazo');
+
   // recusas: nada é gravado
   const vazio = await novoBanco([N, 'destino@teste']);
   ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 4 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
@@ -408,7 +421,7 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(/exatamente 1 usuário/.test(await tentar(nenhum, copia)) && await contar(nenhum) === '0/0', 'restauração: sem nenhum usuário no projeto, nada é gravado');
   const quebrada = JSON.parse(JSON.stringify(copia)); quebrada.demandas[0].tarefas[0].texto = '   ';
   ok(await tentar(vazio, quebrada) !== null && await contar(vazio) === '0/0', 'restauração: uma tarefa inválida derruba a restauração inteira (transação única, nada fica pela metade)');
-  for (const d of [origem, destino, vazio, dois, nenhum, semDemanda, v2]) await d.close();
+  for (const d of [origem, destino, vazio, dois, nenhum, semDemanda, v2, v1]) await d.close();
 }
 
 
@@ -682,8 +695,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
   const nova8 = todas.find((f) => f.includes('prazos_e_dias_indisponiveis'));
   const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
-  const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores'));
-  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias'));
+  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -747,6 +760,10 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(JSON.stringify((await antigo.query('select id, titulo, texto, cor, versao, criado_em, atualizado_em from public.entradas order by id')).rows) === antes11, 'migração 11: nenhuma anotação existente é alterada (a de cor 5 segue com a cor 5, mesma versão e mesmas datas)');
   const sorteio = new Set(); for (let i = 0; i < 60; i++) sorteio.add((await antigo.query('select public.cor_entrada_automatica() as c')).rows[0].c);
   ok(sorteio.size > 0 && [...sorteio].every((c) => c >= 0 && c <= 4), 'migração 11: o sorteio automático só devolve de 0 a 4');
+  // migração 12 (RLS com conta autorizada em Entradas e dias): nenhum dado muda; só a política
+  const antes12 = JSON.stringify((await antigo.query('select id, titulo, texto, cor, versao, criado_em, atualizado_em from public.entradas order by id')).rows) + JSON.stringify((await antigo.query('select * from public.dias_indisponiveis order by id')).rows);
+  await antigo.exec(readFileSync(join('supabase/migrations', nova12), 'utf8'));
+  ok(JSON.stringify((await antigo.query('select id, titulo, texto, cor, versao, criado_em, atualizado_em from public.entradas order by id')).rows) + JSON.stringify((await antigo.query('select * from public.dias_indisponiveis order by id')).rows) === antes12, 'migração 12: entradas e dias existentes seguem idênticos depois de trocar as políticas');
   await antigo.close();
 }
 

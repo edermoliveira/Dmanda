@@ -3,7 +3,7 @@ import { cookies, headers } from 'next/headers';
 import { configSupabase, opcoesCookiesSessao } from './config';
 
 /** true se a requisição chegou por HTTPS (atrás da Vercel o cabeçalho x-forwarded-proto vale https; no computador, em http, não existe). */
-export async function requisicaoHttps() {
+async function requisicaoHttps() {
   return (await headers()).get('x-forwarded-proto') === 'https';
 }
 

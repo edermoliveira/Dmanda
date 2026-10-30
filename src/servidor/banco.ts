@@ -6,7 +6,7 @@ import { configSupabase, modoTeste } from '@/lib/supabase/config';
 import { contaAutorizada, situacaoDoErroAuth } from '@/lib/sessao';
 import { ErroConflito, ErroDmanda, type Chamar } from '@/nucleo/operacoes';
 
-export const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
+const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
 
 type Banco = { db: import('@electric-sql/pglite').PGlite };
 const g = globalThis as unknown as { __dmandaBancoTeste?: Promise<Banco> };

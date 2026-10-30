@@ -8,7 +8,13 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 ---
 
-## PONTO DE RETOMADA (fechamento de 30/10/2026, leia primeiro)
+## REVISÃO ANTES DA AGENDA (30/10/2026, leia primeiro)
+
+Rodada de revisão e refatoração feita e **commitada localmente, sem push e sem a migração 12 aplicada no real** (aguardam a autorização do usuário). Ver `CONTINUIDADE-DMANDA.md`, seção K, e `AUDITORIA.md`, seção 23. Agenda continua aguardando autorização.
+
+---
+
+## PONTO DE RETOMADA (fechamento de 30/10/2026)
 
 **Entradas e Arquivo aprovados e encerrados. Próximo bloco: Agenda, aguardando autorização para começar.** O usuário aprovou tudo o que veio depois de Entradas: leitura com lápis, seletor do Arquivo, campo Data, Lista, selo fora dos cards, botão Arquivadas em Demandas, descrição nos post-its, carimbo da criação e cinco cores. Issue #5 fechada; #2, #3 e #4 seguem com pendências próprias. Não houve teste nem aprovação no iPad. Código publicado até `77d4a70` (11 migrações no Supabase real).
 

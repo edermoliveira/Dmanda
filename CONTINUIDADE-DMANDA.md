@@ -347,3 +347,9 @@ Depois: criar o `.env.local` copiando o modelo `.env.example` e preencher **sem 
 **Entradas e Arquivo aprovados e encerrados. Próximo bloco: Agenda, aguardando autorização para começar.**
 
 O usuário aprovou os ajustes de `ddef462` (leitura com lápis, seletor do Arquivo, campo Data, Lista, selo fora dos cards), o botão Arquivadas em Demandas e, por último, a descrição nos post-its, o carimbo da primeira criação e as cinco cores (`77d4a70`). **Isso substitui** qualquer "aguarda a conferência no iPhone" nas seções H e I acima, que ficam como histórico. Issue #5 fechada. Continuam abertas, por outros assuntos: #2 (conferir o restante da aplicação nos aparelhos), #3 (cron registrado e primeira execução, sessão por horas reais) e #4 (destino da cópia dos dados). O iPad não foi testado nem aprovado. Andamento 37% (`ANDAMENTO.md`).
+
+---
+
+## K. Rodada de revisão e refatoração antes da Agenda (30/10/2026)
+
+Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e testes prontos e **commitados localmente; ainda sem push** e **sem aplicar a migração 12 no Supabase real**, porque este pedido não autorizava nenhuma das duas coisas (a migração mexe no banco real e o push publica na Vercel). Verificado no banco de teste e no navegador: `tsc`, `eslint`, `testar:banco` 219, `testar:regras` 82, `testar:entradas` 179, `testar:app` 132, `testar:interface` 142, `testar:ajustes` 604, `build` com saída 0, `verificar:cores` limpo, `ponytail-review` invocado (achou um defeito da própria correção, a lista de entradas do Arquivo presa em "Carregando", reproduzido e corrigido). **Depende do usuário:** autorizar (1) aplicar a migração 12 no Supabase real (dry-run antes; só troca duas políticas de RLS) e (2) o push para a `main`; decidir (3) o destino do design antigo (`(antigo)` e as 3 dependências).

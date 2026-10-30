@@ -88,7 +88,6 @@ const AREA_COR: Record<Area, string> = { Geral: 'azul', Pessoal: 'verde', Compra
 export const corCard = (d: Demanda) => (TEM_AREA.includes(d.tipo) ? ` cat-${AREA_COR[d.area]}` : '');
 export const ETAPA_COR: Record<Etapa, number> = { Cadastro: 48, Vistos: 205, Fazendo: 262, 'Aguardando retorno': 330, Finalizado: 150 };
 export const TIPO_COR: Record<string, number> = { Processo: 262, Protocolo: 262, Memorando: 212, 'Ofício': 28, Portaria: 150, 'Pedido de informação': 190, 'Projeto de lei': 340 };
-export const SIGLA_TIPO: Record<string, string> = { Processo: 'P', Protocolo: 'PT', Memorando: 'M', 'Ofício': 'O', 'Pedido de informação': 'I', Portaria: 'PO', 'Projeto de lei': 'PL', 'Outro documento': 'D' };
 
 export type Filtro = { texto: string; soAtrasadas: boolean; tipo: Tipo | ''; prazo: '' | 'sem' | 'atrasadas' | 'hoje' | 'sete' };
 export const FILTRO_VAZIO: Filtro = { texto: '', soAtrasadas: false, tipo: '', prazo: '' };

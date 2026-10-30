@@ -454,3 +454,22 @@ Escopo restrito (não é auditoria geral): cinco ajustes de interface pedidos pe
 Fora do bloco, observado: abaixo de 360 px a barra superior do app (marca e botões) ultrapassa a largura da tela (anterior a este bloco).
 
 **Revisão `ponytail-review`** (invocada): sem achado que exigisse correção de comportamento. Um ponto de limpeza tratado (regra de área de toque do lápis, redundante porque a área já era de 44 px) e um teste acrescentado (Lista marcando a demanda atrasada); um risco sem prova: o rendering do campo de data no Safari real. **Impeccable:** crítica enxuta, detector sem achados; contraste e piso de 10 px medidos nos testes. **Limite:** o WebKit do Playwright no Windows não é o Safari do iPhone.
+
+## 23. Rodada de revisão e refatoração antes da Agenda (30/10/2026)
+
+Escopo: lógica funcional (núcleo, servidor, banco, sessão, rascunhos, testes, dependências); a revisão visual ficou de fora. Método: `ponytail-audit` sobre o escopo, mais **duas revisões independentes somente de leitura** (dois subagentes novos, sem o histórico da conversa, um de correção e integridade e outro de simplificação; o isolamento é o de subagentes do Claude Code, com instruções de não editar). Cada apontamento foi conferido no código antes de aceito; os de teste (dados) foram reproduzidos com teste vermelho antes da correção.
+
+**Defeitos comprovados e corrigidos** (cada um com teste de regressão):
+1. RLS de `entradas` e `dias_indisponiveis` não exigia a conta autorizada (a migração 4 só cobriu demandas, tarefas e rotina). Migração 12 (nova; **não aplicada no Supabase real, aguarda autorização**).
+2. `restaurar-copia.sql` falhava com cópia versão 1 que tivesse demanda sem prazo (`prazo_legado` nulo em coluna `not null`). Corrigido no script; agora há teste com cópia v1.
+3. Rascunhos locais: cada aba gravava o mapa da própria memória e apagava o que outra aba/PWA do mesmo aparelho havia guardado (perda de texto). Agora parte do que está no armazenamento do navegador.
+4. Consulta da demanda: marcar uma tarefa com uma seção aberta subia a versão e bloqueava o Salvar com falso aviso de "outro aparelho". As caixas ficam desativadas enquanto houver seção aberta (como já ocorria com os lápis).
+5. Excluir uma demanda que tinha virado entrada não atualizava as listas de Entradas e deixava uma janela invisível aberta. Agora relê as entradas (e a do Arquivo, no lugar) e a janela fecha com aviso se a demanda não existe.
+6. "Guardar a minha como nova entrada" não tinha trava nem identificador estável (toque duplo criava duas). Um identificador por conflito e uma gravação por vez.
+7. Dias indisponíveis: se a releitura falhava, a tela anunciava o recálculo com prazos antigos à vista; agora diz que não conseguiu atualizar.
+8. `dataOuNulo` aceitava 30 de fevereiro (o parse do JavaScript rola para março) e o erro voltava genérico do banco; agora a data é conferida de verdade.
+9. A data de hoje só renovava com releitura bem-sucedida; agora também ao voltar à tela.
+
+**Removido (comprovadamente sem uso):** server action `atualizarDemanda` e `operacoes.atualizar` (gravação sem checagem de versão alcançável de fora; a função SQL fica, é usada por `salvar_demanda` e pelos testes), `SIGLA_TIPO`, reexportações mortas em `cartoes.tsx` e `paginas.tsx`, três `export` sem importador. `verificar:cores` estava quebrado (acusava 180 falsos achados lendo um caminho antigo): agora varre só TS e TSX da aplicação e passa.
+
+**Não alterado (hipóteses ou decisões suas):** (a) "Nada foi gravado" quando a resposta se perde depois de gravar (adicionar tarefa não é idempotente; hipótese que exige perda de resposta; muda texto de mensagem e talvez contrato). (b) Design antigo `src/app/(antigo)` + `src/components` + `lucide-react`, `tailwindcss`, `@tailwindcss/turbopack` e a regra de CSS do `next.config.ts` só servem a ele: comprovadamente sem referência do app novo, mas a regra documentada é mantê-lo como referência. (c) Classes de CSS sem uso (muitas de telas ainda não portadas: Agenda, IA, widgets): ficam para depois da Agenda. (d) `chamarSupabase` confere a sessão no Auth a cada operação (uma ida a mais por ação): ganho de velocidade possível, sem defeito.

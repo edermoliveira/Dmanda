@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import {
-  atrasada, corCard, dataCurta, diasAte, diasDesde, diasDesdeInstante, ETAPA_COR, feitas, hojeISO, numeroDe, origemDe, percentual, proximaTarefa, SIGLA_TIPO, TIPO_COR, titulo, type Demanda, type Tarefa,
+  atrasada, corCard, dataCurta, diasAte, diasDesde, diasDesdeInstante, feitas, numeroDe, origemDe, percentual, proximaTarefa, TIPO_COR, titulo, type Demanda, type Tarefa,
 } from '@/lib/demandas';
 
 const curto = (n: number) => `${n} d`;
@@ -196,4 +196,3 @@ export function MiniCard({ d }: { d: Demanda }) {
   );
 }
 
-export { ETAPA_COR, SIGLA_TIPO, hojeISO };

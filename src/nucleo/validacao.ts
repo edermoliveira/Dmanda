@@ -15,7 +15,9 @@ export const id = (v: unknown, nome: string) => { if (typeof v !== 'string' || !
 export const versaoDe = (v: unknown) => { if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) throw new ErroDmanda('Versão da demanda inválida. Recarregue a tela e abra a demanda de novo.'); return v; };
 export const enumerado = <T extends string>(v: unknown, lista: readonly T[], nome: string) => { if (typeof v !== 'string' || !(lista as readonly string[]).includes(v)) throw new ErroDmanda(`${nome} inválido.`); return v as T; };
 export const texto = (v: unknown, nome: string, max: number) => { if (typeof v !== 'string') throw new ErroDmanda(`${nome} inválido.`); if (v.length > max) throw new ErroDmanda(`${nome} passa de ${max} caracteres.`); return v; };
-const dataOuNulo = (v: unknown, nome: string) => { if (v === null || v === '') return null; if (typeof v !== 'string' || !DATA.test(v) || Number.isNaN(Date.parse(v))) throw new ErroDmanda(`${nome} inválida.`); return v; };
+/** Data que existe no calendário: o Date.parse do JavaScript aceita 30 de fevereiro (vira 2 de março) e o banco recusa, então a conferência refaz a data. */
+const dataExiste = (v: string) => { const [a, m, d] = v.split('-').map(Number); const x = new Date(Date.UTC(a, m - 1, d)); return x.getUTCFullYear() === a && x.getUTCMonth() === m - 1 && x.getUTCDate() === d; };
+const dataOuNulo = (v: unknown, nome: string) => { if (v === null || v === '') return null; if (typeof v !== 'string' || !DATA.test(v) || !dataExiste(v)) throw new ErroDmanda(`${nome} inválida.`); return v; };
 
 /**
  * Confere o objeto vindo da tela e deixa só os campos conhecidos. Chave ausente = não mexe; null = limpa (chegada, prazo, setor, acompanhamento).

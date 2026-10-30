@@ -20,8 +20,14 @@ import type { TarefaEdicao } from '@/nucleo/operacoes';
 const NOME_SECAO: Record<Secao, string> = { identificacao: 'Identificação', descricao: 'Descrição', chegada: 'Chegada e prazo', andamento: 'Andamento', tarefas: 'Tarefas' };
 
 export function JanelaDemanda({ id }: { id: string }) {
-  const { demandas, arquivadas } = useApp();
+  const { demandas, arquivadas, carregando, carregarArquivadas, fecharJanela, avisar } = useApp();
   const d = demandas.find((x) => x.id === id) ?? arquivadas?.find((x) => x.id === id);
+  // Sem a demanda a janela ficaria aberta e invisível (e a releitura ao voltar à tela ficaria suspensa): lê as arquivadas se ainda não foram lidas e, não achando, fecha com aviso.
+  useEffect(() => {
+    if (d) return;
+    if (arquivadas === null) { void carregarArquivadas(); return; }
+    if (!carregando) { fecharJanela(); avisar('Esta demanda não existe mais.', true); }
+  }, [d, arquivadas, carregando, carregarArquivadas, fecharJanela, avisar]);
   if (!d) return null;
   return <Detalhe key={d.id} d={d} />;
 }
@@ -202,7 +208,7 @@ function Detalhe({ d }: { d: Demanda }) {
           <ul className="t-ler">
             {d.tarefas.map((t) => (
               <li key={t.id}>
-                <input type="checkbox" checked={t.concluida} aria-label={`Concluir a tarefa: ${t.texto}`} onChange={(e) => void marcarTarefa(t.id, e.target.checked)} />
+                <input type="checkbox" checked={t.concluida} disabled={abertas.length > 0} title={abertas.length > 0 ? 'Salve ou cancele a edição aberta antes de marcar tarefas' : undefined} aria-label={`Concluir a tarefa: ${t.texto}`} onChange={(e) => void marcarTarefa(t.id, e.target.checked)} />
                 <span className={t.concluida ? 'feita' : undefined}>{t.texto}</span>
               </li>
             ))}

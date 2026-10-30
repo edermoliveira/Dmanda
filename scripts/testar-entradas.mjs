@@ -222,6 +222,20 @@ const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
   await limparTudo(pg);
 }
 
+// rascunhos de várias abas do mesmo aparelho não se apagam: gravar um rascunho preserva o que outra aba guardou
+{
+  const { pg } = t1;
+  await ir(pg);
+  await pg.evaluate(() => { const m = JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}'); m['e:de-outra-aba'] = { dados: { titulo: '', texto: 'escrito em outra aba', cor: -1, fixada: false } }; localStorage.setItem('dmanda:rascunhos', JSON.stringify(m)); });
+  await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#e-texto'); await pg.fill('#e-texto', 'rascunho desta aba'); await pg.waitForTimeout(600);
+  let r = await rascunhos(pg);
+  ok(!!r['e:nova'] && !!r['e:de-outra-aba'], 'rascunhos: guardar o rascunho desta aba preserva o que outra aba do mesmo aparelho guardou');
+  await pg.click('.modal .btn:has-text("Cancelar")'); await janelaFechada(pg);
+  r = await rascunhos(pg);
+  ok(!r['e:nova'] && !!r['e:de-outra-aba'], 'rascunhos: cancelar esta entrada descarta só o rascunho dela');
+  await limparTudo(pg);
+}
+
 // ---------- apoio da segunda parte ----------
 const nota = (txt) => `.postit:has(.p-txt:has-text("${txt}"))`;
 const abrirNota = async (pg, txt) => { await pg.click(`${nota(txt)} .p-abrir`); await pg.waitForSelector('[data-leitura]'); await pg.click('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto'); };
@@ -374,7 +388,7 @@ const passoAtual = (pg) => pg.$$eval('.modal .passos li', (e) => e.findIndex((x)
   await abrirConc(B);
   ok((await B.inputValue('#e-texto')) === 'B primeiro', 'nada foi gravado pelo lado em conflito: o banco continua com a versão do outro aparelho');
   await B.click('.modal .btn.pri'); await janelaFechada(B);
-  await A.click('.aviso-conflito .btn:has-text("Guardar a minha como nova")');
+  await A.dblclick('.aviso-conflito .btn:has-text("Guardar a minha como nova")'); // toque duplo: não pode gerar duas entradas
   await A.waitForFunction(() => !document.querySelector('.aviso-conflito'), null, { timeout: 15000 });
   ok((await A.inputValue('#e-texto')) === 'B primeiro', 'guardar a minha como nova: a janela passa a mostrar a versão do outro aparelho');
   await ir(B);
@@ -556,6 +570,24 @@ const aviso = (pg) => pg.waitForFunction(() => document.querySelector('#toast')?
   ok(j.formato === 'dmanda-exportacao' && j.versao === 3 && Array.isArray(j.entradas) && Array.isArray(j.entradas_arquivadas), 'a cópia dos dados é a versão 3 e traz as entradas ativas e as arquivadas');
   ok(j.entradas.length > 5 && j.entradas.every((e) => !e.demanda_id && !e.arquivada_em) && conv.length >= 4 && conv.every((e) => todasDem.some((d) => d.id === e.demanda_id && d.entrada_id === e.id)), 'a cópia leva as entradas convertidas com o vínculo, e cada demanda de origem aponta de volta para a sua entrada');
   ok(j.entradas.every((e) => e.titulo !== undefined && e.texto !== undefined && Number.isInteger(e.cor) && typeof e.fixada === 'boolean' && Number.isInteger(e.versao) && !('user_id' in e)), 'cada entrada da cópia traz título, texto, cor, fixação e versão, sem identificador de usuário');
+}
+
+// ================= 9b) excluir a demanda de vez devolve a entrada =================
+{
+  const { pg } = t1;
+  await ir(pg, '/arquivo'); await pg.click('.tabs [data-aba="entradas"]'); await pg.waitForSelector('.linha:has-text("Título explícito")');
+  await pg.click('.linha:has-text("Título explícito") .btn:has-text("Abrir a demanda")'); await pg.waitForFunction(() => !!document.querySelector('.modal .resumo-chips'), null, { timeout: 10000 });
+  // excluir a demanda de vez devolve a entrada a Entradas sem recarregar a página (e o Arquivo de entradas não a mostra mais como convertida)
+  await pg.click('.modal .btn:has-text("Excluir")'); await pg.click('.modal .btn:has-text("Confirmar exclusão")'); await janelaFechada(pg);
+  // ainda no Arquivo, a lista de entradas arquivadas se atualiza sozinha (não fica em "Carregando" nem mostra a entrada como convertida)
+  await pg.waitForFunction(() => !!document.querySelector('[aria-label="Entradas arquivadas"], .vazio') && ![...document.querySelectorAll('.linha')].some((l) => /Título explícito/.test(l.textContent)), null, { timeout: 10000 }).catch(() => {});
+  ok(!(await pg.$$eval('.linha', (ls) => ls.some((l) => /Título explícito/.test(l.textContent)))) && !/Carregando as entradas arquivadas/.test(await pg.textContent('.main')), 'excluir a demanda no Arquivo atualiza a aba Entradas ali mesmo (a entrada não aparece mais como convertida)');
+  await pg.evaluate(() => [...document.querySelectorAll('.side .navi, .bar button, .bar a')].find((e) => /^\s*Entradas\s*$/.test(e.textContent)).click());
+  await pg.waitForSelector('.postits', { timeout: 10000 });
+  ok((await notas(pg)).some((n) => /Título explícito/.test(n.txt)), 'excluir a demanda de vez devolve a entrada a Entradas, na mesma sessão, sem recarregar');
+  await pg.evaluate(() => document.querySelector('.toolbar [aria-label="Ver entradas arquivadas"]').click()); await pg.waitForSelector('.tabs [data-aba="entradas"][aria-pressed="true"]');
+  await pg.waitForSelector('.tabs [data-aba="entradas"][aria-pressed="true"]'); await pg.waitForFunction(() => !!document.querySelector('[aria-label="Entradas arquivadas"], .vazio'), null, { timeout: 10000 });
+  ok(!(await pg.$$eval('.linha', (ls) => ls.some((l) => /Título explícito/.test(l.textContent)))), 'e o Arquivo de entradas já não a lista como convertida');
 }
 
 // ================= 10) computador escuro, iPad e iPhone (emulação do Edge), claro e escuro =================

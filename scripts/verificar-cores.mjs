@@ -1,10 +1,11 @@
-// Confere se há cor "solta" no código. Só o globals.css pode ter valores de cor.
+// Confere se há cor "solta" no código da aplicação (TS e TSX). Os valores de cor ficam nos arquivos de estilo (src/estilos/*.css, que não são varridos), em src/lib/cores-barra.ts e nos dados de ícones.
+// Ficam de fora o design antigo (src/app/(antigo)) e src/components, que só ele usa.
 // Uso: npm run verificar:cores
 import { readdirSync, readFileSync } from "node:fs";
 import { join, sep } from "node:path";
 
 const pasta = "src";
-const permitido = join("src", "app", "globals.css");
+const ignorados = ["(antigo)", `${sep}components${sep}`, "icones-dados", "logo-dados", "cores-barra", `${sep}proxy.ts`]; // proxy.ts: a página de "sem conexão" é um HTML solto, sem folha de estilo, e leva a cor inline
 
 const regras = [
   [/#[0-9a-fA-F]{3,8}\b/, "valor hexadecimal"],
@@ -17,7 +18,7 @@ const regras = [
 
 const arquivos = readdirSync(pasta, { recursive: true })
   .map((f) => join(pasta, f))
-  .filter((f) => /\.(tsx?|css|mdx?)$/.test(f) && f !== permitido);
+  .filter((f) => /\.tsx?$/.test(f) && !ignorados.some((i) => f.includes(i)));
 
 let achados = 0;
 for (const arquivo of arquivos) {
@@ -34,7 +35,7 @@ for (const arquivo of arquivos) {
 }
 
 if (achados) {
-  console.log(`\n${achados} cor(es) solta(s). Use os nomes do design system (veja /tokens).`);
+  console.log(`\n${achados} cor(es) solta(s). Use as variáveis dos arquivos de estilo (src/estilos).`);
   process.exit(1);
 }
 console.log("Nenhuma cor solta no código.");

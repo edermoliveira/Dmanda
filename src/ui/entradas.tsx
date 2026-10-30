@@ -314,10 +314,16 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
   // resolução do conflito
   const manterMinha = () => { if (!conflito) return; setBaseDe((b) => { const n = { ...b }; for (const k of conflito.campos) n[k] = camposDe(conflito.atual)[k] as never; return n; }); setConflito(null); void gravar(); };
   const usarDoOutro = () => { if (!conflito) return; setTocados((t) => t.filter((k) => !conflito.campos.includes(k))); setBaseDe((b) => { const n = { ...b }; for (const k of conflito.campos) delete n[k]; return n; }); setSalva(conflito.atual); setConflito(null); };
+  // Um identificador por conflito e uma gravação por vez: toque duplo, ou repetir depois de uma resposta perdida, devolve a mesma entrada em vez de criar outra
+  const novaDoConflito = useRef<{ conflito: unknown; id: string } | null>(null);
+  const guardandoNova = useRef(false);
   const guardarComoNova = async () => {
-    if (!conflito) return;
+    if (!conflito || guardandoNova.current) return;
+    if (novaDoConflito.current?.conflito !== conflito) novaDoConflito.current = { conflito, id: novoUuid() };
+    guardandoNova.current = true;
     const ef = efetivo;
-    const r = await app.criarEntrada({ id: novoUuid(), titulo: ef.titulo, texto: ef.texto, cor: ef.cor === COR_AUTOMATICA || ef.cor >= QTD_CORES ? null : ef.cor, fixada: false });
+    const r = await app.criarEntrada({ id: novaDoConflito.current.id, titulo: ef.titulo, texto: ef.texto, cor: ef.cor === COR_AUTOMATICA || ef.cor >= QTD_CORES ? null : ef.cor, fixada: false });
+    guardandoNova.current = false;
     if (!r.ok) { setErro(r.erro); return; }
     avisar('Sua versão foi guardada como uma entrada nova.');
     usarDoOutro();

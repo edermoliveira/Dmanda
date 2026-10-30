@@ -18,7 +18,6 @@ export function criarOperacoes(chamar: Chamar) {
   return {
     listar: async (arquivadas = false) => (await chamar('listar_demandas', { p_arquivadas: !!arquivadas })) as Demanda[],
     criar: (dados: DadosDemanda) => demanda('criar_demanda', { p: validarDados(dados, { criando: true }) }),
-    atualizar: (demandaId: string, dados: DadosDemanda) => demanda('atualizar_demanda', { p_id: id(demandaId, 'Demanda'), p: validarDados(dados, { criando: false }) }),
     buscar: (demandaId: string) => demanda('buscar_demanda', { p_id: id(demandaId, 'Demanda') }),
     /**
      * Salva a janela de edição inteira, de forma atômica: campos, lista de tarefas (na ordem) e, se informada, a etapa. `versao` é a que a demanda tinha quando a janela
