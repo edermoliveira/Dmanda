@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { Janela } from './janela-base';
+import { OrigemEntrada } from './entradas';
 import { ChipPrazo, ChipSelo } from './cartoes';
 import {
   CAMPOS_DA_SECAO, CamposChegadaPrazo, CamposIdentificacao, chaveTarefa, Descricao, doCampos, EditorTarefas, mudou, paraDadosSecao, paraEnvio, type Campos, type Secao, type TarefaForm,
@@ -147,6 +148,7 @@ function Detalhe({ d }: { d: Demanda }) {
           Nada foi gravado e o que você digitou continua aqui. Salvar fica bloqueado para não apagar o que foi gravado lá. Copie o que precisar e toque em Cancelar na seção (descarta esta edição) para ver a demanda já na versão atual.
         </p>
       ) : null}
+      {d.entrada_id ? <OrigemEntrada id={d.entrada_id} /> : null}
       <div className="resumo-chips"><span className="chip neutro">{fin ? 'Finalizada' : d.etapa}</span><ChipPrazo d={d} /><ChipSelo d={d} />{d.arquivada_em ? <span className="chip neutro">Arquivada</span> : null}</div>
 
       <Bloco ctx={ctx} s="identificacao" editor={<CamposIdentificacao c={c} mudar={mudar} prefixo="d" />}>

@@ -11,9 +11,9 @@ export async function GET() {
   const cabecalhos = { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' };
   try {
     const op = criarOperacoes(chamar);
-    const [ativas, arquivadas, dias] = await Promise.all([op.listar(false), op.listar(true), op.listarDias()]);
+    const [ativas, arquivadas, dias, entradas, entradasArquivadas] = await Promise.all([op.listar(false), op.listar(true), op.listarDias(), op.listarEntradas(false), op.listarEntradas(true)]);
     const agora = new Date();
-    const corpo = { formato: 'dmanda-exportacao', versao: 2, exportado_em: agora.toISOString(), fuso: 'America/Sao_Paulo', demandas: ativas, arquivadas, dias_indisponiveis: dias };
+    const corpo = { formato: 'dmanda-exportacao', versao: 3, exportado_em: agora.toISOString(), fuso: 'America/Sao_Paulo', demandas: ativas, arquivadas, dias_indisponiveis: dias, entradas, entradas_arquivadas: entradasArquivadas };
     return new Response(JSON.stringify(corpo, null, 2), { headers: { ...cabecalhos, 'content-disposition': `attachment; filename="dmanda-copia-${hojeISO(agora)}.json"` } });
   } catch (e) {
     if (e instanceof ErroDmanda) return Response.json({ ok: false, erro: e.message }, { status: 401, headers: cabecalhos });

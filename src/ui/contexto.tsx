@@ -4,15 +4,23 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { FILTRO_VAZIO, hojeISO, type Coluna, type DadosDemanda, type Demanda, type Etapa, type Filtro } from '@/lib/demandas';
 import * as srv from '@/servidor/demandas';
+import * as srvE from '@/servidor/entradas';
+import type { Entrada } from '@/lib/entradas';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';
 
 export type Visao = 'cards' | 'quadro' | 'tabela' | 'lista';
-export type Janela = { t: 'nova' } | { t: 'editar'; id: string } | { t: 'tarefa' } | null;
+// nova: o cadastro guiado de demanda (com entradaId, ele nasce de uma anotação: Virar demanda). entrada: a janela de uma anotação (sem id, uma anotação nova).
+export type Janela = { t: 'nova'; entradaId?: string } | { t: 'editar'; id: string } | { t: 'tarefa' } | { t: 'entrada'; id?: string } | null;
 // versao: a versão da demanda sobre a qual o rascunho foi digitado (se a demanda mudou depois, o salvamento é recusado em vez de sobrescrever)
 // passo: em que passo do cadastro guiado a pessoa estava. idNovo: o identificador que o aplicativo gerou para a demanda nova (repetir a criação com ele nunca duplica).
 // demandaId: a demanda já criada pelo passo 2, quando o cadastro foi interrompido depois dela (recarga, PWA encerrada). secoes: quais seções da consulta estavam em edição (o cadastro guiado deixa isso quando fecha com algo não salvo).
-export type Rascunho = { dados: DadosDemanda & Record<string, unknown>; tarefas?: TarefaEdicao[]; nt?: string; versao?: number; passo?: 1 | 2 | 3; idNovo?: string; demandaId?: string; secoes?: string[] };
+// entradaId: o cadastro nasceu de uma anotação (Virar demanda); a criação da demanda liga as duas na mesma transação do banco.
+// Rascunho de anotação (chaves "e:nova" e "e:<id>"): dados = campos digitados; tocados = quais campos a pessoa mexeu; base = o valor de cada um no banco quando foi mexido (para reconhecer conflito de verdade).
+export type Rascunho = { dados: DadosDemanda & Record<string, unknown>; tarefas?: TarefaEdicao[]; nt?: string; versao?: number; passo?: 1 | 2 | 3; idNovo?: string; demandaId?: string; secoes?: string[]; entradaId?: string; tocados?: string[]; base?: Record<string, unknown> };
+/** Resultado de gravar uma anotação sem aviso na tela (a janela da anotação mostra o próprio estado): gravou, foi recusado por conflito de versão ou falhou. */
+export type ResultadoEntrada = { ok: true; entrada: Entrada } | { ok: false; conflito: boolean; erro: string };
+export type AbaArquivo = 'demandas' | 'entradas';
 /** Resultado de salvar a janela de edição: gravou, foi recusado por conflito de versão (nada gravado, a edição local fica) ou falhou por outro motivo. */
 export type ResultadoSalvar = { ok: true; demanda: Demanda } | { ok: false; conflito: boolean };
 type Aviso = { n: number; msg: string; erro: boolean } | null;
@@ -31,6 +39,23 @@ type Ctx = {
   erroCarga: string | null;
   recarregar: () => Promise<void>;
   carregarArquivadas: () => Promise<void>;
+  /** Entradas ativas (as arquivadas e as que viraram demanda ficam em entradasArquivadas, carregadas ao abrir o Arquivo). */
+  entradas: Entrada[];
+  entradasArquivadas: Entrada[] | null;
+  carregandoEntradas: boolean;
+  erroEntradas: string | null;
+  recarregarEntradas: () => Promise<void>;
+  carregarEntradasArquivadas: () => Promise<void>;
+  abaArquivo: AbaArquivo;
+  setAbaArquivo: (a: AbaArquivo) => void;
+  criarEntrada: (dados: { id?: string; titulo?: string; texto?: string; cor?: number | null; fixada?: boolean }) => Promise<ResultadoEntrada>;
+  salvarEntrada: (id: string, dados: { titulo?: string; texto?: string; cor?: number; fixada?: boolean }, versao: number) => Promise<ResultadoEntrada>;
+  /** Lê uma anotação direto do banco, sem mexer nas listas (usada para conferir um conflito). */
+  buscarEntrada: (id: string) => Promise<Entrada | null>;
+  fixarEntrada: (id: string, fixada: boolean) => Promise<Entrada | null>;
+  arquivarEntrada: (id: string) => Promise<Entrada | null>;
+  desarquivarEntrada: (id: string) => Promise<Entrada | null>;
+  excluirEntrada: (id: string) => Promise<boolean>;
   aviso: Aviso;
   avisar: (msg: string, erro?: boolean) => void;
   ambiente: { teste: boolean; nome: string } | null;
@@ -56,7 +81,8 @@ type Ctx = {
   rascunhos: Record<string, Rascunho>;
   guardarRascunho: (chave: string, r: Rascunho | null) => void;
   // operações (devolvem a demanda gravada, ou null se falhou; o erro já foi avisado)
-  criar: (dados: DadosDemanda & { id?: string }, msg?: string) => Promise<Demanda | null>;
+  /** Com entradaId (Virar demanda), a demanda e o vínculo com a anotação são gravados juntos; a anotação sai de Entradas. */
+  criar: (dados: DadosDemanda & { id?: string }, msg?: string, entradaId?: string) => Promise<Demanda | null>;
   salvar: (id: string, dados: DadosDemanda, tarefas: TarefaEdicao[] | null, versao: number, msg?: string) => Promise<ResultadoSalvar>;
   mover: (id: string, etapa: Etapa) => Promise<Demanda | null>;
   concluir: (id: string) => Promise<Demanda | null>;
@@ -97,6 +123,11 @@ const gravarLS = (chave: string, v: unknown) => { try { localStorage.setItem(cha
 export function ProvedorApp({ children }: { children: ReactNode }) {
   const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [arquivadas, setArquivadas] = useState<Demanda[] | null>(null);
+  const [entradas, setEntradas] = useState<Entrada[]>([]);
+  const [entradasArquivadas, setEntradasArquivadas] = useState<Entrada[] | null>(null);
+  const [carregandoEntradas, setCarregandoEntradas] = useState(true);
+  const [erroEntradas, setErroEntradas] = useState<string | null>(null);
+  const [abaArquivo, setAbaArquivo] = useState<AbaArquivo>('demandas');
   const [dias, setDias] = useState<DiaIndisponivel[]>([]);
   // Data de hoje (Brasília). Começa num valor fixo e passa a valer depois de montar no navegador, para o servidor não depender do relógio; renova na virada do dia.
   const [hoje, setHoje] = useState('2000-01-01');
@@ -168,6 +199,26 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     const r = await protegido(() => srv.listarDemandas(true));
     if (r.ok) setArquivadas(r.dados); else avisar(r.erro, true);
   }, [avisar]);
+  // Entradas: as ativas carregam junto com as demandas; as arquivadas (e as que viraram demanda) só ao abrir o Arquivo.
+  const recarregarEntradas = useCallback(async () => {
+    const r = await protegido(() => srvE.listarEntradas(false));
+    if (r.ok) { setEntradas(r.dados); setErroEntradas(null); } else setErroEntradas(r.erro);
+    setCarregandoEntradas(false);
+  }, []);
+  const carregarEntradasArquivadas = useCallback(async () => {
+    const r = await protegido(() => srvE.listarEntradas(true));
+    if (r.ok) setEntradasArquivadas(r.dados); else avisar(r.erro, true);
+  }, [avisar]);
+  // Uma anotação gravada entra na lista certa: ativa em Entradas; arquivada ou convertida no Arquivo.
+  const aplicarEntrada = useCallback((e: Entrada) => {
+    if (!e.arquivada_em && !e.demanda_id) {
+      setEntradas((l) => (l.some((x) => x.id === e.id) ? l.map((x) => (x.id === e.id ? e : x)) : [e, ...l]));
+      setEntradasArquivadas((l) => (l ? l.filter((x) => x.id !== e.id) : l));
+    } else {
+      setEntradas((l) => l.filter((x) => x.id !== e.id));
+      setEntradasArquivadas((l) => (l ? [e, ...l.filter((x) => x.id !== e.id)] : l));
+    }
+  }, []);
 
   // Carga inicial das demandas do banco (e do ambiente) ao abrir a tela.
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -175,11 +226,12 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setHoje(hojeISO());
     const virada = setInterval(() => setHoje(hojeISO()), 60_000);
     void recarregar();
+    void recarregarEntradas();
     void srv.ambiente().then(setAmbiente).catch(() => {});
     void srv.listarDias().then((x) => { if (x.ok) setDias(x.dados); }).catch(() => {});
     void srv.estadoRotina().then((x) => { if (x.ok) setRotina(x.dados); }).catch(() => {});
     return () => clearInterval(virada);
-  }, [recarregar]);
+  }, [recarregar, recarregarEntradas]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => { janelaAberta.current = janela !== null; }, [janela]);
@@ -189,8 +241,11 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     const atualizar = async () => {
       if (document.visibilityState !== 'visible' || janelaAberta.current || pendentes.current > 0) return;
       const antes = gravacoes.current;
-      const [r, d] = await Promise.all([protegido(() => srv.listarDemandas(false)), protegido(() => srv.listarDias())]);
-      if (r.ok && gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) setDias(d.dados); }
+      const [r, d, en] = await Promise.all([protegido(() => srv.listarDemandas(false)), protegido(() => srv.listarDias()), protegido(() => srvE.listarEntradas(false))]);
+      if (gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) {
+        if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) setDias(d.dados); }
+        if (en.ok) { setEntradas(en.dados); setErroEntradas(null); }
+      }
     };
     document.addEventListener('visibilitychange', atualizar); addEventListener('online', atualizar);
     return () => { document.removeEventListener('visibilitychange', atualizar); removeEventListener('online', atualizar); };
@@ -211,8 +266,36 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     return r.dados;
   }, [aplicar, avisar, gravando]);
 
+  const rodarEntrada = useCallback(async (f: () => Promise<Resultado<Entrada>>): Promise<ResultadoEntrada> => {
+    const r = await gravando(() => protegido(f));
+    if (!r.ok) return { ok: false, conflito: r.conflito === true, erro: r.erro };
+    aplicarEntrada(r.dados);
+    return { ok: true, entrada: r.dados };
+  }, [aplicarEntrada, gravando]);
+  // fixar, arquivar e recuperar são ações pontuais da lista: o aviso (ou o erro) aparece na tela
+  const acaoEntrada = useCallback(async (f: () => Promise<Resultado<Entrada>>, msg: string) => {
+    const r = await rodarEntrada(f);
+    if (!r.ok) { avisar(r.erro, true); return null; }
+    if (msg) avisar(msg);
+    return r.entrada;
+  }, [rodarEntrada, avisar]);
+
   const valor = useMemo<Ctx>(() => ({
-    demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema,
+    demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, setAbaArquivo,
+    criarEntrada: (dados) => rodarEntrada(() => srvE.criarEntrada(dados)),
+    salvarEntrada: (id, dados, versao) => rodarEntrada(() => srvE.salvarEntrada(id, dados, versao)),
+    buscarEntrada: async (id) => { const r = await protegido(() => srvE.buscarEntrada(id)); return r.ok ? r.dados : null; },
+    fixarEntrada: (id, fixada) => acaoEntrada(() => srvE.fixarEntrada(id, fixada), fixada ? 'Entrada fixada' : 'Entrada desafixada'),
+    arquivarEntrada: (id) => acaoEntrada(() => srvE.arquivarEntrada(id), 'Entrada arquivada. Para recuperá-la, abra o Arquivo.'),
+    desarquivarEntrada: (id) => acaoEntrada(() => srvE.desarquivarEntrada(id), 'Entrada recuperada'),
+    excluirEntrada: async (id) => {
+      const r = await gravando(() => protegido(() => srvE.excluirEntrada(id, true)));
+      if (!r.ok) { avisar(r.erro, true); return false; }
+      setEntradasArquivadas((l) => (l ? l.filter((x) => x.id !== id) : l)); setEntradas((l) => l.filter((x) => x.id !== id)); guardarRascunho(`e:${id}`, null);
+      avisar('Entrada excluída');
+      return true;
+    },
+    aviso, avisar, ambiente, rotina, tema,
     alternarTema: () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')),
     menuAberto,
     alternarMenu: () => setMenuAberto((v) => { gravarLS('dmanda:menu-aberto', !v); return !v; }),
@@ -246,7 +329,12 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       avisar(`Dia excluído. ${n === 0 ? 'Nenhum vencimento precisou mudar.' : n === 1 ? '1 vencimento foi recalculado.' : `${n} vencimentos foram recalculados.`}`);
       return true;
     },
-    criar: (dados, msg = 'Demanda cadastrada') => rodar(() => srv.criarDemanda(dados), msg),
+    criar: async (dados, msg = 'Demanda cadastrada', entradaId) => {
+      const d = await rodar(() => (entradaId ? srvE.criarDemandaDeEntrada(entradaId, dados as DadosDemanda & { id: string }) : srv.criarDemanda(dados)), msg);
+      // a anotação já está ligada à demanda no banco: sai de Entradas, o rascunho dela some e o Arquivo recarrega ao abrir
+      if (d && entradaId) { setEntradas((l) => l.filter((x) => x.id !== entradaId)); setEntradasArquivadas(null); guardarRascunho(`e:${entradaId}`, null); }
+      return d;
+    },
     salvar: async (id, dados, tarefas, versao, msg = 'Alterações salvas') => {
       const r = await gravando(() => protegido(() => srv.salvarDemanda(id, dados, tarefas, versao)));
       if (r.ok) { aplicar(r.dados); if (msg) avisar(msg); return { ok: true, demanda: r.dados }; }
@@ -274,7 +362,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar]);
+  }), [demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

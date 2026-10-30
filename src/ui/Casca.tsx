@@ -42,12 +42,23 @@ function Interior({ children }: { children: ReactNode }) {
   useEffect(() => { if (plus) marca('plus'); }, [plus]);
   useEffect(() => { if (!plus) return; const f = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.menuplus, .fab, .mais-c')) setPlus(false); }; document.addEventListener('click', f, true); return () => document.removeEventListener('click', f, true); }, [plus]);
   useLayoutEffect(() => { document.documentElement.dataset.tema = tema; }, [tema]);
+  // atalho N (computador): nova entrada. Não vale digitando em um campo, com janela ou menu aberto, nem com Ctrl, Cmd ou Alt.
+  const janelaAberta = janela !== null;
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 'n' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat || e.isComposing || janelaAberta) return;
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]') || document.querySelector('.modal-ov, .mv-menu, .menuplus.aberto')) return;
+      e.preventDefault(); abrirJanela({ t: 'entrada' });
+    };
+    document.addEventListener('keydown', f);
+    return () => document.removeEventListener('keydown', f);
+  }, [janelaAberta, abrirJanela]);
 
   const ir = (rota: string) => () => { setPlus(false); router.push(rota); };
   const breve = (o: string) => () => avisar(`${o} ainda não está implementado: fica para um dos próximos blocos.`);
   const emMais = EM_MAIS.some((r) => ativo(caminho, r));
   const itensPlus: [string, string, boolean, () => void][] = [
-    ['Anotação', 'sticky-note', false, breve('Anotação')], ['Demanda', 'square-kanban', true, () => { setPlus(false); abrirJanela({ t: 'nova' }); }], ['Evento', 'calendar', false, breve('Evento')],
+    ['Nova entrada', 'sticky-note', true, () => { setPlus(false); abrirJanela({ t: 'entrada' }); }], ['Demanda', 'square-kanban', true, () => { setPlus(false); abrirJanela({ t: 'nova' }); }], ['Evento', 'calendar', false, breve('Evento')],
     ['Tarefa', 'check', true, () => { setPlus(false); abrirJanela({ t: 'tarefa' }); }], ['Documento', 'file-text', false, breve('Documento')], ['Chat com a IA', 'message-circle', false, breve('Chat com a IA')],
   ];
   const label = menuAberto ? 'Recolher menu' : 'Mostrar menu';

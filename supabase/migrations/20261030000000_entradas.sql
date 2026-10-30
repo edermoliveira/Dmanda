@@ -62,7 +62,7 @@ end $$;
 
 -- ---------- escrita ----------
 -- Sem escolha de cor, sorteia entre as cores menos usadas pelas anotações ativas, para não repetir demais (comportamento aprovado no protótipo).
-create or replace function public.cor_entrada_automatica() returns smallint language sql stable set search_path = '' as $$
+create or replace function public.cor_entrada_automatica() returns smallint language sql volatile set search_path = '' as $$
   with uso as (
     select c::smallint as cor, (select count(*) from public.entradas e where e.cor = c and e.arquivada_em is null and e.demanda_id is null) as n from generate_series(0, 5) c
   )

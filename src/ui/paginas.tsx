@@ -8,6 +8,7 @@ import { Icone } from './Icone';
 import { useApp, type EstadoRotina } from './contexto';
 import { CardDemanda, ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
 import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
+import { ListaEntradasArquivadas } from './entradas';
 import { atrasada, filtrar, focoDoDia, FILTRO_VAZIO, plural, porGrupo, TIPOS, titulo, type Demanda, type Tipo } from '@/lib/demandas';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
@@ -137,13 +138,21 @@ export function PaginaDemandas() {
 
 // ---------- Arquivo ----------
 export function PaginaArquivo() {
-  const { arquivadas, carregarArquivadas, desarquivar, excluir, abrirJanela } = useApp();
+  const { arquivadas, carregarArquivadas, desarquivar, excluir, abrirJanela, abaArquivo, setAbaArquivo } = useApp();
   const [confirmando, setConfirmando] = useState<string | null>(null);
   useEffect(() => { void carregarArquivadas(); }, [carregarArquivadas]);
   return (
     <>
-      <CabecaPagina titulo="Arquivo" sub="Demandas arquivadas." />
-      {arquivadas === null ? <Carregando /> : !arquivadas.length ? <Vazio icone="archive" titulo="Nada arquivado" texto="As demandas que você arquivar aparecem aqui. Arquivar é sempre manual." /> : (
+      <CabecaPagina titulo="Arquivo" sub={abaArquivo === 'entradas' ? 'Entradas arquivadas e as que já viraram demanda.' : 'Demandas arquivadas.'} />
+      <div className="toolbar">
+        <div className="tabs" role="group" aria-label="O que mostrar">
+          <Capsula sel='button[aria-pressed="true"]' chave={abaArquivo} />
+          <button data-aba="demandas" aria-pressed={abaArquivo === 'demandas'} onClick={() => setAbaArquivo('demandas')}><span className="tx">Demandas</span></button>
+          <button data-aba="entradas" aria-pressed={abaArquivo === 'entradas'} onClick={() => setAbaArquivo('entradas')}><span className="tx">Entradas</span></button>
+        </div>
+      </div>
+      {abaArquivo === 'entradas' ? <ListaEntradasArquivadas />
+        : arquivadas === null ? <Carregando /> : !arquivadas.length ? <Vazio icone="archive" titulo="Nada arquivado" texto="As demandas que você arquivar aparecem aqui. Arquivar é sempre manual." /> : (
         <div className="lista">
           {arquivadas.map((d: Demanda) => (
             <div key={d.id} className="linha"><div className="linha-c">

@@ -40,6 +40,8 @@ export type Demanda = {
   arquivada_em: string | null;
   criado_em: string;
   atualizado_em: string;
+  /** A anotação de Entradas de que a demanda nasceu (Virar demanda), ou nulo. A anotação original fica preservada no Arquivo. */
+  entrada_id: string | null;
   /** Sobe a cada alteração da demanda ou de suas tarefas; a janela de edição devolve a que abriu para o banco recusar o salvamento se mudou. */
   versao: number;
   tarefas: Tarefa[];

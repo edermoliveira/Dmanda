@@ -7,26 +7,32 @@
 // ANTES de chamar o servidor e repete com ele (a segunda chamada devolve a mesma demanda, mesmo depois de recarregar a página ou reabrir a PWA). Voltar a um passo anterior
 // edita o mesmo registro. O que foi digitado e ainda não foi salvo nunca é descartado em silêncio: o rascunho 'nova' acompanha o cadastro inteiro (inclusive o passo das
 // tarefas e a demanda já criada) e só some quando o cadastro termina, é pulado ou cancelado.
+// Virar demanda (Entradas): o cadastro abre com o assunto e a descrição vindos da anotação (tudo editável). A anotação só sai de Entradas quando a demanda é criada no passo 2: a criação e o vínculo
+// são gravados juntos pelo banco. Cancelar antes disso não mexe na anotação. O vínculo (entradaId) viaja no rascunho, então recarregar ou repetir a criação liga sempre à mesma anotação.
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from './contexto';
 import { Janela, Grupo } from './janela-base';
 import { CAMPOS_VAZIOS, CamposChegadaPrazo, CamposIdentificacao, CAMPOS_DA_SECAO, chaveTarefa, doCampos, EditorTarefas, mudou, novoUuid, paraDadosNovos, paraEnvio, type Campos, type Secao, type TarefaForm } from './campos';
 import { plural, type Demanda } from '@/lib/demandas';
+import { paraDemanda, type Entrada } from '@/lib/entradas';
 import * as srv from '@/servidor/demandas';
 
 const PASSOS = ['Identificação', 'Chegada e prazo', 'Tarefas'] as const;
 const TODAS = [...CAMPOS_DA_SECAO.identificacao, ...CAMPOS_DA_SECAO.descricao, ...CAMPOS_DA_SECAO.chegada];
 
-export function JanelaNova() {
+export function JanelaNova({ entradaId, entrada }: { entradaId?: string; entrada?: Entrada | null }) {
   const { rascunhos, guardarRascunho, fecharJanela, criar, salvar, avisar, dias, hoje, demandas } = useApp();
   const rasc = rascunhos['nova'];
+  // a anotação de origem: a do rascunho (cadastro retomado) ou a de quem abriu a janela
+  const eId = rasc ? rasc.entradaId : entradaId;
+  const comEntrada = eId ? { entradaId: eId } : {};
   // cadastro interrompido depois do passo 2: a demanda já existe e é reencontrada na lista. Se ela não está lá (a carga falhou, foi excluída ou arquivada), o cadastro recomeça no passo 2 com o MESMO
   // identificador: se a demanda existe, o servidor devolve a mesma (nunca uma cópia); se foi excluída, é recriada com o texto do rascunho
   const [vinc] = useState<Demanda | null>(() => (rasc?.demandaId ? demandas.find((x) => x.id === rasc.demandaId) ?? null : null));
   const [d, setD] = useState<Demanda | null>(vinc);
   const [salvo, setSalvo] = useState<Campos | null>(() => (vinc ? doCampos(vinc) : null)); // os campos como estão gravados (só existe depois da criação)
   const [versaoBase, setVersaoBase] = useState(() => (vinc ? rasc?.versao ?? vinc.versao : 0)); // a versão sobre a qual este cadastro foi digitado: se a demanda mudou desde então, gravar é recusado
-  const [c, setC] = useState<Campos>(() => ({ ...CAMPOS_VAZIOS, ...(rasc?.dados as Partial<Campos> | undefined) }));
+  const [c, setC] = useState<Campos>(() => ({ ...CAMPOS_VAZIOS, ...(rasc ? (rasc.dados as Partial<Campos>) : entrada ? paraDemanda(entrada) : undefined) }));
   const [passo, setPasso] = useState<1 | 2 | 3>(() => (rasc?.passo === 3 && !vinc ? 2 : rasc?.passo ?? 1));
   const [idNovo] = useState(() => rasc?.idNovo ?? novoUuid());
   const [tarefas, setTarefas] = useState<TarefaForm[]>(() => (rasc?.tarefas ?? []).map((t) => ({ chave: chaveTarefa(), ...t })));
@@ -48,9 +54,9 @@ export function JanelaNova() {
   // rascunho automático do cadastro inteiro (meio segundo depois da última alteração): recarregar ou perder a sessão não perde o texto, as tarefas em edição nem o vínculo com a demanda já criada
   useEffect(() => {
     if (!d && !sujoAntes) return;
-    const t = setTimeout(() => guardarRascunho('nova', { dados: c, passo, idNovo, ...(d ? { demandaId: d.id, versao: versaoBase, tarefas: paraEnvio(tarefas), nt } : {}) }), 500);
+    const t = setTimeout(() => guardarRascunho('nova', { dados: c, passo, idNovo, ...comEntrada, ...(d ? { demandaId: d.id, versao: versaoBase, tarefas: paraEnvio(tarefas), nt } : {}) }), 500);
     return () => clearTimeout(t);
-  }, [d, sujoAntes, c, passo, idNovo, versaoBase, tarefas, nt, guardarRascunho]);
+  }, [d, sujoAntes, c, passo, idNovo, versaoBase, tarefas, nt, guardarRascunho, eId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ao trocar de passo, o foco vai para o primeiro campo do passo novo
   useEffect(() => { corpo.current?.querySelector<HTMLElement>('input:not([type=checkbox]):not([type=date]), textarea')?.focus(); }, [passo]);
@@ -69,7 +75,7 @@ export function JanelaNova() {
   };
 
   const fecharAgora = (guardar: boolean) => {
-    if (!d) { guardarRascunho('nova', guardar && sujoAntes ? { dados: c, passo: passo === 3 ? 2 : passo, idNovo } : null); fecharJanela(); return; }
+    if (!d) { guardarRascunho('nova', guardar && sujoAntes ? { dados: c, passo: passo === 3 ? 2 : passo, idNovo, ...comEntrada } : null); fecharJanela(); return; }
     const rd = guardar ? rascunhoDoQueFicou() : null;
     if (rd) guardarRascunho(rd.chave, rd.r);
     guardarRascunho('nova', null); // o cadastro termina aqui; o que ficou pendente passou para o rascunho da própria demanda
@@ -96,11 +102,11 @@ export function JanelaNova() {
     try {
       if (!d) {
         // o identificador vai para o rascunho antes da chamada: se a resposta se perder e a página for recarregada, a nova tentativa usa o mesmo e não duplica
-        guardarRascunho('nova', { dados: c, passo: 2, idNovo });
-        const r = await criar({ ...paraDadosNovos(c), id: idNovo }, '');
+        guardarRascunho('nova', { dados: c, passo: 2, idNovo, ...comEntrada });
+        const r = await criar({ ...paraDadosNovos(c), id: idNovo }, '', eId);
         if (!r) { setErro('Não foi possível salvar a demanda agora. Nada foi criado e o que você digitou continua aqui. Tente de novo.'); return; }
         setD(r); setSalvo(doCampos(r)); setVersaoBase(r.versao);
-        guardarRascunho('nova', { dados: c, passo: 3, idNovo, demandaId: r.id, versao: r.versao, tarefas: paraEnvio(tarefas), nt });
+        guardarRascunho('nova', { dados: c, passo: 3, idNovo, ...comEntrada, demandaId: r.id, versao: r.versao, tarefas: paraEnvio(tarefas), nt });
         avisar(`Demanda criada e salva em ${r.etapa}.`);
         setPasso(3);
       } else if (campoPendente) {
@@ -164,6 +170,8 @@ export function JanelaNova() {
       <ol className="passos" aria-label="Passos do cadastro">
         {PASSOS.map((nome, i) => <li key={nome} aria-current={passo === i + 1 ? 'step' : undefined}><b>{i + 1}</b><span>{nome}</span></li>)}
       </ol>
+      {eId && !d ? <p className="data rec" role="note">Os dados vieram da entrada e podem ser editados. A entrada só sai de Entradas quando a demanda for criada no passo 2; cancelar mantém a entrada onde está.</p> : null}
+      {eId && d ? <p className="data rec" role="note">Demanda criada a partir de uma entrada. A anotação original ficou preservada no Arquivo, ligada a esta demanda.</p> : null}
       {recuperado && !d ? <p className="data rec">Rascunho recuperado. Cancelar descarta o texto.</p> : null}
       {recuperado && d ? <p className="data rec">Cadastro retomado. A demanda já estava salva em {d.etapa}; o que você digitou depois dela foi recuperado.</p> : null}
       {erro ? <p className="data" role="alert" id="n-erro" style={{ color: 'var(--perigo)' }}>{erro}</p> : null}

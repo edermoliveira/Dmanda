@@ -6,6 +6,7 @@ import { useApp } from './contexto';
 import { Janela } from './janela-base';
 import { JanelaNova } from './cadastro';
 import { JanelaDemanda } from './detalhe';
+import { JanelaEntradaRoteada } from './entradas';
 import { titulo } from '@/lib/demandas';
 
 // ---------- nova tarefa (menu "+") ----------
@@ -39,10 +40,22 @@ export function JanelaTarefa() {
   );
 }
 
+// Virar demanda: o cadastro guiado abre com a anotação de origem já lida da lista de Entradas. Sem a anotação (excluída em outro aparelho) e sem cadastro em andamento, não há o que abrir.
+function JanelaNovaDeEntrada({ entradaId }: { entradaId: string }) {
+  const { entradas, rascunhos, fecharJanela, avisar } = useApp();
+  const entrada = entradas.find((x) => x.id === entradaId) ?? null;
+  const retomando = !!rascunhos['nova'];
+  const semNota = !entrada && !retomando;
+  useEffect(() => { if (semNota) { avisar('Esta entrada não está mais em Entradas.', true); fecharJanela(); } }, [semNota, avisar, fecharJanela]);
+  return semNota ? null : <JanelaNova entradaId={entradaId} entrada={entrada} />;
+}
+
 export function Janelas() {
-  const { janela, carregando } = useApp();
+  const { janela, carregando, carregandoEntradas } = useApp();
   if (!janela) return null;
   if (janela.t === 'editar') return <JanelaDemanda id={janela.id} />;
-  if (janela.t === 'nova') return carregando ? null : <JanelaNova />; // o cadastro retomado precisa da lista carregada para reencontrar a demanda já criada
+  // o cadastro retomado precisa da lista carregada para reencontrar a demanda já criada; a anotação de origem, da lista de Entradas
+  if (janela.t === 'nova') return carregando || (janela.entradaId && carregandoEntradas) ? null : janela.entradaId ? <JanelaNovaDeEntrada entradaId={janela.entradaId} /> : <JanelaNova />;
+  if (janela.t === 'entrada') return carregandoEntradas ? null : <JanelaEntradaRoteada id={janela.id} />;
   return <JanelaTarefa />;
 }

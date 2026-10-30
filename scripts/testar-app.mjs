@@ -427,7 +427,7 @@ await pg.setViewportSize({ width: 1360, height: 780 });
   const r = await pg.context().request.get(BASE + '/api/exportar');
   const j = await r.json().catch(() => null);
   ok(r.status() === 200 && /attachment; filename="dmanda-copia-\d{4}-\d{2}-\d{2}\.json"/.test(r.headers()['content-disposition'] ?? '') && r.headers()['cache-control'] === 'no-store', 'cópia dos dados: a rota entrega um arquivo JSON para baixar, sem cache');
-  ok(j?.formato === 'dmanda-exportacao' && j.versao === 2 && Array.isArray(j.demandas) && Array.isArray(j.arquivadas) && Array.isArray(j.dias_indisponiveis) && j.demandas.length > 0 && j.demandas.every((d) => Array.isArray(d.tarefas) && d.id && !('user_id' in d)), 'cópia dos dados: formato versionado, demandas com tarefas, sem o identificador interno do usuário');
+  ok(j?.formato === 'dmanda-exportacao' && j.versao === 3 && Array.isArray(j.entradas) && Array.isArray(j.entradas_arquivadas) && Array.isArray(j.demandas) && Array.isArray(j.arquivadas) && Array.isArray(j.dias_indisponiveis) && j.demandas.length > 0 && j.demandas.every((d) => Array.isArray(d.tarefas) && d.id && !('user_id' in d)), 'cópia dos dados: formato versionado, demandas com tarefas, sem o identificador interno do usuário');
   // a cópia que a rota real entrega é aceita pelo SQL de restauração documentado (supabase/restaurar-copia.sql), num banco novo em memória
   {
     const dr = await abrirBancoTeste();

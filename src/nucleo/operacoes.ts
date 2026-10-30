@@ -3,8 +3,9 @@
 // aqui só se confere o formato e se traduz o erro em mensagem para a pessoa.
 import { ETAPAS, type DadosDemanda, type Demanda, type Etapa } from '@/lib/demandas';
 import type { DiaIndisponivel } from '@/lib/prazos';
-import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
-export { ErroConflito, ErroDmanda, validarDados, validarDia };
+import type { Entrada } from '@/lib/entradas';
+import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
+export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada };
 export type { TarefaEdicao };
 
 export type Chamar = (funcao: string, args: Record<string, unknown>) => Promise<unknown>;
@@ -13,6 +14,7 @@ export type RespostaDia = { dia: DiaIndisponivel; recalculadas: number };
 
 export function criarOperacoes(chamar: Chamar) {
   const demanda = async (f: string, a: Record<string, unknown>) => (await chamar(f, a)) as Demanda;
+  const entrada = async (f: string, a: Record<string, unknown>) => (await chamar(f, a)) as Entrada;
   return {
     listar: async (arquivadas = false) => (await chamar('listar_demandas', { p_arquivadas: !!arquivadas })) as Demanda[],
     criar: (dados: DadosDemanda) => demanda('criar_demanda', { p: validarDados(dados, { criando: true }) }),
@@ -32,6 +34,24 @@ export function criarOperacoes(chamar: Chamar) {
     listarDias: async () => (await chamar('listar_dias_indisponiveis', {})) as DiaIndisponivel[],
     salvarDia: async (dia: unknown) => (await chamar('salvar_dia_indisponivel', { p: validarDia(dia) })) as RespostaDia,
     excluirDia: async (diaId: string) => (await chamar('excluir_dia_indisponivel', { p_id: id(diaId, 'Dia') })) as { id: string; excluido: true; recalculadas: number },
+    // ---------- Entradas (anotações) ----------
+    /** arquivadas = false: as ativas. true: as arquivadas e as que já viraram demanda (Arquivo). */
+    listarEntradas: async (arquivadas = false) => (await chamar('listar_entradas', { p_arquivadas: !!arquivadas })) as Entrada[],
+    buscarEntrada: (entradaId: string) => entrada('buscar_entrada', { p_id: id(entradaId, 'Anotação') }),
+    /** O identificador (opcional) é gerado pelo aplicativo: repetir a criação com ele devolve a mesma anotação. */
+    criarEntrada: (dados: { id?: string; titulo?: string; texto?: string; cor?: number | null; fixada?: boolean }) => entrada('criar_entrada', { p: validarEntrada(dados, { criando: true }) }),
+    /** Só os campos enviados mudam; `versao` é a que a janela viu por último (se mudou, o banco recusa com ErroConflito em vez de sobrescrever). */
+    salvarEntrada: (entradaId: string, dados: { titulo?: string; texto?: string; cor?: number; fixada?: boolean }, versao: number) =>
+      entrada('salvar_entrada', { p_id: id(entradaId, 'Anotação'), p: validarEntrada(dados, { criando: false }), p_versao: versaoDe(versao) }),
+    fixarEntrada: (entradaId: string, fixada: boolean) => entrada('fixar_entrada', { p_id: id(entradaId, 'Anotação'), p_fixada: fixada === true }),
+    arquivarEntrada: (entradaId: string) => entrada('arquivar_entrada', { p_id: id(entradaId, 'Anotação') }),
+    desarquivarEntrada: (entradaId: string) => entrada('desarquivar_entrada', { p_id: id(entradaId, 'Anotação') }),
+    excluirEntrada: async (entradaId: string, confirmado: boolean) => (await chamar('excluir_entrada', { p_id: id(entradaId, 'Anotação'), p_confirmado: confirmado === true })) as { id: string; excluida: true },
+    /** Virar demanda: cria a demanda (o `id` é obrigatório, gerado pelo aplicativo) e liga a anotação a ela na mesma transação do banco. */
+    criarDemandaDeEntrada: (entradaId: string, dados: DadosDemanda & { id: string }) => {
+      if (!dados?.id) throw new ErroDmanda('Identificador da demanda não informado.');
+      return demanda('criar_demanda_de_entrada', { p_entrada: id(entradaId, 'Anotação'), p: validarDados(dados, { criando: true }) });
+    },
     adicionarTarefa: (demandaId: string, t: string) => demanda('adicionar_tarefa', { p_demanda: id(demandaId, 'Demanda'), p_texto: texto(t, 'Tarefa', 1000) }),
     editarTarefa: (tarefaId: string, t: string) => demanda('editar_tarefa', { p_id: id(tarefaId, 'Tarefa'), p_texto: texto(t, 'Tarefa', 1000) }),
     marcarTarefa: (tarefaId: string, concluida: boolean) => demanda('marcar_tarefa', { p_id: id(tarefaId, 'Tarefa'), p_concluida: concluida === true }),

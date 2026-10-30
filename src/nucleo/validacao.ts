@@ -2,6 +2,7 @@
 // As regras de negócio ficam no banco (migrações); aqui só se confere o formato e se traduz o erro em mensagem para a pessoa.
 import { AREAS, ETAPAS, PRAZOS, TIPOS } from '../lib/demandas.ts';
 import { BOTOES_PRAZO, CATEGORIAS_DIA, type CategoriaDia } from '../lib/prazos.ts';
+import { LIMITE_TEXTO, LIMITE_TITULO, QTD_CORES } from '../lib/entradas.ts';
 
 /** Erro com texto próprio para mostrar na tela. */
 export class ErroDmanda extends Error {}
@@ -52,6 +53,25 @@ export function validarDia(entrada: unknown): { id?: string; data: string; descr
   if (!descricao) throw new ErroDmanda('Descreva o dia, por exemplo: Natal.');
   const categoria = enumerado(e.categoria, CATEGORIAS_DIA, 'Categoria');
   return { ...(e.id ? { id: id(e.id, 'Dia') } : {}), data, descricao, categoria };
+}
+
+/**
+ * Anotação de Entradas vinda da tela. Chave ausente = não mexe; na criação, "cor" ausente ou nula = o banco escolhe entre as menos usadas.
+ * Nenhuma anotação fica completamente vazia: precisa de título ou de texto (na alteração, o banco confere o resultado final, porque a tela só envia o que mudou).
+ */
+export function validarEntrada(entrada: unknown, { criando }: { criando: boolean }): Record<string, unknown> {
+  if (!entrada || typeof entrada !== 'object' || Array.isArray(entrada)) throw new ErroDmanda('Dados da anotação inválidos.');
+  const e = entrada as Record<string, unknown>, s: Record<string, unknown> = {};
+  if ('id' in e && e.id !== undefined) s.id = id(e.id, 'Identificador');
+  if ('titulo' in e) s.titulo = texto(e.titulo, 'Título', LIMITE_TITULO + 1000).trim();
+  if ('texto' in e) s.texto = texto(e.texto, 'Texto', LIMITE_TEXTO + 1000).trim();
+  if (typeof s.titulo === 'string' && s.titulo.length > LIMITE_TITULO) throw new ErroDmanda(`O título passa de ${LIMITE_TITULO} caracteres.`);
+  if (typeof s.texto === 'string' && s.texto.length > LIMITE_TEXTO) throw new ErroDmanda(`O texto passa de ${LIMITE_TEXTO} caracteres.`);
+  if ('cor' in e && e.cor !== null && e.cor !== undefined) { if (typeof e.cor !== 'number' || !Number.isInteger(e.cor) || e.cor < 0 || e.cor >= QTD_CORES) throw new ErroDmanda('Cor inválida.'); s.cor = e.cor; }
+  if ('fixada' in e && e.fixada !== undefined) { if (typeof e.fixada !== 'boolean') throw new ErroDmanda('Fixação inválida.'); s.fixada = e.fixada; }
+  if (criando && !String(s.titulo ?? '') && !String(s.texto ?? '')) throw new ErroDmanda('Escreva um título ou o texto da anotação.');
+  if (!criando && 'titulo' in s && 'texto' in s && !s.titulo && !s.texto) throw new ErroDmanda('A anotação não pode ficar vazia. Para tirá-la da lista, arquive.');
+  return s;
 }
 
 export type TarefaEdicao = { id?: string; texto: string; concluida: boolean };

@@ -25,9 +25,9 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 
 ### Entradas
 - Notas em post-its pastel (até 6 tons), em cards, com tags `#` e fixar no topo.
-- Criar nota rápida.
-- **Virar demanda:** abre o cadastro preenchido (1ª linha vira assunto, o resto vira observação). A nota sai de Entradas ao salvar. Se cancelar, a nota fica. A demanda guarda o vínculo.
-- Arquivar nota (manual). Buscar dentro das entradas.
+- Criar, consultar e editar nota rápida (título opcional, texto, cor, fixar), com salvamento automático no Supabase e rascunho no aparelho. **Implementado em 30/10/2026** (decisões 37 a 39; avaliação do usuário pendente, Issue #5).
+- **Virar demanda:** abre o cadastro guiado preenchido e editável (título explícito vira o assunto; sem título, a primeira linha útil; o resto vai para a descrição, com as tags). A nota sai de Entradas quando a demanda é criada no passo 2, na mesma transação do banco; cancelar antes mantém a nota. A demanda guarda o vínculo e a nota original fica preservada no Arquivo.
+- Arquivar nota (manual) e recuperar pelo Arquivo (aba Entradas). Buscar dentro das entradas e filtrar por tag. Atalho N no computador e "Nova entrada" no botão "+".
 
 ### Demandas
 - Visões, cada uma com função própria: **Cards** (leitura visual), **Quadro** (mover entre etapas), **Tabela** (análise detalhada, colunas ordenáveis e filtros) e **Lista** (consulta rápida, linhas expansíveis para ver e marcar tarefas).
@@ -127,10 +127,10 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 Situação: **concluída e verificada**, **implementada, a validar**, **em andamento** ou **não iniciada**. Nada é marcado como concluído sem verificação.
 
 1. **Design system e protótipo:** concluída. Catalyst único, claro e escuro, aprovado visualmente em `cd7b03f`. Restam acabamentos agrupados (ícones restantes, teclado virtual em aparelho real) que não bloqueiam as funcionalidades.
-2. **Base técnica:** em andamento. Pronto e testado no banco local de teste: esquema, RLS, funções SQL, proxy de acesso, login Google no código, expiração após 6 h. Supabase real criado e migrado, com RLS, privilégios, conta única e hook validados por SQL. **A validar:** login Google real, persistência pela interface com sessão real, publicação protegida na Vercel. Rotina diária preparada (chamada manual validada no banco de teste), sem agendamento implantado.
+2. **Base técnica:** em andamento. Pronto e testado no banco local de teste: esquema, RLS, funções SQL, proxy de acesso, login Google no código e expiração após 6 h (ambos superados em 26 e 27/10/2026: vale a entrada por e-mail e senha e a sessão persistente). Supabase real criado e migrado, com RLS, privilégios, conta única e hook validados por SQL. **A validar:** login Google real, persistência pela interface com sessão real, publicação protegida na Vercel. Rotina diária preparada (chamada manual validada no banco de teste), sem agendamento implantado.
 3. **Versão mínima de Demandas e Início:** implementada, a validar no Supabase real. Cadastro rápido, cards de dois lados, etapas, tarefas, prazos, concluir, reabrir, arquivar, excluir, quantitativos e Foco do dia, testados no banco de teste.
 4. **Demandas completas:** implementada, a validar no Supabase real. Quatro visões (Cards, Quadro, Tabela, Lista), Arquivo, edição de qualquer campo, mover por menu e arraste, rascunhos, busca, filtros e ordenação. Pendente dentro desta etapa: campo para cadastrar o selo MP, tipos de documento opcionais além dos atuais, se o usuário quiser.
-5. **Entradas** e virar demanda: não iniciada.
+5. **Entradas** e virar demanda: **implementada em 30/10/2026**, testada no banco de teste e com a migração 10 aplicada no Supabase real; **a validar** (avaliação do usuário na PWA, Issue #5). Fora do bloco: voz, foto, envelhecimento das notas, IA.
 6. **Agenda local** (semana, mês, feriados, notificações): não iniciada.
 7. **Configurações** (paletas, fontes, tamanhos, fundo): não iniciada na aplicação funcional (existe no protótipo).
 8. **Busca global e botão "+":** botão "+" funcional para nova demanda; busca global desativada com aviso. Busca e filtros de Demandas funcionam.
@@ -139,7 +139,7 @@ Situação: **concluída e verificada**, **implementada, a validar**, **em andam
 11. **IA estagiária:** não iniciada (as operações de Demandas já estão em funções reutilizáveis).
 12. **Documentos:** não iniciada.
 
-Antes de iniciar Entradas, Agenda ou outro módulo grande: fechar a base real (etapas 2 a 4 validadas no Supabase) e obter a avaliação do usuário sobre a aplicação atual.
+Histórico: "antes de iniciar Entradas, Agenda ou outro módulo grande, fechar a base real e obter a avaliação do usuário sobre a aplicação atual". **Cumprido em 30/10/2026**: o usuário aprovou o bloco anterior e autorizou Entradas. **Vigente:** a Agenda e os demais módulos só começam depois da avaliação de Entradas pelo usuário.
 
 ---
 

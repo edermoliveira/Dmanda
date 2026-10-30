@@ -1,4 +1,4 @@
-// Regras puras de datas e grupos do Início (src/lib/demandas.ts), sem navegador nem banco. Uso: node scripts/testar-regras.mjs
+// Regras puras de datas e grupos do Início (src/lib/demandas.ts) e de Entradas (src/lib/entradas.ts), sem navegador nem banco. Uso: node scripts/testar-regras.mjs
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { emailAutorizado, contaAutorizada, situacaoDoErroAuth, ehCookieDeSessao, COOKIE_LEGADO_ULTIMO_USO } from '../src/lib/sessao.ts';
@@ -6,7 +6,8 @@ import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_P
 import { googleLigado } from '../src/lib/login.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
 import { dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
-import { validarDados, validarDia } from '../src/nucleo/validacao.ts';
+import { validarDados, validarDia, validarEntrada } from '../src/nucleo/validacao.ts';
+import { estadoDe, tagsDe, semTags, resumoDe, temTitulo, contarTags, filtrarEntradas, ordenarEntradas, paraDemanda, diferencas, vazia, camposEmConflito } from '../src/lib/entradas.ts';
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const hoje = '2026-10-25';
@@ -107,6 +108,48 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(/Identificador inválido/.test(falha(() => validarDados({ assunto: 'a', id: 'x' }, { criando: true }))) && validarDados({ assunto: 'a', id: '8e3a7c52-3a4c-4f83-9c8e-5c8e6f4a1b2c' }, { criando: true }).id === '8e3a7c52-3a4c-4f83-9c8e-5c8e6f4a1b2c', 'validação: o identificador da demanda nova (para não duplicar) precisa ser um UUID');
   ok(validarDados({ chegou_em: null }, { criando: false }).chegou_em === null && !('chegou_em' in validarDados({ assunto: 'x' }, { criando: false })), 'validação: na edição, a chegada pode ser limpa e, se não vier, não é tocada');
   ok(validarDia({ data: '2027-03-05', descricao: ' Natal ', categoria: 'Feriado' }).descricao === 'Natal' && /Informe a data/.test(falha(() => validarDia({ descricao: 'x', categoria: 'Feriado' }))) && /Descreva o dia/.test(falha(() => validarDia({ data: '2027-03-05', descricao: ' ', categoria: 'Feriado' }))) && /Categoria inválido/.test(falha(() => validarDia({ data: '2027-03-05', descricao: 'x', categoria: 'Outra' }))), 'validação do calendário: data, descrição e categoria (Feriado ou Evento externo)');
+}
+
+// ---------- Entradas (src/lib/entradas.ts e validarEntrada) ----------
+{
+  const e = (id, o) => ({ id, titulo: '', texto: '', cor: 0, fixada: false, arquivada_em: null, demanda_id: null, versao: 1, criado_em: '2026-10-30T10:00:00Z', atualizado_em: '2026-10-30T10:00:00Z', ...o });
+  ok(estadoDe(e('a', {})) === 'ativa' && estadoDe(e('a', { arquivada_em: 'x' })) === 'arquivada' && estadoDe(e('a', { demanda_id: 'd' })) === 'convertida' && estadoDe(e('a', { arquivada_em: 'x', demanda_id: 'd' })) === 'convertida', 'entradas: estados ativa, arquivada e convertida (a convertida vale mais que a arquivada)');
+  ok(tagsDe({ titulo: 'Reunião #RH', texto: 'ligar #rh e #Ação_2 e #2026 #' }).join() === 'rh,ação_2,2026', 'entradas: tags em qualquer lugar, minúsculas, com acento, número e sublinhado, sem repetir');
+  ok(tagsDe({ titulo: '', texto: 'sem tag, só # solto e a#b' }).join() === 'b', 'entradas: "#" solto não é tag e a tag vale mesmo colada em palavra');
+  ok(semTags('Ligar #rh para   o RH #x') === 'Ligar para o RH' && resumoDe({ titulo: '#so', texto: 'Texto útil #t' }) === 'Texto útil' && resumoDe({ titulo: 'Título', texto: 'Texto' }) === 'Título' && resumoDe({ titulo: '', texto: '#a #b' }) === '', 'entradas: o resumo do post-it é o título, ou as primeiras frases do texto, sem tags');
+  ok(temTitulo({ titulo: 'x' }) && !temTitulo({ titulo: '  ' }) && !temTitulo({ titulo: '#so' }), 'entradas: título só de tags não conta como título');
+  const base = [e('1', { texto: 'Reunião da Câmara #rh' }), e('2', { titulo: 'Diárias', texto: 'saldo #tce #rh' }), e('3', { texto: 'Painel' })];
+  ok(JSON.stringify(contarTags(base)) === JSON.stringify([['rh', 2], ['tce', 1]]), 'entradas: contagem de tags em ordem alfabética');
+  ok(filtrarEntradas(base, { texto: 'reuniao da camara', tag: '' }).map((x) => x.id).join() === '1' && filtrarEntradas(base, { texto: '', tag: 'rh' }).map((x) => x.id).join() === '1,2' && filtrarEntradas(base, { texto: 'SALDO', tag: 'rh' }).map((x) => x.id).join() === '2' && filtrarEntradas(base, { texto: '  ', tag: '' }).length === 3 && filtrarEntradas(base, { texto: 'nada', tag: '' }).length === 0, 'entradas: busca sem acento e sem diferença de maiúscula, filtro por tag e os dois juntos');
+  const ord = ordenarEntradas([e('a', { criado_em: '2026-10-01T00:00:00Z' }), e('b', { criado_em: '2026-10-03T00:00:00Z' }), e('c', { criado_em: '2026-10-02T00:00:00Z', fixada: true }), e('d', { criado_em: '2026-09-01T00:00:00Z', fixada: true })]);
+  ok(ord.map((x) => x.id).join() === 'c,d,b,a', 'entradas: fixadas no topo e, em cada grupo, a mais recente primeiro');
+  // virar demanda
+  ok(JSON.stringify(paraDemanda({ titulo: ' Portaria 12 ', texto: 'Texto completo\ncom #tag' })) === JSON.stringify({ assunto: 'Portaria 12', descricao: 'Texto completo\ncom #tag' }), 'virar demanda: com título explícito, ele é o assunto e o texto inteiro vai para a descrição');
+  ok(JSON.stringify(paraDemanda({ titulo: '', texto: 'Primeira linha útil\nSegunda #t\n\nTerceira' })) === JSON.stringify({ assunto: 'Primeira linha útil', descricao: 'Segunda #t\n\nTerceira' }), 'virar demanda: sem título, a primeira linha útil é o assunto e o resto vai para a descrição');
+  ok(JSON.stringify(paraDemanda({ titulo: '', texto: 'Uma linha só #rh' })) === JSON.stringify({ assunto: 'Uma linha só #rh', descricao: '' }), 'virar demanda: nota de uma linha: assunto com a própria linha (a tag não se perde) e descrição vazia');
+  ok(JSON.stringify(paraDemanda({ titulo: '', texto: '\n\n#a #b\nLinha com conteúdo\nfim' })) === JSON.stringify({ assunto: 'Linha com conteúdo', descricao: '#a #b\nfim' }), 'virar demanda: linhas vazias e linha só de tags antes não viram assunto, e a linha de tags fica na descrição');
+  ok(JSON.stringify(paraDemanda({ titulo: '', texto: '#a #b' })) === JSON.stringify({ assunto: '#a #b', descricao: '' }), 'virar demanda: nota só de tags: o assunto são as tags (nada é descartado)');
+  const longa = 'palavra '.repeat(60).trim(), pl = paraDemanda({ titulo: '', texto: `${longa}\nresto` });
+  ok(pl.assunto.length <= 300 && pl.assunto.endsWith('…') && !pl.assunto.slice(0, -1).endsWith(' ') && pl.descricao === `${longa}\nresto`, 'virar demanda: primeira linha acima de 300 caracteres: assunto cortado em palavra inteira e o texto completo na descrição');
+  ok(paraDemanda({ titulo: '', texto: 'x'.repeat(400) }).assunto.length === 300, 'virar demanda: linha sem espaço é cortada no limite do assunto');
+  ok(JSON.stringify(paraDemanda({ titulo: '', texto: 'Linha\r\nSegunda\r\nTerceira' })) === JSON.stringify({ assunto: 'Linha', descricao: 'Segunda\nTerceira' }), 'virar demanda: quebras de linha do Windows são tratadas');
+  // edição: o que mudou e o que conflita
+  const cs = { titulo: 'T', texto: 'X', cor: 2, fixada: false };
+  ok(JSON.stringify(diferencas({ ...cs, texto: ' Y ' }, cs)) === JSON.stringify({ texto: 'Y' }) && Object.keys(diferencas({ ...cs, titulo: ' T ', texto: 'X ' }, cs)).length === 0 && JSON.stringify(diferencas({ ...cs, fixada: true, cor: 4 }, cs)) === JSON.stringify({ cor: 4, fixada: true }), 'entradas: só os campos mexidos seguem no salvamento (espaços nas pontas não contam)');
+  ok(vazia({ titulo: ' ', texto: '\n' }) && !vazia({ titulo: '', texto: 'a' }), 'entradas: vazia é título e texto em branco');
+  ok(camposEmConflito({ texto: 'X' }, { ...cs, texto: 'X', fixada: true }, { texto: 'Y' }).length === 0, 'conflito: o outro aparelho só fixou e eu só escrevi: não é conflito, os dois cabem juntos');
+  ok(camposEmConflito({ texto: 'X' }, { ...cs, texto: 'Z' }, { texto: 'Y' }).join() === 'texto', 'conflito: os dois mudaram o texto para valores diferentes: é conflito');
+  ok(camposEmConflito({ texto: 'X' }, { ...cs, texto: 'Y' }, { texto: 'Y' }).length === 0, 'conflito: os dois chegaram ao mesmo texto: não há o que perguntar');
+  ok(camposEmConflito({ texto: 'X', cor: 2 }, { ...cs, texto: 'X', cor: 5 }, { texto: 'Y' }).length === 0 && camposEmConflito({ texto: 'X', cor: 2 }, { ...cs, texto: 'Z', cor: 5 }, { texto: 'Y', cor: 3 }).join() === 'texto,cor', 'conflito: só conta o campo que eu mexi E o outro também mexeu');
+  // validação
+  const fe = (f) => { try { f(); return ''; } catch (x) { return x.message; } };
+  ok(/Escreva um título ou o texto/.test(fe(() => validarEntrada({ titulo: ' ', texto: '\n' }, { criando: true }))) && /Escreva um título ou o texto/.test(fe(() => validarEntrada({}, { criando: true }))), 'validação de entrada: criar vazia é recusado');
+  const v1 = validarEntrada({ id: '8e3a7c52-3a4c-4f83-9c8e-5c8e6f4a1b2c', titulo: '  T ', texto: ' x\n', cor: 3, fixada: true, user_id: 'x', extra: 1 }, { criando: true });
+  ok(v1.titulo === 'T' && v1.texto === 'x' && v1.cor === 3 && v1.fixada === true && !('user_id' in v1) && !('extra' in v1), 'validação de entrada: apara as pontas e deixa só os campos conhecidos');
+  ok(!('cor' in validarEntrada({ texto: 'a', cor: null }, { criando: true })) && /Cor inválida/.test(fe(() => validarEntrada({ texto: 'a', cor: 6 }, { criando: true }))) && /Cor inválida/.test(fe(() => validarEntrada({ texto: 'a', cor: 1.5 }, { criando: false }))) && /Cor inválida/.test(fe(() => validarEntrada({ texto: 'a', cor: '2' }, { criando: true }))), 'validação de entrada: cor ausente ou nula é automática; fora de 0 a 5 ou não inteira é recusada');
+  ok(/passa de 200/.test(fe(() => validarEntrada({ titulo: 'x'.repeat(201) }, { criando: true }))) && /passa de 20000/.test(fe(() => validarEntrada({ texto: 'x'.repeat(20001) }, { criando: true }))) && validarEntrada({ texto: 'x'.repeat(20000), titulo: 'y'.repeat(200) }, { criando: true }).texto.length === 20000, 'validação de entrada: limites de 200 e 20000 caracteres');
+  ok(/Identificador inválido/.test(fe(() => validarEntrada({ id: 'x', texto: 'a' }, { criando: true }))) && /Fixação inválida/.test(fe(() => validarEntrada({ texto: 'a', fixada: 'sim' }, { criando: true }))) && /inválidos/.test(fe(() => validarEntrada(null, { criando: true }))), 'validação de entrada: identificador, fixação e formato inválidos são recusados');
+  ok(Object.keys(validarEntrada({ fixada: true }, { criando: false })).join() === 'fixada' && /não pode ficar vazia/.test(fe(() => validarEntrada({ titulo: '', texto: '  ' }, { criando: false }))) && validarEntrada({ titulo: '' }, { criando: false }).titulo === '', 'validação de entrada: na edição só vai o que mudou; esvaziar título e texto juntos é recusado, esvaziar só o título não');
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
