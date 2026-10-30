@@ -511,6 +511,18 @@ const aviso = (pg) => pg.waitForFunction(() => document.querySelector('#toast')?
   ok(!(await rascunhos(pg))['nova'], 'cancelar descarta o rascunho do cadastro');
   await limparTudo(pg);
 
+  // Virar demanda pela janela da própria entrada, com alteração ainda não salva: salva primeiro e converte o texto novo
+  await ir(pg);
+  await criar(pg, { texto: 'Virar pela janela' });
+  await abrirNota(pg, 'Virar pela janela');
+  await pg.fill('#e-texto', 'Virar pela janela com alteração recente');
+  await pg.click('.modal .acoes-entrada button:has-text("Virar demanda")');
+  await pg.waitForSelector('#n-assunto', { timeout: 20000 });
+  ok((await pg.inputValue('#n-assunto')) === 'Virar pela janela com alteração recente' && !(await pg.$('#toast.on.erro')), 'Virar demanda pela janela da entrada, com texto ainda pendente: salva antes e o cadastro abre com o texto novo (sem recusar por rascunho que já foi salvo)');
+  await pg.click('.modal .btn:has-text("Cancelar")'); await janelaFechada(pg);
+  await ir(pg);
+  ok(await contar(pg, 'Virar pela janela com alteração recente') === 1 && Object.keys(await rascunhos(pg)).length === 0, 'cancelar o cadastro deixa a entrada em Entradas, com o texto novo já salvo e sem rascunho');
+
   // a tag de uma entrada convertida sai da barra
   await ir(pg);
   const chips2 = await pg.$$eval('.tagbar .chip', (x) => x.map((y) => y.textContent));

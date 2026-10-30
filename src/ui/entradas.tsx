@@ -52,10 +52,11 @@ function useAjustarNotas(dep: unknown) {
 /** Virar demanda a partir da lista ou da janela. Não passa por cima de outro cadastro em andamento nem de alterações que ainda estão só neste aparelho. */
 export function useVirarDemanda() {
   const { rascunhos, abrirJanela, avisar } = useApp();
-  return useCallback((entradaId: string) => {
+  // jaSalva: quem chama é a própria janela da entrada, que acabou de salvar tudo (o estado de rascunhos deste render ainda é o de antes e não vale para a própria entrada)
+  return useCallback((entradaId: string, { jaSalva = false }: { jaSalva?: boolean } = {}) => {
     const r = rascunhos['nova'];
     if (r && r.entradaId !== entradaId) { avisar('Há um cadastro de demanda em andamento. Abra Nova demanda para terminá-lo ou cancelá-lo antes de transformar esta entrada.', true); return; }
-    if (rascunhos[`e:${entradaId}`]) { avisar('Esta entrada tem alterações só neste aparelho. Abra-a para salvá-las antes de virar demanda.', true); return; }
+    if (!jaSalva && rascunhos[`e:${entradaId}`]) { avisar('Esta entrada tem alterações só neste aparelho. Abra-a para salvá-las antes de virar demanda.', true); return; }
     abrirJanela({ t: 'nova', entradaId });
   }, [rascunhos, abrirJanela, avisar]);
 }
@@ -306,7 +307,7 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
   };
   const arquivar = () => void comSalvamento(async (id) => { const r = await app.arquivarEntrada(id); if (r) { limparRascunhos(); fecharJanela(); } });
   const recuperar = () => void comSalvamento(async (id) => { const r = await app.desarquivarEntrada(id); if (r) setSalva(r); });
-  const virarDemanda = () => void comSalvamento(async (id) => { limparRascunhos(); virar(id); });
+  const virarDemanda = () => void comSalvamento(async (id) => { limparRascunhos(); virar(id, { jaSalva: true }); });
 
   const demandaLigada = salva?.demanda_id ? demandas.find((d) => d.id === salva.demanda_id) : null;
   const tagsAgora = tagsDe(efetivo);
