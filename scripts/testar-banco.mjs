@@ -555,7 +555,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig-'));
   const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
   const nova8 = todas.find((f) => f.includes('prazos_e_dias_indisponiveis'));
-  for (const f of todas.filter((f) => f !== nova8)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
+  for (const f of todas.filter((f) => f !== nova8 && f !== nova9)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -564,6 +565,16 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const comPrazo = await cw('criar_demanda', { p: { assunto: 'Antiga com prazo', prazo: '2027-03-06', numero: '10/2026', origem: 'Câmara', chegou_em: '2026-09-01' } }); // sábado: no sistema antigo o prazo era gravado como veio
   const semPrazo = await cw('criar_demanda', { p: { assunto: 'Antiga sem prazo' } });
   await cw('adicionar_tarefa', { p_demanda: comPrazo.id, p_texto: 'Tarefa antiga' });
+  // cenários da migração 9 (prazos legados abertos): feriado do próprio usuário, calendário de outro usuário, dia útil e demanda finalizada
+  const Z = 'a8888888-8888-4888-8888-888888888888';
+  await antigo.exec(`insert into auth.users (id, email) values ('${Z}', 'z@teste')`);
+  await antigo.exec("insert into dmanda_privado.acesso_autorizado (email) values ('z@teste')");
+  const cz = (f, a) => chamarComoUsuario(antigo, Z, f, a);
+  const legFeriado = await cw('criar_demanda', { p: { assunto: 'Antiga em feriado', prazo: '2027-03-12' } });
+  const legUtil = await cw('criar_demanda', { p: { assunto: 'Antiga em dia útil', prazo: '2027-03-10' } });
+  const legFinal = await cw('criar_demanda', { p: { assunto: 'Antiga finalizada no sábado', prazo: '2027-03-06' } });
+  await cw('mover_etapa', { p_id: legFinal.id, p_etapa: 'Finalizado' });
+  const legOutro = await cz('criar_demanda', { p: { assunto: 'Antiga de outro usuário', prazo: '2027-03-12' } });
   const antes = (await antigo.query('select id, assunto, numero, origem, chegou_em::text, prazo::text, etapa, versao, atualizado_em::text, criado_em::text from public.demandas order by id')).rows;
   const tarefasAntes = (await antigo.query('select id, texto, concluida, posicao from public.tarefas order by id')).rows;
   await antigo.exec(readFileSync(join('supabase/migrations', nova8), 'utf8'));
@@ -576,8 +587,24 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(JSON.stringify((await antigo.query('select id, texto, concluida, posicao from public.tarefas order by id')).rows) === JSON.stringify(tarefasAntes), 'migração 8: as tarefas ficam idênticas');
   const leg = await cw('buscar_demanda', { p_id: comPrazo.id });
   ok(leg.prazo_legado === true && leg.prazo === '2027-03-06', 'migração 8: a leitura devolve o legado identificável');
+
+  // migração 9: os legados ABERTOS passam a valer pelo calendário (original preservado), sem tocar nas finalizadas, nos dias úteis nem no calendário alheio
+  await antigo.exec(`insert into public.dias_indisponiveis (user_id, data, descricao, categoria) values ('${W}', '2027-03-12', 'Feriado de teste', 'Feriado')`);
+  const v9 = async (id) => (await antigo.query('select prazo::text, prazo_original::text, prazo_legado, prazo_ajuste, versao, etapa from public.demandas where id = $1', [id])).rows[0];
+  const antes9 = Object.fromEntries(await Promise.all([comPrazo, legFeriado, legUtil, legFinal, legOutro].map(async (x) => [x.id, await v9(x.id)])));
+  const tarefas9 = JSON.stringify((await antigo.query('select id, texto, concluida, posicao from public.tarefas order by id')).rows);
+  await antigo.exec(readFileSync(join('supabase/migrations', nova9), 'utf8'));
+  const s9 = await v9(comPrazo.id), f9 = await v9(legFeriado.id), u9 = await v9(legUtil.id), z9 = await v9(legFinal.id), o9 = await v9(legOutro.id);
+  ok(s9.prazo === '2027-03-05' && s9.prazo_original === '2027-03-06' && s9.prazo_ajuste === '06/03 sábado' && s9.prazo_legado === true && s9.versao === antes9[comPrazo.id].versao + 1, 'migração 9: legado aberto em sábado vai para a sexta, o original (sábado) e o marcador de legado ficam e a versão sobe');
+  ok(f9.prazo === '2027-03-11' && f9.prazo_original === '2027-03-12' && /12\/03 feriado: Feriado de teste/.test(f9.prazo_ajuste ?? ''), 'migração 9: legado aberto em feriado cadastrado pelo próprio usuário é antecipado');
+  ok(o9.prazo === '2027-03-12' && o9.prazo_ajuste === null && o9.versao === antes9[legOutro.id].versao, 'migração 9: o calendário de um usuário não ajusta a demanda de outro');
+  ok(u9.prazo === '2027-03-10' && u9.versao === antes9[legUtil.id].versao && u9.prazo_ajuste === null, 'migração 9: legado aberto em dia útil não muda (nem a versão)');
+  ok(z9.prazo === '2027-03-06' && z9.prazo_ajuste === null && z9.versao === antes9[legFinal.id].versao && z9.etapa === 'Finalizado', 'migração 9: demanda finalizada mantém o prazo de então e a versão');
+  ok(JSON.stringify((await antigo.query('select id, texto, concluida, posicao from public.tarefas order by id')).rows) === tarefas9, 'migração 9: as tarefas ficam idênticas');
+  await antigo.exec(readFileSync(join('supabase/migrations', nova9), 'utf8'));
+  ok((await v9(comPrazo.id)).versao === s9.versao, 'migração 9: reaplicar é inofensivo (nenhuma versão sobe de novo)');
   const e = await cw('atualizar_demanda', { p_id: comPrazo.id, p: { assunto: 'Antiga com prazo (editada)' } });
-  ok(e.prazo === '2027-03-06' && e.prazo_legado === true, 'legado: editar outro campo não mexe no prazo nem no marcador');
+  ok(e.prazo === '2027-03-05' && e.prazo_original === '2027-03-06' && e.prazo_legado === true, 'legado: editar outro campo não mexe no prazo nem no marcador');
   const m = await cw('atualizar_demanda', { p_id: comPrazo.id, p: { prazo_original: '2027-03-09' } });
   ok(m.prazo === '2027-03-09' && m.prazo_legado === false, 'legado: escolher uma data nova passa a valer pelas regras novas e tira o marcador');
   await antigo.close();
