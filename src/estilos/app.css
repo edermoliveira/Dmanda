@@ -129,7 +129,14 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .postit .p-abrir:focus-visible { outline: 3px solid var(--foco); outline-offset: -3px; }
 .app .postit .p-top { position: relative; z-index: 2; align-items: center; }
 .app .postit .p-top .p-local { margin-right: auto; padding: 2px 8px; border-radius: 999px; background: hsl(0 0% 98.8% / .6); color: var(--text); font-size: max(10px, calc(11px * var(--esc))); font-weight: 600; line-height: 1.3; }
-.app .postit .p-txt, .app .postit .p-tags { pointer-events: none; }
+.app .postit .p-txt, .app .postit .p-tags, .app .postit .p-desc, .app .postit .p-data { pointer-events: none; }
+/* título (até 3 linhas) e, abaixo, o texto como descrição, no mesmo estilo da descrição das demandas (.desc: mono, cor secundária); ocupa o que sobrar e some se não couber uma linha */
+.app .postit .p-txt { overflow-wrap: anywhere; }
+.app .postit .p-txt.tit { flex: 0 0 auto; -webkit-line-clamp: 3; line-clamp: 3; }
+.app .postit .p-desc { flex: 1 1 0; min-height: 0; margin-top: 2px; }
+.app .postit .p-desc.oculto { display: none; }
+/* carimbo da criação (criado_em), sempre no pé do post-it, sem disputar espaço com o texto nem passar sobre a dobra do canto */
+.app .postit .p-data { flex: none; margin: 0; padding-right: 26px; font-size: max(10px, calc(11px * var(--esc))); line-height: 1.3; color: var(--text2); }
 .app[data-tema="escuro"] .pin-b { background: hsl(0 0% 4% / .35); }
 .app[data-tema="escuro"] .pin-b[aria-pressed="true"] { background: var(--acc); }
 .app .tagbar { margin: 0 0 14px; }

@@ -140,8 +140,12 @@ const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
   for (const t of ['Segunda reunião #reuniao', 'Painel por origem #ideia', 'Diárias #tce', 'Portaria horário de verão #portaria']) await criar(pg, { texto: t });
   const todas = await notas(pg);
   const cores = todas.map((n) => n.cor);
-  ok(todas.length === 6 && new Set(cores).size === 6, 'sem escolha de cor, as seis primeiras entradas ganham seis cores diferentes (distribuição aprovada)');
-  ok(new Set(todas.map((n) => n.fundo)).size === 6, 'os seis tons são realmente diferentes na tela (pastel derivado da paleta)');
+  ok(todas.length === 6 && new Set(cores).size === 5 && cores.every((c) => Number(c) <= 4), 'sem escolha de cor, as entradas usam só as cinco cores (0 a 4) e distribuem antes de repetir');
+  ok(new Set(todas.map((n) => n.fundo)).size === 5, 'os cinco tons são realmente diferentes na tela (pastel derivado da paleta)');
+  await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#e-texto');
+  const botoesCor = await pg.$$eval('.modal .cores .cor-b', (b) => ({ total: b.length, tons: b.filter((x) => x.classList.contains('nota-fundo')).length, auto: b.filter((x) => x.classList.contains('auto')).length }));
+  await pg.click('.modal .btn:has-text("Cancelar")'); await janelaFechada(pg);
+  ok(botoesCor.total === 6 && botoesCor.tons === 5 && botoesCor.auto === 1, 'a janela oferece cinco cores e a opção automática');
   await criar(pg, { texto: 'Cor escolhida à mão', cor: 3 });
   ok((await notas(pg)).find((n) => /Cor escolhida/.test(n.txt)).cor === '3', 'a cor escolhida na janela é a que fica no post-it');
 

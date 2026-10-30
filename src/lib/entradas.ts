@@ -5,7 +5,7 @@ export type Entrada = {
   id: string;
   titulo: string;
   texto: string;
-  /** Posição na paleta de seis tons pastel (0 a 5); a tela deriva o tom real da paleta ativa e do tema. */
+  /** Posição na paleta de tons pastel (0 a 4 oferecidos; 5 é a cor retirada, ainda aceita em notas antigas); a tela deriva o tom real da paleta ativa e do tema. */
   cor: number;
   fixada: boolean;
   arquivada_em: string | null;
@@ -21,7 +21,9 @@ export type Entrada = {
 export type CamposEntrada = { titulo: string; texto: string; cor: number; fixada: boolean };
 
 export const COR_AUTOMATICA = -1;
-export const QTD_CORES = 6;
+/** Cores oferecidas e sorteadas (0 a 4). Anotações antigas podem ter a cor 5, retirada: continuam válidas (COR_MAX_ACEITA), só não são mais oferecidas. */
+export const QTD_CORES = 5;
+export const COR_MAX_ACEITA = 5;
 export const LIMITE_TITULO = 200;
 export const LIMITE_TEXTO = 20_000;
 /** O assunto de uma demanda tem no máximo 300 caracteres (validacao.ts). */
@@ -42,6 +44,11 @@ export const semTags = (s: string) => s.replace(RE_TAG, '').replace(/\s+/g, ' ')
 /** Na grade aparece só o título; sem título, as primeiras frases do texto (a tela corta o excesso pelo espaço). */
 export const resumoDe = (e: Pick<CamposEntrada, 'titulo' | 'texto'>) => semTags(e.titulo) || semTags(e.texto);
 export const temTitulo = (e: Pick<CamposEntrada, 'titulo'>) => semTags(e.titulo) !== '';
+/** Data e hora da criação (America/Sao_Paulo, 24 h, sem segundos), como "30/10/2026 às 14:48". Vem de criado_em e nunca muda com edições. */
+export const carimbo = (iso: string) => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+  return `${p.day}/${p.month}/${p.year} às ${p.hour}:${p.minute}`;
+};
 /** Tags com a contagem de anotações de cada uma, em ordem alfabética. */
 export function contarTags(lista: Pick<CamposEntrada, 'titulo' | 'texto'>[]): [string, number][] {
   const m = new Map<string, number>();

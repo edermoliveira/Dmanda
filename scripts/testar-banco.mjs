@@ -582,10 +582,17 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(e1.titulo === '' && e1.texto === 'Ligar para o RH #rh' && e1.fixada === false && e1.arquivada_em === null && e1.demanda_id === null && e1.versao === 1 && !('user_id' in e1) && e2.titulo === 'Só título' && e2.texto === '', 'entradas: título e texto são opcionais um sem o outro, o texto é aparado e nasce ativa, sem vínculo e na versão 1');
   ok(/passa de 20000/.test(await msg(U, 'criar_entrada', { p: { texto: 'x'.repeat(20001) } })) && /passa de 200/.test(await msg(U, 'criar_entrada', { p: { titulo: 'x'.repeat(201) } })) && /Cor inválida/.test(await msg(U, 'criar_entrada', { p: { texto: 'a', cor: 6 } })), 'entradas: limites de tamanho e cor fora de 0 a 5 são recusados');
 
-  // cor automática: distribui antes de repetir (6 notas, 6 cores); com escolha, vale a escolha
+  // cor automática (migração 11: cinco cores, 0 a 4): distribui antes de repetir e nunca sorteia a cor 5, retirada; com escolha, vale a escolha
   const n6 = [];
-  for (let i = 0; i < 6; i++) n6.push(await ec(V, 'criar_entrada', { p: { texto: 'nota ' + i } }));
-  ok(new Set(n6.map((x) => x.cor)).size === 6 && n6.every((x) => x.cor >= 0 && x.cor <= 5), 'entradas: sem escolha de cor, as seis primeiras notas recebem seis cores diferentes');
+  for (let i = 0; i < 5; i++) n6.push(await ec(V, 'criar_entrada', { p: { texto: 'nota ' + i } }));
+  ok(new Set(n6.map((x) => x.cor)).size === 5 && n6.every((x) => x.cor >= 0 && x.cor <= 4), 'entradas: sem escolha de cor, as cinco primeiras notas recebem cinco cores diferentes (0 a 4)');
+  for (let i = 5; i < 40; i++) n6.push(await ec(V, 'criar_entrada', { p: { texto: 'nota ' + i } }));
+  ok(n6.every((x) => x.cor >= 0 && x.cor <= 4), 'entradas: em 40 sorteios automáticos a cor 5 (retirada) nunca sai');
+  const antiga = await ec(V, 'criar_entrada', { p: { texto: 'cor antiga cinco', cor: 5 } });
+  const antigaFix = await ec(V, 'fixar_entrada', { p_id: antiga.id, p_fixada: true });
+  const antigaSalva = await ec(V, 'salvar_entrada', { p_id: antiga.id, p: { texto: 'cor antiga cinco editada' }, p_versao: antigaFix.versao });
+  const antigaArq = await ec(V, 'arquivar_entrada', { p_id: antiga.id }), antigaRec = await ec(V, 'desarquivar_entrada', { p_id: antiga.id });
+  ok(antigaRec.cor === 5 && antigaSalva.cor === 5 && antigaRec.texto === 'cor antiga cinco editada' && antigaRec.criado_em === antiga.criado_em && !!antigaArq.arquivada_em, 'entradas: uma nota com a cor retirada (5) continua válida, editável, arquivável e recuperável, e o criado_em não muda');
   const n7 = await ec(V, 'criar_entrada', { p: { texto: 'sétima', cor: 4 } });
   ok(n7.cor === 4, 'entradas: a cor escolhida é respeitada');
 
@@ -597,7 +604,7 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
 
   // isolamento por usuário e visitante sem acesso
   const eV = n6[0];
-  ok(await nEnt(U, false) === 3 && await nEnt(V, false) === 7, 'entradas: cada usuário lista só as próprias anotações');
+  ok(await nEnt(U, false) === 3 && await nEnt(V, false) === n6.length + 2, 'entradas: cada usuário lista só as próprias anotações');
   ok(/não encontrada/.test(await msg(U, 'buscar_entrada', { p_id: eV.id })) && /não encontrada/.test(await msg(U, 'fixar_entrada', { p_id: eV.id, p_fixada: true })) && /não encontrada/.test(await msg(U, 'arquivar_entrada', { p_id: eV.id })) && /não encontrada/.test(await msg(U, 'salvar_entrada', { p_id: eV.id, p: { texto: 'invasão' }, p_versao: 1 })), 'entradas: RLS, uma conta não lê nem altera a anotação de outra');
   const anonE = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_entradas()'); return null; } catch (e) { return e.message; } });
   const tabE = await db.query("select has_table_privilege('authenticated', 'public.entradas', 'select, insert, update, delete') as crud, has_table_privilege('authenticated', 'public.entradas', 'truncate') as trunc, has_table_privilege('anon', 'public.entradas', 'select') as anon_sel, has_table_privilege('service_role', 'public.entradas', 'select') as svc_sel");
@@ -675,8 +682,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
   const nova8 = todas.find((f) => f.includes('prazos_e_dias_indisponiveis'));
   const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
-  const nova10 = todas.find((f) => f.includes('_entradas'));
-  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores'));
+  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -733,6 +740,13 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(JSON.stringify((await antigo.query('select * from public.demandas order by id')).rows) === demandasAntes10 && JSON.stringify((await antigo.query('select * from public.tarefas order by id')).rows) === tarefasAntes10 && (await antigo.query('select count(*)::int as n from public.entradas')).rows[0].n === 0, 'migração 10: demandas e tarefas existentes ficam idênticas e a tabela de entradas nasce vazia');
   const lido10 = await cw('buscar_demanda', { p_id: comPrazo.id });
   ok(lido10.entrada_id === null && lido10.prazo === '2027-03-09' && lido10.tarefas.length === 1, 'migração 10: a leitura da demanda ganha o campo entrada_id (nulo) sem alterar o resto');
+  // migração 11 (cinco cores): uma nota com a cor 5 criada antes continua intacta; o sorteio automático passa a sair só de 0 a 4
+  await antigo.exec("insert into public.entradas (id, user_id, titulo, texto, cor) values ('b0000000-0000-4000-8000-000000000005', '" + W + "', 'antes da 11', 'cor cinco', 5)");
+  const antes11 = JSON.stringify((await antigo.query('select id, titulo, texto, cor, versao, criado_em, atualizado_em from public.entradas order by id')).rows);
+  await antigo.exec(readFileSync(join('supabase/migrations', nova11), 'utf8'));
+  ok(JSON.stringify((await antigo.query('select id, titulo, texto, cor, versao, criado_em, atualizado_em from public.entradas order by id')).rows) === antes11, 'migração 11: nenhuma anotação existente é alterada (a de cor 5 segue com a cor 5, mesma versão e mesmas datas)');
+  const sorteio = new Set(); for (let i = 0; i < 60; i++) sorteio.add((await antigo.query('select public.cor_entrada_automatica() as c')).rows[0].c);
+  ok(sorteio.size > 0 && [...sorteio].every((c) => c >= 0 && c <= 4), 'migração 11: o sorteio automático só devolve de 0 a 4');
   await antigo.close();
 }
 

@@ -340,6 +340,60 @@ if (wk) await leitura('WebKit iPhone 13', wk, { ...devices['iPhone 13'] }, 'clar
   await ctx.close();
 }
 
+// ============ Entradas: descrição abaixo do título, carimbo da criação (criado_em) ============
+{ // nota de título e texto muito longos, criada uma vez; o rodapé de recém-salva mostra o carimbo
+  const pg = desk.pg; await ir(pg, '/entradas');
+  await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#e-texto'); await pg.fill('#e-titulo', 'T'.repeat(160)); await pg.fill('#e-texto', 'Texto muito longo. '.repeat(120) + '#longo'); await esperaEstado(pg, 'salvo');
+  const rodape = (await pg.textContent('.modal .estado-entrada')).trim();
+  ok(/^Criada em \d{2}\/\d{2}\/\d{4} às \d{2}:\d{2}$/.test(rodape), `entrada recém-salva: o rodapé mostra o carimbo da criação no lugar de "Salvo no Dmanda" ("${rodape}")`);
+  await pg.click('.modal .btn.pri'); await janelaFechada(pg);
+}
+for (const [nome, browser, opcoes, tema] of [['iPhone escuro', nav, { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }, 'escuro'], ...(wk ? [['WebKit iPhone 13', wk, { ...devices['iPhone 13'] }, 'claro']] : []), ['computador claro', nav, { viewport: { width: 1360, height: 800 } }, 'claro']]) { // o computador vai por último: ele edita, arquiva e recupera a nota
+  const { ctx, pg } = await abrir(browser, opcoes, { tema });
+  await ir(pg, '/entradas');
+  const lay = await pg.evaluate(() => {
+    const r = (e) => { const b = e.getBoundingClientRect(); return { t: b.top, b: b.bottom }; };
+    const ref = document.createElement('p'); ref.className = 'desc'; document.querySelector('.app').appendChild(ref); const rc = getComputedStyle(ref);
+    const out = { ref: [rc.fontFamily, rc.fontSize, rc.color], notas: [...document.querySelectorAll('.postits .postit')].map((p) => {
+      const d = p.querySelector('.p-desc'), tt = p.querySelector('.p-txt'), tg = p.querySelector('.p-tags'), dt = p.querySelector('.p-data'), pr = r(p);
+      const cs = d && !d.classList.contains('oculto') ? getComputedStyle(d) : null;
+      const itens = [tt, cs ? d : null, getComputedStyle(tg).display === 'none' ? null : tg, dt].filter(Boolean);
+      return { id: p.getAttribute('data-id'), titulo: !!p.querySelector('.p-txt.tit'), temDesc: !!cs, descTxt: d?.textContent ?? null, tit: tt.textContent, fonte: cs ? [cs.fontFamily, cs.fontSize, cs.color] : null, tamanho: cs ? parseFloat(cs.fontSize) : 99,
+        dentro: itens.every((x) => r(x).b <= pr.b + 0.5 && r(x).t >= pr.t - 0.5), ordem: itens.every((x, i) => i === 0 || r(itens[i - 1]).b <= r(x).t + 1.5), semBarra: [tt, d, dt].filter(Boolean).every((x) => x.scrollWidth <= x.clientWidth + 1), data: dt.textContent }; }) };
+    ref.remove(); return out;
+  });
+  const com = lay.notas.find((n) => /Reunião com o jurídico/.test(n.tit)), semT = lay.notas.find((n) => /Ligar para a gráfica/.test(n.tit)), longa = lay.notas.find((n) => n.tit.startsWith('TTTT'));
+  ok(com.titulo && (browser !== nav ? true : com.temDesc && /^Levar o parecer impresso\./.test(com.descTxt) && !/#/.test(com.descTxt)), `${nome}: post-it com título mostra o texto como descrição abaixo dele, sem as tags`);
+  ok((com.fonte === null ? browser !== nav : JSON.stringify(com.fonte) === JSON.stringify(lay.ref)) && com.tamanho >= 10, `${nome}: a descrição usa a mesma fonte, tamanho e cor secundária da descrição das demandas (.desc)`);
+  ok(!semT.titulo && !semT.temDesc, `${nome}: post-it sem título mostra só o texto, sem duplicar como descrição`);
+  ok(lay.notas.every((n) => n.dentro && n.ordem && n.semBarra), `${nome}: título, descrição, tags e carimbo dentro do post-it, em ordem e sem sobreposição (inclusive com conteúdo muito longo)`);
+  const exp = await pg.evaluate(() => fetch('/api/exportar').then((r) => r.json()));
+  const brasilia = (iso) => { const d = new Date(Date.parse(iso) - 3 * 3600e3).toISOString(); return `Criada em ${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)} às ${d.slice(11, 16)}`; };
+  const todasArquivo = [...exp.entradas, ...exp.entradas_arquivadas];
+  ok(lay.notas.length >= 3 && lay.notas.every((n) => n.data === brasilia(todasArquivo.find((e) => e.id === n.id).criado_em).replace('Criada em ', '')) && /^\d{2}\/\d{2}\/\d{4} às \d{2}:\d{2}$/.test(longa.data), `${nome}: todo post-it mostra criado_em (Brasília, sem segundos) no pé`);
+  if (nome === 'computador claro') {
+    const alvo = com.id, criado0 = exp.entradas.find((e) => e.id === alvo).criado_em;
+    await pg.waitForTimeout(1500);
+    await pg.click(`.postit[data-id="${alvo}"] .p-abrir`); await pg.waitForSelector('[data-leitura]');
+    ok((await pg.textContent('.modal .estado-entrada')).trim() === brasilia(criado0) && /Levar o parecer impresso\.\nConferir/.test(await pg.evaluate(() => document.querySelector('.ler-corpo').innerText)), 'consulta: texto completo e carimbo da criação no rodapé');
+    await pg.click('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto'); await pg.fill('#e-texto', 'Texto editado depois. #juridico'); await esperaEstado(pg, 'salvo');
+    ok((await pg.textContent('.modal .estado-entrada')).trim() === brasilia(criado0), 'depois de editar e salvar, o carimbo continua o da criação (não o da edição)');
+    await pg.click('.modal .acoes-entrada button:has-text("Arquivar")'); await janelaFechada(pg);
+    const ex2 = await pg.evaluate(() => fetch('/api/exportar').then((r) => r.json())), arq = ex2.entradas_arquivadas.find((e) => e.id === alvo);
+    ok(arq.criado_em === criado0 && arq.atualizado_em > criado0, 'arquivada: criado_em intacto e atualizado_em diferente (nunca usado como carimbo)');
+    await ir(pg, '/arquivo'); await pg.click('.tabs [data-aba="entradas"]'); await pg.waitForSelector('.linha:has-text("Reunião com o jurídico")');
+    await pg.click('.linha:has-text("Reunião com o jurídico") .btn:has-text("Abrir")'); await pg.waitForSelector('[data-leitura]');
+    ok((await pg.textContent('.modal .estado-entrada')).trim() === brasilia(criado0), 'no Arquivo, a consulta da entrada arquivada mostra o mesmo carimbo');
+    await pg.click('.modal .acoes-entrada button:has-text("Recuperar")'); await pg.waitForFunction(() => /Arquivar/.test(document.querySelector('.modal .acoes-entrada')?.textContent ?? ''), null, { timeout: 10000 });
+    ok((await pg.textContent('.modal .estado-entrada')).trim() === brasilia(criado0), 'depois de recuperar, o carimbo continua o mesmo');
+    await pg.click('.modal .btn:has-text("Fechar")'); await janelaFechada(pg);
+    // a janela com sala de espera: aviso de conteúdo só local não mexe no carimbo
+    await foto(pg, 'entradas-descricao-carimbo');
+  }
+  await foto(pg, `entradas-grade-${nome.replace(/[^a-z0-9]+/gi, '-')}`);
+  await ctx.close();
+}
+
 // ============ navegação: Arquivadas em Demandas e em Entradas, mesma página /arquivo ============
 for (const [nome, opcoes, tema, toque] of [['computador escuro', { viewport: { width: 1360, height: 800 } }, 'escuro', false], ['iPad 820', { viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true }, 'claro', true], ['iPhone 390 claro', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }, 'claro', true], ['iPhone 390 escuro', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }, 'escuro', true]]) {
   const { ctx, pg } = await abrir(nav, opcoes, { tema });

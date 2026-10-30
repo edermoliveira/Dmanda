@@ -2,7 +2,7 @@
 // As regras de negócio ficam no banco (migrações); aqui só se confere o formato e se traduz o erro em mensagem para a pessoa.
 import { AREAS, ETAPAS, PRAZOS, TIPOS } from '../lib/demandas.ts';
 import { BOTOES_PRAZO, CATEGORIAS_DIA, type CategoriaDia } from '../lib/prazos.ts';
-import { LIMITE_TEXTO, LIMITE_TITULO, QTD_CORES } from '../lib/entradas.ts';
+import { COR_MAX_ACEITA, LIMITE_TEXTO, LIMITE_TITULO } from '../lib/entradas.ts';
 
 /** Erro com texto próprio para mostrar na tela. */
 export class ErroDmanda extends Error {}
@@ -67,7 +67,7 @@ export function validarEntrada(entrada: unknown, { criando }: { criando: boolean
   if ('texto' in e) s.texto = texto(e.texto, 'Texto', LIMITE_TEXTO + 1000).trim();
   if (typeof s.titulo === 'string' && s.titulo.length > LIMITE_TITULO) throw new ErroDmanda(`O título passa de ${LIMITE_TITULO} caracteres.`);
   if (typeof s.texto === 'string' && s.texto.length > LIMITE_TEXTO) throw new ErroDmanda(`O texto passa de ${LIMITE_TEXTO} caracteres.`);
-  if ('cor' in e && e.cor !== null && e.cor !== undefined) { if (typeof e.cor !== 'number' || !Number.isInteger(e.cor) || e.cor < 0 || e.cor >= QTD_CORES) throw new ErroDmanda('Cor inválida.'); s.cor = e.cor; }
+  if ('cor' in e && e.cor !== null && e.cor !== undefined) { if (typeof e.cor !== 'number' || !Number.isInteger(e.cor) || e.cor < 0 || e.cor > COR_MAX_ACEITA) throw new ErroDmanda('Cor inválida.'); s.cor = e.cor; }
   if ('fixada' in e && e.fixada !== undefined) { if (typeof e.fixada !== 'boolean') throw new ErroDmanda('Fixação inválida.'); s.fixada = e.fixada; }
   if (criando && !String(s.titulo ?? '') && !String(s.texto ?? '')) throw new ErroDmanda('Escreva um título ou o texto da anotação.');
   if (!criando && 'titulo' in s && 'texto' in s && !s.titulo && !s.texto) throw new ErroDmanda('A anotação não pode ficar vazia. Para tirá-la da lista, arquive.');

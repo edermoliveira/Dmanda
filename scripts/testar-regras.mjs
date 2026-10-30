@@ -7,7 +7,7 @@ import { googleLigado } from '../src/lib/login.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
 import { dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
 import { validarDados, validarDia, validarEntrada } from '../src/nucleo/validacao.ts';
-import { estadoDe, tagsDe, semTags, resumoDe, temTitulo, contarTags, filtrarEntradas, ordenarEntradas, paraDemanda, diferencas, vazia, camposEmConflito } from '../src/lib/entradas.ts';
+import { estadoDe, tagsDe, semTags, resumoDe, temTitulo, contarTags, filtrarEntradas, ordenarEntradas, paraDemanda, diferencas, vazia, camposEmConflito, carimbo, QTD_CORES } from '../src/lib/entradas.ts';
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const hoje = '2026-10-25';
@@ -150,6 +150,9 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(/passa de 200/.test(fe(() => validarEntrada({ titulo: 'x'.repeat(201) }, { criando: true }))) && /passa de 20000/.test(fe(() => validarEntrada({ texto: 'x'.repeat(20001) }, { criando: true }))) && validarEntrada({ texto: 'x'.repeat(20000), titulo: 'y'.repeat(200) }, { criando: true }).texto.length === 20000, 'validação de entrada: limites de 200 e 20000 caracteres');
   ok(/Identificador inválido/.test(fe(() => validarEntrada({ id: 'x', texto: 'a' }, { criando: true }))) && /Fixação inválida/.test(fe(() => validarEntrada({ texto: 'a', fixada: 'sim' }, { criando: true }))) && /inválidos/.test(fe(() => validarEntrada(null, { criando: true }))), 'validação de entrada: identificador, fixação e formato inválidos são recusados');
   ok(Object.keys(validarEntrada({ fixada: true }, { criando: false })).join() === 'fixada' && /não pode ficar vazia/.test(fe(() => validarEntrada({ titulo: '', texto: '  ' }, { criando: false }))) && validarEntrada({ titulo: '' }, { criando: false }).titulo === '', 'validação de entrada: na edição só vai o que mudou; esvaziar título e texto juntos é recusado, esvaziar só o título não');
+  // carimbo da criação (criado_em): America/Sao_Paulo, 24 h, sem segundos, e cinco cores oferecidas (a 5, retirada, ainda é aceita em notas antigas)
+  ok(carimbo('2026-10-30T17:48:00Z') === '30/10/2026 às 14:48' && carimbo('2026-10-31T02:30:59.999Z') === '30/10/2026 às 23:30' && carimbo('2026-01-01T03:00:00Z') === '01/01/2026 às 00:00' && !/:\d{2}:\d{2}/.test(carimbo('2026-10-30T17:48:35Z')), 'carimbo: dia/mês/ano às hh:mm no horário de Brasília, 24 h, sem segundos');
+  ok(QTD_CORES === 5 && validarEntrada({ texto: 'a', cor: 4 }, { criando: true }).cor === 4 && validarEntrada({ texto: 'a', cor: 5 }, { criando: false }).cor === 5 && /Cor inválida/.test(fe(() => validarEntrada({ texto: 'a', cor: 6 }, { criando: true }))), 'entradas: cinco cores oferecidas; a cor retirada (5) continua aceita em notas antigas; 6 é recusada');
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
