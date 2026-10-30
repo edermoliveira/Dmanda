@@ -35,6 +35,10 @@ const ir = async (pg, rota) => {
   await pg.goto(BASE + rota, { waitUntil: 'load', timeout: 120000 }); await pg.waitForSelector('.app .main', { timeout: 120000 });
   await pg.waitForFunction(() => !/Carregando as (entradas|demandas)/.test(document.body.innerText), null, { timeout: 120000 });
   await pg.waitForFunction(() => { const a = document.querySelector('.app'); return !!a && Object.keys(a).some((k) => k.startsWith('__reactFiber') || k.startsWith('__reactProps')); }, null, { timeout: 120000 });
+  if (rota === '/demandas') { // a visão guardada só aparece depois de os dados chegarem (as ações do servidor do início rodam uma de cada vez): espera explícita
+    await pg.waitForFunction(() => { let v = 'cards'; try { v = JSON.parse(localStorage.getItem('dmanda:ui') || '{}').visao || 'cards'; } catch { /* Cards */ }
+      return !!document.querySelector({ cards: '.cards .dcard', quadro: '.quadro .coluna', tabela: '.tabela tbody tr', lista: '.lista-dem .linha' }[v]) || !!document.querySelector('.vazio, .erro-carga'); }, null, { timeout: 30000 });
+  }
   await pg.waitForTimeout(900);
 };
 const foto = async (pg, nome) => { if (CAP) await pg.screenshot({ path: `${CAP}/${nome}.png` }); };
@@ -111,7 +115,7 @@ const desk = await abrir(nav, { viewport: { width: 1360, height: 800 } });
   const pg = desk.pg;
   for (const v of ['cards', 'quadro']) {
     await pg.evaluate((x) => localStorage.setItem('dmanda:ui', JSON.stringify({ visao: x })), v); await ir(pg, '/demandas');
-    await pg.waitForSelector(v === 'cards' ? '.dcard' : '.mini-card');
+    await pg.waitForSelector(v === 'cards' ? '.dcard' : '.mini-card', { timeout: 15000 }).catch(async (e) => { if (CAP) await pg.screenshot({ path: `${CAP}/falha-${v}.png` }); console.log('diagnóstico', v, JSON.stringify(await pg.evaluate(() => ({ ui: localStorage.getItem('dmanda:ui'), cols: document.querySelectorAll('.coluna').length, texto: document.querySelector('.main')?.innerText.slice(0, 200) })))); throw e; });
     const r = await pg.evaluate(() => ({ cards: document.querySelectorAll('.dcard, .mini-card').length, selos: document.querySelectorAll('.dcard .selo, .mini-card .selo').length, pz: document.querySelectorAll('.dcard .pz, .mini-card .pz').length, doc: document.documentElement.scrollWidth <= innerWidth }));
     ok(r.cards >= 4 && r.selos === 0, `${v}: nenhum card mostra o selo Legal/Próprio (${r.cards} cards)`);
     ok(r.pz >= 3, `${v}: o vencimento e a contagem regressiva continuam nos cards (${r.pz})`);
@@ -314,6 +318,7 @@ if (wk) await leitura('WebKit iPhone 13', wk, { ...devices['iPhone 13'] }, 'clar
   const rascunhosAntes = await pg.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}')));
   ok(rascunhosAntes.some((k) => k.startsWith('e:') && k !== 'e:nova'), 'rascunho: o texto alterado ficou guardado neste aparelho (rede derrubada)');
   await pg.unroute('**/*'); await pg.goto(BASE + '/entradas'); await ir(pg, '/entradas');
+  await pg.waitForFunction(() => /Só neste aparelho/.test(document.querySelector('.postits')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => {});
   ok(await pg.evaluate(() => /Só neste aparelho/.test(document.querySelector('.postits')?.textContent ?? '')), 'rascunho: a grade marca a entrada como "Só neste aparelho"');
   await pg.click(`${alvo} .p-abrir`); await pg.waitForSelector('[data-leitura]');
   const texto = await pg.textContent('.modal');
@@ -332,6 +337,33 @@ if (wk) await leitura('WebKit iPhone 13', wk, { ...devices['iPhone 13'] }, 'clar
   await pg.click('.modal .btn:has-text("Voltar à leitura")'); await pg.waitForSelector('[data-leitura]');
   ok(/TEXTO SÓ NO APARELHO/.test(await pg.textContent('[data-leitura]')), 'rascunho: retomado, salvo no Dmanda e visível na leitura');
   await pg.click('.modal .btn:has-text("Fechar")'); await janelaFechada(pg);
+  await ctx.close();
+}
+
+// ============ navegação: Arquivadas em Demandas e em Entradas, mesma página /arquivo ============
+for (const [nome, opcoes, tema, toque] of [['computador escuro', { viewport: { width: 1360, height: 800 } }, 'escuro', false], ['iPad 820', { viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true }, 'claro', true], ['iPhone 390 claro', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }, 'claro', true], ['iPhone 390 escuro', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }, 'escuro', true]]) {
+  const { ctx, pg } = await abrir(nav, opcoes, { tema });
+  const clicar = (sel) => (toque ? pg.tap(sel) : pg.click(sel));
+  const aba = () => pg.evaluate(() => document.querySelector('.tabs [aria-pressed="true"]')?.getAttribute('data-aba'));
+  await ir(pg, '/demandas');
+  const b = await pg.evaluate(() => { const x = document.querySelector('.toolbar [aria-label="Ver demandas arquivadas"]'), r = x.getBoundingClientRect(), tb = document.querySelector('.toolbar').getBoundingClientRect(); const bs = [...document.querySelectorAll('.toolbar > .btn')].map((e) => e.getBoundingClientRect()); return { w: r.width, h: r.height, tx: getComputedStyle(x.querySelector('.tx')).display, dentro: bs.every((q) => q.left >= tb.left - 1 && q.right <= tb.right + 1), semSobrepor: bs.every((q, i) => bs.every((o, j) => i === j || q.right <= o.left + 1 || o.right <= q.left + 1 || q.bottom <= o.top + 1 || o.bottom <= q.top + 1)), doc: document.documentElement.scrollWidth <= innerWidth }; });
+  ok(b.w >= 32 && b.h >= 32 && b.dentro && b.semSobrepor && b.doc && (opcoes.viewport.width >= 900 ? b.tx !== 'none' : b.tx === 'none'), `${nome}: botão "Ver demandas arquivadas" na barra de Demandas, dentro dela e sem sobrepor (${Math.round(b.w)}x${Math.round(b.h)}, texto ${b.tx})`);
+  await foto(pg, `demandas-barra-${nome.replace(/[^a-z0-9]+/gi, '-')}`);
+  // caminho 1: Entradas > Arquivadas deixa a aba Entradas; depois Demandas > Arquivadas tem de abrir a aba Demandas
+  await ir(pg, '/entradas'); await clicar('.toolbar [aria-label="Ver entradas arquivadas"]'); await pg.waitForSelector('.tabs [data-aba]'); await pg.waitForFunction(() => /Para arquivar/.test(document.querySelector('.main').textContent), null, { timeout: 15000 }).catch(() => {});
+  ok(pg.url().endsWith('/arquivo') && (await aba()) === 'entradas' && /Para arquivar/.test(await pg.textContent('.main')), `${nome}: Entradas > Arquivadas abre /arquivo na aba Entradas, com a lista`);
+  await pg.evaluate(() => history.back()); await pg.waitForSelector('.toolbar [aria-label="Nova entrada"]');
+  await pg.evaluate(() => { const l = [...document.querySelectorAll('.side .navi, .bar button, .bar a')].find((e) => /^\s*Demandas\s*$/.test(e.textContent)); l.click(); });
+  await pg.waitForSelector('.toolbar [aria-label="Ver demandas arquivadas"]');
+  await clicar('.toolbar [aria-label="Ver demandas arquivadas"]'); await pg.waitForSelector('.tabs [data-aba]'); await pg.waitForTimeout(300);
+  ok(pg.url().endsWith('/arquivo') && (await aba()) === 'demandas' && /Só origem/.test(await pg.textContent('.main')), `${nome}: Demandas > Arquivadas abre /arquivo na aba Demandas, mesmo com a última visita na aba Entradas`);
+  // troca de abas e consulta/recuperação preservadas
+  await clicar('.tabs [data-aba="entradas"]'); await pg.waitForFunction(() => document.querySelector('.tabs [data-aba="entradas"]')?.getAttribute('aria-pressed') === 'true'); await clicar('.tabs [data-aba="demandas"]');
+  await pg.waitForSelector('.linha:has-text("Só origem") .btn:has-text("Desarquivar")'); await pg.waitForSelector('.linha:has-text("Só origem") .btn:has-text("Excluir")');
+  ok((await aba()) === 'demandas', `${nome}: troca de abas funciona e as ações Abrir, Desarquivar e Excluir seguem na lista`);
+  // caminho 2: Mais > Arquivo (acesso geral) mostra a última aba e funciona
+  await ir(pg, '/mais'); await clicar('.navi.grande:has-text("Arquivo")'); await pg.waitForSelector('.tabs [data-aba]');
+  ok(pg.url().endsWith('/arquivo') && ['demandas', 'entradas'].includes(await aba()), `${nome}: Mais > Arquivo continua abrindo a página geral`);
   await ctx.close();
 }
 

@@ -94,7 +94,8 @@ function PainelFiltros({ pos, fechar }: { pos: { x: number; y: number }; fechar:
 }
 
 export function PaginaDemandas() {
-  const { demandas, carregando, visao, setVisao, filtro, setFiltro, abrirJanela, hoje } = useApp();
+  const { demandas, carregando, visao, setVisao, filtro, setFiltro, abrirJanela, hoje, setAbaArquivo } = useApp();
+  const router = useRouter();
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const lista = filtrar(demandas, filtro, hoje);
   const nAt = demandas.filter((d) => atrasada(d, hoje)).length;
@@ -115,7 +116,7 @@ export function PaginaDemandas() {
   return (
     <>
       <CabecaPagina titulo="Demandas" sub={`${plural(demandas.length, 'demanda')}, ${plural(nAt, 'atrasada')}. Do cadastro à conclusão.`} />
-      <div className="toolbar">
+      <div className="toolbar t4">
         <div className="tabs" role="group" aria-label="Visão">
           <Capsula sel='button[aria-pressed="true"]' chave={visao} />
           {VISOES.map(([v, nome, icone]) => <button key={v} data-v={v} aria-pressed={visao === v} aria-label={nome} onClick={() => setVisao(v)}><Icone nome={icone} /><span className="tx">{nome}</span></button>)}
@@ -123,6 +124,7 @@ export function PaginaDemandas() {
         <label className="filtro"><Icone nome="busca" /><input id="fq" placeholder={toque ? 'Filtrar demandas' : 'Filtrar demandas ( / )'} value={filtro.texto} aria-label="Filtrar demandas" autoComplete="off" onChange={(e) => setFiltro({ texto: e.target.value })} /></label>
         <button className="btn gl" aria-pressed={filtro.soAtrasadas} aria-label="Só atrasadas" onClick={() => setFiltro({ soAtrasadas: !filtro.soAtrasadas })}><Icone nome="clock" /><span className="tx">Só atrasadas{nAt ? ` ${nAt}` : ''}</span></button>
         <button className="btn gl" data-filtros aria-haspopup="dialog" aria-expanded={!!pos} aria-label={nFiltros ? `Filtros, ${nFiltros} ativos` : 'Filtros'} onClick={(e) => { const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setPos(pos ? null : { x: b.right - a.left, y: b.bottom - a.top }); }}><Icone nome="filtro" /><span className="tx">Filtros{nFiltros ? ` ${nFiltros}` : ''}</span></button>
+        <button className="btn gl" aria-label="Ver demandas arquivadas" onClick={() => { setAbaArquivo('demandas'); router.push('/arquivo'); }}><Icone nome="archive" /><span className="tx">Arquivadas</span></button>
         <button className="btn escuro" aria-label="Nova demanda" onClick={() => abrirJanela({ t: 'nova' })}><Icone nome="plus" /><span className="tx">Nova demanda</span></button>
       </div>
       {pos ? <PainelFiltros pos={pos} fechar={() => setPos(null)} /> : null}

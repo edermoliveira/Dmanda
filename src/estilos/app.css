@@ -159,6 +159,12 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app[data-dir="d"] .modal .ler-corpo { font-weight: 500; white-space: pre-wrap; }
 .app[data-dir="d"] .modal .ler-tags { display: flex; flex-wrap: wrap; gap: 2px 10px; font-family: var(--font); font-size: inherit; font-weight: 600; opacity: .72; line-height: inherit; }
 
+/* Barra de Demandas com quatro botões (Só atrasadas, Filtros, Arquivadas, Nova demanda): no celular, uma coluna a mais */
+@container tela (max-width: 520px) {
+  .app[data-dir="d"] .toolbar.t4 { grid-template-columns: 1fr auto auto auto auto; }
+  .app[data-dir="d"] .toolbar.t4 > .btn:nth-of-type(4) { grid-column: 5; }
+}
+
 /* ---------- Arquivo: as abas Demandas e Entradas não têm ícone, então o texto aparece em todas as larguras ---------- */
 .app .tabs.so-texto .tx { display: inline; }
 
