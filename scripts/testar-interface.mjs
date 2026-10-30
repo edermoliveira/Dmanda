@@ -28,7 +28,24 @@ const novoContexto = async (opcoes, { visao = 'cards', tema = 'claro' } = {}) =>
   pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
   return { ctx, pg };
 };
-const ir = async (pg, rota = '/demandas') => { await pg.goto(BASE + rota, { waitUntil: 'load', timeout: 120000 }); await pg.waitForSelector('.app .main', { timeout: 120000 }); await pg.waitForFunction(() => !document.body.innerText.includes('Carregando as demandas'), null, { timeout: 120000 }); await pg.waitForTimeout(300); };
+// Depois de carregar, a tela ainda precisa aplicar a visão guardada no navegador (Cards, Quadro, Tabela ou Lista): o aplicativo lê essa preferência depois da hidratação e as ações do servidor
+// do início (demandas, ambiente, dias, rotina, entradas) rodam uma de cada vez, então a visão guardada aparece de 0,1 a 0,5 s DEPOIS de os dados chegarem (medido, e igual na versão anterior ao
+// bloco de Entradas). Por isso o "ir" espera explicitamente a visão pedida (ou o estado vazio, ou o erro de carga), com limite, e falha com o retrato da tela.
+const VISAO_SEL = { cards: '.cards .dcard', quadro: '.quadro .coluna', tabela: '.tabela tbody tr', lista: '.lista .linha' };
+const ir = async (pg, rota = '/demandas') => {
+  await pg.goto(BASE + rota, { waitUntil: 'load', timeout: 120000 }); await pg.waitForSelector('.app .main', { timeout: 120000 });
+  await pg.waitForFunction(() => !document.body.innerText.includes('Carregando as demandas'), null, { timeout: 120000 });
+  if (rota === '/demandas') {
+    await pg.waitForFunction(([sel]) => {
+      let v = 'cards'; try { v = JSON.parse(localStorage.getItem('dmanda:ui') || '{}').visao || 'cards'; } catch { /* preferência ilegível: Cards */ }
+      return !!document.querySelector(sel[v]) || !!document.querySelector('.vazio, .erro-carga');
+    }, [VISAO_SEL], { timeout: 30000 }).catch(async () => {
+      const retrato = await pg.evaluate(() => ({ visao: localStorage.getItem('dmanda:ui'), colunas: document.querySelectorAll('.coluna').length, cards: document.querySelectorAll('.dcard').length, vazio: !!document.querySelector('.vazio'), erroCarga: document.querySelector('.erro-carga')?.textContent?.slice(0, 120) ?? null, texto: document.querySelector('.main')?.innerText.slice(0, 160) }));
+      throw new Error('a visão guardada não apareceu em 30 s: ' + JSON.stringify(retrato));
+    });
+  }
+  await pg.waitForTimeout(300);
+};
 const fecharJanela = async (pg) => { await pg.click('.modal [aria-label="Fechar"]'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 8000 }); };
 const passoAtual = (pg) => pg.$$eval('.modal .passos li', (e) => e.findIndex((x) => x.getAttribute('aria-current') === 'step') + 1);
 const rascunhos = (pg) => pg.evaluate(() => { try { return JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}'); } catch { return {}; } });

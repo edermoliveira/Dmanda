@@ -67,7 +67,8 @@ const auth = http.createServer(async (req, res) => {
     else if (u.searchParams.get('scope') === 'global' || u.searchParams.get('scope') === 'others') revogadas.add('TUDO');
     res.writeHead(204, CORS); return res.end();
   }
-  if (u.pathname === '/rest/v1/rpc/listar_demandas' || u.pathname === '/rest/v1/rpc/listar_dias_indisponiveis') return json(res, 200, []);
+  // listas vazias: demandas, dias indisponíveis e entradas (a cópia dos dados, /api/exportar, lê as três; uma função desconhecida aqui vira 404 e a rota responde 500)
+  if (['listar_demandas', 'listar_dias_indisponiveis', 'listar_entradas'].some((f) => u.pathname === `/rest/v1/rpc/${f}`)) return json(res, 200, []);
   if (u.pathname === '/rest/v1/rpc/estado_rotina') return json(res, 200, { ultima_ok: null, ultima_falha: null, resumo_data: null, resumo_calculado_em: null });
   return json(res, 404, {});
 });
@@ -161,7 +162,7 @@ ok(r.status === 200 && renovacoes() === 0 && !gravado(setCookies(r), 'sb-127-aut
 // renovação visível à renderização da mesma requisição: a rota de exportação lê a sessão de novo no servidor e NÃO pode renovar outra vez
 chamadas.length = 0;
 r = await pedir(cookieHeader({ sid: 'renova2', expiraEm: -3600, n: 0 }), '/api/exportar');
-ok(r.status === 200 && renovacoes() === 1, 'a renovação feita no proxy chega à rota do servidor na mesma requisição: uma única renovação, não duas (renovar duas vezes gastaria o token e revogaria a sessão)');
+ok(r.status === 200 && renovacoes() === 1, `a renovação feita no proxy chega à rota do servidor na mesma requisição: uma única renovação, não duas (renovar duas vezes gastaria o token e revogaria a sessão) [status ${r.status}, renovações ${renovacoes()}, rotas do Auth falso chamadas: ${[...new Set(chamadas.map((c) => c.replace(/\?.*/, '')))].join(' ')}]`);
 // redirecionamento depois de renovar também leva os cookies novos
 chamadas.length = 0;
 r = await pedir(cookieHeader({ sid: 'renova3', expiraEm: -3600, n: 0 }), '/login');
