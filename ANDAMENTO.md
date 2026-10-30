@@ -1,6 +1,6 @@
 # Andamento do Dmanda
 
-Última revisão da fórmula e das evidências: **30/10/2026**. **Total: 33%** (29% na primeira reavaliação de 30/10/2026; 18% até 29/10/2026). É a primeira reavaliação que incorpora uma avaliação do usuário: em 30/10/2026 ele **aprovou o bloco entregue na versão `2714937`** (correções do cadastro, cards, tipografia e prazos, na aplicação publicada). A aprovação vale **só** para o que ele disse. Ela **não** comprova a origem das execuções do cron nem a permanência prolongada da sessão, e nada abaixo a usa para isso.
+Última revisão da fórmula e das evidências: **30/10/2026**. **Total: 37%** (33% antes da aprovação dos ajustes; 29% na primeira reavaliação de 30/10/2026; 18% até 29/10/2026). É a primeira reavaliação que incorpora uma avaliação do usuário: em 30/10/2026 ele **aprovou o bloco entregue na versão `2714937`** (correções do cadastro, cards, tipografia e prazos, na aplicação publicada). A aprovação vale **só** para o que ele disse. Ela **não** comprova a origem das execuções do cron nem a permanência prolongada da sessão, e nada abaixo a usa para isso.
 
 **Segunda reavaliação de 30/10/2026 (depois do bloco de ajustes).** O usuário **aprovou o funcionamento de Entradas** (versão `1aecf40`, testada por ele na PWA do iPhone) e pediu cinco ajustes de consulta e interface, entregues no commit `c932dac` e **ainda aguardando a conferência dele no iPhone**. A aprovação vale para o **funcionamento**; não é aprovação visual. Mudanças nas contas: (a) Entradas passa a contar os itens que ele aprovou; (b) Estrutura ganha meio ponto, porque ele confirmou usar a PWA no iPhone (o iPad não é presumido); (c) Demandas **perde** meio item: "Dias indisponíveis" estava contado como aprovado, e ele apontou depois o campo Data saindo do quadro no iPhone, então o item volta a meio ponto até ele conferir a correção.
 
@@ -11,9 +11,9 @@
 | Planejamento e pesquisa de ferramentas | 8 | 100% | 8,0 | Documentos revisados e decisões gravadas |
 | Design system novo (refação) e protótipos | 12 | 85% | 10,2 | **Catalyst único aprovado** (`cd7b03f`), claro e escuro, com a escala tipográfica de 85% aprovada na aplicação. Falta a página de peças com os cinco estados e a revisão consolidada dos ícones restantes |
 | Estrutura: menus, banco de dados, login, publicação | 12 | 45% | 5,4 | Contam: menus e moldura, entrada por senha no Supabase real, banco real com 10 migrações e dados reais em uso, publicação na Vercel e, pela metade, a PWA instalada (o usuário confirmou usar no iPhone em 30/10/2026; o iPad não é presumido). Faltam: sessão por horas reais, PWA no iPad, cron registrado e com execução comprovada, cópia dos dados baixada no app instalado, restauração em projeto real e destino da cópia (Issue #4) |
-| Demandas (cards, cadastro, prazos, tarefas, arquivo) | 18 | 31% | 5,5 | Aprovados pelo usuário: cadastro guiado, cards, prazo original e ajustado e, em parte, o Quadro. **Dias indisponíveis voltou a meio ponto** (campo Data fora do quadro no iPhone, correção publicada e aguardando conferência). A nova Lista e o selo Legal/Próprio fora dos cards (30/10/2026) também aguardam a conferência. Falta a avaliação de Tabela, Lista, consulta com lápis, tarefas, etapas, arquivo, filtros e do uso com dados reais |
+| Demandas (cards, cadastro, prazos, tarefas, arquivo) | 18 | 42% | 7,6 | Aprovados pelo usuário: cadastro guiado, cards, prazo original e ajustado, dias indisponíveis (campo Data corrigido e aprovado em `ddef462`), a Lista reorganizada e, em parte, o Quadro. O botão "Arquivadas" de Demandas aguarda a conferência. Falta a avaliação de Tabela, Lista, consulta com lápis, tarefas, etapas, arquivo, filtros e do uso com dados reais |
 | Início (indicadores, alertas, mensagem do dia, clima) | 7 | 0% | 0 | Indicadores, grupos e Foco do dia existem e passam nos testes, mas **o usuário ainda não avaliou o Início**. Não existem clima, mensagem do dia nem widgets |
-| Entradas (post-its, virar demanda) | 6 | 67% | 4,0 | **Funcionamento aprovado pelo usuário em 30/10/2026** (versão `1aecf40`), com ajustes pedidos no mesmo dia: modo de leitura com lápis e texto do seletor do Arquivo (implementados e aguardando conferência no iPhone). Fora do bloco: voz, foto, envelhecimento das notas e IA |
+| Entradas (post-its, virar demanda) | 6 | 92% | 5,5 | **Funcionamento aprovado pelo usuário em 30/10/2026** (`1aecf40`) e ajustes aprovados (`ddef462`): leitura com lápis e seletor do Arquivo; o visual dos post-its não foi declarado aprovado (meio ponto). Fora do bloco: voz, foto, envelhecimento das notas e IA |
 | Agenda (visões, eventos, notificações) | 9 | 0% | 0 | Só no protótipo. Não iniciada na aplicação |
 | Busca global e botão "+" | 5 | 0% | 0 | O "+" existe com Demanda, Tarefa e Nova entrada; Evento, Documento e Chat estão desativados. Busca global não existe |
 | Configurações (paletas, fontes, tamanhos) | 8 | 0% | 0 | Só Dias indisponíveis existe na aplicação |
@@ -22,7 +22,7 @@
 | IA estagiária | 4 | 0% | 0 | Não iniciada |
 | Documentos | 2 | 0% | 0 | Não iniciada |
 
-Soma dos pontos: 33,1, ou **33%** (8,0 + 10,2 + 5,4 + 5,5 + 4,0). Antes: 29,3 na primeira reavaliação de 30/10/2026 e 18,2 até 29/10/2026. Subiram Estrutura (meio ponto, PWA no iPhone) e Entradas (aprovação funcional); desceu Demandas (Dias indisponíveis voltou a meio ponto). O resultado sai da contagem, não de uma meta. (Linha anterior, superada: "29,3, ou 29%".)
+Soma dos pontos: 36,7, ou **37%** (8,0 + 10,2 + 5,4 + 7,6 + 5,5); era 33,1 antes da aprovação dos ajustes. Antes: 29,3 na primeira reavaliação de 30/10/2026 e 18,2 até 29/10/2026. Subiram Estrutura (meio ponto, PWA no iPhone) e Entradas (aprovação funcional); desceu Demandas (Dias indisponíveis voltou a meio ponto). O resultado sai da contagem, não de uma meta. (Linha anterior, superada: "29,3, ou 29%".)
 
 ### Itens por etapa (base dos percentuais de 30/10/2026; itens de peso igual)
 
@@ -108,4 +108,4 @@ Cada etapa tem um peso (soma 100) e um percentual feito. O total é a soma dos p
 
 Soma dos pontos: 18,2, ou 18%. (Era 17,6 antes da rodada 3.) A fórmula não mudou: pontos = peso x percentual feito, soma de todas as etapas.
 
-
+**Nota de 30/10/2026 (aprovação dos ajustes):** o usuário aprovou os ajustes da versão `ddef462` (leitura de Entradas com lápis, seletor do Arquivo, campo Data, Lista, selo fora dos cards). Isso passa a contar: Entradas completa os itens 3 e 5 e o item 6 fica em meio ponto (o visual não foi declarado aprovado), Demandas recupera "Dias indisponíveis" por inteiro e ganha a Lista. Recontagem (corrige a tabela das notas): Entradas 5,5 de 6 (92%, 5,5 pontos); Demandas 5,5 de 13 itens, com o Quadro em meio (42%, 7,6 pontos), sem contar Tabela, tarefas, etapas, arquivo e filtros; Estrutura 45% (5,4); Design 85% (10,2); Planejamento 100% (8,0). Soma: 36,7, ou **37%**. O botão "Arquivadas" de Demandas (`d1cac39`) ainda aguarda a conferência e não soma.

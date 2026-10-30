@@ -8,7 +8,13 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 ---
 
-## AJUSTES DE 30/10/2026 DEPOIS DA APROVAÇÃO FUNCIONAL DE ENTRADAS (leia primeiro)
+## COMPLEMENTO DE NAVEGAÇÃO DE 30/10/2026 (leia primeiro)
+
+O usuário aprovou os ajustes da `ddef462`. Entrou o botão "Arquivadas" em Demandas (`d1cac39`, decisão 41): abre `/arquivo` na aba certa; aguarda a conferência no iPhone. Andamento 37% (`ANDAMENTO.md`). Agenda só depois.
+
+---
+
+## AJUSTES DE 30/10/2026 DEPOIS DA APROVAÇÃO FUNCIONAL DE ENTRADAS
 
 **Ponto de retomada.** O usuário **aprovou o funcionamento de Entradas** (versão `1aecf40`, PWA do iPhone, que ele confirmou usar; o iPad não é presumido) e pediu cinco ajustes, entregues no commit `c932dac` e **aguardando a conferência dele no iPhone** (roteiro em `CONTINUIDADE-DMANDA.md`, seção I; decisão 40): Entradas abre em leitura com lápis (rascunho não enviado em espera), texto do seletor do Arquivo, campo Data dentro do quadro, Lista de Demandas reorganizada, selo Legal/Próprio fora dos cards. Sem migração. Andamento: 33%. **Agenda e os demais módulos só começam depois da conferência.** Teste novo: `npm run testar:ajustes` (563, Edge e WebKit do Playwright).
 
