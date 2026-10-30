@@ -8,10 +8,11 @@ import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';
 
 export type Visao = 'cards' | 'quadro' | 'tabela' | 'lista';
-export type Janela = { t: 'nova'; etapa?: Etapa } | { t: 'editar'; id: string } | { t: 'tarefa' } | null;
+export type Janela = { t: 'nova' } | { t: 'editar'; id: string } | { t: 'tarefa' } | null;
 // versao: a versão da demanda sobre a qual o rascunho foi digitado (se a demanda mudou depois, o salvamento é recusado em vez de sobrescrever)
-// passo: em que passo do cadastro guiado a pessoa estava. secoes: quais seções da consulta estavam em edição (o cadastro guiado deixa isso quando fecha com algo não salvo).
-export type Rascunho = { dados: DadosDemanda & Record<string, unknown>; tarefas?: TarefaEdicao[]; nt?: string; versao?: number; passo?: 1 | 2; secoes?: string[] };
+// passo: em que passo do cadastro guiado a pessoa estava. idNovo: o identificador que o aplicativo gerou para a demanda nova (repetir a criação com ele nunca duplica).
+// demandaId: a demanda já criada pelo passo 2, quando o cadastro foi interrompido depois dela (recarga, PWA encerrada). secoes: quais seções da consulta estavam em edição (o cadastro guiado deixa isso quando fecha com algo não salvo).
+export type Rascunho = { dados: DadosDemanda & Record<string, unknown>; tarefas?: TarefaEdicao[]; nt?: string; versao?: number; passo?: 1 | 2 | 3; idNovo?: string; demandaId?: string; secoes?: string[] };
 /** Resultado de salvar a janela de edição: gravou, foi recusado por conflito de versão (nada gravado, a edição local fica) ou falhou por outro motivo. */
 export type ResultadoSalvar = { ok: true; demanda: Demanda } | { ok: false; conflito: boolean };
 type Aviso = { n: number; msg: string; erro: boolean } | null;

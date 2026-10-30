@@ -57,7 +57,7 @@ function Interior({ children }: { children: ReactNode }) {
   return (
     <div className="frame real" id="frame">
       <div ref={appRef} className="app" data-dir="d" data-tema={tema} data-ico="fino" data-dev={toque ? 'toque' : 'desktop'} data-col="true" data-aberto={menuAberto} data-reduzir="false"
-        style={{ '--fs': '16px', '--icn': '20px', '--cardh': '340px', '--font': 'var(--f-inter), system-ui, sans-serif', '--font-h': 'var(--f-inter), system-ui, sans-serif', '--font-ui': 'var(--f-inter), system-ui, sans-serif', '--font-n': 'var(--f-mono), ui-monospace, monospace' }as CSSProperties}>
+        style={{ '--icn': '20px', '--cardh': '340px', '--font': 'var(--f-inter), system-ui, sans-serif', '--font-h': 'var(--f-inter), system-ui, sans-serif', '--font-ui': 'var(--f-inter), system-ui, sans-serif', '--font-n': 'var(--f-mono), ui-monospace, monospace' }as CSSProperties}>
         <div className="bg"><i className="bg-img" /></div>
         <aside className="side" aria-label="Menu">
           <Capsula sel=".navi[aria-current='page']" chave={caminho} />

@@ -6,7 +6,13 @@ import { useApp } from './contexto';
 import { AcaoCard, BarraProg, CardDemanda, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
 import { atrasada, ETAPA_COR, ETAPAS, numeroDe, ordenar, percentual, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
 
-/** Ajuste ao espaço (card e nota nunca têm barra de rolagem): sem espaço, some primeiro o que é secundário e o título preenche o que sobrar. Mesma regra do protótipo. */
+// O título é a informação principal do card: ele nunca é espremido para dar lugar ao resto. Linhas que o título mantém: o que o texto precisar, até TETO_TITULO, e nunca
+// menos que MINIMO_TITULO (ou o que o texto tiver, se for curto). Quando falta altura, cede primeiro a descrição (menos linhas, depois some), depois o tempo e o selo, só
+// então o título perde linhas (até o mínimo) e por último saem a etapa e a barra de progresso. O título sempre ocupa linhas inteiras (nunca uma letra cortada ao meio).
+// Tudo é recalculado do zero a cada ajuste: ao voltar a existir espaço (janela maior, menu recolhido, zoom menor), o que saiu reaparece.
+const TETO_TITULO = 4;
+const MINIMO_TITULO = 2;
+/** Ajuste ao espaço (card e nota nunca têm barra de rolagem). */
 export function ajustar() {
   const app = document.querySelector('.app');
   if (!app) return;
@@ -14,14 +20,21 @@ export function ajustar() {
   app.querySelectorAll<HTMLElement>('.face.front').forEach((f) => {
     f.querySelectorAll('.oculto').forEach((x) => x.classList.remove('oculto'));
     const ds = f.querySelector<HTMLElement>('.desc');
+    const t = f.querySelector<HTMLElement>('.assunto.fit');
     const sobra = () => f.scrollHeight > f.clientHeight + 1;
+    let tit = 0, minT = 0;
+    if (t) {
+      t.style.webkitLineClamp = 'none';
+      const lh = parseFloat(getComputedStyle(t).lineHeight) || parseFloat(getComputedStyle(t).fontSize) * 1.3;
+      const naturais = Math.max(1, Math.round(t.scrollHeight / lh));
+      tit = Math.min(naturais, TETO_TITULO); minT = Math.min(naturais, MINIMO_TITULO);
+      t.style.webkitLineClamp = String(tit);
+    }
+    const tirarLinhaDoTitulo = () => { if (t && tit > minT) { tit--; t.style.webkitLineClamp = String(tit); } };
     if (ds) { let n = cw >= 640 && cw < 900 ? 2 : 3; ds.style.webkitLineClamp = String(n); while (n > 1 && sobra()) { n--; ds.style.webkitLineClamp = String(n); } if (sobra()) ds.classList.add('oculto'); }
-    for (const q of ['.tempo', '.selo', '.prog', '.tags .chip']) { const x = f.querySelector(q); if (x && sobra()) x.classList.add('oculto'); }
-  });
-  app.querySelectorAll<HTMLElement>('.fit').forEach((el) => {
-    el.style.webkitLineClamp = 'none';
-    const lh = parseFloat(getComputedStyle(el).lineHeight) || parseFloat(getComputedStyle(el).fontSize) * 1.3;
-    el.style.webkitLineClamp = String(Math.max(1, Math.floor((el.clientHeight + 1) / lh)));
+    for (const q of ['.tempo', '.selo']) { const x = f.querySelector(q); if (x && sobra()) x.classList.add('oculto'); }
+    while (t && tit > minT && sobra()) tirarLinhaDoTitulo();
+    for (const q of ['.tags .chip', '.prog']) { const x = f.querySelector(q); if (x && sobra()) x.classList.add('oculto'); }
   });
   app.querySelectorAll<HTMLElement>('.face.back .tarefas').forEach((ul) => {
     const mais = ul.querySelector<HTMLElement>('.mais-t');
@@ -44,8 +57,12 @@ export function useAjustar(dep: unknown) {
     let t: ReturnType<typeof setTimeout>;
     const f = () => { clearTimeout(t); t = setTimeout(ajustar, 120); };
     window.addEventListener('resize', f);
+    // a largura dos cards também muda sem a janela mudar (menu lateral recolhido ou aberto, zoom, rotação): observa o próprio quadro de conteúdo
+    const quadro = document.querySelector('.frame');
+    const ro = quadro && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(f) : null;
+    if (quadro) ro?.observe(quadro);
     void document.fonts?.ready.then(ajustar);
-    return () => { window.removeEventListener('resize', f); clearTimeout(t); };
+    return () => { window.removeEventListener('resize', f); ro?.disconnect(); clearTimeout(t); };
   }, [dep]);
 }
 
@@ -154,10 +171,10 @@ export function Quadro({ lista }: { lista: Demanda[] }) {
             <section key={et} className={`coluna${etapaSel === et ? ' sel' : ''}`} aria-label={et} style={{ '--et': ETAPA_COR[et] } as CSSProperties}>
               <header>
                 <i className="dot" /><h4>{et}</h4><span className="cnt">{l.length}</span><span className="esp" />
-                <button className="icbtn-s" aria-label={`Nova demanda em ${et}`} onClick={() => abrirJanela({ t: 'nova', etapa: et === 'Finalizado' ? undefined : et })}><Icone nome="plus" /></button>
+                {et === 'Cadastro' ? <button className="icbtn-s" aria-label="Nova demanda em Cadastro" onClick={() => abrirJanela({ t: 'nova' })}><Icone nome="plus" /></button> : null}
               </header>
               {l.length ? l.map((d) => <MiniCard key={d.id} d={d} />) : <div className="vazio-c">Nenhuma demanda</div>}
-              {et !== 'Finalizado' ? <button className="nova" onClick={() => abrirJanela({ t: 'nova', etapa: et })}><Icone nome="plus" />Nova demanda</button> : null}
+              {et === 'Cadastro' ? <button className="nova" onClick={() => abrirJanela({ t: 'nova' })}><Icone nome="plus" />Nova demanda</button> : null}
             </section>
           );
         })}

@@ -153,10 +153,10 @@
 .app[data-dir="d"] .modal { border-radius: 34px; padding: 26px 24px 22px; position: relative; }
 .app[data-dir="d"] .modal::before { content: ""; position: absolute; top: 8px; left: 50%; width: 38px; height: 5px; margin-left: -19px; border-radius: 3px; background: var(--track); }
 .app[data-dir="d"] .m-h { display: flex; align-items: center; flex-direction: row-reverse; justify-content: flex-end; gap: 12px; }
-.app[data-dir="d"] .m-h h3 { flex: 1; text-align: center; font-size: 17px; font-weight: 700; margin-right: 36px; }
+.app[data-dir="d"] .m-h h3 { flex: 1; text-align: center; font-size: calc(17px * var(--esc)); font-weight: 700; margin-right: 36px; }
 .app[data-dir="d"] .m-f { gap: 10px; }
 .app[data-dir="d"][data-tema] .modal { background: var(--grp-bg); }
-.app[data-dir="d"] .modal .fld > label, .app[data-dir="d"] .modal .fld > span:first-child { font-size: 13px; font-weight: 500; color: var(--text2); padding-left: 14px; }
+.app[data-dir="d"] .modal .fld > label, .app[data-dir="d"] .modal .fld > span:first-child { font-size: calc(13px * var(--esc)); font-weight: 500; color: var(--text2); padding-left: 14px; }
 .app[data-dir="d"] .modal .fld :is(input, select, textarea), .app[data-dir="d"] .modal .add-t input { background: var(--grp-campo); border: 0; border-radius: 12px; min-height: 44px; padding: 0 14px; transition: box-shadow .2s var(--rapido); }
 .app[data-dir="d"] .modal .fld textarea { padding: 12px 14px; }
 .app[data-dir="d"] .modal .fld :is(input, select, textarea):focus, .app[data-dir="d"] .modal .add-t input:focus { box-shadow: 0 0 0 2px var(--acc); outline: 0; }
@@ -197,8 +197,8 @@
 .app[data-dir="d"] input[type="checkbox"]:active { transform: scale(.82); }
 
 /* ---------- cards e listas: tipografia de título grande, linhas finas ---------- */
-.app[data-dir="d"] .pagehead h1 { font-size: 34px; font-weight: 800; letter-spacing: -.02em; }
-.app[data-dir="d"] .frase-dia { font-size: 26px; font-weight: 700; letter-spacing: -.015em; }
+.app[data-dir="d"] .pagehead h1 { font-size: calc(34px * var(--esc)); font-weight: 800; letter-spacing: -.02em; }
+.app[data-dir="d"] .frase-dia { font-size: calc(26px * var(--esc)); font-weight: 700; letter-spacing: -.015em; }
 .app[data-dir="d"] .stats { gap: 12px; }
 .app[data-dir="d"] .stat { border-radius: var(--r-tile); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); transition: background .2s var(--rapido), box-shadow .2s var(--rapido), transform .35s var(--mola); }
 .app[data-dir="d"] .stat:hover { box-shadow: 0 0 0 1px var(--card-brd), 0 6px 18px rgba(10,10,10,.07); }
@@ -311,14 +311,14 @@
   .app[data-dir="d"] .toolbar .filtro { grid-column: 1; grid-row: 2; min-width: 0; }
   .app[data-dir="d"] .toolbar .btn { width: var(--bt-m); height: var(--bt-m); padding: 0; justify-content: center; }
   .app[data-dir="d"] .main { padding-inline: 14px; }
-  .app[data-dir="d"] .pagehead h1 { font-size: 30px; }
+  .app[data-dir="d"] .pagehead h1 { font-size: calc(30px * var(--esc)); }
 }
 
 /* ---------- Agenda: itens de demanda (botão inteiro, círculo da sigla do tipo à direita) ---------- */
 /* cor pela classificação da demanda (neutro, azul, verde, amarelo); vermelho para atraso. O círculo parte da cor do item escurecida 30% (marca d'água) */
 .app[data-dir="d"][data-tema="claro"] { --ag-escura: #0A0A0A; --ag-sig-tx: #0A0A0A; --ag-sig-venc: #FCFCFC; }
 .app[data-dir="d"][data-tema="escuro"] { --ag-escura: #0A0A0A; --ag-sig-tx: #FCFCFC; --ag-sig-venc: #FCFCFC; }
-.app[data-dir="d"] button.ag-d { --ag-base: var(--card); display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-height: 34px; border: 0; padding: 4px 6px 4px 8px; border-radius: 10px; text-align: left; cursor: pointer; font: inherit; font-family: var(--font-n); font-size: 12px; color: var(--text); background: var(--ag-base); box-shadow: 0 0 0 1px var(--card-brd); transition: filter .15s var(--rapido); }
+.app[data-dir="d"] button.ag-d { --ag-base: var(--card); display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-height: 34px; border: 0; padding: 4px 6px 4px 8px; border-radius: 10px; text-align: left; cursor: pointer; font: inherit; font-family: var(--font-n); font-size: calc(12px * var(--esc)); color: var(--text); background: var(--ag-base); box-shadow: 0 0 0 1px var(--card-brd); transition: filter .15s var(--rapido); }
 .app[data-dir="d"] button.ag-d:hover { filter: brightness(.97); }
 .app[data-dir="d"][data-tema="escuro"] button.ag-d:hover { filter: brightness(1.15); }
 .app[data-dir="d"] button.ag-d.cat-azul { --ag-base: var(--cat-azul); box-shadow: none; }
@@ -362,7 +362,7 @@
 .app[data-dir="d"] .coluna.alvo { outline: 2px dashed var(--acc); outline-offset: -4px; background: color-mix(in srgb, var(--acc) 8%, var(--panel)); }
 .app[data-dir="d"] .etapas-tabs button.alvo { box-shadow: 0 0 0 3px var(--acc); transform: scale(1.04); }
 .app[data-dir="d"] .mv-menu { position: absolute; z-index: 80; min-width: 220px; padding: 6px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd), 0 18px 44px rgba(10, 10, 10, .22); display: grid; gap: 2px; }
-.app[data-dir="d"] .mv-menu .mv-t { padding: 8px 12px 4px; font-size: 12px; font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .mv-menu .mv-t { padding: 8px 12px 4px; font-size: calc(12px * var(--esc)); font-weight: 600; color: var(--text2); }
 .app[data-dir="d"] .mv-menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
 .app[data-dir="d"] .mv-menu button:hover:not([aria-disabled="true"]) { background: var(--btn-hov); }
 .app[data-dir="d"] .mv-menu button[aria-disabled="true"] { opacity: .5; cursor: default; }
@@ -377,7 +377,7 @@
 .app[data-dir="d"] .cfg-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 4px; }
 .app[data-dir="d"] .cfg-cab h3 { margin: 0; }
 .app[data-dir="d"] .cfg-cab .acoes { margin: 0; }
-.app[data-dir="d"] .cfg-sub { margin: 10px 0 8px; font-size: 13px; font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .cfg-sub { margin: 10px 0 8px; font-size: calc(13px * var(--esc)); font-weight: 600; color: var(--text2); }
 .app[data-dir="d"] .cfg-topo .pal { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
 @container tela (min-width: 900px) { .app[data-dir="d"] .cfg-topo .pal { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 @container tela (max-width: 520px) { .app[data-dir="d"] .cfg-topo .pal { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -385,13 +385,13 @@
 /* ---------- Perfil: histórico dos últimos dias (uma coluna por dia, linhas de Humor e Energia, rolagem só aqui) ---------- */
 .app[data-dir="d"] .hist-w { display: flex; align-items: flex-start; gap: 4px; margin-top: 4px; }
 .app[data-dir="d"] .hist-lab { flex: none; display: grid; grid-auto-rows: 44px; gap: 6px; padding-top: 10px; min-width: 64px; }
-.app[data-dir="d"] .hist-lab b { display: flex; align-items: center; font-size: 13px; font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .hist-lab b { display: flex; align-items: center; font-size: calc(13px * var(--esc)); font-weight: 600; color: var(--text2); }
 .app[data-dir="d"] .hist-rol { flex: 1; min-width: 0; overflow-x: auto; padding: 4px 16px 10px 4px; scroll-padding-inline: 4px 16px; scrollbar-width: thin; overscroll-behavior-x: contain; }
 .app[data-dir="d"] .hist-t { border-collapse: separate; border-spacing: 6px 6px; width: max-content; }
 .app[data-dir="d"] .hist-t th, .app[data-dir="d"] .hist-t td { padding: 0; font-weight: 400; text-align: center; }
 .app[data-dir="d"] .hist-t .hd { display: grid; gap: 1px; width: 52px; min-height: 44px; padding: 4px 0; border: 0; border-radius: 12px; background: transparent; color: var(--text2); font: inherit; cursor: pointer; }
-.app[data-dir="d"] .hist-t .hd b { font-size: 12px; font-weight: 600; text-transform: uppercase; }
-.app[data-dir="d"] .hist-t .hd span { font-size: 11px; font-family: var(--font-n); }
+.app[data-dir="d"] .hist-t .hd b { font-size: calc(12px * var(--esc)); font-weight: 600; text-transform: uppercase; }
+.app[data-dir="d"] .hist-t .hd span { font-size: max(10px, calc(11px * var(--esc))); font-family: var(--font-n); }
 .app[data-dir="d"] .hist-t .hd:hover { background: var(--btn-hov); }
 .app[data-dir="d"] .hist-t .hd[aria-pressed="true"] { background: var(--btn-bg); color: var(--text); }
 .app[data-dir="d"] .hist-t .hoje .hd b { color: var(--acc-text); }
@@ -402,7 +402,7 @@
 /* ---------- formulários de demanda (cadastro e edição): grupos, duas colunas equilibradas, cabeçalho e rodapé sempre à vista ---------- */
 .app[data-dir="d"] .m-grp { margin: 0 0 20px; }
 .app[data-dir="d"] .m-grp:last-child { margin-bottom: 4px; }
-.app[data-dir="d"] .m-grp > h4 { margin: 0 0 10px; padding: 0 0 6px 14px; font-size: 13px; font-weight: 700; letter-spacing: .02em; color: var(--text2); border-bottom: 1px solid var(--brd); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.app[data-dir="d"] .m-grp > h4 { margin: 0 0 10px; padding: 0 0 6px 14px; font-size: calc(13px * var(--esc)); font-weight: 700; letter-spacing: .02em; color: var(--text2); border-bottom: 1px solid var(--brd); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .app[data-dir="d"] .m-grp > h4 small { font-weight: 400; letter-spacing: 0; }
 .app[data-dir="d"] .modal .m-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 28px; align-items: start; }
 .app[data-dir="d"] .modal .fld textarea { min-height: 120px; line-height: 1.45; }

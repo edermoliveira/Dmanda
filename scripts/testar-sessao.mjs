@@ -228,6 +228,17 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
   atual = null; chamadas.length = 0;
   await abrirLogin();
   ok(await p0.isVisible('#login-senha') && !(await p0.textContent('.login-caixa')).includes('Google') && (await p0.locator('.login-ou').count()) === 0, 'login: com a variável do Google ausente aparece só o formulário de e-mail e senha (sem botão do Google nem o "ou")');
+  // tipografia do login (decisão 35): escala de 85% sobre o desenho anterior (28, 13 e 16 px viram 23,8, 11,05 e 13,6); no toque o campo fica em 16 px para o Safari não dar zoom
+  const tipoLogin = await p0.evaluate(() => { const px = (s) => parseFloat(getComputedStyle(document.querySelector(s)).fontSize); return { h1: px('.login-caixa h1'), rotulo: px('.login-form .fld > label'), campo: px('#login-email'), senha: px('#login-senha') }; });
+  ok(Math.abs(tipoLogin.h1 - 23.8) < 0.05 && Math.abs(tipoLogin.rotulo - 11.05) < 0.05 && Math.abs(tipoLogin.campo - 13.6) < 0.05 && Math.abs(tipoLogin.senha - 13.6) < 0.05, `login: tipografia na escala de 85% (título ${tipoLogin.h1}, rótulo ${tipoLogin.rotulo}, campos ${tipoLogin.campo} e ${tipoLogin.senha})`);
+  {
+    const cT = await nav0.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+    const pT = await cT.newPage();
+    await pT.goto(BASE + '/login', { waitUntil: 'load', timeout: 120000 }); await pT.waitForSelector('#login-email', { timeout: 60000 });
+    const toque = await pT.evaluate(() => ({ email: parseFloat(getComputedStyle(document.querySelector('#login-email')).fontSize), senha: parseFloat(getComputedStyle(document.querySelector('#login-senha')).fontSize), horizontal: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
+    ok(toque.email === 16 && toque.senha === 16 && toque.horizontal <= 0, `login no iPhone emulado: campos de e-mail e senha com 16 px (sem zoom ao focar) e sem rolagem horizontal (${toque.email}, ${toque.senha})`);
+    await cT.close();
+  }
   // senha errada
   await entrar(EMAIL, 'senha-errada-qualquer');
   await p0.waitForFunction(() => document.querySelector('.login-form .login-aviso')?.textContent === 'E-mail ou senha incorretos.', null, { timeout: 60000 });

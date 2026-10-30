@@ -58,10 +58,10 @@ h3, h4 { font-weight: 700; }
 .emo.en { border-radius: 14px; }
 .registro { display: grid; gap: 10px; margin-bottom: 16px; padding: 14px 16px; }
 .reg-l { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.reg-l > span { color: var(--text2); font-size: 14px; min-width: 170px; }
+.reg-l > span { color: var(--text2); font-size: calc(14px * var(--esc)); min-width: 170px; }
 .emos { display: flex; gap: 8px; flex-wrap: wrap; }
 .emos.mini { margin-top: 6px; }
-.pend { min-height: 44px; display: flex; align-items: center; gap: 10px; border-radius: var(--r-field); padding: 0 14px; color: var(--text2); font-size: 14px; text-align: left; }
+.pend { min-height: 44px; display: flex; align-items: center; gap: 10px; border-radius: var(--r-field); padding: 0 14px; color: var(--text2); font-size: calc(14px * var(--esc)); text-align: left; }
 .pend span { flex: 1; }
 .pend:hover { color: var(--text); border-color: var(--acc); }
 .balao { position: absolute; right: 20px; top: 92px; z-index: 12; width: min(330px, calc(100% - 24px)); border-radius: var(--r-card); padding: 14px 16px; }
@@ -73,19 +73,19 @@ h3, h4 { font-weight: 700; }
 .modal { width: min(600px, 100%); max-height: 100%; overflow: auto; border-radius: var(--r-card); padding: 20px; background-color: var(--card); }
 .modal.larga { width: min(920px, 100%); }
 .m-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.m-h h3 { font-size: 20px; }
+.m-h h3 { font-size: calc(20px * var(--esc)); }
 .m-h .icbtn-s { margin: 0; }
 .m-f { display: flex; align-items: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
 .m-cols { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; }
 .dois { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .fld { display: grid; gap: 6px; margin-bottom: 12px; }
-.fld > label, .fld > span:first-child { font-size: 12px; font-weight: 700; color: var(--text2); }
+.fld > label, .fld > span:first-child { font-size: calc(12px * var(--esc)); font-weight: 700; color: var(--text2); }
 .fld input, .fld select, .fld textarea, .add-t input { min-height: 44px; border-radius: var(--r-field); border: 1px solid var(--brd); background: var(--card); color: var(--text); padding: 0 12px; font: inherit; width: 100%; }
 .fld textarea { padding: 10px 12px; resize: vertical; }
 .fld input:focus, .fld select:focus, .fld textarea:focus, .add-t input:focus { outline: none; border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc-soft); }
-.fld .amostra { font-size: 14px; color: var(--text2); }
+.fld .amostra { font-size: calc(14px * var(--esc)); color: var(--text2); }
 .opcoes { display: flex; flex-wrap: wrap; gap: 6px; }
-.opcoes button { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--brd); background: var(--card); font-weight: 600; font-size: 13px; }
+.opcoes button { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--brd); background: var(--card); font-weight: 600; font-size: calc(13px * var(--esc)); }
 .opcoes button[aria-pressed="true"] { border-color: var(--acc); background: var(--acc-soft); color: var(--acc-text); box-shadow: 0 0 0 1px var(--acc); }
 .add-t { display: flex; gap: 8px; margin: 10px 0; }
 .btn.perigo { background: var(--perigo); color: var(--on-perigo); border-color: transparent; }
@@ -95,14 +95,14 @@ h3, h4 { font-weight: 700; }
 .ind3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
 .ind-v { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
 .ind-v .emo-img { width: 44px; height: 44px; }
-.grande-n { font-size: 44px; line-height: 1; }
+.grande-n { font-size: calc(44px * var(--esc)); line-height: 1; }
 .painel + .painel, .ind3 + .painel { margin-top: 16px; }
 .ph { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .grafico { display: flex; align-items: flex-end; gap: 10px; height: 150px; padding-top: 30px; }
 .grafico.mes { gap: 4px; }
 .gcol { position: relative; }
 .gcol.fina i { max-width: 14px; }
-.tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bgbase); padding: 6px 10px; border-radius: 10px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 3; }
+.tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bgbase); padding: 6px 10px; border-radius: 10px; font-size: calc(12px * var(--esc)); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 3; }
 .gcol:hover .tip, .gcol:focus-visible .tip { opacity: 1; }
 
 /* ---------- Configurações ---------- */

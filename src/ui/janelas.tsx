@@ -40,9 +40,9 @@ export function JanelaTarefa() {
 }
 
 export function Janelas() {
-  const { janela } = useApp();
+  const { janela, carregando } = useApp();
   if (!janela) return null;
   if (janela.t === 'editar') return <JanelaDemanda id={janela.id} />;
-  if (janela.t === 'nova') return <JanelaNova etapa={janela.etapa} />;
+  if (janela.t === 'nova') return carregando ? null : <JanelaNova />; // o cadastro retomado precisa da lista carregada para reencontrar a demanda já criada
   return <JanelaTarefa />;
 }

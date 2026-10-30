@@ -15,7 +15,7 @@ const emHttps = (request: NextRequest) => request.nextUrl.protocol === 'https:' 
 type Gravacao = { name: string; value: string; options?: Parameters<NextResponse['cookies']['set']>[2] };
 
 const PAGINA_INDISPONIVEL = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><title>Dmanda</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font:16px/1.5 system-ui,-apple-system,sans-serif;background:Canvas;color:CanvasText}main{max-width:26rem}h1{font-size:1.25rem;margin:0 0 .5rem}button{font:inherit;min-height:44px;padding:0 20px;border-radius:12px;border:0;background:#0A84FF;color:#fff;cursor:pointer}</style></head>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font:13.6px/1.5 system-ui,-apple-system,sans-serif;background:Canvas;color:CanvasText}main{max-width:26rem}h1{font-size:1.06rem;margin:0 0 .5rem}button{font:inherit;min-height:44px;padding:0 20px;border-radius:12px;border:0;background:#0A84FF;color:#fff;cursor:pointer}</style></head>
 <body><main><h1>Não foi possível confirmar sua sessão agora</h1><p>Parece um problema de conexão. Sua sessão foi mantida e nada foi perdido. Confira a internet e tente de novo.</p><button type="button" onclick="location.reload()">Tentar de novo</button></main></body></html>`;
 
 export async function proxy(request: NextRequest) {

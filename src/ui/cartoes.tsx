@@ -147,7 +147,7 @@ export function CardDemanda({ d }: { d: Demanda }) {
             <ChipTipo d={d} /><Numero d={d} />
             {fin ? <span className="chip">Finalizada</span> : <span className="chip neutro">{d.etapa}{d.etapa === 'Aguardando retorno' && d.setor ? ` · ${d.setor} ${curto(dias)}` : ''}</span>}
           </div>
-          <div className="assunto fit" role="link" tabIndex={0} onClick={abrirEd} onKeyDown={teclaAbrir}>{d.assunto}</div>
+          <div className="assunto fit" role="link" tabIndex={0} title={d.assunto} onClick={abrirEd} onKeyDown={teclaAbrir}>{d.assunto}</div>
           <Desc d={d} />
           <ChipsRow d={d} />
           <AcaoCard d={d} />

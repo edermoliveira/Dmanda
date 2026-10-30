@@ -1,31 +1,34 @@
 /* Ajustes da aplicação funcional sobre o Catalyst aprovado (o protótipo tem a moldura e os controles de teste, que aqui não existem). */
+/* Escala tipográfica compartilhada (decisão 35): todo tamanho de texto é "calc(Npx * var(--esc))", com piso de 10 px para o texto miúdo. 0,85 = redução de 15% sobre os tamanhos do
+   desenho anterior. Para mudar o tamanho do texto da aplicação inteira, é este o único número. Sem zoom e sem transform: são tamanhos reais, e o que herda (em, inherit, a base --fs) reduz uma vez só. */
+:root { --esc: .85; }
 html, body { height: 100%; background: var(--bgbase, #F2F2F7); }
 html[data-tema="escuro"], html[data-tema="escuro"] body { background: #0A0A0A; color: #FCFCFC; }
 html[data-tema="claro"] body { color: #0A0A0A; background: #F2F2F7; }
 body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 /* a moldura do protótipo vira a tela inteira (continua sendo o contêiner "tela" das regras de largura) */
 .frame.real { max-width: none; width: 100%; height: 100dvh; border-radius: 0; border: 0; box-shadow: none; }
-.faixa-teste { margin: 0 0 12px; padding: 8px 12px; border-radius: 12px; font-size: 13px; background: var(--cat-amar); color: var(--text); }
-.faixa-offline { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-size: 13px; background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--card-brd); }
+.faixa-teste { margin: 0 0 12px; padding: 8px 12px; border-radius: 12px; font-size: calc(13px * var(--esc)); background: var(--cat-amar); color: var(--text); }
+.faixa-offline { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-size: calc(13px * var(--esc)); background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--card-brd); }
 .erro-carga { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: var(--cat-venc); color: var(--text); }
 .toast.erro { background: var(--z-venc-bg); color: var(--ag-sig-venc, #FCFCFC); border-radius: 18px; max-width: min(92%, 560px); text-align: center; }
 .app .icbtn[aria-disabled="true"], .app .perfil-b[aria-disabled="true"] { opacity: .6; }
 .login { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
 .login-caixa { width: min(420px, 100%); padding: 32px 28px; border-radius: 28px; background: var(--card, #FCFCFC); box-shadow: 0 0 0 1px var(--card-brd, rgba(10,10,10,.1)), 0 18px 44px rgba(10,10,10,.12); display: grid; gap: 14px; text-align: center; }
-.login-caixa h1 { margin: 0; font-size: 28px; }
+.login-caixa h1 { margin: 0; font-size: calc(28px * var(--esc)); }
 .login-caixa p { margin: 0; color: var(--text2, #555); }
 .login-caixa .btn { justify-content: center; }
 .login-aviso { color: var(--perigo, #C4001A) !important; font-weight: 600; }
 .login-info { color: var(--text2) !important; font-weight: 500; }
 .app.app-login { position: fixed; inset: 0; display: block; overflow: auto; }
 .login-form { display: grid; gap: 4px; text-align: left; }
-.login-form .fld > label { font-size: 13px; font-weight: 500; color: var(--text2); padding-left: 14px; }
+.login-form .fld > label { font-size: calc(13px * var(--esc)); font-weight: 500; color: var(--text2); padding-left: 14px; }
 .login-form .fld input { background: var(--grp-campo); color: var(--text); border: 0; border-radius: 12px; min-height: 44px; padding: 0 14px; box-shadow: 0 0 0 1px var(--card-brd); transition: box-shadow .2s var(--rapido); }
 .login-form .fld input:focus { box-shadow: 0 0 0 2px var(--acc); outline: 0; }
 .login-form .fld { margin-bottom: 8px; }
 .login-form .btn { justify-content: center; margin-top: 6px; }
-.login-ou { font-size: 13px; }
-.rotina-estado { margin: 20px 0 8px; font-size: 13px; color: var(--text2); }
+.login-ou { font-size: calc(13px * var(--esc)); }
+.rotina-estado { margin: 20px 0 8px; font-size: calc(13px * var(--esc)); color: var(--text2); }
 
 /* PWA no iPhone: a barra inferior, o botão + , o menu + e os avisos sobem para não ficar sob o indicador de início do aparelho.
    env(safe-area-inset-bottom) vale 0 fora do iPhone (e no navegador comum), então nada muda no computador. */
@@ -40,28 +43,28 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 }
 
 /* ---------- cadastro guiado, consulta da demanda e dias indisponíveis (decisão 27) ---------- */
-.app[data-dir="d"] .modal .passos { display: flex; gap: 8px; margin: 0 0 14px; padding: 0; list-style: none; font-size: 13px; color: var(--text2); }
+.app[data-dir="d"] .modal .passos { display: flex; gap: 8px; margin: 0 0 14px; padding: 0; list-style: none; font-size: calc(13px * var(--esc)); color: var(--text2); }
 .app[data-dir="d"] .modal .passos li { flex: 1 1 0; min-width: 0; padding: 8px 10px; border-radius: 12px; background: var(--grp-campo); display: flex; align-items: center; gap: 8px; }
 .app[data-dir="d"] .modal .passos li[aria-current="step"] { background: var(--acc-soft); color: var(--acc-text); font-weight: 600; }
-.app[data-dir="d"] .modal .passos li b { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--track); font-size: 12px; font-weight: 700; }
+.app[data-dir="d"] .modal .passos li b { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--track); font-size: calc(12px * var(--esc)); font-weight: 700; }
 .app[data-dir="d"] .modal .passos li[aria-current="step"] b { background: var(--acc); color: var(--acc-ink); }
 .app[data-dir="d"] .modal .passos li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.app[data-dir="d"] .modal .aviso-passo { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; background: var(--grp-campo); font-size: 13px; color: var(--text2); }
+.app[data-dir="d"] .modal .aviso-passo { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; background: var(--grp-campo); font-size: calc(13px * var(--esc)); color: var(--text2); }
 .app[data-dir="d"] .modal .aviso-passo b { color: var(--text); }
 .app[data-dir="d"] .modal .dias-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; }
 .app[data-dir="d"] .modal .dias-btns .btn { min-width: 64px; justify-content: center; }
 .app[data-dir="d"] .modal .dias-btns .btn[aria-pressed="true"] { background: var(--acc); color: var(--acc-ink); }
-.app[data-dir="d"] .modal .prev-prazo { margin: 10px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--grp-campo); font-size: 13px; color: var(--text2); line-height: 1.45; }
+.app[data-dir="d"] .modal .prev-prazo { margin: 10px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--grp-campo); font-size: calc(13px * var(--esc)); color: var(--text2); line-height: 1.45; }
 .app[data-dir="d"] .modal .prev-prazo b { color: var(--text); font-weight: 600; }
 .app[data-dir="d"] .modal .prev-prazo .ajuste { display: block; margin-top: 4px; }
 .app[data-dir="d"] .modal .sec { margin: 0 0 20px; }
 .app[data-dir="d"] .modal .sec-h { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; padding: 0 0 4px 14px; border-bottom: 1px solid var(--brd); }
-.app[data-dir="d"] .modal .sec-h h4 { margin: 0; flex: 1 1 auto; font-size: 13px; font-weight: 700; letter-spacing: .02em; color: var(--text2); }
+.app[data-dir="d"] .modal .sec-h h4 { margin: 0; flex: 1 1 auto; font-size: calc(13px * var(--esc)); font-weight: 700; letter-spacing: .02em; color: var(--text2); }
 .app[data-dir="d"] .modal .sec-h .icbtn-s[aria-disabled="true"] { opacity: .4; }
-.app[data-dir="d"] .modal .ler { display: grid; grid-template-columns: minmax(110px, 30%) minmax(0, 1fr); gap: 2px 14px; margin: 0; padding: 4px 14px; font-size: 14px; }
-.app[data-dir="d"] .modal .ler dt { color: var(--text2); font-size: 13px; padding: 6px 0; }
+.app[data-dir="d"] .modal .ler { display: grid; grid-template-columns: minmax(110px, 30%) minmax(0, 1fr); gap: 2px 14px; margin: 0; padding: 4px 14px; font-size: calc(14px * var(--esc)); }
+.app[data-dir="d"] .modal .ler dt { color: var(--text2); font-size: calc(13px * var(--esc)); padding: 6px 0; }
 .app[data-dir="d"] .modal .ler dd { margin: 0; padding: 6px 0; overflow-wrap: anywhere; }
-.app[data-dir="d"] .modal .ler dd.vazio { color: var(--text2); }
+.app[data-dir="d"] .modal .ler dd.vazio { color: var(--text2); text-align: left; /* a classe global .vazio (estado vazio da página) centraliza o texto */ }
 .app[data-dir="d"] .modal .ler dd.longo { white-space: pre-wrap; }
 .app[data-dir="d"] .modal .sec-acoes { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 0 0; flex-wrap: wrap; }
 .app[data-dir="d"] .modal .t-ler { list-style: none; margin: 0; padding: 4px 14px; }
@@ -69,9 +72,9 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app[data-dir="d"] .modal .t-ler li + li { border-top: 1px solid var(--brd); }
 .app[data-dir="d"] .modal .t-ler .feita { text-decoration: line-through; color: var(--text2); }
 .app[data-dir="d"] .modal .resumo-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
-.app[data-dir="d"] .modal .rascunho-tarefas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; background: var(--grp-campo); font-size: 13px; }
+.app[data-dir="d"] .modal .rascunho-tarefas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; background: var(--grp-campo); font-size: calc(13px * var(--esc)); }
 .app[data-dir="d"] .modal .confirma-fechar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.app[data-dir="d"] .modal .ler-texto { text-align: left; margin: 0; padding: 6px 14px; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.app[data-dir="d"] .modal .ler-texto { text-align: left; margin: 0; padding: 6px 14px; font-size: calc(14px * var(--esc)); white-space: pre-wrap; overflow-wrap: anywhere; }
 .app[data-dir="d"] .modal .ler-texto.vazio { color: var(--text2); }
 @media (max-width: 520px) {
   .app[data-dir="d"] .modal .passos li span { display: none; }
@@ -97,4 +100,16 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .cfg-form .acoes { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .cfg-form input, .cfg-form select { background: var(--grp-campo); color: var(--text); border: 0; border-radius: 12px; min-height: 44px; padding: 0 14px; width: 100%; }
 .cfg-form input:focus, .cfg-form select:focus { box-shadow: 0 0 0 2px var(--acc); outline: 0; }
-.cfg-form label { font-size: 13px; font-weight: 500; color: var(--text2); padding-left: 14px; display: block; }
+.cfg-form label { font-size: calc(13px * var(--esc)); font-weight: 500; color: var(--text2); padding-left: 14px; display: block; }
+
+/* ---------- card: o título nunca é espremido (decisão 35) ----------
+   A altura do título é decidida só pelo ajuste de visoes.tsx (linhas inteiras, de MINIMO a TETO); ele não encolhe por flexão e não cede espaço à descrição. */
+.app .dcard .face.front .assunto.fit { flex: 0 0 auto; min-height: 0; }
+
+/* ---------- exceção à escala: campos de texto no toque ----------
+   Com menos de 16 px o Safari do iPhone e do iPad dá zoom ao focar o campo e desloca a tela. No toque (pointer: coarse) os campos de digitação ficam em 16 px; no computador seguem a escala. */
+@media (pointer: coarse) {
+  .app :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select) { font-size: 16px !important; }
+}
+/* Quadro: só a coluna Cadastro tem o botão de nova demanda; os cabeçalhos mantêm a mesma altura para os títulos das colunas ficarem alinhados. */
+.app .quadro .coluna > header { min-height: var(--bt-s, 32px); }

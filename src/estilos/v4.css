@@ -20,7 +20,7 @@
 }
 .app .btn.pri:hover, .app .btn.escuro:hover, .app .modal .btn.pri:hover { background: var(--acc); filter: brightness(1.07); }
 .app .btn.pri:active, .app .btn.escuro:active { filter: brightness(.92); }
-.app .btn.mini { position: relative; min-height: 36px; padding: 0 14px; font-size: 14px; }
+.app .btn.mini { position: relative; min-height: 36px; padding: 0 14px; font-size: calc(14px * var(--esc)); }
 .app .btn.mini::after { content: ""; position: absolute; inset: -4px -2px; }
 .app .btn.so-icone { width: 36px; padding: 0; }
 .app .btn.bloco { display: flex; width: 100%; justify-content: center; min-height: 44px; flex: none; }
@@ -52,10 +52,10 @@
 .app .postit .p-txt.fit { flex: 1; min-height: 0; }
 .oculto { display: none !important; }
 .app .tarefas { overflow: hidden; }
-.mais-t { font-size: 12px; color: var(--text2); padding: 2px 0; }
+.mais-t { font-size: calc(12px * var(--esc)); color: var(--text2); padding: 2px 0; }
 .prox-t { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 12px; border-radius: 12px; background: color-mix(in srgb, var(--text) 6%, transparent); cursor: pointer; min-width: 0; }
-.prox-t span { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 14px; line-height: 1.3; }
-.prox-t small { display: block; font-size: 11px; line-height: 1.3; color: var(--text2); }
+.prox-t span { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: calc(14px * var(--esc)); line-height: 1.3; }
+.prox-t small { display: block; font-size: max(10px, calc(11px * var(--esc))); line-height: 1.3; color: var(--text2); }
 
 .app[data-tema="claro"] { --cc-chip-bg: rgba(252,252,252,.78); --cc-chip-tx: #1F1F1F; --cc-text2: #3D3D3D; }
 .app[data-tema="escuro"] { --cc-chip-bg: rgba(252,252,252,.14); --cc-chip-tx: #F2F2F2; --cc-text2: #D2D2D2; }
@@ -84,14 +84,14 @@
 
 /* ---------- Início: frase no lugar do título, aviso, compromissos por tipo ---------- */
 .pagehead.inicio { margin: 8px 2px 16px; }
-.pagehead.inicio .frase-dia { font-family: var(--font-h); font-size: clamp(20px, 2.4vw, 28px); font-weight: 600; line-height: 1.3; letter-spacing: -.02em; color: var(--text); margin: 0; max-width: 46ch; }
+.pagehead.inicio .frase-dia { font-family: var(--font-h); font-size: calc(clamp(20px, 2.4vw, 28px) * var(--esc)); font-weight: 600; line-height: 1.3; letter-spacing: -.02em; color: var(--text); margin: 0; max-width: 46ch; }
 .app[data-tema="claro"] { --av-bg: hsl(44 100% 91%); --av-brd: hsl(40 90% 62%); --av-ic: hsl(32 90% 34%); }
 .app[data-tema="escuro"] { --av-bg: hsl(42 35% 17%); --av-brd: hsl(42 55% 38%); --av-ic: hsl(44 95% 62%); }
 .aviso { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; margin-bottom: 16px; border-radius: var(--r-card); background: var(--av-bg); border: 1px solid var(--av-brd); color: var(--text); }
 .aviso > .ic { width: 26px; height: 26px; color: var(--av-ic); }
 .av-t { flex: 1 1 260px; min-width: 0; }
-.av-t b { display: block; font-size: 16px; }
-.av-t p { margin: 2px 0 0; color: var(--text2); font-size: 14px; }
+.av-t b { display: block; font-size: calc(16px * var(--esc)); }
+.av-t p { margin: 2px 0 0; color: var(--text2); font-size: calc(14px * var(--esc)); }
 .av-a { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .app[data-tema="claro"] { --k1-bg: hsl(212 85% 94%); --k1-ac: hsl(212 80% 46%); --k1-brd: hsl(212 60% 82%); --k2-bg: hsl(268 75% 95%); --k2-ac: hsl(268 58% 50%); --k2-brd: hsl(268 50% 85%); --k3-bg: hsl(150 45% 91%); --k3-ac: hsl(150 55% 28%); --k3-brd: hsl(150 40% 55%); --k-tx: #0A0A0A; --k-tx2: #3D3D3D; --k-ic: #FCFCFC; --k3-rl: hsl(150 40% 80% / .5); }
@@ -105,10 +105,10 @@
 .am-top { display: flex; align-items: center; gap: 8px; }
 .am-ic { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: var(--k-ac); color: var(--k-ic); flex: none; }
 .am-ic .ic { width: 16px; height: 16px; }
-.am-k { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-ui, var(--font)); }
-.am-hoje { margin-left: auto; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--k-tx); color: var(--bgbase); }
-.am-t { font-size: 15px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.am-q { font-size: 12px; color: var(--k-tx2); }
+.am-k { font-size: calc(12px * var(--esc)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-family: var(--font-ui, var(--font)); }
+.am-hoje { margin-left: auto; font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--k-tx); color: var(--bgbase); }
+.am-t { font-size: calc(15px * var(--esc)); font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.am-q { font-size: calc(12px * var(--esc)); color: var(--k-tx2); }
 .ag-mini.hoje { box-shadow: 0 0 0 2px var(--acc); }
 
 /* ---------- Perfil: gaveta à direita, resto da tela desfocado ---------- */
@@ -121,8 +121,8 @@
 @keyframes dr-in { from { transform: translateX(48px); opacity: 0; } to { transform: none; opacity: 1; } }
 .app[data-reduzir="true"] .dr-ov.entra, .app[data-reduzir="true"] .dr-ov.entra .dr { animation: none; }
 .pf-id { display: flex; align-items: center; gap: 14px; }
-.pf-id .av { width: 56px; height: 56px; border-radius: 50%; background: var(--acc); color: var(--acc-ink); display: grid; place-items: center; font: 800 24px var(--font-h); flex: none; }
-.pf-id b { display: block; font-size: 17px; }
+.pf-id .av { width: 56px; height: 56px; border-radius: 50%; background: var(--acc); color: var(--acc-ink); display: grid; place-items: center; font: 800 calc(24px * var(--esc)) var(--font-h); flex: none; }
+.pf-id b { display: block; font-size: calc(17px * var(--esc)); }
 .dr .painel { box-shadow: none; background: var(--panel); }
 .dr .ind3 { grid-template-columns: 1fr; }
 .dr .dois { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
