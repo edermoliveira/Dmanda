@@ -34,7 +34,7 @@ Relatório único em [`AUDITORIA.md`](AUDITORIA.md): achados confirmados, corrig
 - **Humor e Energia:** cada registro terá a sua própria data, preservada ao editar (requisito da implementação funcional).
 - **Referência visual ampliada** do protótipo e comparação de telas da aplicação real, depois da avaliação do usuário.
 - **Itens de decisão antigos** (Open Notebook, direção iPhone e iPad, PNGs do Figma, padrões do Catalyst): seguem sem resposta. Ver o histórico abaixo e `SINCRONIZA-PROJETINHO.md`, seção 3.
-- **Entradas** (Issue [#5](https://github.com/edermoliveira/Dmanda/issues/5)): implementada e publicada em 30/10/2026; **funcionamento e os cinco ajustes aprovados pelo usuário** (`ddef462`). Falta só conferir no iPhone o botão "Arquivadas" de Demandas (`CONTINUIDADE-DMANDA.md`, complemento de navegação). Fora do bloco: voz, foto, envelhecimento das notas e IA.
+- **Entradas e Arquivo:** aprovados e encerrados pelo usuário em 30/10/2026 (Issue [#5](https://github.com/edermoliveira/Dmanda/issues/5) fechada). Próximo bloco: Agenda, aguardando autorização para começar. Fora de Entradas: voz, foto, envelhecimento das notas e IA.
 - **Módulos futuros** (Agenda, Documentos, IA, Configurações, Perfil, busca global, Google Calendar e Drive, notificações, PWA e app nativo): ficam no planejamento (`FUNCIONALIDADES.md`). Uma Issue por bloco é criada quando ele entrar em execução. Não iniciar antes da base real validada e da avaliação do usuário.
 
 ## Como continuar em outro computador
