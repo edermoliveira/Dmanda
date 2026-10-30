@@ -414,3 +414,27 @@ Escopo restrito (não é auditoria geral): três achados, cards e escala tipogr�
 
 ### 20.3 Observação de risco aceito
 O piso de 10 px e o texto de descrição mono em 11 px no iPhone são o efeito direto dos 15% pedidos. A legibilidade em aparelho real só o usuário confirma (Issue #2). O ajuste é um número (`--esc`) ou o piso em `app.css`.
+
+## 21. Bloco Entradas e as duas falhas de teste (30/10/2026)
+
+Escopo restrito (não é auditoria geral): Entradas, Virar demanda, cópia versão 3 e a investigação de duas falhas dos testes.
+
+### 21.1 Estado preservado antes de continuar
+Interrupção do computador: conferidos `git status`, commits locais e último estado remoto (`origin/main` seguia em `2714937`); nenhum processo de teste deste projeto em execução (só o MCP do Playwright, que não é do projeto e não foi encerrado); migração 10 já aplicada no Supabase real, sem reaplicar nem reescrever; checkpoint local `53a7ed1` (identificado como incompleto, não publicado). Os resultados de testes existentes foram classificados como finais do estado de código então vigente.
+
+### 21.2 Falhas investigadas
+| # | Falha | Evidência | Causa | Tratamento |
+|---|---|---|---|---|
+| 1 | `testar:interface`: coluna Cadastro não encontrada | Linha do tempo da página (MutationObserver, leitura de `dmanda:ui`, ações do servidor): quando o auxiliar `ir` devolve, a tela ainda mostra Cards; a visão guardada (Quadro) aparece 40 a 200 ms depois, ao fim da fila de ações do servidor do início. Igual na versão anterior (`2714937`, extraída com `git archive`) | Leitura do teste antes da condição; comportamento pré-existente. Entradas acrescenta uma ação à fila (cerca de 27 ms), margem pior, não a causa | `ir` espera explicitamente a visão guardada (ou estado vazio, ou erro de carga), limite de 30 s e retrato da tela na falha; sem pausa fixa. 140 de 140 |
+| 2 | `testar:sessao`: renovação do proxy na mesma requisição | Diagnóstico sem tokens: `/api/exportar` respondeu **500** com **1 renovação**; o Auth falso recebeu `rpc/listar_entradas` e respondeu 404 | O servidor falso só conhecia duas funções; a rota de cópia passou a ler Entradas. Não era renovação dupla nem propagação de cookies | Servidor falso responde lista vazia a `listar_entradas`; mensagem da verificação mostra status, renovações e rotas. 80 de 80 em duas rodadas |
+
+Incerteza residual (falha 1): a falha original dentro da bateria completa não foi reproduzida; foi reproduzida e eliminada a condição que a explica.
+
+### 21.3 Revisão `ponytail-review` (duas passagens)
+1ª passagem (5 achados, tratados): rascunho falso ao esconder a tela sem alteração (corrigido e testado), ramo morto, volatilidade da função de cor, depuração esquecida, teste correspondente. Passagem final: um achado procedente (Virar demanda pela janela recusado por rascunho já salvo, estado antigo na verificação), corrigido e testado; dois itens de baixa prioridade registrados sem alteração (mais uma ação do servidor na abertura; ajuste de texto dos post-its a cada renderização).
+
+### 21.4 Ferramentas efetivamente usadas
+`ponytail-review` (invocado), `systematic-debugging` como método (causas antes das correções), Supabase CLI (dry-run, push, leitura) e Edge via `playwright-core` nos testes. O Impeccable não foi invocado neste bloco; a revisão visual foi por capturas (computador e iPhone, claro) e por medições de contraste, piso de 10 px, área de toque e rolagem nos cinco aparelhos emulados, claro e escuro. Taste, ui-ux-pro-max e code-simplifier seguem desativados.
+
+### 21.5 Pendências (dependem do usuário)
+Avaliação de Entradas na PWA (Issue #5, roteiro em `CONTINUIDADE-DMANDA.md` H); avaliação do Início, Tabela, Lista e demais itens listados em `ANDAMENTO.md`; PWA instalada; cron registrado; sessão por horas reais; restauração da cópia em projeto real; destino da cópia (Issue #4).

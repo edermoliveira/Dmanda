@@ -2,13 +2,23 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos: ver o bloco logo abaixo); antes, 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
-**Andamento do projeto: 18%** (cálculo em `ANDAMENTO.md`).
+**Última atualização:** 30/10/2026 (aprovação do bloco anterior e Entradas: ver o bloco de 30/10 logo abaixo); antes, 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos); antes, 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Andamento do projeto: 29%** (cálculo item a item em `ANDAMENTO.md`, reavaliado em 30/10/2026; era 18%).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
 ---
 
-## BLOCO DE 29/10/2026 (TARDE): INTEGRAÇÃO, CORREÇÕES, CARDS E ESCALA TIPOGRÁFICA (leia primeiro)
+## BLOCO DE 30/10/2026: APROVAÇÃO DO BLOCO ANTERIOR E ENTRADAS (leia primeiro)
+
+**Ponto de retomada.** O usuário aprovou o bloco `2714937` (cadastro, cards, tipografia e prazos) e autorizou **Entradas**, entregue em 30/10/2026 e **aguardando a avaliação dele na PWA** (Issue #5; roteiro curto em `CONTINUIDADE-DMANDA.md`, seção H). **Agenda e os demais módulos só começam depois dessa avaliação.** Código publicado: commit de código `7bf06ef5eb89b85ef54f452cd25ee4bc5997026b` na `main` (o commit de documentação logo depois não altera código). Migração 10 (`entradas`) aplicada no Supabase real. Andamento: 29%.
+
+**O que foi feito:** migração 10 e funções SQL; Entradas na interface (grade de post-its, janela com salvamento automático e rascunho, conflito, Virar demanda, Arquivo com aba Entradas, atalho N); cópia dos dados versão 3 e restauração; `testar:entradas` (173) novo; regras (79) e banco (210) ampliados. Duas falhas de teste (`testar:interface` e `testar:sessao`) foram investigadas antes de corrigir: a da interface é a visão guardada aparecer depois dos dados (existe também na versão anterior; o teste agora espera a visão), e a da sessão era o servidor falso sem a função `listar_entradas` (a rota de cópia respondia 500; havia 1 renovação só). Detalhes e incerteza residual em `CONTINUIDADE-DMANDA.md`, seção H.
+
+**Computador de trabalho:** após `git pull --ff-only origin main` e `npm ci`, nada novo precisa ser instalado. A migração 10 já está no Supabase real; num banco de teste novo ela é aplicada sozinha.
+
+---
+
+## BLOCO DE 29/10/2026 (TARDE): INTEGRAÇÃO, CORREÇÕES, CARDS E ESCALA TIPOGRÁFICA
 
 Merge dos dois computadores (`d9c1328`), três achados corrigidos (Quadro sempre em Cadastro, rascunho do passo 3 retomável sem duplicar, migração 9 dos prazos legados abertos), cards com título priorizado e escala de texto de 85% (`--esc`). Decisões 34 a 36 em `DECISOES.md`; resumo e roteiro do iPhone em `CONTINUIDADE-DMANDA.md`, seção G. Para continuar em casa: `git pull --ff-only origin main`, `npm ci`; a migração 9 já está no Supabase real. Teste novo: `npm run testar:interface` (porta 7104, para o `next dev` da 7100 antes, pois a pasta `.next` tem trava).
 
@@ -70,7 +80,7 @@ Esta seção basta para continuar sem a conversa e sem a memória local. Detalhe
 
 **Cópias dos dados (não é backup completo nem automático):** exportação disponível (avatar > Baixar cópia dos dados); recuperação demonstrada **somente em banco local**, com dados fictícios; armazenamento externo **pendente** (destino privado a definir pelo usuário); execução automática **pendente**. Orientação de uso e verificação do arquivo em `supabase/LEIA-ME.md`. Nada foi enviado a Drive, OneDrive ou GitHub.
 
-**Issues (repositório privado):** #1 FECHADA (login e integração real, e-mail e senha). #2 aberta (avaliar a aplicação React, sem avaliação visual do usuário ainda). #3 aberta (publicar, rotina diária, 6 h reais). #4 aberta (cópia privada: destino e restauração em projeto real). Andamento oficial: 18% (`ANDAMENTO.md`).
+**Issues (repositório privado):** #1 FECHADA (login e integração real, e-mail e senha). #2 aberta (avaliar a aplicação React, sem avaliação visual do usuário ainda). #3 aberta (publicar, rotina diária, 6 h reais). #4 aberta (cópia privada: destino e restauração em projeto real). Andamento oficial: 29% desde 30/10/2026 (`ANDAMENTO.md`; era 18%). #5 aberta (Entradas, aguarda a avaliação do usuário na PWA).
 
 **Para iniciar no computador do trabalho** (PowerShell, na pasta do projeto):
 ```
