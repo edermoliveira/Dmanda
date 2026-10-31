@@ -117,11 +117,16 @@ export function ordenar(lista: Demanda[], coluna: Coluna, sentido: 1 | -1): Dema
   return [...lista].sort((a, b) => { const x = chave(a), y = chave(b); return (x < y ? -1 : x > y ? 1 : a.criado_em.localeCompare(b.criado_em)) * (x === y ? 1 : sentido); });
 }
 
-/** Data que conta para os filtros do Início: quem aguarda retorno só volta quando faltarem 3 dias (ou menos) para o acompanhamento; finalizada nunca conta; sem data, não é inventada. */
+/** A data que posiciona a demanda na carga e nos filtros: a mais próxima entre o vencimento ajustado e o acompanhamento programado. Sem nenhuma das duas, não há data aplicável. */
+export function dataAplicavel(d: Pick<Demanda, 'prazo' | 'acompanhar_em'>): string | null {
+  return [d.prazo, d.acompanhar_em].filter((x): x is string => !!x).map((x) => x.slice(0, 10)).sort()[0] ?? null;
+}
+
+/** Data que conta para os filtros do Início: a mesma referência da carga (a mais próxima entre vencimento e acompanhamento). Quem aguarda retorno só conta o acompanhamento quando faltarem 3 dias (ou menos), regra já aprovada, então atrasadas e "hoje" nunca divergem da carga. Finalizada nunca conta; sem data, não é inventada. */
 export function dataFiltro(d: Demanda, hoje: string): string | null {
   if (d.etapa === 'Finalizado') return null;
-  if (d.etapa === 'Aguardando retorno') return d.acompanhar_em && diasAte(d.acompanhar_em, hoje) <= 3 ? d.acompanhar_em : null;
-  return d.prazo ?? null;
+  const acompanha = d.etapa === 'Aguardando retorno' && d.acompanhar_em && diasAte(d.acompanhar_em, hoje) > 3 ? null : d.acompanhar_em;
+  return dataAplicavel({ prazo: d.prazo, acompanhar_em: acompanha });
 }
 
 export type GrupoInicio = 'atrasadas' | 'hoje' | 'sete';

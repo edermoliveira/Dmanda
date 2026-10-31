@@ -14,14 +14,14 @@
   --o-texto: var(--u-texto, #FFFFFF);
   --o-acento: var(--u-acento, #6F8096);
   --o-acento-texto: var(--u-acento-texto, #9FB0C4);
-  --o-acento-tinta: #080A0C;
+  --o-acento-tinta: var(--u-acento-tinta, #080A0C);
   --o-fill: rgba(255,255,255,.10); --o-fill-2: rgba(255,255,255,.06); --o-fill-forte: rgba(18,22,27,.95);
   --o-borda: rgba(255,255,255,.14); --o-divisor: rgba(255,255,255,.10); --o-realce: rgba(255,255,255,.14);
   --o-sombra: rgba(0,0,0,.55);
   --o-esc-1: #2E302E; --o-esc-2: #353B41; --o-esc-3: #49545F; --o-esc-4: #6F8096; --o-esc-0: rgba(255,255,255,.06); --o-esc-tinta-4: #080A0C;
   --o-luz-1: rgba(30,84,104,.78); --o-luz-2: rgba(52,66,86,.74); --o-luz-3: rgba(78,52,34,.66); --o-luz-4: rgba(11,38,20,.9);
   --o-campo: #141A20;
-  --text: var(--o-texto); --text2: rgba(255,255,255,.76); --text3: rgba(255,255,255,.64);
+  --text: var(--o-texto); --text2: color-mix(in srgb, var(--o-texto) 76%, transparent); --text3: color-mix(in srgb, var(--o-texto) 64%, transparent);
   --acc: var(--o-acento); --acc-ink: var(--o-acento-tinta); --acc-text: var(--o-acento-texto); --foco: var(--o-acento-texto); --acc-soft: rgba(111,128,150,.24);
   --perigo: #FF7B73; --perigo-soft: rgba(255,123,115,.16); --on-perigo: #2B0705;
   --card: var(--o-fill); --card-brd: var(--o-borda); --panel: var(--o-fill-2); --glass: var(--o-fill); --glass-brd: var(--o-borda);
@@ -39,14 +39,14 @@
   --o-texto: var(--u-texto, #0E1319);
   --o-acento: var(--u-acento, #6F8096);
   --o-acento-texto: var(--u-acento-texto, #46586D);
-  --o-acento-tinta: #080A0C;
+  --o-acento-tinta: var(--u-acento-tinta, #080A0C);
   --o-fill: rgba(255,255,255,.66); --o-fill-2: rgba(255,255,255,.42); --o-fill-forte: rgba(250,251,252,.97);
   --o-borda: rgba(14,19,25,.12); --o-divisor: rgba(14,19,25,.10); --o-realce: rgba(255,255,255,.9);
   --o-sombra: rgba(40,56,76,.28);
   --o-esc-0: rgba(14,19,25,.05); --o-esc-1: #DDE2E7; --o-esc-2: #C3CBD4; --o-esc-3: #9AA7B6; --o-esc-4: #6F8096; --o-esc-tinta-4: #080A0C;
   --o-luz-1: rgba(120,170,190,.34); --o-luz-2: rgba(150,165,190,.34); --o-luz-3: rgba(205,180,150,.26); --o-luz-4: rgba(150,190,160,.20);
   --o-campo: #FFFFFF;
-  --text: var(--o-texto); --text2: rgba(14,19,25,.76); --text3: rgba(14,19,25,.64);
+  --text: var(--o-texto); --text2: color-mix(in srgb, var(--o-texto) 76%, transparent); --text3: color-mix(in srgb, var(--o-texto) 64%, transparent);
   --acc: var(--o-acento); --acc-ink: var(--o-acento-tinta); --acc-text: var(--o-acento-texto); --foco: var(--o-acento-texto); --acc-soft: rgba(111,128,150,.20);
   --perigo: #B3001B; --perigo-soft: rgba(179,0,27,.09); --on-perigo: #FFFFFF;
   --card: var(--o-fill); --card-brd: var(--o-borda); --panel: var(--o-fill-2); --glass: var(--o-fill); --glass-brd: var(--o-borda);
@@ -207,3 +207,7 @@
 @container tela (min-width: 900px) { .app[data-dir="d"] .main { padding-inline: 28px; } }
 .app[data-dir="d"] .o-hero { padding-block: 16px; gap: var(--e-2); min-height: 0; }
 .app[data-dir="d"] .o-meta-fora { margin: calc(var(--e-2) - var(--e-6)) 0 0; text-align: left; padding-inline: var(--e-2); }
+
+/* ---------- post-its de Entradas: título, texto, tags e descrição no mesmo tamanho compacto de 13 px (faixa de meta do Órbita), para a descrição continuar cabendo no quadrado a 100% ---------- */
+.app[data-dir="d"] .postit :is(.p-txt, .p-txt.com-titulo, .p-tags) { font-size: calc(13px * var(--esc)); line-height: 1.3; }
+.app[data-dir="d"] .postit { padding: var(--e-3) var(--e-3) var(--e-3); gap: var(--e-1); } /* escala de 4 px do Órbita: mais largura útil para as tags não quebrarem em duas linhas */

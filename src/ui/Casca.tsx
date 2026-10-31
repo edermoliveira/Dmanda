@@ -9,6 +9,7 @@ import { Janelas } from './janelas';
 import { MenuMover } from './visoes';
 import { MenuConta } from './MenuConta';
 import { aplicarNaRaiz } from '@/lib/aparencia';
+import { emDemo } from './fonte';
 
 const NAV: [string, string, string, string][] = [
   ['/', 'Início', 'nav-inicio', 'inicio'], ['/entradas', 'Entradas', 'nav-entradas', 'entradas'], ['/demandas', 'Demandas', 'nav-demandas', 'demandas'],
@@ -87,7 +88,7 @@ function Interior({ children }: { children: ReactNode }) {
           <button className="perfil-b" aria-label="Menu da conta" aria-haspopup="menu" aria-expanded={!!conta} title="Conta" onClick={(e) => { if (conta) { setConta(null); return; } fecharMenuMover(); setPlus(false); const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setConta({ x: b.right - a.left, y: b.bottom - a.top }); }}><span className="avatar">{nome.charAt(0).toUpperCase()}</span><span className="tx">{nome}</span></button>
         </header>
         <main className="main" id="main">
-          {ambiente?.teste ? <p className="faixa-teste" role="note">Banco local de teste (dados descartáveis, não é o Supabase). Só em desenvolvimento.</p> : null}
+          {ambiente?.teste ? <p className="faixa-teste" role="note">{emDemo() ? 'Prévia visual com dados fictícios, só neste navegador. O que você alterar some ao recarregar a página.' : 'Banco local de teste (dados descartáveis, não é o Supabase). Só em desenvolvimento.'}</p> : null}
           {!online ? <p className="faixa-offline" role="status">Sem conexão com a internet. Nada do que você fizer agora será gravado; o que já está na tela continua visível. Quando a conexão voltar, tente de novo.</p> : null}
           {erroCarga ? <div className="erro-carga" role="alert"><b>Não foi possível carregar as demandas.</b><span>{erroCarga}</span><button className="btn mini" onClick={() => void recarregar()}>Tentar de novo</button></div> : null}
           {children}

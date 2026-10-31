@@ -19,12 +19,17 @@ const lista = [
   d('feita-antes', { etapa: 'Finalizado', prazo: '2026-10-10', concluida_em: '2026-10-12', tarefas: t(3, 3) }), // concluída antes: fora
 ];
 const c = cargaSemana(lista, hoje);
-ok(c.pendentes === 3 + 1 + 2 + 1 && c.concluidas === 3 && c.total === 10, `pendentes 7, concluídas na semana 3 (inclui a de domingo), total 10 (obtido ${c.pendentes}/${c.concluidas}/${c.total})`);
-ok(c.pct === 70 && c.semData === 1, 'percentual de carga pendente = 7/10 e uma demanda sem data fica em contador separado');
+ok(c.pendentes === 3 + 1 + 2 + 1 && c.concluidas === 1 + 3 && c.total === 11, `pendentes 7, concluídas 4 (1 tarefa feita da atrasada, mais 3 das finalizadas na semana, a de domingo inclusa), total 11 (obtido ${c.pendentes}/${c.concluidas}/${c.total})`);
+ok(c.pct === 64 && c.semData === 1, 'percentual de carga pendente = 7/11 e uma demanda sem data fica em contador separado');
 ok(c.atrasadas === 2 && c.hoje === 1, 'atrasadas e vencendo hoje contadas à parte');
 ok(cargaSemana([], hoje).pct === null, 'sem nada na semana não há percentual (nada é inventado)');
 ok(cargaSemana([d('x', { prazo: '2026-11-20' })], hoje).total === 0, 'demanda de outra semana não entra');
 ok(dataAplicavel(d('y', { prazo: '2026-11-05', acompanhar_em: '2026-11-01' })) === '2026-11-01' && dataAplicavel(d('z')) === null, 'a data mais próxima entre prazo e acompanhamento é a aplicável; sem datas, nenhuma');
+for (const [feitas, esperado] of [[0, 100], [1, 75], [3, 25], [4, 0]]) {
+  const r = cargaSemana([d('q', { prazo: hoje, tarefas: t(4, feitas) })], hoje);
+  ok(r.total === 4 && r.pct === esperado, `demanda elegível com 4 tarefas e ${feitas} concluídas = ${esperado}% pendente (obtido ${r.pct}%, total ${r.total})`);
+}
+ok(cargaSemana([d('s', { prazo: hoje })], hoje).pct === 100 && cargaSemana([d('s', { acompanhar_em: '2026-10-29', prazo: '2026-12-01', tarefas: t(2, 1) })], hoje).pct === 50, 'sem tarefas vale uma unidade; o acompanhamento mais próximo posiciona a demanda na semana');
 const m = cargaPorDia(lista);
 ok(m.get('2026-10-20') === 3 && m.get('2026-10-30') === 1 && !m.has('2026-10-27') && !m.has('2026-10-12'), 'carga por dia: só abertas com data; concluídas saem');
 const g = gradeDoMes(2026, 10, m);

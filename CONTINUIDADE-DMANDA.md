@@ -398,3 +398,16 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 **Limitações.** Emulação, não aparelho físico. A barra do sistema (theme-color) segue o esquema do sistema, não a escolha do app. A prévia na Vercel não foi configurada (depende de autorização para mexer no `vercel.json`).
 
 **Retomada.** Próximo passo: avaliação do usuário do Início e da base; depois Entradas e Demandas (só mediante aprovação).
+
+
+## O. Órbita, fechamento do bloco 1 e prévia (31/10/2026, branch visual/novo-estilo)
+
+**Correções pedidas.** (1) `cargaSemana`: todas as tarefas de uma demanda aberta elegível entram no total (100%, 75%, 25% e 0% pendente com 0, 1, 3 e 4 de 4 tarefas concluídas), sem histórico por tarefa e sem banco (decisão 49). (2) Contraste das cores personalizadas: texto, secundário e discreto 4,5:1 sobre fundo, vidro e luz; acento 3:1; tinta dos botões escolhida sozinha; links recalculados mesmo trocando só o fundo (decisão 51). (3) As quatro falhas de `testar:ajustes` foram investigadas uma a uma e corrigidas ou explicadas (decisão 52). (4) Carga e filtros do Início usam a data mais próxima entre vencimento ajustado e acompanhamento (decisão 50); regras de 10 e 7 dias seguem registradas para depois. (5) `theme-color` acompanha modo e fundo do app (decisão 53). (6) Prévia (decisão 54).
+
+**Prévia.** Código: `src/lib/demo.ts` (quando liga), `src/ui/fonte.ts` (a interface escolhe entre ações do servidor e o banco em memória), `src/ui/demo/banco-demo.ts` (dados fictícios relativos a hoje e as funções do banco em TypeScript, com as mesmas validações). `vercel.json` da branch libera só `visual/novo-estilo`. Local: `DMANDA_DEMO=sim npm run dev` ou `npm run testar:previa` (20 verificações). Limites: nada é durável, a sessão e o Supabase não são testados, e o comportamento no servidor da Vercel só se confere depois da primeira implantação. A `main` e a produção não mudam: o modo nunca liga com `VERCEL_ENV=production`.
+
+**Divergência conhecida.** A rotina diária no banco (`rotina_diaria`) e o contador "Só atrasadas" de Demandas ainda usam o critério antigo (só vencimento, e acompanhamento nos 3 dias finais para quem aguarda retorno). Corrigir exige migração: só com aprovação específica.
+
+**Andamento.** Corrigida a divergência entre 33% e 37%: o valor oficial calculado em `ANDAMENTO.md` é 37% (30/10/2026), e o 33% vinha de uma nota antiga da memória e do relatório do bloco 1. O trabalho visual não altera o percentual até o usuário avaliar.
+
+**Retomada.** Avaliar a prévia (URL no relatório do bloco). Só depois: Entradas e Demandas no desenho Órbita. Agenda, Documentos e IA em blocos próprios.

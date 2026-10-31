@@ -188,6 +188,9 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .lista-dem .ld-sec { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; font-size: calc(12px * var(--esc)); color: var(--text2); }
 .app .lista-dem .ld-sec .num { min-width: 0; font-size: inherit; color: inherit; overflow-wrap: anywhere; }
 .app .lista-dem .ld-sec .origem-p { max-width: 100%; font-size: inherit; white-space: normal; overflow: visible; overflow-wrap: anywhere; } /* a origem quebra a linha em vez de ser cortada */
+/* o botão com assunto longo fica no topo da linha e os demais se centralizam nela: centralizado, ele passava da linha da grade (WebKit) e invadia a do vencimento */
+.app .lista-dem .ld-m { align-self: start; }
+.app .lista-dem .ld-fim, .app .lista-dem .ld-abrir { align-self: center; }
 .app .lista-dem .ld-fim { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
 .app .lista-dem .ld-prazo { display: flex; justify-content: flex-end; width: 210px; }
 .app .lista-dem .ld-prog { width: 104px; text-align: right; font-size: calc(12px * var(--esc)); color: var(--text2); white-space: nowrap; }
@@ -196,6 +199,7 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .lista-dem .linha-d { padding: 0 14px 12px 40px; }
 @container tela (max-width: 899px) {
   .app .lista-dem .ld-c { grid-template-columns: minmax(0, 1fr) auto; }
+  .app .lista-dem .ld-m { height: fit-content; } /* WebKit dimensionava a linha com o botão em uma linha só e o botão passava por cima do vencimento */
   .app .lista-dem .ld-fim { grid-column: 1; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; gap: 4px 12px; padding: 0 0 6px 34px; }
   .app .lista-dem .ld-prazo, .app .lista-dem .ld-prog { width: auto; justify-content: flex-start; text-align: left; }
   .app .lista-dem .ld-prazo:empty, .app .lista-dem .ld-prazo:not(:has(*)) { display: none; }

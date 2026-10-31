@@ -2,13 +2,14 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { googleLigado } from '@/lib/login';
 import { modoTeste } from '@/lib/supabase/config';
+import { modoDemo } from '@/lib/demo';
 import { BotaoGoogle } from './BotaoGoogle';
 import { FormularioSenha } from './FormularioSenha';
 import { PainelLogin } from './PainelLogin';
 
 // Os avisos dependem do endereço (searchParams): só essa parte é dinâmica, o resto da página sai pronto.
 async function Aviso({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  if (modoTeste()) redirect('/');
+  if (modoTeste() || modoDemo()) redirect('/');
   const p = await searchParams;
   const aviso = p.saiu === 'parcial' ? 'Você saiu do Dmanda neste navegador, mas o servidor não confirmou o encerramento da sessão. Se este computador não é seu, entre e saia de novo.' : p.saiu ? 'Você saiu do Dmanda neste navegador.' : p.encerrada || p.expirou ? 'Sua sessão foi encerrada ou deixou de ser válida (por exemplo, depois de sair em outro aparelho). Entre de novo.' : p.negado ? 'Esta conta não tem acesso ao Dmanda.' : p.erro ? 'Não foi possível entrar. Tente de novo.' : '';
   // avisos de saída e de sessão encerrada são informação (tom neutro); só recusa, falha e saída não confirmada pelo servidor usam o vermelho, que a interface reserva ao que é crítico

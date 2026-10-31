@@ -4,8 +4,7 @@
 import { CHAVE_CORES, CHAVE_ESCALA, ESCALA_PADRAO, lerCores, limitarEscala, variaveisDoModo, type CoresTema, type TokenCor } from '@/lib/aparencia';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { FILTRO_VAZIO, hojeISO, type Coluna, type DadosDemanda, type Demanda, type Etapa, type Filtro } from '@/lib/demandas';
-import * as srv from '@/servidor/demandas';
-import * as srvE from '@/servidor/entradas';
+import { srv, srvE } from './fonte';
 import type { Entrada } from '@/lib/entradas';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';

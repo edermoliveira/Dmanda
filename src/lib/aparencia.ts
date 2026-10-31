@@ -33,19 +33,47 @@ export function misturar(cima: string, base: string, a: number): string {
   return `#${c(0)}${c(1)}${c(2)}`.toUpperCase();
 }
 
+// As camadas que ficam atrás do texto (vidro e iluminação ambiente), para medir o contraste no pior fundo.
+const VIDRO: Record<ModoTema, { cor: string; a: number }> = { escuro: { cor: '#FFFFFF', a: 0.10 }, claro: { cor: '#FFFFFF', a: 0.66 } };
+const AMBIENTE: Record<ModoTema, { cor: string; a: number }> = { escuro: { cor: '#1E5468', a: 0.40 }, claro: { cor: '#78AABE', a: 0.17 } };
+const TINTAS = ['#080A0C', '#FFFFFF'];
+
+/** Fundos reais atrás do texto: o fundo puro, o vidro sobre ele e o vidro sobre a iluminação ambiente (o pior caso para texto claro no escuro, com a luz a meia força, pois o gradiente some longe da fonte). */
+export function fundosEfetivos(modo: ModoTema, fundo: string): string[] {
+  const v = VIDRO[modo], l = AMBIENTE[modo];
+  const luz = misturar(l.cor, fundo, l.a);
+  return [fundo, misturar(v.cor, fundo, v.a), misturar(v.cor, luz, v.a)];
+}
+const pior = (frente: string, fundos: string[]) => Math.min(...fundos.map((f) => contraste(frente, f)));
+
+/** Tinta do texto dos botões sobre o acento: a escura ou a branca, a que tiver mais contraste (sempre passa de 4,5:1, pois o melhor dos dois nunca fica abaixo de cerca de 4,58). */
+export const tintaDoAcento = (acento: string) => (contraste(TINTAS[0], acento) >= contraste(TINTAS[1], acento) ? TINTAS[0] : TINTAS[1]);
+
+/** Cor de links e ícones de destaque: o acento, aproximado do texto até chegar a 4,5:1 no pior fundo (no limite vira o próprio texto, que já passou). */
+export function acentoParaTexto(acento: string, texto: string, fundos: string[]): string {
+  let t = acento;
+  for (let a = 0; pior(t, fundos) < 4.5 && a <= 1; a += 0.05) t = misturar(texto, acento, a);
+  return t;
+}
+
 /**
- * Confere uma combinação de cores do modo (texto sobre fundo ≥ 4,5:1; acento sobre fundo ≥ 3:1, por ser elemento gráfico; tinta escura do botão sobre o acento ≥ 3:1).
+ * Confere uma combinação de cores do modo. Texto de leitura (principal e secundário a 76% e discreto a 64%) precisa de 4,5:1 sobre os fundos reais;
+ * elementos gráficos (acento sobre o fundo) precisam de 3:1; o texto dos botões usa uma tinta escolhida sozinha com 4,5:1 sobre o acento.
  * Devolve a mensagem do primeiro problema ou nulo. Atraso e erro não são personalizáveis: o vermelho mantém o significado.
  */
 export function problemaDeContraste(modo: ModoTema, cores: CoresModo): string | null {
   const c = { ...PADRAO[modo], ...cores };
-  if (contraste(c.texto, c.fundo) < 4.5) return `O texto fica difícil de ler sobre esse fundo (contraste ${contraste(c.texto, c.fundo).toFixed(1)}:1; o mínimo é 4,5:1).`;
-  if (contraste(c.acento, c.fundo) < 3) return `O acento quase some sobre esse fundo (contraste ${contraste(c.acento, c.fundo).toFixed(1)}:1; o mínimo é 3:1).`;
-  if (contraste('#080A0C', c.acento) < 3) return 'O acento está escuro demais para o texto dos botões.';
+  const fundos = fundosEfetivos(modo, c.fundo);
+  const txt = pior(c.texto, fundos);
+  if (txt < 4.5) return `O texto fica difícil de ler sobre esse fundo (contraste ${txt.toFixed(1)}:1; o mínimo é 4,5:1).`;
+  const mudo = Math.min(pior(misturar(c.texto, c.fundo, 0.76), fundos), pior(misturar(c.texto, c.fundo, 0.64), fundos));
+  if (mudo < 4.5) return `O texto secundário (legendas e datas, mais suaves que o texto principal) fica difícil de ler (contraste ${mudo.toFixed(1)}:1; o mínimo é 4,5:1). Escolha um texto com mais diferença para o fundo.`;
+  const grafico = pior(c.acento, fundos.slice(0, 2)); // elemento gráfico fica sobre o fundo e o vidro, não sobre a luz ambiente
+  if (grafico < 3) return `O acento quase some sobre esse fundo (contraste ${grafico.toFixed(1)}:1; o mínimo é 3:1).`;
   return null;
 }
 
-/** Variáveis --u-* da raiz para um modo: só as que o usuário escolheu e que passam no contraste. O texto de acento (links, ícones) é derivado para manter 4,5:1. */
+/** Variáveis --u-* da raiz para um modo: só as que o usuário escolheu e que passam no contraste, mais as derivadas (texto de acento e tinta dos botões) que acompanham qualquer escolha. */
 export function variaveisDoModo(modo: ModoTema, cores: CoresModo | undefined): Record<string, string> {
   if (!cores) return {};
   const limpas: CoresModo = {};
@@ -55,15 +83,14 @@ export function variaveisDoModo(modo: ModoTema, cores: CoresModo | undefined): R
   const v: Record<string, string> = {};
   if (limpas.fundo) v['--u-fundo'] = c.fundo;
   if (limpas.texto) v['--u-texto'] = c.texto;
-  if (limpas.acento) {
-    v['--u-acento'] = c.acento;
-    // texto de acento: o próprio acento se já passa de 4,5:1 sobre o fundo; senão clareia (escuro) ou escurece (claro) até passar
-    let t = c.acento; const alvo = modo === 'escuro' ? '#FFFFFF' : '#000000';
-    for (let a = 0; contraste(t, c.fundo) < 4.5 && a <= 1; a += 0.05) t = misturar(alvo, c.acento, a);
-    v['--u-acento-texto'] = t;
-  }
+  if (limpas.acento) { v['--u-acento'] = c.acento; v['--u-acento-tinta'] = tintaDoAcento(c.acento); }
+  // links e ícones de destaque dependem do fundo, do texto e do acento: qualquer escolha os recalcula (com só o fundo trocado, o padrão fixo deixaria de ser legível)
+  v['--u-acento-texto'] = acentoParaTexto(c.acento, c.texto, fundosEfetivos(modo, c.fundo));
   return v;
 }
+
+/** Cor do fundo do modo que vale agora (a do usuário, se aprovada, ou o padrão): usada na barra do sistema (theme-color). */
+export const fundoEfetivo = (modo: ModoTema, cores: CoresModo | undefined) => variaveisDoModo(modo, cores)['--u-fundo'] ?? PADRAO[modo].fundo;
 
 export function lerCores(bruto: unknown): CoresTema {
   const saida: CoresTema = {};
@@ -78,11 +105,20 @@ export function lerCores(bruto: unknown): CoresTema {
   return saida;
 }
 
-const TODAS = ['--u-fundo', '--u-texto', '--u-acento', '--u-acento-texto', '--u-esc'];
+const TODAS = ['--u-fundo', '--u-texto', '--u-acento', '--u-acento-texto', '--u-acento-tinta', '--u-esc'];
 /** Aplica na raiz (documentElement) o modo, o tamanho do texto e as cores. Usada pelo app depois da hidratação e, em texto, pelo script que roda antes da página aparecer. */
 export function aplicarNaRaiz(raiz: HTMLElement, modo: ModoTema, escala: number, cores: CoresTema) {
   raiz.dataset.tema = modo;
   for (const k of TODAS) raiz.style.removeProperty(k);
   raiz.style.setProperty('--esc', String(limitarEscala(escala)));
-  for (const [k, val] of Object.entries(variaveisDoModo(modo, cores[modo]))) raiz.style.setProperty(k, val);
+  const v = variaveisDoModo(modo, cores[modo]);
+  for (const [k, val] of Object.entries(v)) raiz.style.setProperty(k, val);
+  atualizarBarra(raiz.ownerDocument, v['--u-fundo'] ?? PADRAO[modo].fundo);
+}
+
+/** theme-color segue o modo e o fundo escolhidos no app (não o esquema do sistema): uma única marcação, sem media, com o fundo efetivo. Navegadores que ignoram a mudança em tempo real mantêm a cor da abertura. */
+export function atualizarBarra(doc: Document, cor: string) {
+  const metas = doc.head.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!metas.length) { const m = doc.createElement('meta'); m.name = 'theme-color'; m.content = cor; doc.head.appendChild(m); return; }
+  metas.forEach((m) => { m.removeAttribute('media'); m.content = cor; });
 }

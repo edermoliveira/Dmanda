@@ -1,6 +1,6 @@
 // Carga pendente semanal e mensal do Início (regras aprovadas). Tudo é derivado das datas e das tarefas já gravadas: nada é inventado e nada vai ao banco.
 // Semana de domingo a sábado, em America/Sao_Paulo (a data de hoje chega pelo contexto, AAAA-MM-DD).
-import { diasAte, type Demanda } from './demandas.ts';
+import { dataAplicavel, diasAte, type Demanda } from './demandas.ts';
 
 const MS_DIA = 86_400_000;
 const emMs = (iso: string) => { const [a, m, d] = iso.slice(0, 10).split('-').map(Number); return Date.UTC(a, m - 1, d); };
@@ -14,11 +14,7 @@ export function semanaDe(hoje: string): { inicio: string; fim: string } {
   return { inicio, fim: somarDias(inicio, 6) };
 }
 
-/** A data que posiciona a demanda na carga: a mais próxima entre o vencimento ajustado e o acompanhamento programado. Sem nenhuma das duas, não há data aplicável. */
-export function dataAplicavel(d: Demanda): string | null {
-  const datas = [d.prazo, d.acompanhar_em].filter((x): x is string => !!x).map((x) => x.slice(0, 10)).sort();
-  return datas[0] ?? null;
-}
+export { dataAplicavel };
 
 /** Participação pelas tarefas; sem tarefas, uma unidade apenas para o indicador. */
 export const unidades = (d: Demanda) => Math.max(1, d.tarefas.length);
@@ -29,7 +25,7 @@ const dataDaConclusao = (d: Demanda) => (d.concluida_em ? d.concluida_em.slice(0
 
 export type CargaSemana = {
   inicio: string; fim: string;
-  /** unidades que entram no total semanal (pendentes + concluídas durante a semana) */
+  /** unidades do total semanal: todas as tarefas das demandas elegíveis (abertas ou concluídas na semana); concluídas = total - pendentes */
   total: number; pendentes: number; concluidas: number;
   /** percentual de carga pendente (0 a 100); nulo quando não há nada na semana */
   pct: number | null;
@@ -40,7 +36,7 @@ export type CargaSemana = {
 
 export function cargaSemana(lista: Demanda[], hoje: string): CargaSemana {
   const { inicio, fim } = semanaDe(hoje);
-  let pendentes = 0, concluidas = 0, semData = 0, atrasadas = 0, deHoje = 0;
+  let pendentes = 0, total = 0, semData = 0, atrasadas = 0, deHoje = 0;
   for (const d of lista) {
     if (d.arquivada_em && !d.concluida_em) continue;
     const aberta = d.etapa !== 'Finalizado' && !d.concluida_em;
@@ -48,15 +44,16 @@ export function cargaSemana(lista: Demanda[], hoje: string): CargaSemana {
       const dt = dataAplicavel(d);
       if (!dt) { semData += 1; continue; }
       if (dt > fim) continue; // fora da semana (atrasadas entram: a data é anterior ao fim)
-      pendentes += unidadesPendentes(d);
+      // todas as tarefas da demanda elegível entram no total; as já concluídas só deixam de ser pendência (não há histórico por tarefa)
+      total += unidades(d); pendentes += unidadesPendentes(d);
       if (diasAte(dt, hoje) < 0) atrasadas += 1; else if (dt === hoje) deHoje += 1;
     } else {
       const c = dataDaConclusao(d), dt = dataAplicavel(d);
       // concluída durante a semana permanece no total semanal, saindo das pendências
-      if (c && c >= inicio && c <= fim && (!dt || dt <= fim)) concluidas += unidades(d);
+      if (c && c >= inicio && c <= fim && (!dt || dt <= fim)) total += unidades(d);
     }
   }
-  const total = pendentes + concluidas;
+  const concluidas = total - pendentes;
   return { inicio, fim, total, pendentes, concluidas, pct: total ? Math.round((pendentes / total) * 100) : null, semData, atrasadas, hoje: deHoje };
 }
 

@@ -2,7 +2,9 @@
 // Menu do avatar do topo (computador e celular). Por ora só tem "Sair"; o Perfil ainda não existe. Mesmo desenho e teclado do menu "Mover para".
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useApp } from './contexto';
-import { sairDaConta } from '@/servidor/demandas';
+import { srv } from './fonte';
+import { copiaDemo } from './demo/banco-demo';
+import { emDemo } from './fonte';
 
 export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; fechar: () => void }) {
   const { ambiente, avisar } = useApp();
@@ -35,7 +37,7 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
   const sair = async () => {
     if (saindo || teste) return;
     setSaindo(true);
-    const r = await sairDaConta().catch(() => ({ ok: false as const, erro: 'Não foi possível sair agora. Tente de novo.', sessaoLocalEncerrada: false }));
+    const r = await srv.sairDaConta().catch(() => ({ ok: false as const, erro: 'Não foi possível sair agora. Tente de novo.', sessaoLocalEncerrada: false }));
     if (!r.ok && !r.sessaoLocalEncerrada) { setSaindo(false); fechar(); avisar(r.erro, true); return; }
     // navegação completa que troca a entrada do histórico: descarta o estado da interface (demandas na memória) e o proxy exige novo login.
     // Se o servidor de Auth não confirmou o encerramento (a sessão deste navegador já foi apagada), o login diz isso em vez de fingir sucesso.
@@ -47,14 +49,14 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
     if (baixando) return;
     setBaixando(true);
     try {
-      const r = await fetch('/api/exportar', { cache: 'no-store', redirect: 'manual' });
+      const r = emDemo() ? new Response(copiaDemo(), { headers: { 'content-disposition': 'attachment; filename="dmanda-previa-dados-ficticios.json"' } }) : await fetch('/api/exportar', { cache: 'no-store', redirect: 'manual' });
       if (r.type === 'opaqueredirect') { window.location.replace('/login?encerrada=1'); return; }
       if (!r.ok) throw new Error('falha');
       const nome = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') ?? '')?.[1] ?? 'dmanda-copia.json';
       const url = URL.createObjectURL(await r.blob());
       const a = document.createElement('a'); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-      fechar(); avisar('Cópia baixada: ' + nome + '. Guarde em um lugar privado; ela tem seus dados reais.');
+      fechar(); avisar(emDemo() ? 'Cópia baixada: ' + nome + '. São dados fictícios da prévia.' : 'Cópia baixada: ' + nome + '. Guarde em um lugar privado; ela tem seus dados reais.');
     } catch {
       fechar(); avisar('Não foi possível gerar a cópia agora. Nada foi baixado. Tente de novo.', true);
     } finally { setBaixando(false); }

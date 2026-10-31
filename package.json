@@ -17,6 +17,7 @@
     "testar:interface": "node scripts/testar-interface.mjs",
     "testar:entradas": "node scripts/testar-entradas.mjs",
     "testar:ajustes": "node scripts/testar-ajustes.mjs",
+    "testar:previa": "node scripts/testar-previa.mjs",
     "testar:orbita": "node scripts/testar-orbita.mjs",
     "testar:carga": "node scripts/testar-carga.mjs",
     "testar:aparencia": "node scripts/testar-aparencia.mjs",

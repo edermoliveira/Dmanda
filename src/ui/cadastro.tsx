@@ -15,7 +15,7 @@ import { Janela, Grupo } from './janela-base';
 import { CAMPOS_VAZIOS, CamposChegadaPrazo, CamposIdentificacao, CAMPOS_DA_SECAO, chaveTarefa, doCampos, EditorTarefas, mudou, novoUuid, paraDadosNovos, paraEnvio, type Campos, type Secao, type TarefaForm } from './campos';
 import { plural, type Demanda } from '@/lib/demandas';
 import { paraDemanda, type Entrada } from '@/lib/entradas';
-import * as srv from '@/servidor/demandas';
+import { srv } from './fonte';
 
 const PASSOS = ['Identificação', 'Chegada e prazo', 'Tarefas'] as const;
 const TODAS = [...CAMPOS_DA_SECAO.identificacao, ...CAMPOS_DA_SECAO.descricao, ...CAMPOS_DA_SECAO.chegada];

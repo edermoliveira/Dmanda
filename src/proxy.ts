@@ -8,6 +8,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { configSupabase, modoTeste, opcoesCookiesSessao } from '@/lib/supabase/config';
+import { modoDemo } from '@/lib/demo';
 import { COOKIE_LEGADO_ULTIMO_USO, contaAutorizada, ehCookieDeSessao, situacaoDoErroAuth } from '@/lib/sessao';
 
 const emHttps = (request: NextRequest) => request.nextUrl.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
@@ -21,7 +22,7 @@ const PAGINA_INDISPONIVEL = `<!doctype html><html lang="pt-BR"><head><meta chars
 export async function proxy(request: NextRequest) {
   // A rotina diária se autentica sozinha (CRON_SECRET) e não pode renovar nem exigir sessão: passa direto, sem tocar em cookies.
   if (request.nextUrl.pathname.startsWith('/api/cron/')) return NextResponse.next();
-  if (modoTeste()) return NextResponse.next();
+  if (modoTeste() || modoDemo()) return NextResponse.next(); // prévia visual com dados fictícios: sem Supabase, sem login (a Vercel protege a implantação)
   const c = configSupabase();
   if (!c) {
     return new NextResponse('Dmanda: o Supabase ainda não está configurado neste ambiente (faltam as variáveis do .env.local, veja .env.example).', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });

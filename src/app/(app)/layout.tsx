@@ -9,6 +9,7 @@ import '@/estilos/catalyst.css';
 import '@/estilos/app.css';
 import '@/estilos/orbita.css';
 import { coresDaBarra } from '@/lib/cores-barra';
+import { modoDemo } from '@/lib/demo';
 
 const inter = Inter({ subsets: ['latin'], variable: '--f-inter', display: 'swap' });
 
@@ -36,7 +37,7 @@ const scriptTema = `(function(){var d=document.documentElement;try{var t=JSON.pa
 export default function LayoutApp({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
-      <head><script dangerouslySetInnerHTML={{ __html: scriptTema }} /></head>
+      <head><script dangerouslySetInnerHTML={{ __html: modoDemo() ? `window.__DMANDA_DEMO__=true;${scriptTema}` : scriptTema }} /></head>
       <body>{children}</body>
     </html>
   );

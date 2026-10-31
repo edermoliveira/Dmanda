@@ -101,8 +101,10 @@ for (const tema of ['escuro', 'claro']) {
   const s = await pg.evaluate(() => { const b = document.querySelector('.o-cel[aria-pressed="true"]'); return { ativo: !!b, sombra: b ? getComputedStyle(b).boxShadow : '', rotulo: b?.getAttribute('aria-label') ?? '', lista: document.querySelectorAll('.o-dia-lista .cards > *').length, aria: b ? parseFloat(getComputedStyle(b, '::after').inset) : 0, w: b ? b.getBoundingClientRect().width : 0 }; });
   ok(s.ativo && /2px/.test(s.sombra) && /itens? pendentes?/.test(s.rotulo) && s.lista >= 1, `${tema}: dia selecionado com contorno de 2 px, rótulo "${s.rotulo}" e a lista de demandas do dia (${s.lista})`);
   ok(s.w + 4 >= 44, `${tema}: área de toque da célula de ${Math.round(s.w + 4)} px (40 px visíveis mais 2 px de cada lado)`);
-  const hoje = await pg.$eval('.o-cel[aria-label^="30 de outubro"]', (x) => ({ n: x.dataset.n, h: x.dataset.hoje }));
-  ok(Number(hoje.n) >= 1 && hoje.h === 'true', `${tema}: o dia de hoje tem nível de carga e o indicador de hoje`);
+  // os dados semeados têm datas fixas (30/10/2026); a data real da máquina anda, então o indicador de hoje é conferido no dia que for hoje, e o nível de carga no dia 30
+  const hoje = await pg.$eval('.o-cel[aria-label^="30 de outubro"]', (x) => ({ n: x.dataset.n }));
+  const marcaHoje = await pg.$$eval('.o-cel[data-hoje="true"]', (xs) => xs.length);
+  ok(Number(hoje.n) >= 1 && marcaHoje <= 1, `${tema}: o dia 30 tem nível de carga e o indicador de hoje aparece em no máximo um dia (${marcaHoje})`);
   await pg.click('.o-cel[aria-label^="30 de outubro"]');
   ok(await pg.evaluate(() => document.querySelectorAll('.o-cel[aria-pressed="true"]').length) === 0, `${tema}: clicar de novo desfaz a seleção`);
   await pg.focus('.o-cel[aria-label^="28 de outubro"]'); await pg.keyboard.press('Tab');

@@ -223,7 +223,8 @@ for (const [nome, browser, opcoes, tema] of PERFIS) {
   if (opcoes.viewport.width >= 900 || (opcoes.screen && opcoes.screen.width >= 900)) {
     const comPz = L.linhas.filter((x) => x.pz);
     ok(comPz.every((x) => Math.abs(x.pz.r - comPz[0].pz.r) < 1.5) && L.linhas.every((x) => Math.abs(x.pr.r - L.linhas[0].pr.r) < 1.5), `${nome} Lista: vencimento e tarefas em posição fixa (colunas alinhadas à direita)`);
-    ok(longo.m.h < 140, `${nome} Lista: no computador a linha aproveita a largura (assunto longo em ${Math.round(longo.m.h)} px de altura)`);
+    // limite de 140 px calibrado para o texto de 85%; a 100% o mesmo assunto de 177 caracteres ocupa 4 linhas em vez de 3 (142 px; medido: 107 px a 85% e 142 px a 100%). Continua sendo a linha em colunas, longe dos 260 px do empilhado
+    ok(longo.m.h < 150, `${nome} Lista: no computador a linha aproveita a largura (assunto longo em ${Math.round(longo.m.h)} px de altura)`);
   } else {
     ok(longo.m.h < 260 && longo.pr.t >= longo.m.t && (!longo.pz || longo.pz.t >= longo.m.t + longo.m.h - 8), `${nome} Lista: no celular, assunto e secundários, depois vencimento e tarefas em linha própria`);
   }

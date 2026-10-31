@@ -12,7 +12,7 @@ import { flushSync } from 'react-dom';
 import { Icone } from './Icone';
 import { Janela } from './janela-base';
 import { novoUuid } from './campos';
-import * as srvE from '@/servidor/entradas';
+import { srvE } from './fonte';
 import { useApp, useOnline } from './contexto';
 import {
   aparar, camposEmConflito, carimbo, contarTags, COR_AUTOMATICA, diferencas, estadoDe, filtrarEntradas, LIMITE_TEXTO, LIMITE_TITULO, ordenarEntradas, QTD_CORES, resumoDe, semTags, tagsDe, temTitulo, vazia,
