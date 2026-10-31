@@ -385,3 +385,16 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 **Hash publicado e implantação:** o hash da `main` enviada e o estado da Vercel estão no relatório do bloco (um commit não contém o próprio hash); confira com `git ls-remote origin refs/heads/main` e com o commit em `git log -1`.
 
 **Retomada para o estilo novo.** A branch local `visual/novo-estilo` fica alinhada à `main` por fast-forward, com o bloco de instruções da nova direção no `CLAUDE.md` da branch; sem push. Sessão nova dedicada: ler a seção L, trabalhar só na branch, Impeccable (e Taste quando pertinente) para o estilo, Ponytail para a qualidade, regras funcionais intactas; a prévia começa pelo modo de demonstração em memória. Agenda e implementação visual seguem aguardando autorização.
+
+
+## N. Órbita, bloco 1: base visual, preferências e Início (30/10/2026, branch visual/novo-estilo, não publicado)
+
+**O que foi feito.** `src/estilos/orbita.css` (carregado depois de `catalyst.css` e `app.css`) redefine os tokens que o resto do desenho já lê e a superfície de vidro fosco; camada ambiente de gradientes radiais no `.bg`; tipografia e geometria por tokens (`--t-*`, `--e-*`, `--r-*`). Início novo (`src/ui/inicio-orbita.tsx`): anel da carga pendente da semana, três indicadores compactos (os mesmos filtros de antes), Foco do dia e calendário mensal de carga. Configurações ganhou Aparência (`src/ui/aparencia.tsx`). Regras puras em `src/lib/carga.ts` e `src/lib/aparencia.ts`. Fonte IBM Plex Mono deixou de ser carregada (não é mais usada).
+
+**Tokens principais (escuro / claro).** Fundo `#080A0C` / `#EDF0F3`; texto `#FFFFFF` / `#0E1319`; acento `#6F8096` nos dois; texto de acento `#9FB0C4` / `#46586D`; atraso `#FF7B73` / `#B3001B`; vidro: preenchimento branco 10% / 66%, contorno 14%, realce superior, blur de 16 a 24 px só nas superfícies grandes e flutuantes. Display 60 px, título 38 px, destaque 18, linha 14, meta 12, número compacto 27 (todos vezes `--esc`).
+
+**Testes.** Linha de base antes de mexer: tsc ok, regras 82, app 132, interface 148, entradas 179, ajustes 604 (a primeira tentativa foi contaminada por duas execuções simultâneas no mesmo banco de teste). Depois: regras 82, carga 11, aparência 15, órbita 65 (novo, `npm run testar:orbita`), app 132, interface 148 (expectativas de escala 85% trocadas por proporção a `--esc`, sem enfraquecer), entradas 179, build ok, `verificar:cores` ok. **Falham 4 de 604 em `testar:ajustes`**, todas por consequência do texto maior: Lista (linha com assunto longo passa de 140 px a 1000 px de largura e uma verificação do WebKit no iPad) e a descrição dos post-its no iPhone, que o ajuste de caber deixa de mostrar. Não foram alteradas: aguardam decisão do usuário (ver relatório do bloco). Capturas locais em `imagens/orbita-bloco1/` (não versionadas).
+
+**Limitações.** Emulação, não aparelho físico. A barra do sistema (theme-color) segue o esquema do sistema, não a escolha do app. A prévia na Vercel não foi configurada (depende de autorização para mexer no `vercel.json`).
+
+**Retomada.** Próximo passo: avaliação do usuário do Início e da base; depois Entradas e Demandas (só mediante aprovação).

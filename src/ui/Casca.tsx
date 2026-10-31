@@ -8,6 +8,7 @@ import { ProvedorApp, useApp, useOnline } from './contexto';
 import { Janelas } from './janelas';
 import { MenuMover } from './visoes';
 import { MenuConta } from './MenuConta';
+import { aplicarNaRaiz } from '@/lib/aparencia';
 
 const NAV: [string, string, string, string][] = [
   ['/', 'Início', 'nav-inicio', 'inicio'], ['/entradas', 'Entradas', 'nav-entradas', 'entradas'], ['/demandas', 'Demandas', 'nav-demandas', 'demandas'],
@@ -23,7 +24,7 @@ function useToque() {
 }
 
 function Interior({ children }: { children: ReactNode }) {
-  const { tema, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover } = useApp();
+  const { tema, escala, cores, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover } = useApp();
   const caminho = usePathname();
   const router = useRouter();
   const toque = useToque();
@@ -41,7 +42,7 @@ function Interior({ children }: { children: ReactNode }) {
   useEffect(() => { if (janela) marca('modal'); }, [janela]);
   useEffect(() => { if (plus) marca('plus'); }, [plus]);
   useEffect(() => { if (!plus) return; const f = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.menuplus, .fab, .mais-c')) setPlus(false); }; document.addEventListener('click', f, true); return () => document.removeEventListener('click', f, true); }, [plus]);
-  useLayoutEffect(() => { document.documentElement.dataset.tema = tema; }, [tema]);
+  useLayoutEffect(() => { aplicarNaRaiz(document.documentElement, tema, escala, cores); }, [tema, escala, cores]);
   // atalho N (computador): nova entrada. Não vale digitando em um campo, com janela ou menu aberto, nem com Ctrl, Cmd ou Alt.
   const janelaAberta = janela !== null;
   useEffect(() => {
@@ -68,7 +69,7 @@ function Interior({ children }: { children: ReactNode }) {
   return (
     <div className="frame real" id="frame">
       <div ref={appRef} className="app" data-dir="d" data-tema={tema} data-ico="fino" data-dev={toque ? 'toque' : 'desktop'} data-col="true" data-aberto={menuAberto} data-reduzir="false"
-        style={{ '--icn': '20px', '--cardh': '340px', '--font': 'var(--f-inter), system-ui, sans-serif', '--font-h': 'var(--f-inter), system-ui, sans-serif', '--font-ui': 'var(--f-inter), system-ui, sans-serif', '--font-n': 'var(--f-mono), ui-monospace, monospace' }as CSSProperties}>
+        style={{ '--icn': '20px', '--cardh': '340px', }as CSSProperties}>
         <div className="bg"><i className="bg-img" /></div>
         <aside className="side" aria-label="Menu">
           <Capsula sel=".navi[aria-current='page']" chave={caminho} />

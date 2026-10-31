@@ -1,6 +1,7 @@
 'use client';
 // Estado do aplicativo no navegador: demandas vindas do banco, preferências de tela, avisos e janelas. Cada operação passa pelo servidor
 // e só atualiza a tela quando o banco confirmou; uma falha vira aviso de erro e nada muda (sem sucesso de mentira).
+import { CHAVE_CORES, CHAVE_ESCALA, ESCALA_PADRAO, lerCores, limitarEscala, variaveisDoModo, type CoresTema, type TokenCor } from '@/lib/aparencia';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { FILTRO_VAZIO, hojeISO, type Coluna, type DadosDemanda, type Demanda, type Etapa, type Filtro } from '@/lib/demandas';
 import * as srv from '@/servidor/demandas';
@@ -62,6 +63,12 @@ type Ctx = {
   rotina: EstadoRotina | null;
   tema: 'claro' | 'escuro';
   alternarTema: () => void;
+  definirTema: (t: 'claro' | 'escuro') => void;
+  escala: number;
+  definirEscala: (n: number) => void;
+  cores: CoresTema;
+  definirCor: (modo: 'claro' | 'escuro', token: TokenCor, valor: string) => void;
+  restaurarAparencia: () => void;
   menuAberto: boolean;
   alternarMenu: () => void;
   visao: Visao;
@@ -140,6 +147,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [ambiente, setAmbiente] = useState<Ctx['ambiente']>(null);
   const [rotina, setRotina] = useState<Ctx['rotina']>(null);
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro');
+  const [escala, setEscala] = useState(ESCALA_PADRAO);
+  const [cores, setCores] = useState<CoresTema>({});
   const [menuAberto, setMenuAberto] = useState(false);
   const [visao, setVisaoE] = useState<Visao>('cards');
   const [filtro, setFiltroE] = useState<Filtro>(FILTRO_VAZIO);
@@ -168,7 +177,10 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const t = lerLS<string | null>('dmanda-tema', null);
-    setTema(t === 'escuro' || t === 'claro' ? t : matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro');
+    // sem escolha salva o app começa no claro; depois vale a última escolha deste aparelho
+    setTema(t === 'escuro' ? 'escuro' : 'claro');
+    setEscala(limitarEscala(lerLS<number>(CHAVE_ESCALA, ESCALA_PADRAO)));
+    setCores(lerCores(lerLS<unknown>(CHAVE_CORES, {})));
     setMenuAberto(lerLS<boolean>('dmanda:menu-aberto', false));
     const ui = lerLS<{ visao?: Visao; ordem?: { coluna: Coluna; sentido: 1 | -1 }; grupos?: Record<string, boolean> }>('dmanda:ui', {});
     if (ui.visao) setVisaoE(ui.visao);
@@ -180,6 +192,12 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   /* eslint-enable react-hooks/set-state-in-effect */
   useEffect(() => { if (pronto) gravarLS('dmanda:ui', { visao, ordem, grupos: gruposFechados }); }, [pronto, visao, ordem, gruposFechados]);
   useEffect(() => { if (pronto) gravarLS('dmanda-tema', tema); }, [pronto, tema]);
+  // escala e cores: gravadas no aparelho; o espelho 'dmanda:vars' (já calculado) deixa o script do <head> pintar certo antes da página aparecer
+  useEffect(() => {
+    if (!pronto) return;
+    gravarLS(CHAVE_ESCALA, escala); gravarLS(CHAVE_CORES, cores);
+    gravarLS('dmanda:vars', { esc: escala, claro: variaveisDoModo('claro', cores.claro), escuro: variaveisDoModo('escuro', cores.escuro) });
+  }, [pronto, escala, cores]);
 
   const aplicar = useCallback((d: Demanda) => {
     if (d.arquivada_em) {
@@ -311,6 +329,10 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     },
     aviso, avisar, ambiente, rotina, tema,
     alternarTema: () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')),
+    definirTema: setTema,
+    escala, definirEscala: (n: number) => setEscala(limitarEscala(n)),
+    cores, definirCor: (modo: 'claro' | 'escuro', token: TokenCor, valor: string) => setCores((c) => ({ ...c, [modo]: { ...c[modo], [token]: valor.toUpperCase() } })),
+    restaurarAparencia: () => { setEscala(ESCALA_PADRAO); setCores({}); },
     menuAberto,
     alternarMenu: () => setMenuAberto((v) => { gravarLS('dmanda:menu-aberto', !v); return !v; }),
     visao, setVisao: setVisaoE, filtro, setFiltro: (f) => setFiltroE((x) => ({ ...x, ...f })),
@@ -371,7 +393,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario]);
+  }), [demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, escala, cores, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

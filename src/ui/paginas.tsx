@@ -9,6 +9,7 @@ import { useApp, type EstadoRotina } from './contexto';
 import { CardDemanda, ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
 import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
+import { CalendarioCarga, PainelCarga } from './inicio-orbita';
 import { atrasada, filtrar, focoDoDia, FILTRO_VAZIO, plural, porGrupo, TIPOS, titulo, type Demanda, type Tipo } from '@/lib/demandas';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
@@ -38,28 +39,34 @@ export function PaginaInicio() {
         <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Foco do dia.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
       ) : null}
       {demandas.length ? (
-        <>
-          <section className="sec">
-            <div className="stats tres" role="group" aria-label="Filtrar demandas por prazo">
-              {GRUPOS_INICIO.map(([g, nome, icone, alerta]) => {
-                const n = porGrupo(demandas, g, hoje).length;
-                return (
-                  <button key={g} className={`stat st-${g}${alerta && n ? ' alerta' : ''}`} aria-pressed={sel === g} onClick={() => setSel(sel === g ? null : g)}>
-                    <span className="st-ic"><Icone nome={icone} /></span><span className="n">{n}</span><span className="r">{nome}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {sel ? (() => {
-              const l = porGrupo(demandas, sel, hoje), nome = GRUPOS_INICIO.find((g) => g[0] === sel)![1];
-              return <><h3 className="sub-f">{nome} <small>{plural(l.length, 'demanda')}</small></h3>{l.length ? <div className="cards">{l.map((d) => <CardDemanda key={d.id} d={d} />)}</div> : <div className="vazio-c">Nenhuma demanda neste filtro.</div>}</>;
-            })() : null}
-          </section>
-          <section className="sec">
-            <h3>Foco do dia <small>até 3 demandas: atrasadas, depois hoje, depois os próximos 7 dias</small></h3>
-            {foco.length ? <div className="cards">{foco.map((d) => <CardDemanda key={d.id} d={d} />)}</div> : <div className="vazio-c">Nada urgente por enquanto.</div>}
-          </section>
-        </>
+        <div className="o-inicio">
+          <div className="o-coluna-a">
+            <PainelCarga demandas={demandas} hoje={hoje} />
+            <section className="sec">
+              <div className="stats tres" role="group" aria-label="Filtrar demandas por prazo">
+                {GRUPOS_INICIO.map(([g, nome, icone, alerta]) => {
+                  const n = porGrupo(demandas, g, hoje).length;
+                  return (
+                    <button key={g} className={`stat st-${g}${alerta && n ? ' alerta' : ''}`} aria-pressed={sel === g} onClick={() => setSel(sel === g ? null : g)}>
+                      <span className="st-ic"><Icone nome={icone} /></span><span className="n">{n}</span><span className="r">{nome}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {sel ? (() => {
+                const l = porGrupo(demandas, sel, hoje), nome = GRUPOS_INICIO.find((g) => g[0] === sel)![1];
+                return <><h3 className="sub-f">{nome} <small>{plural(l.length, 'demanda')}</small></h3>{l.length ? <div className="cards">{l.map((d) => <CardDemanda key={d.id} d={d} />)}</div> : <div className="vazio-c">Nenhuma demanda neste filtro.</div>}</>;
+              })() : null}
+            </section>
+          </div>
+          <div className="o-coluna-b">
+            <section className="sec">
+              <h3>Foco do dia <small>até 3 demandas: atrasadas, depois hoje, depois os próximos 7 dias</small></h3>
+              {foco.length ? <div className="cards">{foco.map((d) => <CardDemanda key={d.id} d={d} />)}</div> : <div className="vazio-c">Nada urgente por enquanto.</div>}
+            </section>
+            <CalendarioCarga demandas={demandas} hoje={hoje} />
+          </div>
+        </div>
       ) : null}
       <p className="rotina-estado">{textoRotina(rotina)}</p>
     </>

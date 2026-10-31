@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, IBM_Plex_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import '@/estilos/estilo.css';
 import '@/estilos/tema.css';
 import '@/estilos/v3.css';
@@ -7,10 +7,10 @@ import '@/estilos/v4.css';
 import '@/estilos/v5.css';
 import '@/estilos/catalyst.css';
 import '@/estilos/app.css';
+import '@/estilos/orbita.css';
 import { coresDaBarra } from '@/lib/cores-barra';
 
 const inter = Inter({ subsets: ['latin'], variable: '--f-inter', display: 'swap' });
-const mono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--f-mono', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'Dmanda',
@@ -30,12 +30,12 @@ export function generateViewport(): Viewport {
   };
 }
 
-// Define o modo (claro ou escuro) antes da página aparecer, para não piscar: usa a escolha guardada ou, na primeira vez, a do sistema.
-const scriptTema = `(function(){try{var t=JSON.parse(localStorage.getItem("dmanda-tema"));if(t!=="claro"&&t!=="escuro"){t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro"}document.documentElement.dataset.tema=t}catch(e){document.documentElement.dataset.tema="claro"}})()`;
+// Define modo, tamanho do texto e cores personalizadas antes da página aparecer, para não piscar: usa a escolha guardada neste aparelho e, na primeira vez, o claro.
+const scriptTema = `(function(){var d=document.documentElement;try{var t=JSON.parse(localStorage.getItem("dmanda-tema"));t=t==="escuro"?"escuro":"claro";d.dataset.tema=t;var v=JSON.parse(localStorage.getItem("dmanda:vars"));if(v){if(v.esc>=0.85&&v.esc<=1.3)d.style.setProperty("--esc",String(v.esc));var m=v[t]||{};for(var k in m)if(/^--u-/.test(k))d.style.setProperty(k,m[k])}}catch(e){d.dataset.tema="claro"}})()`;
 
 export default function LayoutApp({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: scriptTema }} /></head>
       <body>{children}</body>
     </html>

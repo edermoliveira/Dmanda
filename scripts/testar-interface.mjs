@@ -326,11 +326,12 @@ for (const tema of ['claro', 'escuro']) {
     const app = document.querySelector('.app'), cs = getComputedStyle(app);
     return { esc: getComputedStyle(document.documentElement).getPropertyValue('--esc').trim(), base: px('.app'), h1: px('.pagehead h1'), assunto: px('.dcard .assunto'), chip: px('.dcard .chip'), btn: px('.toolbar .btn.escuro'), desc: px('.dcard .desc'), zoom: cs.zoom, transform: cs.transform, bodyZoom: getComputedStyle(document.body).zoom, campo: px('.toolbar .filtro input') };
   });
-  ok(e.esc === '.85' || e.esc === '0.85', 'a escala compartilhada --esc vale 0,85');
-  ok(Math.abs(e.base - 13.6) < 0.05 && Math.abs(e.assunto - 14.45) < 0.05 && Math.abs(e.btn - 11.9) < 0.05 && Math.abs(e.h1 - 28.9) < 0.05 && Math.abs(e.desc - 11.05) < 0.05, `tamanhos de texto em 85% do desenho anterior (base ${e.base}, título ${e.assunto}, botão ${e.btn}, h1 ${e.h1}, descrição ${e.desc})`);
-  ok(e.chip >= 10 && e.chip < 10.5, `texto miúdo respeita o piso de 10 px (chip ${e.chip})`);
+  const k = parseFloat(e.esc); // Órbita (30/10/2026): o padrão é 100% (tamanhos de referência do desenho); o usuário ajusta de 85% a 130% em Configurações
+  ok(e.esc === '1', 'a escala compartilhada --esc vale 1 (100%, padrão do Órbita)');
+  ok(Math.abs(e.base - 16 * k) < 0.05 && Math.abs(e.assunto - 17 * k) < 0.05 && Math.abs(e.btn - 14 * k) < 0.05 && Math.abs(e.h1 - 38 * k) < 0.05 && Math.abs(e.desc - 13 * k) < 0.05, `tamanhos de texto proporcionais à escala (base 16, título 17, botão 14, h1 38 e descrição 13, vezes --esc) (base ${e.base}, título ${e.assunto}, botão ${e.btn}, h1 ${e.h1}, descrição ${e.desc})`);
+  ok(e.chip >= 10 && Math.abs(e.chip - Math.max(10, 12 * k)) < 0.05, `texto miúdo respeita o piso de 10 px (chip ${e.chip})`);
   ok(e.zoom === '1' && e.bodyZoom === '1' && (e.transform === 'none' || e.transform === ''), 'a redução não usa zoom nem transform');
-  ok(Math.abs(e.campo - 13.6) < 0.05, `no computador o campo de filtro segue a escala (${e.campo})`);
+  ok(Math.abs(e.campo - 16 * k) < 0.05, `no computador o campo de filtro segue a escala (${e.campo})`);
   const estilos = readdirSync('src/estilos').filter((f) => f.endsWith('.css'));
   const brutos = [];
   for (const f of estilos) {
@@ -347,7 +348,7 @@ for (const tema of ['claro', 'escuro']) {
   const filtro = await t.pg.$eval('.toolbar .filtro input', (x) => parseFloat(getComputedStyle(x).fontSize));
   const texto = await t.pg.$eval('.modal .data', (x) => parseFloat(getComputedStyle(x).fontSize));
   ok(campos.length >= 4 && campos.every((s) => s === 16) && filtro === 16, `iPhone emulado: todos os campos de digitação têm 16 px (${campos.length} no cadastro, mais o filtro), então não há zoom ao focar`);
-  ok(texto < 13, `iPhone emulado: o texto comum segue a escala (${texto} px)`);
+  ok(Math.abs(texto - 13) < 0.05, `iPhone emulado: o texto comum segue a escala (13 px com --esc 1) (${texto} px)`);
   const horizontal = await t.pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok(horizontal <= 0, 'iPhone emulado: sem rolagem horizontal');
   await t.ctx.close();

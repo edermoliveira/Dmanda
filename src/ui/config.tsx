@@ -5,6 +5,7 @@
 import { useRef, useState } from 'react';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
+import { Aparencia } from './aparencia';
 import { dataBR } from '@/lib/demandas';
 import { CATEGORIAS_DIA, dataComSemana, ROTULO_CATEGORIA, type CategoriaDia, type DiaIndisponivel } from '@/lib/prazos';
 
@@ -33,7 +34,8 @@ export function PaginaConfig() {
 
   return (
     <>
-      <div className="pagehead"><h1>Configurações</h1><p>Dias indisponíveis para prazos. Cores, fontes e tamanhos ainda estão em construção.</p></div>
+      <div className="pagehead"><h1>Configurações</h1><p>Aparência deste aparelho e dias indisponíveis para prazos.</p></div>
+      <Aparencia />
       <section className="cfg-bloco" aria-labelledby="cfg-dias-t">
         <h2 id="cfg-dias-t" style={{ fontSize: 'calc(17px * var(--esc))', margin: '0 0 6px' }}>Dias indisponíveis</h2>
         <p className="data">Feriados e eventos externos de dia inteiro. Sábados e domingos já são considerados. Quando o prazo de uma demanda cai em um desses dias, o vencimento é antecipado para o dia disponível anterior, e é recalculado sozinho (nos dois sentidos) quando você cadastra, altera ou exclui um dia aqui. Nada é importado nem presumido.</p>
