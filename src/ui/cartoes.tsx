@@ -5,7 +5,7 @@ import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { useTentativa } from './campos';
 import {
-  atrasada, corCard, dataCurta, diasAte, diasDesde, diasDesdeInstante, feitas, numeroDe, origemDe, percentual, proximaTarefa, TIPO_COR, titulo, type Demanda, type Tarefa,
+  atrasada, corCard, dataCurta, diasAte, diasDesde, diasDesdeInstante, esperaPrefeita, feitas, numeroDe, origemDe, percentual, proximaTarefa, TIPO_COR, titulo, type Demanda, type Tarefa,
 } from '@/lib/demandas';
 
 const curto = (n: number) => `${n} d`;
@@ -37,7 +37,14 @@ function ChipTempo({ d }: { d: Demanda }) {
   return <span className="tempo mono" title="Desde que chegou"><Icone nome="clock" />{n === 0 ? 'Chegou hoje' : `Chegou há ${curto(n)}`}</span>;
 }
 // O selo Legal/Próprio saiu do resumo dos cards (poluía); o tipo do prazo continua nos dados, no cadastro, na consulta, nos filtros e na Tabela.
-export const ChipsRow = ({ d }: { d: Demanda }) => (d.prazo ? <div className="chips"><ChipPrazo d={d} /><ChipTempo d={d} /></div> : null);
+/** Aguardando Prefeita: "há N dias" (dias corridos na etapa). A partir do 11º dia usa o mesmo visual do prazo vencido. Só descreve: nada muda sozinho. */
+export function ChipEspera({ d }: { d: Demanda }) {
+  const { hoje } = useApp();
+  const e = esperaPrefeita(d, hoje);
+  if (!e) return null;
+  return <span className={`pz${e.vencida ? ' venc' : ''}`} data-espera-prefeita data-dias={e.dias}><Icone nome="clock" />{e.texto}</span>;
+}
+export const ChipsRow = ({ d }: { d: Demanda }) => (d.prazo || d.etapa === 'Aguardando Prefeita' ? <div className="chips"><ChipEspera d={d} />{d.prazo ? <><ChipPrazo d={d} /><ChipTempo d={d} /></> : null}</div> : null);
 
 export function BarraProg({ d }: { d: Demanda }) {
   const p = percentual(d);

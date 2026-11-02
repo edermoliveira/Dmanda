@@ -213,7 +213,7 @@ await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.click('.icbtn[
 // 5) mover etapa pelo menu e pelo arraste (Quadro) com a mesma lógica
 await pg.click('.toolbar .tabs button[data-v="quadro"]'); await pg.waitForTimeout(400);
 await pg.click('.mini-card:has-text("Revisão do contrato") .mais'); await pg.waitForSelector('.mv-menu');
-ok((await pg.$$eval('.mv-menu button', (b) => b.map((x) => x.textContent.trim()))).map((x) => x.replace(/atual$/, '')).join('|') === 'Cadastro|Vistos|Fazendo|Aguardando retorno|Finalizado', 'o menu Mover para mostra as cinco etapas');
+ok((await pg.$$eval('.mv-menu button', (b) => b.map((x) => x.textContent.trim()))).map((x) => x.replace(/atual$/, '')).join('|') === 'Cadastro|Vistos|Fazendo|Aguardando retorno|Aguardando Prefeita|Finalizado', 'o menu Mover para mostra as seis etapas (a nova, Aguardando Prefeita, entre Aguardando retorno e Finalizado)');
 await pg.click('.mv-menu button:has-text("Fazendo")'); await aviso(); await pg.waitForTimeout(400);
 ok(await pg.locator('.coluna[aria-label="Fazendo"] .mini-card:has-text("Revisão do contrato")').count() === 1, 'mover pelo menu leva a demanda para a coluna Fazendo');
 const alvo = pg.locator('.mini-card:has-text("Resposta ao TCE") .assunto'), origem = await alvo.boundingBox();
@@ -430,7 +430,7 @@ await pg.setViewportSize({ width: 1360, height: 780 });
   const r = await pg.context().request.get(BASE + '/api/exportar');
   const j = await r.json().catch(() => null);
   ok(r.status() === 200 && /attachment; filename="dmanda-copia-\d{4}-\d{2}-\d{2}\.json"/.test(r.headers()['content-disposition'] ?? '') && r.headers()['cache-control'] === 'no-store', 'cópia dos dados: a rota entrega um arquivo JSON para baixar, sem cache');
-  ok(j?.formato === 'dmanda-exportacao' && j.versao === 3 && Array.isArray(j.entradas) && Array.isArray(j.entradas_arquivadas) && Array.isArray(j.demandas) && Array.isArray(j.arquivadas) && Array.isArray(j.dias_indisponiveis) && j.demandas.length > 0 && j.demandas.every((d) => Array.isArray(d.tarefas) && d.id && !('user_id' in d)), 'cópia dos dados: formato versionado, demandas com tarefas, sem o identificador interno do usuário');
+  ok(j?.formato === 'dmanda-exportacao' && j.versao === 4 && Array.isArray(j.eventos) && Array.isArray(j.entradas) && Array.isArray(j.entradas_arquivadas) && Array.isArray(j.demandas) && Array.isArray(j.arquivadas) && Array.isArray(j.dias_indisponiveis) && j.demandas.length > 0 && j.demandas.every((d) => Array.isArray(d.tarefas) && d.id && !('user_id' in d)), 'cópia dos dados: formato versionado, demandas com tarefas, sem o identificador interno do usuário');
   // a cópia que a rota real entrega é aceita pelo SQL de restauração documentado (supabase/restaurar-copia.sql), num banco novo em memória
   {
     const dr = await abrirBancoTeste();
@@ -465,7 +465,7 @@ for (const [w, h, rotulo] of [[1360, 780, 'computador'], [390, 800, 'celular']])
 await pg.setViewportSize({ width: 1360, height: 780 });
 
 // 12) entradas ainda não construídas dizem a verdade
-await ir('/agenda'); ok(/Em construção/.test(await pg.textContent('.main')) && !/Reunião|Audiência/.test(await pg.textContent('.main')), 'áreas ainda não construídas mostram "Em construção" e nenhum dado de exemplo');
+await ir('/documentos'); ok(/Em construção/.test(await pg.textContent('.main')) && !/Reunião|Audiência/.test(await pg.textContent('.main')), 'áreas ainda não construídas mostram "Em construção" e nenhum dado de exemplo');
 // 12b) rotina diária: autenticação própria, repetível, sem cookie, sem dado pessoal, e o Início mostra o estado
 const rota = BASE + '/api/cron/diaria';
 const semAuth = await fetch(rota), errada = await fetch(rota, { headers: { authorization: 'Bearer segredo-errado-0123456789' } });

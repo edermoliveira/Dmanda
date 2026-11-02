@@ -9,11 +9,11 @@ import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { Janela } from './janela-base';
 import { OrigemEntrada } from './entradas';
-import { ChipPrazo, ChipSelo } from './cartoes';
+import { ChipEspera, ChipPrazo, ChipSelo } from './cartoes';
 import {
   CAMPOS_DA_SECAO, CamposChegadaPrazo, CamposIdentificacao, chaveTarefa, Descricao, doCampos, EditorTarefas, mudou, paraDadosSecao, paraEnvio, type Campos, type Secao, type TarefaForm,
 } from './campos';
-import { dataBR, diasAte, diasDesde, diasDesdeInstante, ETAPAS, numeroDe, origemDe, permanencia, plural, TEM_AREA, titulo, type Demanda, type Etapa } from '@/lib/demandas';
+import { dataBR, diasAte, diasDesde, diasDesdeInstante, ETAPAS, numeroDe, origemDe, permanencia, plural, TEM_AREA, titulo, type DadosDemanda, type Demanda, type Etapa } from '@/lib/demandas';
 import { dataComSemana } from '@/lib/prazos';
 import type { TarefaEdicao } from '@/nucleo/operacoes';
 
@@ -94,7 +94,9 @@ function Detalhe({ d }: { d: Demanda }) {
     if (salvando) return;
     if (s === 'identificacao' && !c.assunto.trim()) { setErro('O assunto não pode ficar vazio.'); document.getElementById('d-assunto')?.focus(); return; }
     setSalvando(true); setErro('');
-    const dados = s === 'tarefas' ? {} : { ...paraDadosSecao(s, c, d), ...(s === 'andamento' && etapa !== d.etapa ? { etapa } : {}) };
+    const dados: DadosDemanda = s === 'tarefas' ? {} : { ...paraDadosSecao(s, c, d), ...(s === 'andamento' && etapa !== d.etapa ? { etapa } : {}) };
+    // trocar de etapa começa um novo período de espera: o banco zera o encaminhamento e a reiteração, então eles não vão junto
+    if (s === 'andamento' && (etapa !== d.etapa || d.etapa !== 'Aguardando retorno')) { delete dados.encaminhada_em; delete dados.reiterada_em; }
     const r = await salvar(d.id, dados, s === 'tarefas' ? lista : null, versaoBase, `${NOME_SECAO[s]}: alterações salvas`);
     setSalvando(false);
     if (r.ok) {
@@ -155,7 +157,7 @@ function Detalhe({ d }: { d: Demanda }) {
         </p>
       ) : null}
       {d.entrada_id ? <OrigemEntrada id={d.entrada_id} /> : null}
-      <div className="resumo-chips"><span className="chip neutro">{fin ? 'Finalizada' : d.etapa}</span><ChipPrazo d={d} /><ChipSelo d={d} />{d.arquivada_em ? <span className="chip neutro">Arquivada</span> : null}</div>
+      <div className="resumo-chips"><span className="chip neutro">{fin ? 'Finalizada' : d.etapa}</span><ChipEspera d={d} /><ChipPrazo d={d} /><ChipSelo d={d} />{d.arquivada_em ? <span className="chip neutro">Arquivada</span> : null}</div>
 
       <Bloco ctx={ctx} s="identificacao" editor={<CamposIdentificacao c={c} mudar={mudar} prefixo="d" />}>
         <dl className="ler">
@@ -194,12 +196,24 @@ function Detalhe({ d }: { d: Demanda }) {
             <div className="fld"><label htmlFor="d-setor">Setor <small className="data">(opcional)</small></label><input id="d-setor" value={c.setor} onChange={(e) => mudar({ setor: e.target.value })} /></div>
             <div className="fld"><label htmlFor="d-ac">Acompanhar em <small className="data">(opcional)</small></label><input id="d-ac" type="date" value={c.acompanhar_em} onChange={(e) => mudar({ acompanhar_em: e.target.value })} /></div>
           </div>
+          {d.etapa === 'Aguardando retorno' && etapa === d.etapa ? (
+            <>
+              <div className="dois">
+                <div className="fld"><label htmlFor="d-enc">Encaminhada em <small className="data">(opcional)</small></label><input id="d-enc" type="date" value={c.encaminhada_em} onChange={(e) => mudar({ encaminhada_em: e.target.value })} /></div>
+                <div className="fld"><label htmlFor="d-reit">Retorno reiterado em <small className="data">(opcional)</small></label>
+                  <div className="add-t"><input id="d-reit" type="date" value={c.reiterada_em} onChange={(e) => mudar({ reiterada_em: e.target.value })} /><button type="button" className="btn mini" onClick={() => mudar({ reiterada_em: hoje })}>Reiterei hoje</button></div></div>
+              </div>
+              <span className="data">A Agenda marca o retorno do setor 10 dias corridos depois do encaminhamento (sem a data, depois do dia em que entrou nesta etapa). Só uma reiteração registrada inicia nova contagem. Isso não muda o vencimento nem o campo Acompanhar em.</span>
+            </>
+          ) : null}
         </>}>
         <dl className="ler">
           <Linha rotulo="Etapa" valor={fin ? 'Finalizada' : d.etapa} />
           <dt>Nesta etapa há</dt><dd>{plural(dias0, 'dia')}</dd>
           {d.setor ? <Linha rotulo="Setor" valor={d.setor} /> : null}
           {d.acompanhar_em ? <Linha rotulo="Acompanhar em" valor={dataBR(d.acompanhar_em)} /> : null}
+          {d.etapa === 'Aguardando retorno' && d.encaminhada_em ? <Linha rotulo="Encaminhada em" valor={dataBR(d.encaminhada_em)} /> : null}
+          {d.etapa === 'Aguardando retorno' && d.reiterada_em ? <Linha rotulo="Retorno reiterado em" valor={dataBR(d.reiterada_em)} /> : null}
         </dl>
       </Bloco>
 

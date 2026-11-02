@@ -23,7 +23,7 @@ function useToque() {
 }
 
 function Interior({ children }: { children: ReactNode }) {
-  const { tema, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover } = useApp();
+  const { tema, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover, avisosEventos, dispensarAviso } = useApp();
   const caminho = usePathname();
   const router = useRouter();
   const toque = useToque();
@@ -58,7 +58,7 @@ function Interior({ children }: { children: ReactNode }) {
   const breve = (o: string) => () => avisar(`${o} ainda não está implementado: fica para um dos próximos blocos.`);
   const emMais = EM_MAIS.some((r) => ativo(caminho, r));
   const itensPlus: [string, string, boolean, () => void][] = [
-    ['Nova entrada', 'sticky-note', true, () => { setPlus(false); abrirJanela({ t: 'entrada' }); }], ['Demanda', 'square-kanban', true, () => { setPlus(false); abrirJanela({ t: 'nova' }); }], ['Evento', 'calendar', false, breve('Evento')],
+    ['Nova entrada', 'sticky-note', true, () => { setPlus(false); abrirJanela({ t: 'entrada' }); }], ['Demanda', 'square-kanban', true, () => { setPlus(false); abrirJanela({ t: 'nova' }); }], ['Evento', 'calendar', true, () => { setPlus(false); abrirJanela({ t: 'evento' }); }],
     ['Tarefa', 'check', true, () => { setPlus(false); abrirJanela({ t: 'tarefa' }); }], ['Documento', 'file-text', false, breve('Documento')], ['Chat com a IA', 'message-circle', false, breve('Chat com a IA')],
   ];
   const label = menuAberto ? 'Recolher menu' : 'Mostrar menu';
@@ -81,13 +81,25 @@ function Interior({ children }: { children: ReactNode }) {
         <header className="top">
           <div className="top-logo">{LOGO}<span>Dmanda</span></div>
           <button className="icbtn buscabtn" aria-label="Buscar em tudo (ainda não implementado)" aria-disabled="true" title="A busca global fica para um dos próximos blocos" onClick={breve('A busca global')}><Icone nome="busca" /><span className="tx">Buscar demanda, entrada, evento ou documento</span><kbd>Ctrl K</kbd></button>
-          <button className="icbtn sino" aria-label="Avisos (ainda não implementado)" aria-disabled="true" title="Os avisos ficam para um dos próximos blocos" onClick={breve('Os avisos')}><Icone nome="bell" /></button>
+          <button className="icbtn sino" aria-label={avisosEventos.length ? `Avisos: ${avisosEventos.length} para hoje. Abrir a Agenda` : 'Avisos: nenhum agora. Abrir a Agenda'} title={avisosEventos.length ? 'Há avisos de hoje' : 'Nenhum aviso agora'} data-avisos={avisosEventos.length || undefined} onClick={ir('/agenda')}><Icone nome="bell" />{avisosEventos.length ? <i className="sino-n" aria-hidden="true">{avisosEventos.length}</i> : null}</button>
           <button className="icbtn" aria-label="Alternar tema claro e escuro" onClick={alternarTema}><Icone nome={tema === 'claro' ? 'moon' : 'sun'} /></button>
           <button className="perfil-b" aria-label="Menu da conta" aria-haspopup="menu" aria-expanded={!!conta} title="Conta" onClick={(e) => { if (conta) { setConta(null); return; } fecharMenuMover(); setPlus(false); const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setConta({ x: b.right - a.left, y: b.bottom - a.top }); }}><span className="avatar">{nome.charAt(0).toUpperCase()}</span><span className="tx">{nome}</span></button>
         </header>
         <main className="main" id="main">
           {ambiente?.teste ? <p className="faixa-teste" role="note">Banco local de teste (dados descartáveis, não é o Supabase). Só em desenvolvimento.</p> : null}
           {!online ? <p className="faixa-offline" role="status">Sem conexão com a internet. Nada do que você fizer agora será gravado; o que já está na tela continua visível. Quando a conexão voltar, tente de novo.</p> : null}
+          {avisosEventos.length ? (
+            <div className="agd-avisos" role="status" aria-live="polite" aria-label="Avisos de hoje">
+              {avisosEventos.slice(0, 3).map((a) => (
+                <p key={a.evento.id} className="agd-aviso" data-evento={a.evento.id}>
+                  <Icone nome="bell" />
+                  <span><b>{a.evento.titulo}</b> {a.tipo === 'no-dia' ? 'é hoje' : a.minutos === 0 ? 'começa agora' : `começa em ${a.minutos} min`}{a.tipo === 'em-breve' ? ` (${a.evento.inicio})` : ''}</span>
+                  <button type="button" className="btn mini" onClick={() => abrirJanela({ t: 'evento', id: a.evento.id })}>Abrir</button>
+                  <button type="button" className="btn mini" onClick={() => dispensarAviso(a.evento)}>Dispensar</button>
+                </p>
+              ))}
+            </div>
+          ) : null}
           {erroCarga ? <div className="erro-carga" role="alert"><b>Não foi possível carregar as demandas.</b><span>{erroCarga}</span><button className="btn mini" onClick={() => void recarregar()}>Tentar de novo</button></div> : null}
           {children}
         </main>

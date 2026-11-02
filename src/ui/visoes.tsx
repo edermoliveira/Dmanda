@@ -3,8 +3,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
-import { AcaoCard, BarraProg, CardDemanda, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
-import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordenar, origemDe, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
+import { AcaoCard, BarraProg, CardDemanda, ChipEspera, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
+import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordemDaEtapa, ordenar, origemDe, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
 
 // O título é a informação principal do card: ele nunca é espremido para dar lugar ao resto. Linhas que o título mantém: o que o texto precisar, até TETO_TITULO, e nunca
 // menos que MINIMO_TITULO (ou o que o texto tiver, se for curto). Quando falta altura, cede primeiro a descrição (menos linhas, depois some), depois o tempo, só
@@ -166,7 +166,7 @@ export function Quadro({ lista }: { lista: Demanda[] }) {
       </div>
       <div className="quadro">
         {ETAPAS.map((et) => {
-          const l = lista.filter((d) => d.etapa === et);
+          const l = ordemDaEtapa(lista.filter((d) => d.etapa === et), et);
           return (
             <section key={et} className={`coluna${etapaSel === et ? ' sel' : ''}`} aria-label={et} style={{ '--et': ETAPA_COR[et] } as CSSProperties}>
               <header>
@@ -227,7 +227,7 @@ export function Lista({ lista }: { lista: Demanda[] }) {
   return (
     <div className="lista lista-dem">
       {ETAPAS.map((et) => {
-        const itens = lista.filter((d) => d.etapa === et), fechado = !!gruposFechados[et];
+        const itens = ordemDaEtapa(lista.filter((d) => d.etapa === et), et), fechado = !!gruposFechados[et];
         return (
           <section key={et} className="grupo" style={{ '--et': ETAPA_COR[et] } as CSSProperties}>
             <button className="grupo-h" aria-expanded={!fechado} onClick={() => alternarGrupo(et)}><Icone nome="expandir-grupo" extra={fechado ? 'fechado' : ''} /><i className="dot" /><b>{et}</b><span className="cnt">{itens.length}</span></button>
@@ -245,7 +245,7 @@ export function Lista({ lista }: { lista: Demanda[] }) {
                       </span>
                     </button>
                     <span className="ld-fim">
-                      <span className="ld-prazo"><ChipPrazo d={d} /></span>
+                      <span className="ld-prazo"><ChipEspera d={d} /><ChipPrazo d={d} /></span>
                       <span className="ld-prog mono" title={n ? `${feitas(d)} de ${n} tarefas concluídas` : undefined}>{n ? `${feitas(d)}/${n} ${n === 1 ? 'tarefa' : 'tarefas'}` : 'Sem tarefas'}</span>
                     </span>
                     <button className="btn mini ld-abrir" aria-label={`Abrir a demanda: ${d.assunto}`} title="Abrir a demanda completa" onClick={() => abrirJanela({ t: 'editar', id: d.id })}><Icone nome="pencil" /><span className="tx">Abrir</span></button>

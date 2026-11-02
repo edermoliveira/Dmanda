@@ -13,13 +13,13 @@ import type { TarefaEdicao } from '@/nucleo/operacoes';
 export type Campos = {
   assunto: string; numero: string; origem: string; descricao: string; tipo: Tipo; area: Area;
   chegou_em: string; prazo_original: string; prazo_dias: number | null; prazo_tipo: PrazoTipo;
-  setor: string; acompanhar_em: string;
+  setor: string; acompanhar_em: string; encaminhada_em: string; reiterada_em: string;
 };
-export const CAMPOS_VAZIOS: Campos = { assunto: '', numero: '', origem: '', descricao: '', tipo: 'Processo', area: 'Geral', chegou_em: '', prazo_original: '', prazo_dias: null, prazo_tipo: 'Próprio', setor: '', acompanhar_em: '' };
+export const CAMPOS_VAZIOS: Campos = { assunto: '', numero: '', origem: '', descricao: '', tipo: 'Processo', area: 'Geral', chegou_em: '', prazo_original: '', prazo_dias: null, prazo_tipo: 'Próprio', setor: '', acompanhar_em: '', encaminhada_em: '', reiterada_em: '' };
 
 export const doCampos = (d: Demanda): Campos => ({
   assunto: d.assunto, numero: numeroDe(d), origem: origemDe(d), descricao: d.descricao, tipo: d.tipo, area: d.area,
-  chegou_em: d.chegou_em ?? '', prazo_original: d.prazo_original ?? '', prazo_dias: d.prazo_dias, prazo_tipo: d.prazo_tipo, setor: d.setor ?? '', acompanhar_em: d.acompanhar_em ?? '',
+  chegou_em: d.chegou_em ?? '', prazo_original: d.prazo_original ?? '', prazo_dias: d.prazo_dias, prazo_tipo: d.prazo_tipo, setor: d.setor ?? '', acompanhar_em: d.acompanhar_em ?? '', encaminhada_em: d.encaminhada_em ?? '', reiterada_em: d.reiterada_em ?? '',
 });
 
 export type Secao = 'identificacao' | 'descricao' | 'chegada' | 'andamento' | 'tarefas';
@@ -27,7 +27,7 @@ export const CAMPOS_DA_SECAO: Record<Exclude<Secao, 'tarefas'>, (keyof Campos)[]
   identificacao: ['assunto', 'numero', 'origem', 'tipo', 'area'],
   descricao: ['descricao'],
   chegada: ['chegou_em', 'prazo_tipo', 'prazo_original', 'prazo_dias'],
-  andamento: ['setor', 'acompanhar_em'],
+  andamento: ['setor', 'acompanhar_em', 'encaminhada_em', 'reiterada_em'],
 };
 
 /**
@@ -52,7 +52,7 @@ export function paraDadosSecao(secao: Exclude<Secao, 'tarefas'>, c: Campos, base
   if (secao === 'identificacao') return { assunto: c.assunto, numero: c.numero, origem: c.origem, tipo: c.tipo, area: c.area };
   if (secao === 'descricao') return { descricao: c.descricao };
   if (secao === 'chegada') return { chegou_em: c.chegou_em || null, prazo_tipo: c.prazo_tipo, ...dadosDoPrazo(c, base) };
-  return { setor: c.setor.trim() || null, acompanhar_em: c.acompanhar_em || null };
+  return { setor: c.setor.trim() || null, acompanhar_em: c.acompanhar_em || null, encaminhada_em: c.encaminhada_em || null, reiterada_em: c.reiterada_em || null };
 }
 
 /** Campos de um grupo que diferem do original. */

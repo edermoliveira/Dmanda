@@ -5,13 +5,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { FILTRO_VAZIO, hojeISO, type Coluna, type DadosDemanda, type Demanda, type Etapa, type Filtro } from '@/lib/demandas';
 import * as srv from '@/servidor/demandas';
 import * as srvE from '@/servidor/entradas';
+import * as srvA from '@/servidor/agenda';
+import { avisosDeHoje, compararEventos, minutosAgora, type AvisoEvento, type DadosEvento, type Evento } from '@/lib/eventos';
 import type { Entrada } from '@/lib/entradas';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';
 
 export type Visao = 'cards' | 'quadro' | 'tabela' | 'lista';
 // nova: o cadastro guiado de demanda (com entradaId, ele nasce de uma anotação: Virar demanda). entrada: a janela de uma anotação (sem id, uma anotação nova).
-export type Janela = { t: 'nova'; entradaId?: string } | { t: 'editar'; id: string } | { t: 'tarefa' } | { t: 'entrada'; id?: string } | null;
+export type Janela = { t: 'nova'; entradaId?: string } | { t: 'editar'; id: string } | { t: 'tarefa' } | { t: 'entrada'; id?: string } | { t: 'evento'; id?: string; data?: string } | null;
 // versao: a versão da demanda sobre a qual o rascunho foi digitado (se a demanda mudou depois, o salvamento é recusado em vez de sobrescrever)
 // passo: em que passo do cadastro guiado a pessoa estava. idNovo: o identificador que o aplicativo gerou para a demanda nova (repetir a criação com ele nunca duplica).
 // demandaId: a demanda já criada pelo passo 2, quando o cadastro foi interrompido depois dela (recarga, PWA encerrada). secoes: quais seções da consulta estavam em edição (o cadastro guiado deixa isso quando fecha com algo não salvo).
@@ -20,6 +22,8 @@ export type Janela = { t: 'nova'; entradaId?: string } | { t: 'editar'; id: stri
 export type Rascunho = { dados: DadosDemanda & Record<string, unknown>; tarefas?: TarefaEdicao[]; nt?: string; versao?: number; passo?: 1 | 2 | 3; idNovo?: string; demandaId?: string; secoes?: string[]; entradaId?: string; tocados?: string[]; base?: Record<string, unknown> };
 /** Resultado de gravar uma anotação sem aviso na tela (a janela da anotação mostra o próprio estado): gravou, foi recusado por conflito de versão ou falhou. */
 export type ResultadoEntrada = { ok: true; entrada: Entrada } | { ok: false; conflito: boolean; erro: string };
+/** Resultado de gravar um evento (a janela do evento mostra o próprio estado): gravou, foi recusado por conflito de versão ou falhou. */
+export type ResultadoEvento = { ok: true; evento: Evento } | { ok: false; conflito: boolean; erro: string };
 export type AbaArquivo = 'demandas' | 'entradas';
 /** Resultado de salvar a janela de edição: gravou, foi recusado por conflito de versão (nada gravado, a edição local fica) ou falhou por outro motivo. */
 export type ResultadoSalvar = { ok: true; demanda: Demanda } | { ok: false; conflito: boolean };
@@ -56,6 +60,18 @@ type Ctx = {
   arquivarEntrada: (id: string) => Promise<Entrada | null>;
   desarquivarEntrada: (id: string) => Promise<Entrada | null>;
   excluirEntrada: (id: string) => Promise<boolean>;
+  /** Eventos e lembretes da Agenda (todos; a Agenda filtra por período). `buscarEvento` lê do banco e traz a versão atual para a lista (usada ao conferir um conflito). */
+  eventos: Evento[];
+  carregandoEventos: boolean;
+  erroEventos: string | null;
+  recarregarEventos: () => Promise<void>;
+  criarEvento: (dados: DadosEvento) => Promise<ResultadoEvento>;
+  salvarEvento: (id: string, dados: DadosEvento, versao: number) => Promise<ResultadoEvento>;
+  buscarEvento: (id: string) => Promise<Evento | null>;
+  excluirEvento: (id: string) => Promise<boolean>;
+  /** Avisos de hoje dentro do aplicativo (eventos próximos do início, ou de dia inteiro com aviso), menos os que a pessoa já dispensou. */
+  avisosEventos: AvisoEvento[];
+  dispensarAviso: (e: Evento) => void;
   aviso: Aviso;
   avisar: (msg: string, erro?: boolean) => void;
   ambiente: { teste: boolean; nome: string } | null;
@@ -120,6 +136,9 @@ const assinarConexao = (aviso: () => void) => { addEventListener('online', aviso
 export const useOnline = () => useSyncExternalStore(assinarConexao, () => navigator.onLine, () => true);
 export const useApp = () => { const c = useContext(Contexto); if (!c) throw new Error('useApp fora do ProvedorApp'); return c; };
 
+/** Um aviso dispensado vale só para aquele evento, naquela data e horário: mudar o horário traz o aviso de volta. */
+const chaveAviso = (e: Evento) => `${e.id}|${e.data}|${e.inicio ?? ''}`;
+const ordenarEventosPorData = (l: Evento[]) => [...l].sort((a, b) => a.data.localeCompare(b.data) || compararEventos(a, b));
 const lerLS = <T,>(chave: string, padrao: T): T => { try { const v = localStorage.getItem(chave); return v ? (JSON.parse(v) as T) : padrao; } catch { return padrao; } };
 const gravarLS = (chave: string, v: unknown) => { try { localStorage.setItem(chave, JSON.stringify(v)); } catch { /* sem armazenamento: vale só nesta visita */ } };
 
@@ -132,6 +151,12 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [erroEntradas, setErroEntradas] = useState<string | null>(null);
   const [abaArquivo, setAbaArquivo] = useState<AbaArquivo>('demandas');
   const [dias, setDias] = useState<DiaIndisponivel[]>([]);
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [carregandoEventos, setCarregandoEventos] = useState(true);
+  const [erroEventos, setErroEventos] = useState<string | null>(null);
+  // hora de agora (minutos desde 00:00 em Brasília): começa nula e só vale depois de montar no navegador, para o servidor não depender do relógio
+  const [agoraMin, setAgoraMin] = useState<number | null>(null);
+  const [dispensados, setDispensados] = useState<string[]>([]);
   // Data de hoje (Brasília). Começa num valor fixo e passa a valer depois de montar no navegador, para o servidor não depender do relógio; renova na virada do dia.
   const [hoje, setHoje] = useState('2000-01-01');
   const [carregando, setCarregando] = useState(true);
@@ -175,6 +200,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (ui.ordem) setOrdem(ui.ordem);
     if (ui.grupos) setGrupos(ui.grupos);
     setRascunhos(lerLS<Record<string, Rascunho>>('dmanda:rascunhos', {}));
+    setDispensados(lerLS<string[]>('dmanda:avisos-vistos', []).slice(-200));
     setPronto(true);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -208,6 +234,12 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (r.ok) { setEntradas(r.dados); setErroEntradas(null); } else setErroEntradas(r.erro);
     setCarregandoEntradas(false);
   }, []);
+  const recarregarEventos = useCallback(async () => {
+    const r = await protegido(() => srvA.listarEventos());
+    if (r.ok) { setEventos(r.dados); setErroEventos(null); } else setErroEventos(r.erro);
+    setCarregandoEventos(false);
+  }, []);
+  const aplicarEvento = useCallback((e: Evento) => setEventos((l) => ordenarEventosPorData([...l.filter((x) => x.id !== e.id), e])), []);
   const carregarEntradasArquivadas = useCallback(async () => {
     const r = await protegido(() => srvE.listarEntradas(true));
     if (r.ok) setEntradasArquivadas(r.dados); else avisar(r.erro, true);
@@ -230,11 +262,14 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     const virada = setInterval(() => setHoje(hojeISO()), 60_000);
     void recarregar();
     void recarregarEntradas();
+    void recarregarEventos();
+    const relogio = setInterval(() => setAgoraMin(minutosAgora()), 30_000);
+    setAgoraMin(minutosAgora());
     void srv.ambiente().then(setAmbiente).catch(() => {});
     void srv.listarDias().then((x) => { if (x.ok) setDias(x.dados); }).catch(() => {});
     void srv.estadoRotina().then((x) => { if (x.ok) setRotina(x.dados); }).catch(() => {});
-    return () => clearInterval(virada);
-  }, [recarregar, recarregarEntradas]);
+    return () => { clearInterval(virada); clearInterval(relogio); };
+  }, [recarregar, recarregarEntradas, recarregarEventos]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => { janelaAberta.current = janela !== null; }, [janela]);
@@ -245,10 +280,12 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       if (document.visibilityState === 'visible') setHoje(hojeISO()); // o dia pode ter virado enquanto o aplicativo estava em segundo plano, com ou sem rede para reler
       if (document.visibilityState !== 'visible' || janelaAberta.current || pendentes.current > 0) return;
       const antes = gravacoes.current;
-      const [r, d, en] = await Promise.all([protegido(() => srv.listarDemandas(false)), protegido(() => srv.listarDias()), protegido(() => srvE.listarEntradas(false))]);
+      const [r, d, en, evs] = await Promise.all([protegido(() => srv.listarDemandas(false)), protegido(() => srv.listarDias()), protegido(() => srvE.listarEntradas(false)), protegido(() => srvA.listarEventos())]);
       if (gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) {
         if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) setDias(d.dados); }
         if (en.ok) { setEntradas(en.dados); setErroEntradas(null); }
+        if (evs.ok) { setEventos(evs.dados); setErroEventos(null); }
+        setAgoraMin(minutosAgora());
       }
     };
     document.addEventListener('visibilitychange', atualizar); addEventListener('online', atualizar);
@@ -277,6 +314,13 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     aplicarEntrada(r.dados);
     return { ok: true, entrada: r.dados };
   }, [aplicarEntrada, gravando]);
+  const rodarEvento = useCallback(async (f: () => Promise<Resultado<Evento>>): Promise<ResultadoEvento> => {
+    const r = await gravando(() => protegido(f));
+    if (!r.ok) return { ok: false, conflito: r.conflito === true, erro: r.erro };
+    aplicarEvento(r.dados);
+    return { ok: true, evento: r.dados };
+  }, [aplicarEvento, gravando]);
+  const avisosEventos = useMemo(() => (agoraMin === null ? [] : avisosDeHoje(eventos, hoje, agoraMin).filter((a) => !dispensados.includes(chaveAviso(a.evento)))), [eventos, hoje, agoraMin, dispensados]);
   // fixar, arquivar e recuperar são ações pontuais da lista: o aviso (ou o erro) aparece na tela
   const acaoEntrada = useCallback(async (f: () => Promise<Resultado<Entrada>>, msg: string) => {
     const r = await rodarEntrada(f);
@@ -309,6 +353,19 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       avisar('Entrada excluída');
       return true;
     },
+    eventos, carregandoEventos, erroEventos, recarregarEventos,
+    criarEvento: (dados) => rodarEvento(() => srvA.criarEvento(dados)),
+    salvarEvento: (id, dados, versao) => rodarEvento(() => srvA.salvarEvento(id, dados, versao)),
+    buscarEvento: async (id) => { const r = await protegido(() => srvA.buscarEvento(id)); if (!r.ok) return null; aplicarEvento(r.dados); return r.dados; },
+    excluirEvento: async (id) => {
+      const r = await gravando(() => protegido(() => srvA.excluirEvento(id, true)));
+      if (!r.ok) { avisar(r.erro, true); return false; }
+      setEventos((l) => l.filter((x) => x.id !== id)); guardarRascunho(`ev:${id}`, null);
+      avisar('Evento excluído');
+      return true;
+    },
+    avisosEventos,
+    dispensarAviso: (e) => setDispensados((l) => { const n = [...l, chaveAviso(e)].slice(-200); gravarLS('dmanda:avisos-vistos', n); return n; }),
     aviso, avisar, ambiente, rotina, tema,
     alternarTema: () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')),
     menuAberto,
@@ -371,7 +428,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario]);
+  }), [eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

@@ -8,6 +8,7 @@ import { useTentativa } from './campos';
 import { JanelaNova } from './cadastro';
 import { JanelaDemanda } from './detalhe';
 import { JanelaEntradaRoteada } from './entradas';
+import { JanelaEventoRoteada } from './evento';
 import { titulo } from '@/lib/demandas';
 
 // ---------- nova tarefa (menu "+") ----------
@@ -59,5 +60,6 @@ export function Janelas() {
   // o cadastro retomado precisa da lista carregada para reencontrar a demanda já criada; a anotação de origem, da lista de Entradas
   if (janela.t === 'nova') return carregando || (janela.entradaId && carregandoEntradas) ? null : janela.entradaId ? <JanelaNovaDeEntrada entradaId={janela.entradaId} /> : <JanelaNova />;
   if (janela.t === 'entrada') return carregandoEntradas ? null : <JanelaEntradaRoteada id={janela.id} />;
+  if (janela.t === 'evento') return <JanelaEventoRoteada id={janela.id} data={janela.data} />;
   return <JanelaTarefa />;
 }
