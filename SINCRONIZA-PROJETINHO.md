@@ -10,7 +10,7 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 ## PONTO DE RETOMADA ATUAL (30/10/2026, leia primeiro)
 
-Bloco funcional **publicado em 30/10/2026**: migrações 12 e 13 aplicadas no Supabase real (dry-run antes, só elas pendentes, dados intactos) e a `main` enviada em um único push (hash e implantação conferidos: `CONTINUIDADE-DMANDA.md`, seção M). A branch local `visual/novo-estilo` fica alinhada ao fechamento funcional (sem push, sem visual implementado). **Próxima sessão: dedicada ao estilo completamente diferente do Catalyst, só na branch; prévia: avaliar primeiro o modo de demonstração em memória (seção L). Agenda e implementação visual aguardam autorização.**
+Bloco funcional **publicado em 30/10/2026**: migrações 12 e 13 aplicadas no Supabase real (dry-run antes, só elas pendentes, dados intactos) e a `main` enviada em um único push (hash e implantação conferidos: `CONTINUIDADE-DMANDA.md`, seção M). **Atualização de 02/11/2026:** o experimento visual (Órbita, branch `visual/novo-estilo`) foi encerrado e descartado, e a branch foi excluída (local e remota); só existe a `main`, com o Catalyst mantido (decisão 44). **Próximo bloco autorizado: Agenda** (ainda não iniciado).
 
 ---
 

@@ -358,7 +358,7 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 
 ---
 
-## L. Preparação da transformação visual (30/10/2026; só planejamento, nada implementado)
+## L. Preparação da transformação visual (30/10/2026; só planejamento, nada implementado) [SUPERADA em 02/11/2026: experimento descartado, ver seção N]
 
 **Branch.** `visual/novo-estilo` (local, criada no commit funcional verificado; a `main` continua a apresentação Catalyst em produção). O bloco visual vai substituir completamente o Catalyst **nessa branch**; as regras funcionais, de dados, de sessão e de prazos valem igual, e a produção só muda por um merge autorizado depois da sua avaliação. As instruções para a nova direção estão em `CLAUDE.md` na própria branch (a seção "Design system" dela substitui a do Catalyst; na `main` nada mudou).
 
@@ -376,7 +376,7 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 
 ---
 
-## M. Publicação do bloco funcional e retomada para o novo estilo (30/10/2026)
+## M. Publicação do bloco funcional e retomada para o novo estilo (30/10/2026) [a parte do novo estilo foi SUPERADA em 02/11/2026, ver seção N; a publicação das migrações 12 e 13 continua valendo]
 
 **Migrações no Supabase real.** Dry-run mostrou só as migrações 12 e 13 pendentes (as 11 anteriores em dia). Aplicadas com `db push --linked`; depois, `db push --dry-run` em dia, assinatura única de `adicionar_tarefa(p_demanda, p_texto, p_id)`, execução só para `authenticated`, políticas `entradas_dono` e `dias_indisponiveis_dono` com a conta autorizada, e contagens iguais (6 demandas, 10 tarefas, 2 entradas, 0 dias, 1 usuário). Prova em transação desfeita como o usuário autorizado: chamada sem `p_id` (aplicativo anterior) funciona, com `p_id` cria uma tarefa e a repetição não duplica. O aviso do `db advisors` (proteção contra senhas vazadas, do Auth) já existia e depende do plano.
 
@@ -385,3 +385,15 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 **Hash publicado e implantação:** o hash da `main` enviada e o estado da Vercel estão no relatório do bloco (um commit não contém o próprio hash); confira com `git ls-remote origin refs/heads/main` e com o commit em `git log -1`.
 
 **Retomada para o estilo novo.** A branch local `visual/novo-estilo` fica alinhada à `main` por fast-forward, com o bloco de instruções da nova direção no `CLAUDE.md` da branch; sem push. Sessão nova dedicada: ler a seção L, trabalhar só na branch, Impeccable (e Taste quando pertinente) para o estilo, Ponytail para a qualidade, regras funcionais intactas; a prévia começa pelo modo de demonstração em memória. Agenda e implementação visual seguem aguardando autorização.
+
+
+## N. Experimento visual descartado e retomada (02/11/2026)
+
+**Decisão do usuário (decisão 44).** O experimento Órbita (branch `visual/novo-estilo`, 4 commits exclusivos, última `4c7a4dc`, nunca incorporado à `main`) foi encerrado e descartado. A branch foi excluída local e remotamente, sem resgate, tag nem cópia. Conferido antes: a branch não tinha migração nem arquivo apagado em relação à `main` (só estilos, Início novo, preferências visuais, modo de demonstração, scripts de teste, capturas e documentação); as migrações 12 e 13, aplicadas no Supabase real, já estavam na `main`. A `main` não foi alterada além destes documentos, e o Supabase real não foi tocado. **Catalyst mantido.** Uma eventual mudança visual futura recomeça do zero, em outro momento.
+
+**Aprovados e encerrados:** Início, Demandas, Entradas e Arquivo. **Próximo bloco autorizado: Agenda** (não iniciado; parar antes de implementar até a sessão dele).
+
+**Regras funcionais preservadas (decisão 45):** acompanhamento de 10 dias (retorno de setor) e de 7 dias (assinatura da prefeita, com reiteração), contados do encaminhamento efetivo; exigem campos novos (data do encaminhamento, reiteração registrada, etapa de assinatura) e migração só com aprovação específica. **Divergência conhecida, sem migração:** a rotina diária no banco (`rotina_diaria`) e o contador "Só atrasadas" de Demandas usam o critério antigo (vencimento; acompanhamento só nos 3 dias finais de quem aguarda retorno).
+
+**Prévia na Vercel.** A implantação de prévia que a Vercel criou para a branch (status "Vercel" do commit `4c7a4dc`) não pôde ser removida pela CLI (não instalada neste computador). A exclusão da branch impede novas prévias; a implantação antiga, se existir, pode ser apagada no painel da Vercel (Deployments, ambiente Preview). Projeto, domínio, implantação e variáveis de Produção não foram tocados.
+
