@@ -62,6 +62,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Buscar, abrir para consulta, desarquivar, excluir definitivamente (segunda confirmação).
 
 ### Agenda
+**Implementada na aplicação em 02/11/2026 (decisões 46 a 49, migração 14), aguardando a avaliação do usuário.** Vale o que está nas decisões 46 a 49 de `DECISOES.md`: visões Hoje, Semana e Mês com heatmap da carga pendente, marcos de vencimento, acompanhamento e retorno do setor, eventos e lembretes próprios com aviso dentro do aplicativo, Pendências sem prazo e a nova etapa Aguardando Prefeita. Google Calendar, Apple Calendar e notificações push externas continuam para depois. Os itens abaixo são o desenho original do protótipo.
 - Visão **semanal** (domingo a sábado, fins de semana esmaecidos) e **mensal**. No celular, também lista "Hoje".
 - Demandas: cards **amarelos** só no dia do vencimento (parte inferior do dia na semana). Vencidas permanecem na data original em vermelho. Tarefas concluídas ocultas, reexibíveis por filtro.
 - Eventos: cards **azuis** (com horário) e **cinza-azulado** (dia inteiro, como feriados).
@@ -133,7 +134,7 @@ Situação: **concluída e verificada**, **implementada, a validar**, **em andam
 3. **Versão mínima de Demandas e Início:** implementada, a validar no Supabase real. Cadastro rápido, cards de dois lados, etapas, tarefas, prazos, concluir, reabrir, arquivar, excluir, quantitativos e Foco do dia, testados no banco de teste.
 4. **Demandas completas:** implementada, a validar no Supabase real. Quatro visões (Cards, Quadro, Tabela, Lista), Arquivo, edição de qualquer campo, mover por menu e arraste, rascunhos, busca, filtros e ordenação. Pendente dentro desta etapa: campo para cadastrar o selo MP, tipos de documento opcionais além dos atuais, se o usuário quiser.
 5. **Entradas** e virar demanda: **implementada em 30/10/2026**, testada no banco de teste e com a migração 10 aplicada no Supabase real; **a validar** (avaliação do usuário na PWA, Issue #5). Fora do bloco: voz, foto, envelhecimento das notas, IA.
-6. **Agenda local** (semana, mês, feriados, notificações): não iniciada.
+6. **Agenda local** (Hoje, semana, mês, eventos, avisos dentro do aplicativo): implementada em 02/11/2026, aguardando avaliação do usuário (feriados e eventos externos seguem em Configurações).
 7. **Configurações** (paletas, fontes, tamanhos, fundo): não iniciada na aplicação funcional (existe no protótipo).
 8. **Busca global e botão "+":** botão "+" funcional para nova demanda; busca global desativada com aviso. Busca e filtros de Demandas funcionam.
 9. **Perfil: humor, energia, produtividade, clima e mensagem do dia:** não iniciada na aplicação funcional (existe no protótipo). Cada registro de Humor e Energia terá a sua própria data.
