@@ -17,7 +17,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 ### Início
 - Mensagem motivacional e bem-humorada do dia (uma por dia, sorteada de um banco de 500 frases do usuário, sem repetir até esgotar).
 - Quantitativos: atrasadas, para hoje, próximos 7 dias, aguardando retorno e entradas sem tratar.
-- Alertas ao abrir: atrasadas (vermelho), vencendo hoje, compromissos de hoje, aguardando retorno parado há mais de 7 dias (ajustável).
+- Alertas ao abrir: atrasadas (vermelho), vencendo hoje, compromissos de hoje, aguardando retorno parado há mais de 7 dias (ajustável) [substituído em 02/11/2026: vale o retorno do setor em 10 dias corridos e a etapa Aguardando Prefeita, decisões 45 e 46].
 - "Foco do dia": até 3 demandas sugeridas (prazo legal primeiro, depois próprio, depois mais tempo parada). O usuário pode trocar.
 - Widget de clima da cidade (configurável).
 - Acesso rápido para registrar humor e energia.
