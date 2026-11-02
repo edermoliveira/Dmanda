@@ -567,7 +567,7 @@ const aviso = (pg) => pg.waitForFunction(() => document.querySelector('#toast')?
   const j = await pg.evaluate(async () => (await fetch('/api/exportar')).json());
   const conv = j.entradas_arquivadas.filter((e) => e.demanda_id);
   const todasDem = [...j.demandas, ...j.arquivadas];
-  ok(j.formato === 'dmanda-exportacao' && j.versao === 3 && Array.isArray(j.entradas) && Array.isArray(j.entradas_arquivadas), 'a cópia dos dados é a versão 3 e traz as entradas ativas e as arquivadas');
+  ok(j.formato === 'dmanda-exportacao' && j.versao === 4 && Array.isArray(j.eventos) && Array.isArray(j.entradas) && Array.isArray(j.entradas_arquivadas), 'a cópia dos dados é a versão 3 e traz as entradas ativas e as arquivadas');
   ok(j.entradas.length > 5 && j.entradas.every((e) => !e.demanda_id && !e.arquivada_em) && conv.length >= 4 && conv.every((e) => todasDem.some((d) => d.id === e.demanda_id && d.entrada_id === e.id)), 'a cópia leva as entradas convertidas com o vínculo, e cada demanda de origem aponta de volta para a sua entrada');
   ok(j.entradas.every((e) => e.titulo !== undefined && e.texto !== undefined && Number.isInteger(e.cor) && typeof e.fixada === 'boolean' && Number.isInteger(e.versao) && !('user_id' in e)), 'cada entrada da cópia traz título, texto, cor, fixação e versão, sem identificador de usuário');
 }

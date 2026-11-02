@@ -1,5 +1,5 @@
 -- Restaura uma cópia dos dados do Dmanda (arquivo "dmanda-copia-AAAA-MM-DD.json", menu do avatar > "Baixar cópia dos dados") em um projeto Supabase.
--- Aceita cópias da versão 3 (demandas, tarefas, dias indisponíveis e entradas), da versão 2 (sem entradas) e da versão 1 (antigas, sem dias indisponíveis; o prazo delas vira a referência original, marcada como legado).
+-- Aceita cópias da versão 4 (demandas, tarefas, dias indisponíveis, entradas e eventos da Agenda), da versão 3 (sem eventos), da versão 2 (sem entradas) e da versão 1 (antigas, sem dias indisponíveis; o prazo delas vira a referência original, marcada como legado).
 -- Procedimento completo e limites: supabase/LEIA-ME.md, seção "Cópia dos dados e restauração".
 --
 -- Como usar (no SQL Editor do painel do Supabase, do projeto Dmanda, ou em um banco de teste):
@@ -10,7 +10,7 @@
 --   4. Confira: select count(*) from public.demandas; select count(*) from public.tarefas;
 --
 -- Garantias e limites:
---   - Só grava demandas, tarefas (com as arquivadas), dias indisponíveis e entradas (ativas, arquivadas e já convertidas, com o vínculo à demanda). Uma demanda ou entrada que já existe com o mesmo identificador NÃO é tocada nem sobrescrita, nem recebe tarefas.
+--   - Só grava demandas, tarefas (com as arquivadas), dias indisponíveis, entradas (ativas, arquivadas e já convertidas, com o vínculo à demanda) e eventos da Agenda. Uma demanda ou entrada que já existe com o mesmo identificador NÃO é tocada nem sobrescrita, nem recebe tarefas.
 --   - Tudo é atribuído ao único usuário do projeto (a conta do Secretário): serve ao mesmo projeto e também a um projeto novo, com outro identificador de usuário.
 --   - Se o projeto não tiver exatamente 1 usuário, nada é gravado. A conta, a senha, a lista de acesso e as migrações NÃO fazem parte da cópia e precisam existir antes.
 --   - Exige o dono da tabela (no SQL Editor do Supabase você já é): o script desliga e religa um gatilho dentro da própria transação.
@@ -27,9 +27,10 @@ declare
   n_tar integer;
   n_dias integer;
   n_ent integer;
+  n_eve integer;
 begin
-  if j ->> 'formato' is distinct from 'dmanda-exportacao' or j ->> 'versao' not in ('1', '2', '3') then
-    raise exception 'Este arquivo não é uma cópia do Dmanda (esperado formato dmanda-exportacao, versão 1, 2 ou 3).';
+  if j ->> 'formato' is distinct from 'dmanda-exportacao' or j ->> 'versao' not in ('1', '2', '3', '4') then
+    raise exception 'Este arquivo não é uma cópia do Dmanda (esperado formato dmanda-exportacao, versão 1, 2, 3 ou 4).';
   end if;
   select count(*) into qtd from auth.users;
   if qtd <> 1 then
@@ -86,6 +87,14 @@ begin
   on conflict (id) do nothing;
   get diagnostics n_ent = row_count;
 
-  raise notice 'Restauradas % demanda(s), % tarefa(s), % dia(s) indisponível(is) e % entrada(s); o que já existia não foi tocado.', n_dem, n_tar, n_dias, n_ent;
+  -- eventos e lembretes da Agenda (cópias da versão 4): versão e datas vêm como estavam; o que já existe com o mesmo identificador não é tocado
+  insert into public.eventos (id, user_id, titulo, tipo, data, dia_inteiro, inicio, fim, descricao, aviso_min, versao, criado_em, atualizado_em)
+  select (x ->> 'id')::uuid, dono, x ->> 'titulo', x ->> 'tipo', (x ->> 'data')::date, coalesce((x ->> 'dia_inteiro')::boolean, false), nullif(x ->> 'inicio', '')::time, nullif(x ->> 'fim', '')::time,
+         coalesce(x ->> 'descricao', ''), (x ->> 'aviso_min')::integer, coalesce((x ->> 'versao')::integer, 1), coalesce((x ->> 'criado_em')::timestamptz, now()), coalesce((x ->> 'atualizado_em')::timestamptz, now())
+  from jsonb_array_elements(coalesce(j -> 'eventos', '[]'::jsonb)) x
+  on conflict (id) do nothing;
+  get diagnostics n_eve = row_count;
+
+  raise notice 'Restauradas % demanda(s), % tarefa(s), % dia(s) indisponível(is), % entrada(s) e % evento(s); o que já existia não foi tocado.', n_dem, n_tar, n_dias, n_ent, n_eve;
 end
 $restaurar$;

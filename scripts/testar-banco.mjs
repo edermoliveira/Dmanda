@@ -432,7 +432,7 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
 
   // recusas: nada é gravado
   const vazio = await novoBanco([N, 'destino@teste']);
-  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 4 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
+  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 5 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
   const dois = await novoBanco([N, 'destino@teste'], [O, 'origem@teste']);
   ok(/exatamente 1 usuário/.test(await tentar(dois, copia)) && await contar(dois) === '0/0', 'restauração: com mais de um usuário no projeto, nada é gravado');
   const nenhum = await novoBanco();
@@ -440,6 +440,34 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const quebrada = JSON.parse(JSON.stringify(copia)); quebrada.demandas[0].tarefas[0].texto = '   ';
   ok(await tentar(vazio, quebrada) !== null && await contar(vazio) === '0/0', 'restauração: uma tarefa inválida derruba a restauração inteira (transação única, nada fica pela metade)');
   for (const d of [origem, destino, vazio, dois, nenhum, semDemanda, v2, v1]) await d.close();
+}
+
+// cópia da versão 4 (Agenda): eventos, etapa Aguardando Prefeita e as datas de encaminhamento e reiteração voltam exatamente como estavam
+{
+  const SQL = readFileSync('supabase/restaurar-copia.sql', 'utf8');
+  const O = '55555555-5555-4555-8555-555555555555', N = '66666666-6666-4666-8666-666666666666';
+  const novo = async (id, email) => { const d = await abrirBancoTeste(); await d.query('insert into auth.users (id, email) values ($1, $2)', [id, email]); await d.query('insert into dmanda_privado.acesso_autorizado (email) values ($1) on conflict do nothing', [email]); return d; };
+  const rodar = async (d, json) => { try { await d.exec(SQL.replace('__COLE_AQUI_O_JSON__', () => JSON.stringify(json))); return null; } catch (e) { return e.message || String(e); } };
+  const origem = await novo(O, 'o4@teste'), co = (f, a) => chamarComoUsuario(origem, O, f, a);
+  const p1 = await co('criar_demanda', { p: { assunto: 'Espera da Prefeita "á"', etapa: 'Aguardando Prefeita', prazo_original: '2026-12-03' } });
+  const r1 = await co('criar_demanda', { p: { assunto: 'Retorno do setor', etapa: 'Aguardando retorno', setor: 'Obras', acompanhar_em: '2026-12-02' } });
+  await co('atualizar_demanda', { p_id: r1.id, p: { encaminhada_em: '2026-11-20', reiterada_em: '2026-11-27' } });
+  const e1 = await co('criar_evento', { p: { titulo: 'Reunião "á" $$ \ com acento', tipo: 'Reunião', data: '2026-12-01', inicio: '09:00', fim: '10:30', descricao: 'linha 1\nlinha 2', aviso_min: 30 } });
+  const e2 = await co('criar_evento', { p: { titulo: 'Dia inteiro', tipo: 'Lembrete', data: '2026-12-02', dia_inteiro: true, aviso_min: 0 } });
+  await co('salvar_evento', { p_id: e1.id, p: { fim: '11:00' }, p_versao: 1 });
+  const lista = async (d, u) => JSON.stringify((await chamarComoUsuario(d, u, 'listar_eventos', {})));
+  const dems = async (d, u) => JSON.stringify([...(await chamarComoUsuario(d, u, 'listar_demandas', { p_arquivadas: false }))].sort((a, b) => a.id.localeCompare(b.id)));
+  const copia = JSON.parse(JSON.stringify({ formato: 'dmanda-exportacao', versao: 4, exportado_em: new Date().toISOString(), fuso: 'America/Sao_Paulo', demandas: await co('listar_demandas', { p_arquivadas: false }), arquivadas: [], dias_indisponiveis: [], entradas: [], entradas_arquivadas: [], eventos: await co('listar_eventos', {}) }));
+  ok(copia.eventos.length === 2 && copia.eventos.find((x) => x.id === e1.id).versao === 2 && copia.demandas.find((x) => x.id === r1.id).reiterada_em === '2026-11-27', 'cópia v4: a exportação traz os eventos (com versão e horários HH:MM) e as datas de encaminhamento e reiteração');
+  const destino = await novo(N, 'd4@teste');
+  ok(await rodar(destino, copia) === null && await lista(destino, N) === await lista(origem, O) && await dems(destino, N) === await dems(origem, O), 'cópia v4: restaurar num projeto novo devolve eventos e demandas (etapa Aguardando Prefeita, encaminhamento e reiteração) exatamente iguais');
+  ok(await rodar(destino, copia) === null && (await destino.query('select count(*)::int as n from public.eventos')).rows[0].n === 2, 'cópia v4: restaurar duas vezes não duplica eventos');
+  await destino.exec('delete from public.eventos'); await chamarComoUsuario(destino, N, 'criar_evento', { p: { id: e1.id, titulo: 'ALTERADO DEPOIS', tipo: 'Reunião', data: '2026-12-01', inicio: '15:00' } });
+  ok(await rodar(destino, copia) === null && (await chamarComoUsuario(destino, N, 'buscar_evento', { p_id: e1.id })).titulo === 'ALTERADO DEPOIS' && (await chamarComoUsuario(destino, N, 'buscar_evento', { p_id: e2.id })).titulo === 'Dia inteiro', 'cópia v4: um evento que já existe com o mesmo identificador não é sobrescrito; o que falta volta');
+  const v3 = await novo(N, 'd3@teste'); const copiaV3 = JSON.parse(JSON.stringify(copia)); copiaV3.versao = 3; delete copiaV3.eventos; for (const d of copiaV3.demandas) { delete d.encaminhada_em; delete d.reiterada_em; }
+  ok(await rodar(v3, copiaV3) === null && (await v3.query('select count(*)::int as n from public.eventos')).rows[0].n === 0 && (await chamarComoUsuario(v3, N, 'buscar_demanda', { p_id: r1.id })).encaminhada_em === null, 'cópia v4: cópias antigas (versão 3, sem eventos nem datas de espera) continuam sendo aceitas');
+  for (const d of [origem, destino, v3]) await d.close();
+  void p1;
 }
 
 
@@ -704,6 +732,99 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok((await db.query('select count(*)::int as n from public.entradas where demanda_id is not null')).rows[0].n === 1, 'entradas: uma demanda nasce de no máximo uma anotação (índice único) e só a convertida da Portaria segue ligada');
 }
 
+// ---------- Agenda: etapa Aguardando Prefeita, datas de retorno do setor e eventos (migração 14) ----------
+{
+  const G = '9a9a9a9a-9999-4999-8999-9a9a9a9a9a9a', H = '9b9b9b9b-9999-4999-8999-9b9b9b9b9b9b', X = '9c9c9c9c-9999-4999-8999-9c9c9c9c9c9c';
+  await db.exec(`insert into auth.users (id, email) values ('${G}', 'ag@teste'), ('${H}', 'ah@teste'), ('${X}', 'ax@teste')`);
+  await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('ag@teste'), ('ah@teste')");   // ax não é autorizado
+  const gc = (u, f, a) => chamarComoUsuario(db, u, f, a);
+  const ge = async (u, f, a) => { try { await gc(u, f, a); return null; } catch (e) { return e; } };
+  const gm = async (u, f, a) => (await ge(u, f, a))?.message ?? null;
+
+  // --- etapa Aguardando Prefeita ---
+  const dp = await gc(G, 'criar_demanda', { p: { assunto: 'Aguarda a Prefeita', prazo_original: '2027-06-18', prazo_tipo: 'Legal', acompanhar_em: '2027-06-10' } });
+  const desde0 = dp.etapa_desde;
+  const p1 = await gc(G, 'mover_etapa', { p_id: dp.id, p_etapa: 'Aguardando Prefeita' });
+  ok(p1.etapa === 'Aguardando Prefeita' && p1.etapa_desde > desde0 && p1.prazo === dp.prazo && p1.prazo_original === dp.prazo_original && p1.acompanhar_em === '2027-06-10', 'agenda: a nova etapa Aguardando Prefeita existe, registra a data de entrada (etapa_desde) e não mexe no vencimento nem em Acompanhar em');
+  const p2 = await gc(G, 'atualizar_demanda', { p_id: dp.id, p: { setor: 'Gabinete', encaminhada_em: '2027-06-01', reiterada_em: '2027-06-05' } });
+  ok(p2.etapa === 'Aguardando Prefeita' && p2.etapa_desde === p1.etapa_desde && p2.encaminhada_em === '2027-06-01' && p2.reiterada_em === '2027-06-05', 'agenda: reiterar (ou registrar o encaminhamento) não zera a espera nem move a demanda: etapa e data de entrada ficam iguais');
+  const p3 = await gc(G, 'mover_etapa', { p_id: dp.id, p_etapa: 'Fazendo' });
+  const p4 = await gc(G, 'mover_etapa', { p_id: dp.id, p_etapa: 'Aguardando Prefeita' });
+  ok(p3.etapa === 'Fazendo' && p4.etapa === 'Aguardando Prefeita' && p4.etapa_desde > p3.etapa_desde && p4.etapa_desde > p1.etapa_desde, 'agenda: sair da etapa e voltar começa um novo período (nova data de entrada)');
+  ok(/Etapa desconhecida/.test(await gm(G, 'mover_etapa', { p_id: dp.id, p_etapa: 'Aguardando a Prefeita' })), 'agenda: nome de etapa fora da lista é recusado');
+  const fim = await gc(G, 'concluir_demanda', { p_id: dp.id });
+  ok(fim.etapa === 'Finalizado' && fim.concluida_em !== null, 'agenda: demanda em Aguardando Prefeita conclui normalmente');
+  const bloqueio = await db.transaction(async (tx) => { try { await entrarComo(tx, G); await tx.query("update public.demandas set etapa = 'Aguardando a Prefeita' where id = $1", [dp.id]); return null; } catch (e) { return e.message; } });
+  ok(/check|constraint|violates/i.test(bloqueio || ''), 'agenda: a restrição do banco também recusa etapa fora da lista');
+
+  // --- retorno de outro setor: datas do encaminhamento e da reiteração ---
+  const dr = await gc(G, 'criar_demanda', { p: { assunto: 'Aguarda setor', etapa: 'Aguardando retorno', setor: 'Contabilidade', acompanhar_em: '2027-07-20' } });
+  ok(dr.encaminhada_em === null && dr.reiterada_em === null, 'agenda: demanda nova não inventa data de encaminhamento nem de reiteração');
+  const r1 = await gc(G, 'atualizar_demanda', { p_id: dr.id, p: { encaminhada_em: '2027-07-01' } });
+  const r2 = await gc(G, 'atualizar_demanda', { p_id: dr.id, p: { reiterada_em: '2027-07-12' } });
+  const r3 = await gc(G, 'atualizar_demanda', { p_id: dr.id, p: { assunto: 'Aguarda setor (editado)' } });
+  ok(r1.encaminhada_em === '2027-07-01' && r1.reiterada_em === null && r2.encaminhada_em === '2027-07-01' && r2.reiterada_em === '2027-07-12' && r3.reiterada_em === '2027-07-12' && r3.acompanhar_em === '2027-07-20', 'agenda: cada data de espera grava sozinha; chave ausente não mexe; o campo manual Acompanhar em segue intocado');
+  ok((await gm(G, 'atualizar_demanda', { p_id: dr.id, p: { encaminhada_em: '2027-02-30' } })) !== null && (await gc(G, 'buscar_demanda', { p_id: dr.id })).encaminhada_em === '2027-07-01', 'agenda: data de encaminhamento que não existe é recusada sem alterar o que estava gravado');
+  const r4 = await gc(G, 'atualizar_demanda', { p_id: dr.id, p: { reiterada_em: null } });
+  ok(r4.reiterada_em === null && r4.encaminhada_em === '2027-07-01', 'agenda: a reiteração pode ser limpa (null) sem tocar no encaminhamento');
+  await gc(G, 'atualizar_demanda', { p_id: dr.id, p: { reiterada_em: '2027-07-12' } });
+  await gc(G, 'mover_etapa', { p_id: dr.id, p_etapa: 'Fazendo' });
+  const r5 = await gc(G, 'mover_etapa', { p_id: dr.id, p_etapa: 'Aguardando retorno' });
+  ok(r5.encaminhada_em === null && r5.reiterada_em === null && r5.acompanhar_em === '2027-07-20' && r5.setor === 'Contabilidade', 'agenda: voltar a Aguardando retorno começa novo período sem as datas do anterior, mas preserva setor e Acompanhar em');
+  const r6 = await gc(G, 'atualizar_demanda', { p_id: dr.id, p: { encaminhada_em: '2027-07-30' } });
+  const r7 = await gc(G, 'mover_etapa', { p_id: dr.id, p_etapa: 'Aguardando Prefeita' });
+  ok(r6.encaminhada_em === '2027-07-30' && r7.encaminhada_em === '2027-07-30', 'agenda: ir para outra etapa de espera não apaga as datas já registradas');
+
+  // --- eventos ---
+  const E1 = 'e1e1e1e1-1111-4111-8111-e1e1e1e1e1e1', E2 = 'e2e2e2e2-2222-4222-8222-e2e2e2e2e2e2';
+  const base = { id: E1, titulo: ' Reunião de secretariado ', tipo: 'Reunião', data: '2027-03-09', inicio: '09:00', fim: '10:30', aviso_min: 15, descricao: ' pauta ' };
+  const e1 = await gc(G, 'criar_evento', { p: base });
+  ok(e1.id === E1 && e1.titulo === 'Reunião de secretariado' && e1.tipo === 'Reunião' && e1.data === '2027-03-09' && e1.dia_inteiro === false && e1.inicio === '09:00' && e1.fim === '10:30' && e1.aviso_min === 15 && e1.descricao === 'pauta' && e1.versao === 1 && !('user_id' in e1), 'eventos: criação grava os campos, apara os textos, devolve horário HH:MM, data sem deslocamento e versão 1');
+  const e1b = await gc(G, 'criar_evento', { p: { ...base, titulo: 'Outro título' } });
+  const todos = await gc(G, 'listar_eventos', {});
+  ok(e1b.titulo === 'Reunião de secretariado' && todos.filter((x) => x.id === E1).length === 1, 'eventos: repetir a criação com o mesmo identificador (resposta perdida, clique repetido) devolve o evento existente e não duplica');
+  const noite = await gc(G, 'criar_evento', { p: { titulo: 'Plantão', tipo: 'Compromisso', data: '2027-03-09', inicio: '23:30', fim: null, aviso_min: null } });
+  ok(noite.data === '2027-03-09' && noite.inicio === '23:30' && noite.fim === null && noite.aviso_min === null, 'eventos: às 23h30 a data continua a do calendário (nada desloca por UTC) e término e aviso são opcionais');
+  const di = await gc(G, 'criar_evento', { p: { id: E2, titulo: 'Dia do servidor', tipo: 'Lembrete', data: '2027-10-28', dia_inteiro: true, aviso_min: 0 } });
+  ok(di.dia_inteiro === true && di.inicio === null && di.fim === null && di.aviso_min === 0, 'eventos: dia inteiro sem horário, com aviso no dia');
+  ok(/título/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, titulo: '  ' } })) && /tipo/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, tipo: 'Festa' } })) && /dia inteiro não tem horário/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, dia_inteiro: true } })), 'eventos: título vazio, tipo desconhecido e dia inteiro com horário são recusados');
+  ok(/depois do início/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, fim: '08:00' } })) && /depois do início/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, fim: '09:00' } })) && /início/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, inicio: '25:00' } })) && /início/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, inicio: null } })) && /Aviso inválido/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, aviso_min: 7 } })) && /data/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, data: null } })), 'eventos: término igual ou antes do início, hora inexistente, início ausente, aviso fora das opções e data ausente são recusados');
+  ok(/200/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, titulo: 'x'.repeat(201) } })) && /5000/.test(await gm(G, 'criar_evento', { p: { ...base, id: undefined, descricao: 'x'.repeat(5001) } })), 'eventos: título e descrição têm limite');
+  const bloq2 = await db.transaction(async (tx) => { try { await entrarComo(tx, G); await tx.query("insert into public.eventos (titulo, tipo, data, inicio, fim) values ('x', 'Reunião', '2027-01-01', '10:00', '09:00')"); return null; } catch (e) { return e.message; } });
+  ok(/check|constraint|violates/i.test(bloq2 || ''), 'eventos: a restrição do banco também recusa término antes do início');
+
+  const s1 = await gc(G, 'salvar_evento', { p_id: E1, p: { titulo: 'Reunião com o Gabinete', fim: '11:00' }, p_versao: 1 });
+  ok(s1.titulo === 'Reunião com o Gabinete' && s1.fim === '11:00' && s1.inicio === '09:00' && s1.versao === 2 && s1.tipo === 'Reunião', 'eventos: salvar altera só os campos enviados e sobe a versão');
+  const s1b = await gc(G, 'salvar_evento', { p_id: E1, p: { titulo: 'Reunião com o Gabinete', fim: '11:00' }, p_versao: 2 });
+  ok(s1b.versao === 2, 'eventos: salvar sem mudança real não sobe a versão');
+  const velho = await ge(G, 'salvar_evento', { p_id: E1, p: { titulo: 'Perdida' }, p_versao: 1 });
+  ok(velho && velho.code === 'DM409' && /outro aparelho/.test(velho.message) && (await gc(G, 'buscar_evento', { p_id: E1 })).titulo === 'Reunião com o Gabinete', 'eventos: salvar com versão antiga é recusado (DM409) e não sobrescreve o que outro aparelho gravou');
+  ok(/Versão do evento/.test(await gm(G, 'salvar_evento', { p_id: E1, p: { titulo: 'x' }, p_versao: null })) && /depois do início/.test(await gm(G, 'salvar_evento', { p_id: E1, p: { fim: '08:00' }, p_versao: 2 })) && /Evento não encontrado/.test(await gm(G, 'salvar_evento', { p_id: 'e9e9e9e9-9999-4999-8999-e9e9e9e9e9e9', p: { titulo: 'x' }, p_versao: 1 })), 'eventos: versão ausente, término antes do início (resultado final) e evento inexistente são recusados');
+  const s2 = await gc(G, 'salvar_evento', { p_id: E1, p: { dia_inteiro: true, inicio: null, fim: null, aviso_min: 0 }, p_versao: 2 });
+  ok(s2.dia_inteiro === true && s2.inicio === null && s2.aviso_min === 0 && s2.versao === 3 && /dia inteiro não tem horário/.test(await gm(G, 'salvar_evento', { p_id: E1, p: { dia_inteiro: true, inicio: '08:00' }, p_versao: 3 })), 'eventos: transformar em dia inteiro limpa o horário; dia inteiro com horário continua recusado');
+  const s3 = await gc(G, 'salvar_evento', { p_id: E1, p: { dia_inteiro: false, inicio: '14:00', fim: null, aviso_min: 30 }, p_versao: 3 });
+  ok(s3.dia_inteiro === false && s3.inicio === '14:00' && s3.fim === null && s3.aviso_min === 30, 'eventos: voltar a evento com horário');
+
+  const lista = await gc(G, 'listar_eventos', {});
+  ok(lista.map((x) => x.id).join() === [E1, noite.id, E2].join(), 'eventos: a lista traz os eventos do usuário em ordem de data e horário');
+  ok((await gc(H, 'listar_eventos', {})).length === 0 && /não encontrado/.test(await gm(H, 'buscar_evento', { p_id: E1 })) && /não encontrado/.test(await gm(H, 'salvar_evento', { p_id: E1, p: { titulo: 'invasão' }, p_versao: 4 })), 'eventos: RLS isola os eventos entre usuários');
+  await gc(H, 'excluir_evento', { p_id: E1, p_confirmado: true });
+  ok((await gc(G, 'buscar_evento', { p_id: E1 })).id === E1, 'eventos: um usuário não exclui evento de outro (a exclusão não encontra a linha)');
+  const naoAut = await db.transaction(async (tx) => { await entrarComo(tx, X); try { return (await tx.query('select count(*)::int as n from public.eventos')).rows[0].n; } catch (e) { return e.message; } });
+  ok(naoAut === 0, 'eventos: conta não autorizada (fora da lista) não lê nenhum evento');
+  const naoAut2 = await db.transaction(async (tx) => { await entrarComo(tx, X); try { await tx.query("insert into public.eventos (user_id, titulo, tipo, data, inicio) values ($1, 'x', 'Reunião', '2027-01-01', '10:00')", [X]); return null; } catch (e) { return e.message; } });
+  ok(/row-level|policy/i.test(naoAut2 || ''), 'eventos: conta não autorizada não grava evento (RLS com conta autorizada)');
+  const anon2 = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_eventos()'); return null; } catch (e) { return e.message; } });
+  ok(/permission denied/i.test(anon2 || ''), 'eventos: sem login (papel anon) não executa as funções de eventos');
+
+  ok(/confirmação/.test(await gm(G, 'excluir_evento', { p_id: E2 })) && /confirmação/.test(await gm(G, 'excluir_evento', { p_id: E2, p_confirmado: false })) && (await gc(G, 'buscar_evento', { p_id: E2 })).id === E2, 'eventos: excluir sem confirmação é recusado e o evento fica');
+  const ex = await gc(G, 'excluir_evento', { p_id: E2, p_confirmado: true });
+  const ex2 = await gc(G, 'excluir_evento', { p_id: E2, p_confirmado: true });
+  ok(ex.excluido === true && ex2.excluido === true && /não encontrado/.test(await gm(G, 'buscar_evento', { p_id: E2 })) && (await gc(G, 'listar_eventos', {})).every((x) => x.id !== E2), 'eventos: excluir com confirmação remove; repetir depois de resposta perdida não é erro');
+  const privs = await db.query("select has_function_privilege('authenticated', 'public.criar_evento(jsonb)', 'execute') as a, has_function_privilege('anon', 'public.criar_evento(jsonb)', 'execute') as n, has_table_privilege('anon', 'public.eventos', 'select') as t");
+  ok(privs.rows[0].a === true && privs.rows[0].n === false && privs.rows[0].t === false, 'eventos: privilégios mínimos (só o usuário logado executa; anon não lê a tabela)');
+}
+
 // ---------- migração sobre dados antigos: nada se perde ----------
 {
   const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
@@ -713,8 +834,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
   const nova8 = todas.find((f) => f.includes('prazos_e_dias_indisponiveis'));
   const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
-  const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias'));
-  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
+  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -782,6 +903,16 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const antes12 = JSON.stringify((await antigo.query('select id, titulo, texto, cor, versao, criado_em, atualizado_em from public.entradas order by id')).rows) + JSON.stringify((await antigo.query('select * from public.dias_indisponiveis order by id')).rows);
   await antigo.exec(readFileSync(join('supabase/migrations', nova12), 'utf8'));
   ok(JSON.stringify((await antigo.query('select id, titulo, texto, cor, versao, criado_em, atualizado_em from public.entradas order by id')).rows) + JSON.stringify((await antigo.query('select * from public.dias_indisponiveis order by id')).rows) === antes12, 'migração 12: entradas e dias existentes seguem idênticos depois de trocar as políticas');
+  // migração 14 (Agenda): demandas e tarefas existentes seguem idênticas; só aparecem colunas novas vazias e a etapa nova passa a ser aceita
+  const col14 = 'id, assunto, numero, origem, chegou_em::text, prazo::text, prazo_original::text, prazo_ajuste, etapa, etapa_desde::text, setor, acompanhar_em::text, versao, atualizado_em::text, criado_em::text';
+  const antes14 = JSON.stringify((await antigo.query(`select ${col14} from public.demandas order by id`)).rows) + JSON.stringify((await antigo.query('select id, texto, concluida, posicao from public.tarefas order by id')).rows) + JSON.stringify((await antigo.query('select * from public.entradas order by id')).rows) + JSON.stringify((await antigo.query('select * from public.dias_indisponiveis order by id')).rows);
+  await antigo.exec(readFileSync(join('supabase/migrations', nova14), 'utf8'));
+  const depois14 = JSON.stringify((await antigo.query(`select ${col14} from public.demandas order by id`)).rows) + JSON.stringify((await antigo.query('select id, texto, concluida, posicao from public.tarefas order by id')).rows) + JSON.stringify((await antigo.query('select * from public.entradas order by id')).rows) + JSON.stringify((await antigo.query('select * from public.dias_indisponiveis order by id')).rows);
+  ok(antes14 === depois14, 'migração 14: demandas (campos, etapa, versão e datas), tarefas, entradas e dias indisponíveis existentes ficam idênticos');
+  const novas14 = (await antigo.query('select count(*)::int as n, count(encaminhada_em)::int as e, count(reiterada_em)::int as r from public.demandas')).rows[0];
+  ok(novas14.n > 0 && novas14.e === 0 && novas14.r === 0 && (await antigo.query('select count(*)::int as n from public.eventos')).rows[0].n === 0, 'migração 14: as colunas novas começam vazias e a tabela de eventos começa sem linhas');
+  const moveu = await chamarComoUsuario(antigo, W, 'mover_etapa', { p_id: comPrazo.id, p_etapa: 'Aguardando Prefeita' });
+  ok(moveu.etapa === 'Aguardando Prefeita' && moveu.prazo === (await chamarComoUsuario(antigo, W, 'buscar_demanda', { p_id: comPrazo.id })).prazo, 'migração 14: uma demanda antiga já pode ir para Aguardando Prefeita sem mudar o vencimento');
   await antigo.close();
 }
 

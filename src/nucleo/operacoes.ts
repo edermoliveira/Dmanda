@@ -4,8 +4,9 @@
 import { ETAPAS, type DadosDemanda, type Demanda, type Etapa } from '@/lib/demandas';
 import type { DiaIndisponivel } from '@/lib/prazos';
 import type { Entrada } from '@/lib/entradas';
-import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
-export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada };
+import type { DadosEvento, Evento } from '@/lib/eventos';
+import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
+export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada, validarEvento };
 export type { TarefaEdicao };
 
 export type Chamar = (funcao: string, args: Record<string, unknown>) => Promise<unknown>;
@@ -15,6 +16,7 @@ export type RespostaDia = { dia: DiaIndisponivel; recalculadas: number };
 export function criarOperacoes(chamar: Chamar) {
   const demanda = async (f: string, a: Record<string, unknown>) => (await chamar(f, a)) as Demanda;
   const entrada = async (f: string, a: Record<string, unknown>) => (await chamar(f, a)) as Entrada;
+  const evento = async (f: string, a: Record<string, unknown>) => (await chamar(f, a)) as Evento;
   return {
     listar: async (arquivadas = false) => (await chamar('listar_demandas', { p_arquivadas: !!arquivadas })) as Demanda[],
     criar: (dados: DadosDemanda) => demanda('criar_demanda', { p: validarDados(dados, { criando: true }) }),
@@ -51,6 +53,14 @@ export function criarOperacoes(chamar: Chamar) {
       if (!dados?.id) throw new ErroDmanda('Identificador da demanda não informado.');
       return demanda('criar_demanda_de_entrada', { p_entrada: id(entradaId, 'Anotação'), p: validarDados(dados, { criando: true }) });
     },
+    // ---------- Agenda (eventos e lembretes próprios) ----------
+    listarEventos: async () => (await chamar('listar_eventos', {})) as Evento[],
+    buscarEvento: (eventoId: string) => evento('buscar_evento', { p_id: id(eventoId, 'Evento') }),
+    /** O identificador (opcional) é gerado pelo aplicativo: repetir a criação com ele devolve o mesmo evento. */
+    criarEvento: (dados: DadosEvento) => evento('criar_evento', { p: validarEvento(dados, { criando: true }) }),
+    /** Só os campos enviados mudam; `versao` é a que a janela viu por último (se mudou, o banco recusa com ErroConflito em vez de sobrescrever). */
+    salvarEvento: (eventoId: string, dados: DadosEvento, versao: number) => evento('salvar_evento', { p_id: id(eventoId, 'Evento'), p: validarEvento(dados, { criando: false }), p_versao: versaoDe(versao) }),
+    excluirEvento: async (eventoId: string, confirmado: boolean) => (await chamar('excluir_evento', { p_id: id(eventoId, 'Evento'), p_confirmado: confirmado === true })) as { id: string; excluido: true },
     /** `tarefaId` (opcional) é a identidade da tentativa: repetir com o mesmo identificador, depois de uma resposta perdida, devolve a tarefa já gravada em vez de criar outra. */
     adicionarTarefa: (demandaId: string, t: string, tarefaId?: string) => demanda('adicionar_tarefa', { p_demanda: id(demandaId, 'Demanda'), p_texto: texto(t, 'Tarefa', 1000), ...(tarefaId ? { p_id: id(tarefaId, 'Tarefa') } : {}) }),
     editarTarefa: (tarefaId: string, t: string) => demanda('editar_tarefa', { p_id: id(tarefaId, 'Tarefa'), p_texto: texto(t, 'Tarefa', 1000) }),

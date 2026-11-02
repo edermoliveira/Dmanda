@@ -3,6 +3,7 @@
 import { AREAS, ETAPAS, PRAZOS, TIPOS } from '../lib/demandas.ts';
 import { BOTOES_PRAZO, CATEGORIAS_DIA, type CategoriaDia } from '../lib/prazos.ts';
 import { COR_MAX_ACEITA, LIMITE_TEXTO, LIMITE_TITULO } from '../lib/entradas.ts';
+import { erroDoEvento, TIPOS_EVENTO, type DadosEvento } from '../lib/eventos.ts';
 
 /** Erro com texto próprio para mostrar na tela. */
 export class ErroDmanda extends Error {}
@@ -40,6 +41,8 @@ export function validarDados(entrada: unknown, { criando, aceitaEtapa = false }:
   if ('prazo_original' in e) s.prazo_original = dataOuNulo(e.prazo_original, 'Prazo');
   if ('prazo_dias' in e && e.prazo_dias !== null) { if (typeof e.prazo_dias !== 'number' || !(BOTOES_PRAZO as readonly number[]).includes(e.prazo_dias)) throw new ErroDmanda('Quantidade de dias do prazo inválida.'); s.prazo_dias = e.prazo_dias; }
   if ('acompanhar_em' in e) s.acompanhar_em = dataOuNulo(e.acompanhar_em, 'Data de acompanhamento');
+  if ('encaminhada_em' in e) s.encaminhada_em = dataOuNulo(e.encaminhada_em, 'Data do encaminhamento');
+  if ('reiterada_em' in e) s.reiterada_em = dataOuNulo(e.reiterada_em, 'Data da reiteração');
   if ('setor' in e) s.setor = e.setor === null ? null : texto(e.setor, 'Setor', 160);
   if ((criando || aceitaEtapa) && 'etapa' in e && e.etapa !== undefined) s.etapa = enumerado(e.etapa, ETAPAS, 'Etapa');
   return s;
@@ -88,3 +91,30 @@ export function validarTarefas(l: unknown): TarefaEdicao[] | null {
   });
 }
 
+/**
+ * Evento ou lembrete da Agenda vindo da tela. Chave ausente = não mexe (na alteração); a regra completa (horário, término depois do início, dia inteiro sem horário, aviso) é a mesma da tela
+ * (`erroDoEvento`) e o banco repete as conferências. Na criação todos os campos obrigatórios precisam vir; na alteração o banco confere o resultado final.
+ */
+export function validarEvento(entrada: unknown, { criando }: { criando: boolean }): Record<string, unknown> {
+  if (!entrada || typeof entrada !== 'object' || Array.isArray(entrada)) throw new ErroDmanda('Dados do evento inválidos.');
+  const e = entrada as Record<string, unknown>, s: Record<string, unknown> = {};
+  if ('id' in e && e.id !== undefined) s.id = id(e.id, 'Identificador');
+  if ('titulo' in e) s.titulo = texto(e.titulo, 'Título', 1000).trim();
+  if ('tipo' in e) s.tipo = enumerado(e.tipo, TIPOS_EVENTO, 'Tipo');
+  if ('data' in e) { const d = dataOuNulo(e.data, 'Data'); if (!d) throw new ErroDmanda('Informe a data do evento.'); s.data = d; }
+  if ('dia_inteiro' in e && e.dia_inteiro !== undefined) { if (typeof e.dia_inteiro !== 'boolean') throw new ErroDmanda('Dia inteiro inválido.'); s.dia_inteiro = e.dia_inteiro; }
+  if ('inicio' in e) s.inicio = e.inicio === null || e.inicio === '' ? null : texto(e.inicio, 'Início', 5);
+  if ('fim' in e) s.fim = e.fim === null || e.fim === '' ? null : texto(e.fim, 'Término', 5);
+  if ('descricao' in e) s.descricao = texto(e.descricao, 'Descrição', 20_000).trim();
+  if ('aviso_min' in e) { if (e.aviso_min !== null && (typeof e.aviso_min !== 'number' || !Number.isInteger(e.aviso_min))) throw new ErroDmanda('Aviso inválido.'); s.aviso_min = e.aviso_min; }
+  if (criando) {
+    const m = erroDoEvento({ aviso_min: null, descricao: '', dia_inteiro: false, ...(s as DadosEvento) });
+    if (m) throw new ErroDmanda(m);
+  } else {
+    // na alteração só se confere o que veio; o banco confere o resultado final com os campos que já estavam gravados
+    if ('titulo' in s && !s.titulo) throw new ErroDmanda('O título não pode ficar vazio.');
+    if (typeof s.titulo === 'string' && s.titulo.length > 200) throw new ErroDmanda('O título passa de 200 caracteres.');
+    if (typeof s.descricao === 'string' && s.descricao.length > 5000) throw new ErroDmanda('A descrição passa de 5000 caracteres.');
+  }
+  return s;
+}

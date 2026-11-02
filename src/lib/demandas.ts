@@ -1,6 +1,6 @@
 // Tipos e regras de apresentação de demandas e tarefas, usados pela interface e pelas operações. Sem acesso a banco.
 
-export const ETAPAS = ['Cadastro', 'Vistos', 'Fazendo', 'Aguardando retorno', 'Finalizado'] as const;
+export const ETAPAS = ['Cadastro', 'Vistos', 'Fazendo', 'Aguardando retorno', 'Aguardando Prefeita', 'Finalizado'] as const;
 export type Etapa = (typeof ETAPAS)[number];
 export const TIPOS = ['Protocolo', 'Processo', 'Memorando', 'Ofício', 'Pedido de informação', 'Projeto de lei', 'Portaria', 'Outro documento'] as const;
 export type Tipo = (typeof TIPOS)[number];
@@ -36,6 +36,10 @@ export type Demanda = {
   prazo_tipo: PrazoTipo;
   setor: string | null;
   acompanhar_em: string | null;
+  /** Quando a demanda foi efetivamente encaminhada ao outro setor (AAAA-MM-DD). Opcional: sem ela, a contagem de retorno parte do dia em que entrou em Aguardando retorno. */
+  encaminhada_em: string | null;
+  /** Quando o retorno foi reiterado ao setor. Só uma reiteração registrada inicia nova contagem de 10 dias. */
+  reiterada_em: string | null;
   concluida_em: string | null;
   arquivada_em: string | null;
   criado_em: string;
@@ -48,7 +52,7 @@ export type Demanda = {
 };
 
 /** Campos que o formulário pode gravar (a etapa, as tarefas e o arquivamento têm operações próprias). */
-export type DadosDemanda = Partial<Pick<Demanda, 'tipo' | 'area' | 'numero' | 'assunto' | 'descricao' | 'origem' | 'chegou_em' | 'prazo_original' | 'prazo_dias' | 'prazo_tipo' | 'setor' | 'acompanhar_em'>> & { etapa?: Etapa };
+export type DadosDemanda = Partial<Pick<Demanda, 'tipo' | 'area' | 'numero' | 'assunto' | 'descricao' | 'origem' | 'chegou_em' | 'prazo_original' | 'prazo_dias' | 'prazo_tipo' | 'setor' | 'acompanhar_em' | 'encaminhada_em' | 'reiterada_em'>> & { etapa?: Etapa };
 
 /** Número e origem são opcionais: vazio (ou os marcadores antigos "s/n" e "Não informada", gravados antes do cadastro guiado) significa que não foram informados. */
 export const numeroDe = (d: Pick<Demanda, 'numero'>) => (d.numero.trim() === '' || d.numero === 's/n' ? '' : d.numero);
@@ -86,7 +90,7 @@ export const plural = (n: number, u: string) => `${n} ${u}${n === 1 ? '' : 's'}`
 /** Cor de classificação do card: Processo e Protocolo ganham tom pelo área; os demais documentos são neutros. */
 const AREA_COR: Record<Area, string> = { Geral: 'azul', Pessoal: 'verde', Compras: 'amar' };
 export const corCard = (d: Demanda) => (TEM_AREA.includes(d.tipo) ? ` cat-${AREA_COR[d.area]}` : '');
-export const ETAPA_COR: Record<Etapa, number> = { Cadastro: 48, Vistos: 205, Fazendo: 262, 'Aguardando retorno': 330, Finalizado: 150 };
+export const ETAPA_COR: Record<Etapa, number> = { Cadastro: 48, Vistos: 205, Fazendo: 262, 'Aguardando retorno': 330, 'Aguardando Prefeita': 295, Finalizado: 150 };
 export const TIPO_COR: Record<string, number> = { Processo: 262, Protocolo: 262, Memorando: 212, 'Ofício': 28, Portaria: 150, 'Pedido de informação': 190, 'Projeto de lei': 340 };
 
 export type Filtro = { texto: string; soAtrasadas: boolean; tipo: Tipo | ''; prazo: '' | 'sem' | 'atrasadas' | 'hoje' | 'sete' };
@@ -142,3 +146,22 @@ export const porGrupo = (lista: Demanda[], grupo: GrupoInicio, hoje: string) =>
 /** Foco do dia: até 3 demandas, atrasadas primeiro, depois hoje, depois os próximos 7 dias. */
 export const focoDoDia = (lista: Demanda[], hoje: string): Demanda[] =>
   (['atrasadas', 'hoje', 'sete'] as const).flatMap((g) => porGrupo(lista, g, hoje)).slice(0, 3);
+
+// ---------- Aguardando Prefeita (decisão 46) ----------
+/** A espera passa a ser destacada como prazo vencido a partir do 11º dia (mais de 10 dias corridos na etapa). */
+export const LIMITE_ESPERA_PREFEITA = 10;
+export type EsperaPrefeita = { dias: number; vencida: boolean; texto: string };
+/**
+ * Há quantos dias a demanda está em Aguardando Prefeita (dias corridos desde a entrada na etapa; `etapa_desde` muda a cada troca de etapa, então sair e voltar começa um novo período).
+ * Uma reiteração não zera a contagem. Nada muda sozinho: a regra só descreve e destaca. Fora da etapa (ou arquivada), nulo.
+ */
+export function esperaPrefeita(d: Pick<Demanda, 'etapa' | 'etapa_desde' | 'arquivada_em'>, hoje: string): EsperaPrefeita | null {
+  if (d.etapa !== 'Aguardando Prefeita' || d.arquivada_em) return null;
+  const dias = Math.max(0, diasDesdeInstante(d.etapa_desde, hoje));
+  return { dias, vencida: dias > LIMITE_ESPERA_PREFEITA, texto: dias === 0 ? 'Aguardando Prefeita desde hoje' : `Aguardando Prefeita há ${plural(dias, 'dia')}` };
+}
+/** Dentro de Aguardando Prefeita, da espera mais antiga para a mais recente (empate: a que foi cadastrada primeiro). Nas demais etapas a ordem recebida é mantida. */
+export function ordemDaEtapa<T extends Pick<Demanda, 'etapa_desde' | 'criado_em'>>(lista: T[], etapa: Etapa): T[] {
+  if (etapa !== 'Aguardando Prefeita') return lista;
+  return [...lista].sort((a, b) => a.etapa_desde.localeCompare(b.etapa_desde) || a.criado_em.localeCompare(b.criado_em));
+}
