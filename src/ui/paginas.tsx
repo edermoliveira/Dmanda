@@ -9,7 +9,7 @@ import { useApp, type EstadoRotina } from './contexto';
 import { CardDemanda, ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
 import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
-import { atrasada, filtrar, focoDoDia, FILTRO_VAZIO, plural, porGrupo, TIPOS, titulo, type Demanda, type Tipo } from '@/lib/demandas';
+import { filtrar, focoDoDia, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, TIPOS, titulo, type Demanda, type Tipo } from '@/lib/demandas';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
 function Carregando() { return <div className="vazio-c" role="status">Carregando as demandas...</div>; }
@@ -26,9 +26,9 @@ function textoRotina(r: EstadoRotina | null) {
 }
 
 export function PaginaInicio() {
-  const { demandas, carregando, abrirJanela, hoje, rotina } = useApp();
+  const { demandas, carregando, abrirJanela, hoje, rotina, dias } = useApp();
   const [sel, setSel] = useState<'atrasadas' | 'hoje' | 'sete' | null>(null);
-  const foco = focoDoDia(demandas, hoje);
+  const foco = focoDoDia(demandas, hoje, dias);
   useAjustar(`${demandas.length}${sel}`);
   return (
     <>
@@ -42,7 +42,7 @@ export function PaginaInicio() {
           <section className="sec">
             <div className="stats tres" role="group" aria-label="Filtrar demandas por prazo">
               {GRUPOS_INICIO.map(([g, nome, icone, alerta]) => {
-                const n = porGrupo(demandas, g, hoje).length;
+                const n = porGrupo(demandas, g, hoje, dias).length;
                 return (
                   <button key={g} className={`stat st-${g}${alerta && n ? ' alerta' : ''}`} aria-pressed={sel === g} onClick={() => setSel(sel === g ? null : g)}>
                     <span className="st-ic"><Icone nome={icone} /></span><span className="n">{n}</span><span className="r">{nome}</span>
@@ -51,7 +51,7 @@ export function PaginaInicio() {
               })}
             </div>
             {sel ? (() => {
-              const l = porGrupo(demandas, sel, hoje), nome = GRUPOS_INICIO.find((g) => g[0] === sel)![1];
+              const l = porGrupo(demandas, sel, hoje, dias), nome = GRUPOS_INICIO.find((g) => g[0] === sel)![1];
               return <><h3 className="sub-f">{nome} <small>{plural(l.length, 'demanda')}</small></h3>{l.length ? <div className="cards">{l.map((d) => <CardDemanda key={d.id} d={d} />)}</div> : <div className="vazio-c">Nenhuma demanda neste filtro.</div>}</>;
             })() : null}
           </section>
@@ -94,11 +94,11 @@ function PainelFiltros({ pos, fechar }: { pos: { x: number; y: number }; fechar:
 }
 
 export function PaginaDemandas() {
-  const { demandas, carregando, visao, setVisao, filtro, setFiltro, abrirJanela, hoje, setAbaArquivo } = useApp();
+  const { demandas, carregando, visao, setVisao, filtro, setFiltro, abrirJanela, hoje, setAbaArquivo, dias } = useApp();
   const router = useRouter();
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-  const lista = filtrar(demandas, filtro, hoje);
-  const nAt = demandas.filter((d) => atrasada(d, hoje)).length;
+  const lista = filtrar(demandas, filtro, hoje, dias);
+  const nAt = demandas.filter((d) => grupoFiltro(d, hoje, dias) === 'atrasadas').length;
   const nFiltros = (filtro.tipo ? 1 : 0) + (filtro.prazo ? 1 : 0);
   const [toque, setToque] = useState(false);
   useEffect(() => { const m = matchMedia('(max-width: 899px)'); const f = () => setToque(m.matches); f(); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, []);

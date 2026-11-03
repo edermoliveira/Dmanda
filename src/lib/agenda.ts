@@ -1,8 +1,8 @@
 // Regras puras da Agenda (decisões 46 a 49): grade do mês e da semana, marcos das demandas (vencimento, acompanhamento e retorno do setor), data aplicável,
 // carga pendente do heatmap e dias mais cheios. Sem banco e sem relógio: "hoje" vem sempre de fora. Todas as datas são datas do calendário (AAAA-MM-DD), em UTC puro,
 // então não há deslocamento por fuso. Vencimento, ajuste de prazo e dias indisponíveis seguem exatamente as regras de prazos.ts: nada aqui reescreve um vencimento.
-import { ajustarPrazo, diaDaSemana, somarDias, type DiaIndisponivel } from './prazos.ts';
-import { dataBR, diasAte, hojeISO, type Demanda } from './demandas.ts';
+import { diaDaSemana, somarDias, type DiaIndisponivel } from './prazos.ts';
+import { contagemRetorno, DIAS_RETORNO_SETOR, dataBR, diasAte, type Demanda } from './demandas.ts';
 import { ordenarEventos, type Evento } from './eventos.ts';
 
 // ---------- calendário ----------
@@ -47,24 +47,7 @@ export const rotuloSemana = (dias: readonly string[]) => {
 export type TipoMarco = 'vencimento' | 'acompanhamento' | 'retorno';
 export const ROTULO_MARCO: Record<TipoMarco, string> = { vencimento: 'Vencimento', acompanhamento: 'Acompanhar', retorno: 'Retorno do setor' };
 export type Marco = { tipo: TipoMarco; data: string; demanda: Demanda; atrasado: boolean; detalhe: string };
-/** Dias corridos até cobrar o retorno de outro setor, contados do encaminhamento (exclui o primeiro dia, inclui o último). */
-export const DIAS_RETORNO_SETOR = 10;
-
-export type ContagemRetorno = { data: string; original: string; base: string; origemBase: 'reiteração' | 'encaminhamento' | 'entrada na etapa'; ajuste: string | null };
-/**
- * Marco de retorno de outro setor: 10 dias corridos a partir do efetivo encaminhamento (data informada) ou, sem ela, do dia em que a demanda entrou em Aguardando retorno.
- * Reiteração registrada inicia uma nova contagem a partir dela (vale a mais recente entre encaminhamento e reiteração). Se o limite cai em dia indisponível,
- * antecipa para o dia disponível anterior (mesma regra dos prazos). Não altera o vencimento da demanda nem o campo manual "Acompanhar em". Fora da etapa, nulo.
- */
-export function contagemRetorno(d: Pick<Demanda, 'etapa' | 'etapa_desde' | 'encaminhada_em' | 'reiterada_em' | 'arquivada_em'>, dias: readonly DiaIndisponivel[]): ContagemRetorno | null {
-  if (d.etapa !== 'Aguardando retorno' || d.arquivada_em) return null;
-  const candidatas: [string, ContagemRetorno['origemBase']][] = [];
-  if (d.encaminhada_em) candidatas.push([d.encaminhada_em, 'encaminhamento']);
-  if (d.reiterada_em) candidatas.push([d.reiterada_em, 'reiteração']);
-  const [base, origemBase]: [string, ContagemRetorno['origemBase']] = candidatas.length ? candidatas.sort((a, b) => b[0].localeCompare(a[0]))[0] : [hojeISO(new Date(d.etapa_desde)), 'entrada na etapa'];
-  const original = somarDias(base, DIAS_RETORNO_SETOR), aj = ajustarPrazo(original, dias);
-  return { data: aj.prazo, original, base, origemBase, ajuste: aj.ajuste };
-}
+export { DIAS_RETORNO_SETOR, contagemRetorno, type ContagemRetorno } from './demandas.ts';
 
 /**
  * Todos os marcos de uma demanda em aberto: vencimento (o ajustado já gravado), "Acompanhar em" (a data digitada) e, em Aguardando retorno, o retorno do setor calculado.

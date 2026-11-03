@@ -228,13 +228,29 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   await ir(pg, '/demandas');
   const colunas = await pg.$$eval('.quadro .coluna', (c) => c.map((x) => x.getAttribute('aria-label')));
   ok(colunas.join() === 'Cadastro,Vistos,Fazendo,Aguardando retorno,Aguardando Prefeita,Finalizado', 'o Quadro tem a nova coluna Aguardando Prefeita entre Aguardando retorno e Finalizado');
-  const cards = await pg.$$eval('.quadro .coluna[aria-label="Aguardando Prefeita"] .mini-card', (c) => c.map((x) => ({ t: x.querySelector('.assunto').textContent, espera: x.querySelector('[data-espera-prefeita]')?.textContent, venc: x.querySelector('[data-espera-prefeita]')?.classList.contains('venc') })));
+  const cards = await pg.$$eval('.quadro .coluna[aria-label="Aguardando Prefeita"] .mini-card', (c) => c.map((x) => ({ t: x.querySelector('.assunto').textContent, espera: x.querySelector('[data-espera-prefeita]')?.textContent, venc: x.querySelector('[data-espera-prefeita]')?.getAttribute('data-alerta') === 'sim', vencido: !!x.querySelector('.pz.venc'), atrasada: x.classList.contains('atrasada') })));
   ok(cards.length === 2 && cards[0].t === 'Aguarda a Prefeita há muito' && cards[1].t === 'Aguarda a Prefeita há pouco', 'dentro da etapa, a espera mais antiga vem primeiro');
   ok(cards[0].espera === 'Aguardando Prefeita há 12 dias' && cards[0].venc === true && cards[1].espera === 'Aguardando Prefeita há 5 dias' && cards[1].venc === false, 'o card mostra "Aguardando Prefeita há X dias" e, depois de 10 dias, usa o visual de prazo vencido');
+  ok(cards.every((c) => !c.vencido && !c.atrasada), 'o alerta de espera usa marcação própria: não é prazo vencido nem deixa o card como atrasado');
   // abrir a demanda E e conferir que reiterar/editar não mexe na etapa; mover manualmente não ocorre sozinho
   const antes = await pg.$$eval('.quadro .coluna[aria-label="Aguardando Prefeita"] .mini-card', (c) => c.length);
   await pg.waitForTimeout(500);
   ok(antes === 2, 'nada se move sozinho: as duas demandas continuam em Aguardando Prefeita');
+  // Início e "Só atrasadas" seguem a data aplicável; a espera pela Prefeita não entra em atrasadas
+  await ir(pg, '/');
+  const grupos = await pg.$$eval('.stats.tres .stat', (b) => b.map((x) => Number(x.querySelector('.n').textContent)));
+  ok(grupos[0] === 1, 'Início: Atrasadas conta só o Relatório atrasado (a Prefeita com 12 dias de espera não é atrasada)');
+  await pg.click('.stats.tres .st-atrasadas');
+  const naoAtrasadas = await pg.$$eval('.sub-f + .cards .assunto', (c) => c.map((x) => x.textContent));
+  ok(naoAtrasadas.join() === 'Relatório atrasado', 'Início: a lista de atrasadas traz só quem tem data aplicável vencida');
+  await pg.click('.stats.tres .st-sete'); await pg.waitForTimeout(250);
+  const sete = await pg.$$eval('.sub-f + .cards .assunto', (c) => c.map((x) => x.textContent));
+  ok(sete.includes('Aguarda a Contabilidade') && !sete.some((t) => /Prefeita/.test(t)), 'Início: quem aguarda retorno entra pelo "Acompanhar em" mais próximo e a Prefeita não aparece nos prazos');
+  await ir(pg, '/demandas');
+  await pg.click('.toolbar .btn[aria-label^="Só atrasadas"]'); await pg.waitForTimeout(350);
+  const so = await pg.$$eval('.quadro .mini-card .assunto', (c) => c.map((x) => x.textContent));
+  ok(so.join() === 'Relatório atrasado', '"Só atrasadas" usa a mesma regra: a espera longa pela Prefeita não aparece');
+  await pg.click('.toolbar .btn[aria-label^="Só atrasadas"]'); await pg.waitForTimeout(250);
   // retorno do setor: editar Andamento da D
   await pg.click('.quadro .coluna[aria-label="Aguardando retorno"] .mini-card .assunto'); await pg.waitForSelector('.modal');
   await pg.click('[data-lapis="andamento"]'); await pg.waitForSelector('#d-enc');

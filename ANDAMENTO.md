@@ -14,7 +14,7 @@
 | Demandas (cards, cadastro, prazos, tarefas, arquivo) | 18 | 42% | 7,6 | Aprovados pelo usuário: cadastro guiado, cards, prazo original e ajustado, dias indisponíveis (campo Data corrigido e aprovado em `ddef462`), a Lista reorganizada e, em parte, o Quadro. O botão "Arquivadas" de Demandas aguarda a conferência. Falta a avaliação de Tabela, Lista, consulta com lápis, tarefas, etapas, arquivo, filtros e do uso com dados reais |
 | Início (indicadores, alertas, mensagem do dia, clima) | 7 | 0% | 0 | Indicadores, grupos e Foco do dia existem e passam nos testes, mas **o usuário ainda não avaliou o Início**. Não existem clima, mensagem do dia nem widgets |
 | Entradas (post-its, virar demanda) | 6 | 100% | 6,0 | **Aprovada e encerrada pelo usuário em 30/10/2026**: funcionamento (`1aecf40`), leitura com lápis e seletor do Arquivo (`ddef462`), descrição nos post-its, carimbo da primeira criação e cinco cores (`77d4a70`). Fora do bloco: voz, foto, envelhecimento das notas e IA |
-| Agenda (visões, eventos, notificações) | 9 | 0% | 0 | Só no protótipo. Não iniciada na aplicação |
+| Agenda (visões, eventos, notificações) | 9 | 0% | 0 | Implementada em 02/11/2026 (decisões 46 a 50, migrações 14 e 15); 0% até a avaliação do usuário |
 | Busca global e botão "+" | 5 | 0% | 0 | O "+" existe com Demanda, Tarefa e Nova entrada; Evento, Documento e Chat estão desativados. Busca global não existe |
 | Configurações (paletas, fontes, tamanhos) | 8 | 0% | 0 | Só Dias indisponíveis existe na aplicação |
 | Humor e produtividade | 4 | 0% | 0 | Só no protótipo |

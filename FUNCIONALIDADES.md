@@ -62,7 +62,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Buscar, abrir para consulta, desarquivar, excluir definitivamente (segunda confirmação).
 
 ### Agenda
-**Implementada na aplicação em 02/11/2026 (decisões 46 a 49, migração 14), aguardando a avaliação do usuário.** Vale o que está nas decisões 46 a 49 de `DECISOES.md`: visões Hoje, Semana e Mês com heatmap da carga pendente, marcos de vencimento, acompanhamento e retorno do setor, eventos e lembretes próprios com aviso dentro do aplicativo, Pendências sem prazo e a nova etapa Aguardando Prefeita. Google Calendar, Apple Calendar e notificações push externas continuam para depois. Os itens abaixo são o desenho original do protótipo.
+**Implementada na aplicação em 02/11/2026 (decisões 46 a 50, migrações 14 e 15), aguardando a avaliação do usuário.** Vale o que está nas decisões 46 a 49 de `DECISOES.md`: visões Hoje, Semana e Mês com heatmap da carga pendente, marcos de vencimento, acompanhamento e retorno do setor, eventos e lembretes próprios com aviso dentro do aplicativo, Pendências sem prazo e a nova etapa Aguardando Prefeita. Google Calendar, Apple Calendar e notificações push externas continuam para depois. Os itens abaixo são o desenho original do protótipo.
 - Visão **semanal** (domingo a sábado, fins de semana esmaecidos) e **mensal**. No celular, também lista "Hoje".
 - Demandas: cards **amarelos** só no dia do vencimento (parte inferior do dia na semana). Vencidas permanecem na data original em vermelho. Tarefas concluídas ocultas, reexibíveis por filtro.
 - Eventos: cards **azuis** (com horário) e **cinza-azulado** (dia inteiro, como feriados).

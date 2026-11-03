@@ -40,7 +40,7 @@
 .app .pz.n-amar { background: var(--z-amar-bg); color: var(--z-amar-tx); }
 .app .pz.n-lar { background: var(--z-lar-bg); color: var(--z-lar-tx); }
 .app .pz.n-verm { background: var(--z-verm-bg); color: var(--z-verm-tx); }
-.app .pz.venc { background: var(--z-venc-bg); color: #FCFCFC; font-weight: 700; }
+.app .pz.venc, .app .pz.espera-alerta { background: var(--z-venc-bg); color: #FCFCFC; font-weight: 700; }
 
 /* ---------- cards: cabem no espaço, sem rolagem, com contraste ---------- */
 .app .face .tags, .app .mini-card .tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }

@@ -103,8 +103,8 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
 {
   const p = (desde) => ({ etapa: 'Aguardando Prefeita', etapa_desde: desde, arquivada_em: null });
   const e10 = esperaPrefeita(p('2026-11-01T15:00:00Z'), '2026-11-11'), e11 = esperaPrefeita(p('2026-11-01T15:00:00Z'), '2026-11-12');
-  ok(e10.dias === 10 && e10.vencida === false && e10.texto === 'Aguardando Prefeita há 10 dias', '10 dias de espera ainda não é vencido');
-  ok(e11.dias === 11 && e11.vencida === true && e11.texto === 'Aguardando Prefeita há 11 dias', 'a partir do 11º dia a espera é destacada como prazo vencido');
+  ok(e10.dias === 10 && e10.alerta === false && e10.texto === 'Aguardando Prefeita há 10 dias', '10 dias de espera ainda não é vencido');
+  ok(e11.dias === 11 && e11.alerta === true && e11.texto === 'Aguardando Prefeita há 11 dias', 'a partir do 11º dia a espera é destacada como prazo vencido');
   ok(esperaPrefeita(p('2026-11-11T15:00:00Z'), '2026-11-11').texto === 'Aguardando Prefeita desde hoje' && esperaPrefeita(p('2026-11-10T15:00:00Z'), '2026-11-11').texto === 'Aguardando Prefeita há 1 dia', 'texto no mesmo dia e no singular');
   ok(esperaPrefeita(p('2026-11-01T02:59:59Z'), '2026-11-11').dias === 11, 'a entrada às 23h59 de Brasília do dia 31/10 conta como 31/10 (data local, sem UTC)');
   ok(esperaPrefeita({ ...p('2026-11-01T15:00:00Z'), etapa: 'Fazendo' }, '2026-11-11') === null && esperaPrefeita({ ...p('2026-11-01T15:00:00Z'), arquivada_em: 'x' }, '2026-11-11') === null, 'fora da etapa (ou arquivada) não há contagem');

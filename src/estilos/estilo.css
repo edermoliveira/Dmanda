@@ -336,7 +336,7 @@ h1, h2, h3, h4 { font-family: var(--font-h); margin: 0; line-height: 1.2; }
 .pt { width: 8px; height: 8px; border-radius: 50%; background: hsl(var(--h) 65% 45%); flex: none; }
 .pz, .selo { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px; font-size: calc(12px * var(--esc)); font-weight: 600; background: var(--track); color: var(--text); white-space: nowrap; }
 .pz .ic, .selo .ic { width: 14px; height: 14px; }
-.pz.venc { background: var(--perigo); color: var(--on-perigo); font-weight: 700; }
+.pz.venc, .pz.espera-alerta { background: var(--perigo); color: var(--on-perigo); font-weight: 700; }
 .selo.legal { background: var(--acc-soft); color: var(--acc-text); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: hsl(var(--et) 85% 52%); flex: none; }
 .cnt { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 12px; background: var(--card); font-size: calc(12px * var(--esc)); font-weight: 700; font-family: var(--font-n); }

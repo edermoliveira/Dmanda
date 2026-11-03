@@ -42,7 +42,7 @@ export function ChipEspera({ d }: { d: Demanda }) {
   const { hoje } = useApp();
   const e = esperaPrefeita(d, hoje);
   if (!e) return null;
-  return <span className={`pz${e.vencida ? ' venc' : ''}`} data-espera-prefeita data-dias={e.dias}><Icone nome="clock" />{e.texto}</span>;
+  return <span className={`pz espera${e.alerta ? ' espera-alerta' : ''}`} data-espera-prefeita data-alerta={e.alerta ? 'sim' : 'nao'} data-dias={e.dias} title={e.alerta ? 'Alerta de espera: não é prazo vencido' : undefined}><Icone nome="clock" />{e.texto}</span>;
 }
 export const ChipsRow = ({ d }: { d: Demanda }) => (d.prazo || d.etapa === 'Aguardando Prefeita' ? <div className="chips"><ChipEspera d={d} />{d.prazo ? <><ChipPrazo d={d} /><ChipTempo d={d} /></> : null}</div> : null);
 

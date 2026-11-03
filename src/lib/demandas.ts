@@ -1,4 +1,5 @@
 // Tipos e regras de apresentação de demandas e tarefas, usados pela interface e pelas operações. Sem acesso a banco.
+import { ajustarPrazo, somarDias, type DiaIndisponivel } from './prazos.ts';
 
 export const ETAPAS = ['Cadastro', 'Vistos', 'Fazendo', 'Aguardando retorno', 'Aguardando Prefeita', 'Finalizado'] as const;
 export type Etapa = (typeof ETAPAS)[number];
@@ -95,15 +96,16 @@ export const TIPO_COR: Record<string, number> = { Processo: 262, Protocolo: 262,
 
 export type Filtro = { texto: string; soAtrasadas: boolean; tipo: Tipo | ''; prazo: '' | 'sem' | 'atrasadas' | 'hoje' | 'sete' };
 export const FILTRO_VAZIO: Filtro = { texto: '', soAtrasadas: false, tipo: '', prazo: '' };
-export function filtrar(lista: Demanda[], f: Filtro, hoje: string): Demanda[] {
+export function filtrar(lista: Demanda[], f: Filtro, hoje: string, dias: readonly DiaIndisponivel[] = []): Demanda[] {
   const q = f.texto.trim().toLowerCase();
   return lista.filter((d) => {
-    if (f.soAtrasadas && !atrasada(d, hoje)) return false;
+    if (f.soAtrasadas && grupoFiltro(d, hoje, dias) !== 'atrasadas') return false;
     if (f.tipo && d.tipo !== f.tipo) return false;
     if (f.prazo === 'sem' && d.prazo) return false;
-    if (f.prazo === 'atrasadas' && !atrasada(d, hoje)) return false;
-    if (f.prazo === 'hoje' && !(d.prazo && d.etapa !== 'Finalizado' && diasAte(d.prazo, hoje) === 0)) return false;
-    if (f.prazo === 'sete' && !(d.prazo && d.etapa !== 'Finalizado' && diasAte(d.prazo, hoje) >= 0 && diasAte(d.prazo, hoje) <= 7)) return false;
+    if (f.prazo === 'atrasadas' || f.prazo === 'hoje' || f.prazo === 'sete') {
+      const data = dataFiltro(d, hoje, dias), n = data ? diasAte(data, hoje) : null;
+      if (n === null || (f.prazo === 'atrasadas' ? n >= 0 : f.prazo === 'hoje' ? n !== 0 : n < 0 || n > 7)) return false;
+    }
     return !q || `${d.tipo} ${d.numero} ${d.assunto} ${d.origem} ${d.descricao}`.toLowerCase().includes(q);
   });
 }
@@ -121,36 +123,60 @@ export function ordenar(lista: Demanda[], coluna: Coluna, sentido: 1 | -1): Dema
   return [...lista].sort((a, b) => { const x = chave(a), y = chave(b); return (x < y ? -1 : x > y ? 1 : a.criado_em.localeCompare(b.criado_em)) * (x === y ? 1 : sentido); });
 }
 
-/** Data que conta para os filtros do Início: quem aguarda retorno só volta quando faltarem 3 dias (ou menos) para o acompanhamento; finalizada nunca conta; sem data, não é inventada. */
-export function dataFiltro(d: Demanda, hoje: string): string | null {
+/** Dias corridos até cobrar o retorno de outro setor, contados do encaminhamento (exclui o primeiro dia, inclui o último). */
+export const DIAS_RETORNO_SETOR = 10;
+
+export type ContagemRetorno = { data: string; original: string; base: string; origemBase: 'reiteração' | 'encaminhamento' | 'entrada na etapa'; ajuste: string | null };
+/**
+ * Marco de retorno de outro setor: 10 dias corridos a partir do efetivo encaminhamento (data informada) ou, sem ela, do dia em que a demanda entrou em Aguardando retorno.
+ * Reiteração registrada inicia uma nova contagem a partir dela (vale a mais recente entre encaminhamento e reiteração). Se o limite cai em dia indisponível,
+ * antecipa para o dia disponível anterior (mesma regra dos prazos). Não altera o vencimento da demanda nem o campo manual "Acompanhar em". Fora da etapa, nulo.
+ */
+export function contagemRetorno(d: Pick<Demanda, 'etapa' | 'etapa_desde' | 'encaminhada_em' | 'reiterada_em' | 'arquivada_em'>, dias: readonly DiaIndisponivel[]): ContagemRetorno | null {
+  if (d.etapa !== 'Aguardando retorno' || d.arquivada_em) return null;
+  const candidatas: [string, ContagemRetorno['origemBase']][] = [];
+  if (d.encaminhada_em) candidatas.push([d.encaminhada_em, 'encaminhamento']);
+  if (d.reiterada_em) candidatas.push([d.reiterada_em, 'reiteração']);
+  const [base, origemBase]: [string, ContagemRetorno['origemBase']] = candidatas.length ? candidatas.sort((a, b) => b[0].localeCompare(a[0]))[0] : [hojeISO(new Date(d.etapa_desde)), 'entrada na etapa'];
+  const original = somarDias(base, DIAS_RETORNO_SETOR), aj = ajustarPrazo(original, dias);
+  return { data: aj.prazo, original, base, origemBase, ajuste: aj.ajuste };
+}
+
+/**
+ * Data aplicável (decisão 50): a mais próxima entre o vencimento, "Acompanhar em" (manual e independente) e o retorno de outro setor calculado (10 dias).
+ * Cada valor original continua guardado à parte; esta função só escolhe qual olhar. Finalizada nunca conta, sem data nada é inventado.
+ * Aguardando Prefeita não tem data: a espera é um alerta de dias na etapa e nunca vira vencimento.
+ */
+export function dataFiltro(d: Demanda, hoje: string, dias: readonly DiaIndisponivel[] = []): string | null {
+  void hoje;
   if (d.etapa === 'Finalizado') return null;
-  if (d.etapa === 'Aguardando retorno') return d.acompanhar_em && diasAte(d.acompanhar_em, hoje) <= 3 ? d.acompanhar_em : null;
-  return d.prazo ?? null;
+  const datas = [d.prazo, d.acompanhar_em, contagemRetorno(d, dias)?.data].filter((x): x is string => !!x);
+  return datas.length ? datas.reduce((m, x) => (x < m ? x : m)) : null;
 }
 
 export type GrupoInicio = 'atrasadas' | 'hoje' | 'sete';
 
-export function grupoFiltro(d: Demanda, hoje: string): GrupoInicio | null {
-  const c = dataFiltro(d, hoje);
+export function grupoFiltro(d: Demanda, hoje: string, dias: readonly DiaIndisponivel[] = []): GrupoInicio | null {
+  const c = dataFiltro(d, hoje, dias);
   if (!c) return null;
   const n = diasAte(c, hoje);
   return n < 0 ? 'atrasadas' : n === 0 ? 'hoje' : n <= 7 ? 'sete' : null;
 }
 
 /** Demandas de um grupo do Início, da data mais próxima para a mais distante; em empate, a que chegou há mais tempo primeiro. */
-export const porGrupo = (lista: Demanda[], grupo: GrupoInicio, hoje: string) =>
+export const porGrupo = (lista: Demanda[], grupo: GrupoInicio, hoje: string, dias: readonly DiaIndisponivel[] = []) =>
   lista
-    .filter((d) => grupoFiltro(d, hoje) === grupo)
-    .sort((a, b) => diasAte(dataFiltro(a, hoje)!, hoje) - diasAte(dataFiltro(b, hoje)!, hoje) || (permanencia(b, hoje) ?? -1) - (permanencia(a, hoje) ?? -1));
+    .filter((d) => grupoFiltro(d, hoje, dias) === grupo)
+    .sort((a, b) => diasAte(dataFiltro(a, hoje, dias)!, hoje) - diasAte(dataFiltro(b, hoje, dias)!, hoje) || (permanencia(b, hoje) ?? -1) - (permanencia(a, hoje) ?? -1));
 
 /** Foco do dia: até 3 demandas, atrasadas primeiro, depois hoje, depois os próximos 7 dias. */
-export const focoDoDia = (lista: Demanda[], hoje: string): Demanda[] =>
-  (['atrasadas', 'hoje', 'sete'] as const).flatMap((g) => porGrupo(lista, g, hoje)).slice(0, 3);
+export const focoDoDia = (lista: Demanda[], hoje: string, dias: readonly DiaIndisponivel[] = []): Demanda[] =>
+  (['atrasadas', 'hoje', 'sete'] as const).flatMap((g) => porGrupo(lista, g, hoje, dias)).slice(0, 3);
 
 // ---------- Aguardando Prefeita (decisão 46) ----------
-/** A espera passa a ser destacada como prazo vencido a partir do 11º dia (mais de 10 dias corridos na etapa). */
+/** A espera passa a ser destacada como alerta de espera a partir do 11º dia (mais de 10 dias corridos na etapa). Não é prazo nem vencimento: não cria data, não muda o prazo da demanda e não entra em "atrasadas". */
 export const LIMITE_ESPERA_PREFEITA = 10;
-export type EsperaPrefeita = { dias: number; vencida: boolean; texto: string };
+export type EsperaPrefeita = { dias: number; alerta: boolean; texto: string };
 /**
  * Há quantos dias a demanda está em Aguardando Prefeita (dias corridos desde a entrada na etapa; `etapa_desde` muda a cada troca de etapa, então sair e voltar começa um novo período).
  * Uma reiteração não zera a contagem. Nada muda sozinho: a regra só descreve e destaca. Fora da etapa (ou arquivada), nulo.
@@ -158,7 +184,7 @@ export type EsperaPrefeita = { dias: number; vencida: boolean; texto: string };
 export function esperaPrefeita(d: Pick<Demanda, 'etapa' | 'etapa_desde' | 'arquivada_em'>, hoje: string): EsperaPrefeita | null {
   if (d.etapa !== 'Aguardando Prefeita' || d.arquivada_em) return null;
   const dias = Math.max(0, diasDesdeInstante(d.etapa_desde, hoje));
-  return { dias, vencida: dias > LIMITE_ESPERA_PREFEITA, texto: dias === 0 ? 'Aguardando Prefeita desde hoje' : `Aguardando Prefeita há ${plural(dias, 'dia')}` };
+  return { dias, alerta: dias > LIMITE_ESPERA_PREFEITA, texto: dias === 0 ? 'Aguardando Prefeita desde hoje' : `Aguardando Prefeita há ${plural(dias, 'dia')}` };
 }
 /** Dentro de Aguardando Prefeita, da espera mais antiga para a mais recente (empate: a que foi cadastrada primeiro). Nas demais etapas a ordem recebida é mantida. */
 export function ordemDaEtapa<T extends Pick<Demanda, 'etapa_desde' | 'criado_em'>>(lista: T[], etapa: Etapa): T[] {

@@ -148,8 +148,8 @@ const instantaneo = async () => (await sql("select md5(string_agg(d::text, '|' o
 // o gatilho já mantém o resumo de hoje a cada alteração; confere os números esperados pela regra dos grupos do Início
 let rs = (await sql('select dados, origem from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [R]))[0];
 ok(rs && rs.origem === 'alteracao', 'rotina: o resumo de hoje é recalculado quando uma demanda muda (gatilho)');
-ok(rs.dados.atrasadas === 1 && rs.dados.hoje === 1 && rs.dados.sete_dias === 2 && rs.dados.abertas === 7 && rs.dados.finalizadas === 1, 'rotina: contagens por data (1 atrasada, 1 hoje, 2 em até 7 dias; 7 abertas, 1 finalizada; arquivada fora)');
-ok(rs.dados.sem_prazo === 1 && rs.dados.aguardando_retorno === 2 && rs.dados.prazo_vencido === 1, 'rotina: sem prazo = 1; aguardando = 2; prazo vencido = 1 (aguardando longe não volta aos grupos)');
+ok(rs.dados.atrasadas === 1 && rs.dados.hoje === 1 && rs.dados.sete_dias === 3 && rs.dados.abertas === 7 && rs.dados.finalizadas === 1, 'rotina: contagens por data (1 atrasada, 1 hoje, 3 em até 7 dias (o vencimento de quem aguarda retorno também vale); 7 abertas, 1 finalizada; arquivada fora)');
+ok(rs.dados.sem_prazo === 1 && rs.dados.aguardando_retorno === 2 && rs.dados.prazo_vencido === 1, 'rotina: sem prazo = 1; aguardando = 2; prazo vencido = 1 (a data aplicável é a mais próxima, sem o corte antigo de 3 dias)');
 ok(rs.dados.data_ref === hojeSql && rs.dados.proxima_data === hojeSql && rs.dados.ids.atrasadas[0] === venc.id && rs.dados.ids.hoje[0] === hojeD.id, 'rotina: o resumo guarda a data de referência e os identificadores (sem texto das demandas)');
 ok(!JSON.stringify(rs.dados).includes('Vencida'), 'rotina: o resumo não contém assunto nem outro texto das demandas');
 
@@ -183,14 +183,14 @@ ok(veR.length === 1 && veR[0].user_id === R, 'rotina: RLS, cada usuário vê só
 // dias restantes derivados das datas: mudar o prazo muda o resumo na hora, sem esperar o dia seguinte
 await fixarPrazo(em9.id, await mais(-1));
 rs = (await sql('select dados from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [R]))[0];
-ok(rs.dados.atrasadas === 2 && rs.dados.sete_dias === 2, 'rotina: alterar um prazo recalcula o resumo de hoje (atrasadas 2)');
+ok(rs.dados.atrasadas === 2 && rs.dados.sete_dias === 3, 'rotina: alterar um prazo recalcula o resumo de hoje (atrasadas 2)');
 await c(R, 'mover_etapa', { p_id: venc.id, p_etapa: 'Finalizado' });
 rs = (await sql('select dados from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [R]))[0];
 ok(rs.dados.atrasadas === 1 && rs.dados.finalizadas === 2, 'rotina: concluir uma demanda recalcula o resumo');
 await c(R, 'arquivar_demanda', { p_id: em3.id });
 await c(R, 'excluir_demanda', { p_id: semPrazo.id, p_confirmado: true });
 rs = (await sql('select dados from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [R]))[0];
-ok(rs.dados.sete_dias === 1 && rs.dados.sem_prazo === 0, 'rotina: arquivar e excluir também recalculam');
+ok(rs.dados.sete_dias === 2 && rs.dados.sem_prazo === 0, 'rotina: arquivar e excluir também recalculam');
 
 // recálculo por data: o mesmo conjunto de demandas, visto de outro dia, dá outro resultado (nada depende de um contador que decai)
 const amanha = (await sql("select public.calcular_resumo($1, public.hoje() + 1) as r", [R]))[0].r;
@@ -825,6 +825,46 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(privs.rows[0].a === true && privs.rows[0].n === false && privs.rows[0].t === false, 'eventos: privilégios mínimos (só o usuário logado executa; anon não lê a tabela)');
 }
 
+// ---------- alinhamento da rotina diária às regras da Agenda (migração 15) ----------
+{
+  const T = '9d9d9d9d-9999-4999-8999-9d9d9d9d9d9d';
+  await db.exec(`insert into auth.users (id, email) values ('${T}', 'at@teste')`);
+  await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('at@teste')");
+  const tc = (f, a) => chamarComoUsuario(db, T, f, a);
+  const resumo = async (data) => (await db.query('select public.calcular_resumo($1, $2::date) as r', [T, data])).rows[0].r;
+  const retorno = async (enc, rei, desde) => (await db.query('select public.retorno_setor_data($1, $2::date, $3::date, $4::timestamptz)::text as d', [T, enc, rei, desde])).rows[0].d;
+  const agora = '2026-11-02T15:00:00Z';
+  ok(await retorno('2026-11-02', null, agora) === '2026-11-12', 'rotina 15: o retorno do setor é 10 dias corridos depois do encaminhamento');
+  ok(await retorno('2026-11-05', null, agora) === '2026-11-13', 'rotina 15: se o décimo dia é domingo, antecipa para a sexta anterior');
+  ok(await retorno('2026-11-02', '2026-11-04', agora) === '2026-11-13' && await retorno('2026-11-02', '2026-11-01', agora) === '2026-11-12', 'rotina 15: vale a mais recente entre encaminhamento e reiteração');
+  ok(await retorno(null, null, '2026-11-03T01:30:00Z') === '2026-11-12' && await retorno(null, null, '2026-11-03T04:00:00Z') === '2026-11-13', 'rotina 15: sem as datas, conta do dia em que entrou na etapa, pelo calendário de Brasília');
+
+  const ret = await tc('criar_demanda', { p: { assunto: 'Retorno do setor', etapa: 'Aguardando retorno', setor: 'Contabilidade', encaminhada_em: '2026-11-02' } });
+  const pref = await tc('criar_demanda', { p: { assunto: 'Na Prefeita', etapa: 'Aguardando Prefeita' } });
+  await db.query("update public.demandas set etapa_desde = '2026-11-02T15:00:00Z' where id = $1", [pref.id]);
+  const r11 = await resumo('2026-11-11'), r12 = await resumo('2026-11-12'), r13 = await resumo('2026-11-13');
+  ok(r11.sete_dias === 1 && r11.hoje === 0 && r11.atrasadas === 0, 'rotina 15: faltando 1 dia para o retorno do setor, ele aparece em até 7 dias');
+  ok(r12.hoje === 1 && r12.sete_dias === 0 && r13.atrasadas === 1 && r13.hoje === 0, 'rotina 15: no dia do retorno entra em hoje e depois dele em atrasadas');
+  ok(r13.prazo_vencido === 0 && r13.aguardando_retorno === 1, 'rotina 15: o retorno do setor não é vencimento nem altera o prazo (prazo_vencido continua só o prazo)');
+  const ant = await resumo('2026-11-03');
+  ok(ant.sete_dias === 0 && ant.hoje === 0 && ant.atrasadas === 0, 'rotina 15: com o retorno ainda longe a demanda não entra nos grupos (sem corte antigo)');
+  ok(r12.aguardando_prefeita === 1 && r12.espera_prefeita_alerta === 0 && r13.espera_prefeita_alerta === 1, 'rotina 15: Aguardando Prefeita há 10 dias não gera alerta e no 11º dia gera');
+  ok(r13.atrasadas === 1 && (await resumo('2026-12-30')).prazo_vencido === 0, 'rotina 15: a espera pela Prefeita nunca vira atrasada nem prazo vencido, por mais dias que passem (só o retorno do setor conta)');
+  await tc('criar_demanda', { p: { assunto: 'Acompanhar antes', etapa: 'Aguardando retorno', encaminhada_em: '2026-11-02', acompanhar_em: '2026-11-05' } });
+  ok((await resumo('2026-11-05')).hoje === 1 && (await resumo('2026-11-06')).atrasadas === 1, 'rotina 15: "Acompanhar em" mais próximo vale no seu dia e depois dele (o retorno do setor segue separado, em 12/11)');
+  const pz = await tc('criar_demanda', { p: { assunto: 'Prazo antes', etapa: 'Aguardando retorno', encaminhada_em: '2026-11-02', prazo_original: '2026-11-09' } });
+  ok(pz.prazo === '2026-11-09' && (await resumo('2026-11-09')).hoje === 1 && (await tc('buscar_demanda', { p_id: pz.id })).acompanhar_em === null, 'rotina 15: o vencimento mais próximo vale e permanece separado dos demais valores');
+  await tc('salvar_dia_indisponivel', { p: { data: '2026-11-12', descricao: 'Ponto facultativo de teste', categoria: 'Feriado' } });
+  ok(await retorno('2026-11-02', null, agora) === '2026-11-11', 'rotina 15: o retorno do setor antecipa também sobre dia indisponível do usuário');
+  // o gatilho recalcula o resumo de hoje quando as datas de retorno mudam
+  const antes = (await db.query('select calculado_em::text as c from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [T])).rows[0].c;
+  await db.query('select pg_sleep(0.01)');
+  await tc('atualizar_demanda', { p_id: ret.id, p: { reiterada_em: '2026-11-04' } });
+  const depois = (await db.query('select calculado_em::text as c from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [T])).rows[0].c;
+  ok(depois > antes, 'rotina 15: reiterar o retorno recalcula o resumo de hoje (o gatilho ouve as duas datas novas)');
+  ok(/permission denied/i.test(await erro(T, 'retorno_setor_data', { p_user: T, p_encaminhada: '2026-11-02', p_reiterada: null, p_etapa_desde: agora })), 'rotina 15: a função interna do retorno não é chamável por usuário logado');
+}
+
 // ---------- migração sobre dados antigos: nada se perde ----------
 {
   const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
@@ -834,8 +874,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
   const nova8 = todas.find((f) => f.includes('prazos_e_dias_indisponiveis'));
   const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
-  const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
-  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova15 = todas.find((f) => f.includes('alinha_regras_agenda')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
+  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -913,6 +953,14 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(novas14.n > 0 && novas14.e === 0 && novas14.r === 0 && (await antigo.query('select count(*)::int as n from public.eventos')).rows[0].n === 0, 'migração 14: as colunas novas começam vazias e a tabela de eventos começa sem linhas');
   const moveu = await chamarComoUsuario(antigo, W, 'mover_etapa', { p_id: comPrazo.id, p_etapa: 'Aguardando Prefeita' });
   ok(moveu.etapa === 'Aguardando Prefeita' && moveu.prazo === (await chamarComoUsuario(antigo, W, 'buscar_demanda', { p_id: comPrazo.id })).prazo, 'migração 14: uma demanda antiga já pode ir para Aguardando Prefeita sem mudar o vencimento');
+  // migração 15 (alinha a rotina às regras da Agenda): nenhuma demanda, tarefa ou data muda; só a função do resumo, o gatilho e uma função interna
+  const lido15 = async () => JSON.stringify((await antigo.query(`select ${col14}, encaminhada_em::text, reiterada_em::text from public.demandas order by id`)).rows) + JSON.stringify((await antigo.query('select id, texto, concluida, posicao from public.tarefas order by id')).rows);
+  const antes15 = await lido15();
+  await antigo.exec(readFileSync(join('supabase/migrations', nova15), 'utf8'));
+  const depois15 = await lido15();
+  ok(antes15 === depois15, 'migração 15: demandas (incluindo versão e datas) e tarefas existentes ficam idênticas');
+  await antigo.exec(readFileSync(join('supabase/migrations', nova15), 'utf8'));
+  ok(await lido15() === depois15, 'migração 15: reaplicar é inofensivo');
   await antigo.close();
 }
 

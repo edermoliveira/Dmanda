@@ -5,13 +5,13 @@ import { emailAutorizado, contaAutorizada, situacaoDoErroAuth, ehCookieDeSessao,
 import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO } from '../src/lib/prazos.ts';
 import { googleLigado } from '../src/lib/login.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
-import { dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
+import { esperaPrefeita, dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
 import { validarDados, validarDia, validarEntrada } from '../src/nucleo/validacao.ts';
 import { estadoDe, tagsDe, semTags, resumoDe, temTitulo, contarTags, filtrarEntradas, ordenarEntradas, paraDemanda, diferencas, vazia, camposEmConflito, carimbo, QTD_CORES } from '../src/lib/entradas.ts';
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const hoje = '2026-10-25';
-const d = (id, o) => ({ id, etapa: 'Fazendo', prazo: null, acompanhar_em: null, chegou_em: '2026-10-01', tipo: 'Memorando', prazo_tipo: 'Próprio', ...o });
+const d = (id, o) => ({ id, etapa: 'Fazendo', etapa_desde: '2026-10-24T15:00:00Z', encaminhada_em: null, reiterada_em: null, arquivada_em: null, prazo: null, acompanhar_em: null, chegou_em: '2026-10-01', tipo: 'Memorando', prazo_tipo: 'Próprio', ...o });
 const lista = [
   d('venc', { prazo: '2026-10-20' }), d('hoje', { prazo: hoje }), d('em3', { prazo: '2026-10-28' }), d('em8', { prazo: '2026-11-02' }),
   d('semprazo', {}), d('fin', { prazo: '2026-10-01', etapa: 'Finalizado' }),
@@ -19,15 +19,30 @@ const lista = [
   d('ag-perto', { etapa: 'Aguardando retorno', acompanhar_em: '2026-10-27' }),
   d('ag-sem', { etapa: 'Aguardando retorno', prazo: '2026-10-26' }),
   d('ag-venc', { etapa: 'Aguardando retorno', acompanhar_em: '2026-10-22' }),
+  d('ag-ret10', { etapa: 'Aguardando retorno', etapa_desde: '2026-10-16T15:00:00Z' }),
+  d('pref11', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-10-14T15:00:00Z' }),
+  d('pref-prazo', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-10-05T15:00:00Z', prazo: '2026-11-20' }),
 ];
 ok(diasAte('2026-10-28', hoje) === 3 && diasAte('2026-10-20', hoje) === -5, 'diasAte conta dias corridos a partir da data de hoje recebida');
 ok(atrasada(lista[0], hoje) && !atrasada(lista[1], hoje) && !atrasada(lista[5], hoje) && !atrasada(lista[4], hoje), 'atrasada: só prazo vencido, nunca finalizada nem sem prazo');
 ok(dataFiltro(lista[4], hoje) === null && dataFiltro(lista[5], hoje) === null, 'sem prazo e finalizada ficam fora dos filtros (nada é inventado)');
-ok(dataFiltro(lista[6], hoje) === null && dataFiltro(lista[8], hoje) === null, 'aguardando retorno longe do acompanhamento ou sem acompanhamento não volta aos filtros');
-ok(dataFiltro(lista[7], hoje) === '2026-10-27', 'aguardando retorno volta quando faltam 3 dias ou menos para o acompanhamento');
-ok(porGrupo(lista, 'atrasadas', hoje).map((x) => x.id).join() === 'venc,ag-venc'.split(',').sort((a, b) => diasAte(dataFiltro(lista.find((l) => l.id === a), hoje), hoje) - diasAte(dataFiltro(lista.find((l) => l.id === b), hoje), hoje)).join(), 'atrasadas, da mais antiga para a mais recente (inclui o acompanhamento vencido)');
+// decisão 50: a data aplicável é a mais próxima entre vencimento, "Acompanhar em" e o retorno do setor (10 dias); os três valores continuam separados
+ok(dataFiltro(lista[6], hoje) === '2026-10-26' && dataFiltro(lista[8], hoje) === '2026-10-26', 'aguardando retorno: vale o vencimento quando ele é o mais próximo (acompanhamento e retorno mais longe não o escondem)');
+ok(dataFiltro(lista[7], hoje) === '2026-10-27' && dataFiltro(lista[9], hoje) === '2026-10-22', 'aguardando retorno: vale o "Acompanhar em" quando é o mais próximo, vencido ou não, sem corte de 3 dias');
+ok(dataFiltro(lista[10], hoje) === '2026-10-26' && grupoFiltro(lista[10], hoje) === 'sete', 'aguardando retorno sem prazo nem acompanhamento: vale o retorno do setor, 10 dias depois de 16/10');
+ok(dataFiltro({ ...lista[10], etapa_desde: '2026-10-24T15:00:00Z' }, hoje) === '2026-11-03' && grupoFiltro({ ...lista[10], etapa_desde: '2026-10-24T15:00:00Z' }, hoje) === null, 'retorno ainda longe (9 dias) não entra nos grupos do Início');
+ok(dataFiltro({ ...lista[10], encaminhada_em: '2026-10-20' }, hoje) === '2026-10-30' && dataFiltro({ ...lista[10], encaminhada_em: '2026-10-20', reiterada_em: '2026-10-25' }, hoje) === '2026-11-04', 'retorno do setor: conta do encaminhamento e recomeça na reiteração');
+ok(lista[6].prazo === '2026-10-26' && lista[6].acompanhar_em === '2026-11-10', 'os valores originais (prazo e Acompanhar em) seguem separados e preservados');
+// espera pela Prefeita: alerta de dias, nunca vencimento
+ok(dataFiltro(lista[11], hoje) === null && grupoFiltro(lista[11], hoje) === null && !atrasada(lista[11], hoje), 'Aguardando Prefeita há 11 dias, sem prazo: nenhuma data, fora de atrasadas e sem prazo vencido');
+ok(esperaPrefeita(lista[11], hoje).dias === 11 && esperaPrefeita(lista[11], hoje).alerta, 'Aguardando Prefeita: no 11º dia o alerta de espera é destacado');
+ok(esperaPrefeita({ ...lista[11], etapa_desde: '2026-10-15T15:00:00Z' }, hoje).dias === 10 && !esperaPrefeita({ ...lista[11], etapa_desde: '2026-10-15T15:00:00Z' }, hoje).alerta, 'Aguardando Prefeita: no 10º dia ainda não há destaque');
+ok(dataFiltro(lista[12], hoje) === '2026-11-20' && grupoFiltro(lista[12], hoje) === null && esperaPrefeita(lista[12], hoje).alerta, 'Aguardando Prefeita há 20 dias com prazo distante: o prazo da demanda não muda por causa da espera');
+ok(filtrar(lista, { ...FILTRO_VAZIO, soAtrasadas: true }, hoje).map((x) => x.id).join() === 'venc,ag-venc', 'Só atrasadas segue a data aplicável (inclui acompanhamento vencido) e nunca a espera pela Prefeita');
+ok(filtrar(lista, { ...FILTRO_VAZIO, prazo: 'atrasadas' }, hoje).length === 2 && filtrar(lista, { ...FILTRO_VAZIO, prazo: 'hoje' }, hoje).map((x) => x.id).join() === 'hoje' && filtrar(lista, { ...FILTRO_VAZIO, prazo: 'sete' }, hoje).map((x) => x.id).join() === 'hoje,em3,ag-longe,ag-perto,ag-sem,ag-ret10', 'filtros de prazo usam a mesma data aplicável dos grupos do Início');
+ok(porGrupo(lista, 'atrasadas', hoje).map((x) => x.id).join() === 'venc,ag-venc', 'atrasadas, da mais antiga para a mais recente (inclui o acompanhamento vencido)');
 ok(porGrupo(lista, 'hoje', hoje).map((x) => x.id).join() === 'hoje', 'hoje: só o que vence hoje');
-ok(porGrupo(lista, 'sete', hoje).map((x) => x.id).join() === 'ag-perto,em3', 'próximos 7 dias: de 1 a 7 dias, na ordem de proximidade (em8 fica de fora, hoje não repete)');
+ok(porGrupo(lista, 'sete', hoje).map((x) => x.id).join() === 'ag-longe,ag-sem,ag-ret10,ag-perto,em3', 'próximos 7 dias: de 1 a 7 dias, na ordem de proximidade (em8 fica de fora, hoje não repete)');
 ok(focoDoDia(lista, hoje).map((x) => x.id).join() === 'venc,ag-venc,hoje', 'Foco do dia: no máximo 3, atrasadas antes de hoje');
 // sessão (decisão 27): a sessão persiste; nada de encerramento por inatividade. A regra só classifica o resultado da conferência no Auth.
 ok(situacaoDoErroAuth(null) === 'ok' && situacaoDoErroAuth(undefined) === 'ok', 'sessão: sem erro, a conferência está ok');
