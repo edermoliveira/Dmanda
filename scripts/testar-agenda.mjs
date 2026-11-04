@@ -106,6 +106,7 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   await celula(pg, alvo).click(); await pg.waitForTimeout(300);
   const depois = await caixa(pg, '.agd-cel');
   ok(JSON.stringify(antes.map((c) => [c.x, c.y, c.w, c.h])) === JSON.stringify(depois.map((c) => [c.x, c.y, c.w, c.h])), 'selecionar um dia não desloca nem redimensiona nenhuma célula da grade');
+  await pg.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'), null, { timeout: 5000 }).catch(() => {});
   const sel = await celula(pg, alvo).evaluate((e) => ({ s: getComputedStyle(e).boxShadow, a: e.closest('[role=gridcell]').getAttribute('aria-selected') }));
   ok(sel.a === 'true' && /2px/.test(sel.s) && (await pg.getAttribute(`.agd-cel[data-data="${HOJE}"]`, 'data-sel')) === null, 'a seleção é um contorno persistente de 2 px (e só uma célula fica selecionada)');
   await celula(pg, alvo).focus(); await pg.keyboard.press('Tab'); await pg.keyboard.press('Shift+Tab');
@@ -226,6 +227,7 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   const { pg } = t1;
   await pg.evaluate(() => localStorage.setItem('dmanda:ui', JSON.stringify({ visao: 'quadro', ordem: { coluna: 'prazo', sentido: 1 }, grupos: {} })));
   await ir(pg, '/demandas');
+  await pg.waitForSelector('.quadro .coluna[aria-label="Aguardando Prefeita"] .mini-card', { timeout: 15000 }).catch(() => {});
   const colunas = await pg.$$eval('.quadro .coluna', (c) => c.map((x) => x.getAttribute('aria-label')));
   ok(colunas.join() === 'Cadastro,Vistos,Fazendo,Aguardando retorno,Aguardando Prefeita,Finalizado', 'o Quadro tem a nova coluna Aguardando Prefeita entre Aguardando retorno e Finalizado');
   const cards = await pg.$$eval('.quadro .coluna[aria-label="Aguardando Prefeita"] .mini-card', (c) => c.map((x) => ({ t: x.querySelector('.assunto').textContent, espera: x.querySelector('[data-espera-prefeita]')?.textContent, venc: x.querySelector('[data-espera-prefeita]')?.getAttribute('data-alerta') === 'sim', vencido: !!x.querySelector('.pz.venc'), atrasada: x.classList.contains('atrasada') })));
@@ -394,7 +396,8 @@ const t4 = await novo({ viewport: { width: 820, height: 1180 }, isMobile: true, 
   const cs = {};
   for (const n of ['zero', 'baixa', 'media', 'alta']) { const el = await pg.$(`.agd-cel[data-nivel="${n}"]`); if (el) cs[n] = await contraste(pg, `.agd-cel[data-nivel="${n}"]`); }
   ok(Object.keys(cs).length >= 3 && Object.values(cs).every((v) => v >= 4.5), 'contraste do número com o preenchimento de cada nível (escuro) é de pelo menos 4,5:1: ' + JSON.stringify(Object.fromEntries(Object.entries(cs).map(([k, v]) => [k, +v.toFixed(1)]))));
-  const lum = await pg.evaluate(() => { const c = document.createElement('canvas').getContext('2d', { willReadFrequently: true }); const m = {}; for (const n of ['zero', 'baixa', 'media', 'alta']) { const e = document.querySelector(`.agd-amostra[data-nivel="${n}"]`); c.fillStyle = '#111'; c.fillRect(0, 0, 1, 1); c.fillStyle = getComputedStyle(e).backgroundColor; c.fillRect(0, 0, 1, 1); const [r, g, b] = c.getImageData(0, 0, 1, 1).data; m[n] = 0.2126 * r + 0.7152 * g + 0.0722 * b; } return m; });
+  await pg.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'), null, { timeout: 5000 }).catch(() => {});
+  const lum = await pg.evaluate(() => { const c =document.createElement('canvas').getContext('2d', { willReadFrequently: true }); const m = {}; for (const n of ['zero', 'baixa', 'media', 'alta']) { const e = document.querySelector(`.agd-amostra[data-nivel="${n}"]`); c.fillStyle = '#111'; c.fillRect(0, 0, 1, 1); c.fillStyle = getComputedStyle(e).backgroundColor; c.fillRect(0, 0, 1, 1); const [r, g, b] = c.getImageData(0, 0, 1, 1).data; m[n] = 0.2126 * r + 0.7152 * g + 0.0722 * b; } return m; });
   ok(lum.zero < lum.baixa && lum.baixa < lum.media && lum.media < lum.alta, 'a escala do escuro cresce em luminosidade do zero ao alto: ' + JSON.stringify(Object.fromEntries(Object.entries(lum).map(([k, v]) => [k, Math.round(v)]))));
   await pg.emulateMedia({ reducedMotion: 'reduce' });
   const dur = await pg.$eval('.agd-cel', (e) => getComputedStyle(e).transitionDuration);
@@ -410,6 +413,25 @@ const t4 = await novo({ viewport: { width: 820, height: 1180 }, isMobile: true, 
   const cs = {};
   for (const n of ['zero', 'baixa', 'media', 'alta']) { if (await pg.$(`.agd-cel[data-nivel="${n}"]`)) cs[n] = await contraste(pg, `.agd-cel[data-nivel="${n}"]`); }
   ok(Object.keys(cs).length >= 3 && Object.values(cs).every((v) => v >= 4.5), 'contraste do número com o preenchimento de cada nível (claro) é de pelo menos 4,5:1: ' + JSON.stringify(Object.fromEntries(Object.entries(cs).map(([k, v]) => [k, +v.toFixed(1)]))));
+}
+
+// ================= 7) fuso horário: aparelho em Auckland, referência de São Paulo (decisão 51) =================
+{
+  // 03/11/2026 às 02h40 UTC: 02/11 às 23h40 em São Paulo e 03/11 às 15h40 em Auckland. O aplicativo precisa seguir São Paulo.
+  const { ctx, pg } = await novo({ viewport: { width: 1360, height: 900 }, timezoneId: 'Pacific/Auckland', locale: 'en-NZ' }, { prefs: { modo: 'mes' } });
+  await pg.clock.install({ time: new Date('2026-11-03T02:40:00Z') });
+  await ir(pg);
+  const hojeCel = async () => pg.$$eval('.agd-cel[data-hoje]', (c) => c.map((x) => x.getAttribute('data-data')));
+  ok((await hojeCel()).join() === '2026-11-02' && (await pg.evaluate(() => new Date().getDate())) === 3, 'aparelho em Auckland (já é dia 3 lá): o "hoje" do aplicativo é 02/11, o dia de São Paulo');
+  await pg.click('.fab'); await pg.click('.menuplus [role="menuitem"]:has-text("Evento")'); await pg.waitForSelector('#ev-titulo');
+  ok((await pg.inputValue('#ev-data')) === '2026-11-02', 'o novo evento nasce na data de São Paulo, não na do aparelho');
+  await pg.fill('#ev-titulo', 'Compromisso na virada do dia'); await pg.fill('#ev-inicio', '23:50'); await pg.selectOption('#ev-aviso', '15');
+  await pg.click('[data-salvar-evento]'); await janelaFechada(pg); await pg.waitForTimeout(700);
+  ok(/Compromisso na virada do dia/.test(await pg.textContent('.agd-avisos').catch(() => '')) && /começa em 10 min/.test(await pg.textContent('.agd-avisos').catch(() => '')), 'o horário do compromisso é o de São Paulo: às 23h40 de lá, o de 23h50 avisa "começa em 10 min"');
+  await pg.clock.fastForward(25 * 60 * 1000);   // 00h05 de 03/11 em São Paulo
+  await pg.waitForFunction(() => !!document.querySelector('.agd-cel[data-hoje][data-data="2026-11-03"]'), null, { timeout: 15000 });
+  ok((await hojeCel()).join() === '2026-11-03' && !(await pg.$('.agd-aviso[data-evento]')), 'na virada da meia-noite de São Paulo o dia muda e o aviso do compromisso de ontem sai (sem juntar a data de ontem com a hora de hoje)');
+  await ctx.close();
 }
 
 ok(erros.length === 0, 'nenhum erro de página nem de console durante todos os fluxos' + (erros.length ? ': ' + JSON.stringify(erros.slice(0, 4)) : ''));

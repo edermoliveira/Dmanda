@@ -259,16 +259,17 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setHoje(hojeISO());
-    const virada = setInterval(() => setHoje(hojeISO()), 60_000);
     void recarregar();
     void recarregarEntradas();
     void recarregarEventos();
-    const relogio = setInterval(() => setAgoraMin(minutosAgora()), 30_000);
+    // um só relógio para o dia e para a hora (os dois lidos do MESMO instante, em America/Sao_Paulo), senão na virada do dia o aviso pode juntar a data de ontem com a hora de hoje
+    const tique = () => { const a = new Date(); setHoje(hojeISO(a)); setAgoraMin(minutosAgora(a)); };
+    const relogio = setInterval(tique, 30_000);
     setAgoraMin(minutosAgora());
     void srv.ambiente().then(setAmbiente).catch(() => {});
     void srv.listarDias().then((x) => { if (x.ok) setDias(x.dados); }).catch(() => {});
     void srv.estadoRotina().then((x) => { if (x.ok) setRotina(x.dados); }).catch(() => {});
-    return () => { clearInterval(virada); clearInterval(relogio); };
+    return () => { clearInterval(relogio); };
   }, [recarregar, recarregarEntradas, recarregarEventos]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -277,7 +278,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   // Não mexe com uma janela de edição aberta, não pisca o "carregando" e descarta a leitura se uma gravação aconteceu enquanto ela vinha.
   useEffect(() => {
     const atualizar = async () => {
-      if (document.visibilityState === 'visible') setHoje(hojeISO()); // o dia pode ter virado enquanto o aplicativo estava em segundo plano, com ou sem rede para reler
+      if (document.visibilityState === 'visible') { const a = new Date(); setHoje(hojeISO(a)); setAgoraMin(minutosAgora(a)); } // o dia pode ter virado enquanto o aplicativo estava em segundo plano, com ou sem rede para reler
       if (document.visibilityState !== 'visible' || janelaAberta.current || pendentes.current > 0) return;
       const antes = gravacoes.current;
       const [r, d, en, evs] = await Promise.all([protegido(() => srv.listarDemandas(false)), protegido(() => srv.listarDias()), protegido(() => srvE.listarEntradas(false)), protegido(() => srvA.listarEventos())]);

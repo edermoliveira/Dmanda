@@ -18,6 +18,7 @@
     "testar:entradas": "node scripts/testar-entradas.mjs",
     "testar:ajustes": "node scripts/testar-ajustes.mjs",
     "testar:agenda-regras": "node scripts/testar-agenda-regras.mjs",
+    "testar:fuso": "node scripts/testar-fuso.mjs",
     "testar:agenda": "node scripts/testar-agenda.mjs",
     "testar:sessao": "node scripts/testar-sessao.mjs",
     "conferir:env": "node scripts/conferir-env.mjs",

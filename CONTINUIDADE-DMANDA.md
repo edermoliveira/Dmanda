@@ -411,3 +411,9 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 **Alinhamento (decisão 50, migração 15, 02/11/2026).** A rotina diária, o filtro "Só atrasadas" e os grupos do Início seguem a data aplicável; a espera pela Prefeita (alerta a partir do 11º dia) nunca vira vencimento. Migração 15 aplicada no Supabase real com dry-run (contagens e somas de verificação de demandas e tarefas iguais antes e depois; função interna sem acesso de anon e de usuário logado). Testes: `testar:banco` 283, `testar:regras` 92, `testar:agenda` 110. **Limitações conhecidas.** Avisos só funcionam com o aplicativo aberto (sem push). A prévia antiga da branch descartada pode restar no painel da Vercel.
 
 **Retomada.** Avaliar a Agenda (roteiro no relatório do bloco). Depois da avaliação: ajustes pedidos e, só então, o próximo módulo (Documentos ou IA, a combinar).
+
+## P. Fuso horário único e expediente (03/11/2026, decisão 51)
+
+**Feito.** Todo o Dmanda usa America/Sao_Paulo, qualquer que seja o fuso do aparelho, do servidor ou da sessão do banco. No banco já era assim (nenhuma migração nova; a 15 não foi reaplicada). Na interface, o relógio passou a um só tique que lê dia e hora do mesmo instante (`src/ui/contexto.tsx`), evitando juntar a data de ontem com a hora de hoje na virada. Expediente registrado na decisão 51 (seg a qui 08h às 12h e 13h às 17h30; sex 07h30 às 13h30), sem tela e sem efeito em prazos ainda. Testes novos: `testar:fuso` (9), fuso no `testar:banco` (285) e aparelho em Auckland no `testar:agenda` (114). Duas esperas por condição no `testar:agenda` corrigiram corridas de tempo em máquina mais lenta (ocorriam também no código anterior). `ponytail-review` feito. Rodada de resistência não iniciada. `.claude/settings.local.json` não existe neste computador (ignorado pelo Git, nada copiado).
+
+**Retomada.** Aguardar a avaliação da Agenda; a primeira aplicação do expediente (Perfil) será combinada.

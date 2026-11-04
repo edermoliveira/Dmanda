@@ -839,7 +839,9 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(await retorno('2026-11-02', '2026-11-04', agora) === '2026-11-13' && await retorno('2026-11-02', '2026-11-01', agora) === '2026-11-12', 'rotina 15: vale a mais recente entre encaminhamento e reiteração');
   ok(await retorno(null, null, '2026-11-03T01:30:00Z') === '2026-11-12' && await retorno(null, null, '2026-11-03T04:00:00Z') === '2026-11-13', 'rotina 15: sem as datas, conta do dia em que entrou na etapa, pelo calendário de Brasília');
 
-  const ret = await tc('criar_demanda', { p: { assunto: 'Retorno do setor', etapa: 'Aguardando retorno', setor: 'Contabilidade', encaminhada_em: '2026-11-02' } });
+  // a data do encaminhamento é registrada no Andamento (atualizar_demanda); no cadastro a demanda nasce sem ela
+  const comEnc = async (p, enc = '2026-11-02') => { const d = await tc('criar_demanda', { p }); return tc('atualizar_demanda', { p_id: d.id, p: { encaminhada_em: enc } }); };
+  const ret = await comEnc({ assunto: 'Retorno do setor', etapa: 'Aguardando retorno', setor: 'Contabilidade' });
   const pref = await tc('criar_demanda', { p: { assunto: 'Na Prefeita', etapa: 'Aguardando Prefeita' } });
   await db.query("update public.demandas set etapa_desde = '2026-11-02T15:00:00Z' where id = $1", [pref.id]);
   const r11 = await resumo('2026-11-11'), r12 = await resumo('2026-11-12'), r13 = await resumo('2026-11-13');
@@ -850,9 +852,9 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(ant.sete_dias === 0 && ant.hoje === 0 && ant.atrasadas === 0, 'rotina 15: com o retorno ainda longe a demanda não entra nos grupos (sem corte antigo)');
   ok(r12.aguardando_prefeita === 1 && r12.espera_prefeita_alerta === 0 && r13.espera_prefeita_alerta === 1, 'rotina 15: Aguardando Prefeita há 10 dias não gera alerta e no 11º dia gera');
   ok(r13.atrasadas === 1 && (await resumo('2026-12-30')).prazo_vencido === 0, 'rotina 15: a espera pela Prefeita nunca vira atrasada nem prazo vencido, por mais dias que passem (só o retorno do setor conta)');
-  await tc('criar_demanda', { p: { assunto: 'Acompanhar antes', etapa: 'Aguardando retorno', encaminhada_em: '2026-11-02', acompanhar_em: '2026-11-05' } });
+  await comEnc({ assunto: 'Acompanhar antes', etapa: 'Aguardando retorno', acompanhar_em: '2026-11-05' });
   ok((await resumo('2026-11-05')).hoje === 1 && (await resumo('2026-11-06')).atrasadas === 1, 'rotina 15: "Acompanhar em" mais próximo vale no seu dia e depois dele (o retorno do setor segue separado, em 12/11)');
-  const pz = await tc('criar_demanda', { p: { assunto: 'Prazo antes', etapa: 'Aguardando retorno', encaminhada_em: '2026-11-02', prazo_original: '2026-11-09' } });
+  const pz = await comEnc({ assunto: 'Prazo antes', etapa: 'Aguardando retorno', prazo_original: '2026-11-09' });
   ok(pz.prazo === '2026-11-09' && (await resumo('2026-11-09')).hoje === 1 && (await tc('buscar_demanda', { p_id: pz.id })).acompanhar_em === null, 'rotina 15: o vencimento mais próximo vale e permanece separado dos demais valores');
   await tc('salvar_dia_indisponivel', { p: { data: '2026-11-12', descricao: 'Ponto facultativo de teste', categoria: 'Feriado' } });
   ok(await retorno('2026-11-02', null, agora) === '2026-11-11', 'rotina 15: o retorno do setor antecipa também sobre dia indisponível do usuário');
@@ -862,6 +864,22 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   await tc('atualizar_demanda', { p_id: ret.id, p: { reiterada_em: '2026-11-04' } });
   const depois = (await db.query('select calculado_em::text as c from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [T])).rows[0].c;
   ok(depois > antes, 'rotina 15: reiterar o retorno recalcula o resumo de hoje (o gatilho ouve as duas datas novas)');
+  // fuso horário (decisão 51): o fuso da sessão do banco não muda "hoje", o retorno do setor nem a espera pela Prefeita; a virada do dia é a de São Paulo
+  const fusos = {};
+  for (const tz of ['UTC', 'America/Sao_Paulo', 'Pacific/Auckland', 'Asia/Tokyo', 'America/Los_Angeles']) {
+    fusos[tz] = await db.transaction(async (tx) => {
+      await tx.exec(`set local time zone '${tz}'`);
+      const q = async (sqlTexto, p = []) => (await tx.query(sqlTexto, p)).rows[0];
+      const h = (await q('select public.hoje()::text as v')).v;
+      const ret = (await q("select public.retorno_setor_data($1, null, null, '2026-11-03T02:30:00Z'::timestamptz)::text as v", [T])).v;
+      const ret2 = (await q("select public.retorno_setor_data($1, null, null, '2026-11-03T03:00:00Z'::timestamptz)::text as v", [T])).v;
+      const r = (await q('select public.calcular_resumo($1, $2::date) as v', [T, '2026-11-13'])).v;
+      const instante = (await q("select to_char('2026-11-03T02:30:00Z'::timestamptz at time zone 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') as v")).v;
+      return JSON.stringify([h, ret, ret2, r.espera_prefeita_alerta, instante]);
+    });
+  }
+  ok(new Set(Object.values(fusos)).size === 1 && JSON.parse(fusos['UTC'])[1] === '2026-11-11' && JSON.parse(fusos['UTC'])[2] === '2026-11-13' && JSON.parse(fusos['UTC'])[4] === '02/11/2026 23:30', 'fuso 15: com a sessão do banco em UTC, São Paulo, Auckland, Tóquio ou Los Angeles o resultado é o mesmo; 02h30 UTC de 03/11 conta como 02/11 (retorno em 12/11, antecipado para 11/11 pelo dia indisponível) e 03h00 UTC como 03/11');
+  ok(/^\d{4}-\d{2}-\d{2}$/.test(JSON.parse(fusos['Asia/Tokyo'])[0]) && JSON.parse(fusos['Asia/Tokyo'])[0] === (await sql("select to_char(now() at time zone 'America/Sao_Paulo', 'YYYY-MM-DD') as h"))[0].h, 'fuso 15: public.hoje() é sempre o dia de São Paulo, mesmo com a sessão em Tóquio');
   ok(/permission denied/i.test(await erro(T, 'retorno_setor_data', { p_user: T, p_encaminhada: '2026-11-02', p_reiterada: null, p_etapa_desde: agora })), 'rotina 15: a função interna do retorno não é chamável por usuário logado');
 }
 
