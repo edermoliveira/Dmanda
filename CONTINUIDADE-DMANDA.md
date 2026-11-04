@@ -1,6 +1,6 @@
 # CONTINUIDADE DO DMANDA
 
-Documento consolidado para uma sessão nova, em qualquer computador, entender o projeto e continuar do ponto certo. Escrito em 28/10/2026 e atualizado em 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos, e depois integração e correções: seção G) e em 30/10/2026 (aprovação do bloco anterior e Entradas: seção H). Os demais documentos têm o detalhe de cada assunto; este aponta para eles e não os substitui. Se algo divergir, vale `DECISOES.md` (decisões) e o que o próprio repositório mostrar (código).
+Documento consolidado para uma sessão nova, em qualquer computador, entender o projeto e continuar do ponto certo. Escrito em 28/10/2026 e atualizado em 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos, e depois integração e correções: seção G) e em 30/10/2026 (aprovação do bloco anterior e Entradas: seção H) e em 04/11/2026 (Agenda aprovada, fuso e retomada: **seção Q**). Os demais documentos têm o detalhe de cada assunto; este aponta para eles e não os substitui. Se algo divergir, vale `DECISOES.md` (decisões) e o que o próprio repositório mostrar (código).
 
 Este arquivo não registra o hash do commit que o contém, de propósito. Para saber o commit atual: `git ls-remote origin refs/heads/main`. Para saber o commit que a Vercel serve: ver a seção E.
 
@@ -417,3 +417,33 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 **Feito.** Todo o Dmanda usa America/Sao_Paulo, qualquer que seja o fuso do aparelho, do servidor ou da sessão do banco. No banco já era assim (nenhuma migração nova; a 15 não foi reaplicada). Na interface, o relógio passou a um só tique que lê dia e hora do mesmo instante (`src/ui/contexto.tsx`), evitando juntar a data de ontem com a hora de hoje na virada. Expediente registrado na decisão 51 (seg a qui 08h às 12h e 13h às 17h30; sex 07h30 às 13h30), sem tela e sem efeito em prazos ainda. Testes novos: `testar:fuso` (9), fuso no `testar:banco` (285) e aparelho em Auckland no `testar:agenda` (114). Duas esperas por condição no `testar:agenda` corrigiram corridas de tempo em máquina mais lenta (ocorriam também no código anterior). `ponytail-review` feito. Rodada de resistência não iniciada. `.claude/settings.local.json` não existe neste computador (ignorado pelo Git, nada copiado).
 
 **Retomada.** Aguardar a avaliação da Agenda; a primeira aplicação do expediente (Perfil) será combinada.
+
+## Q. Agenda aprovada e ponto de retomada (04/11/2026)
+
+**Retomar aqui.** Em sessão nova, ler esta seção e depois `DECISOES.md` (decisões 50 a 52).
+
+**Estado.**
+- **Agenda aprovada** pelo usuário em 04/11/2026 (decisão 52). Issue #6 encerrada. Andamento **45%** (`ANDAMENTO.md`, nota de 04/11/2026; a fórmula e o critério não mudaram).
+- **Fuso America/Sao_Paulo e expediente concluídos** (decisão 51). O fuso vale na interface, no servidor e no banco (sem migração nova; a 15 é a última, 15 migrações no Supabase real). **O expediente (segunda a quinta 08h às 12h e 13h às 17h30; sexta 07h30 às 13h30) está apenas documentado:** não há tela de Perfil nem efeito em prazos ou avisos.
+- **Último código publicado deste bloco: `f3ac746`** (a `main` pode ter commits só de documentação depois dele; conferir com `git ls-remote origin refs/heads/main`). Implantação do `f3ac746` na Vercel concluída com sucesso em 03/11/2026.
+
+**Verificações realizadas (no código `f3ac746`).** `tsc` sem erro; `eslint` com 0 erros e 1 aviso antigo (`aplicarEvento` em `contexto.tsx`); `build`; `testar:regras` 92, `testar:agenda-regras` 47, `testar:banco` 285, `testar:fuso` 9, `testar:agenda` 114, `testar:app` 132; revisão `ponytail-review` do bloco. Não repetidos nesta etapa (só documentos mudaram): `testar:interface`, `testar:entradas`, `testar:ajustes`, `testar:sessao`.
+
+**Limitações ainda existentes.**
+- Avisos da Agenda só funcionam com o aplicativo aberto (sem push).
+- Emulação de iPad e iPhone não é aparelho físico.
+- Ainda não validados no ambiente real: sessão persistente por horas reais, primeira execução automática do cron (Issue #3), restauração da cópia (Issue #4), PWA instalada em todos os aparelhos (Issue #2).
+- Dependências com alertas de `npm audit`: não aplicar `npm audit fix --force` sem correção compatível demonstrada.
+- A prévia antiga da branch descartada pode restar no painel da Vercel.
+
+**Próximo bloco: resistência, confiabilidade e desempenho** (ainda não iniciado, aguardando autorização para começar). Preservar o visual e os efeitos atuais. Avaliar internet lenta (rede estrangulada, falhas e retomadas, tempos de carga, rascunhos e filtros). Criar Issue própria ao iniciar.
+
+**Reservado para os acabamentos: Calendário da Apple.** Testar a assinatura de calendário por link revogável, com os compromissos escolhidos pelo usuário, mantendo o Dmanda como origem das edições. Fora do bloco de resistência.
+
+**Preparar outra máquina (nada disso vai pelo Git; nenhum valor é registrado aqui).**
+- Instalar Git, Node (a versão usada aqui é a 24), Python 3 (só para `testar:senha-terminal`) e o navegador Edge. Rodar `npm ci`. O WebKit do Playwright (`testar:ajustes`) pode precisar ser baixado de novo.
+- `.env.local`: criar a partir de `.env.example` com as variáveis `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO`, `SUPABASE_SERVICE_ROLE_KEY` e `CRON_SECRET` (e `DMANDA_LOGIN_GOOGLE` vazia). Os valores vêm do painel do Supabase e da Vercel; conferir com `npm run conferir:env`. Para trabalhar só no banco de teste, `npm run dev:teste` dispensa o `.env.local`.
+- CLI do Supabase: `npx supabase login` e `npx supabase link` ao projeto Dmanda (as migrações no real só com dry-run antes). GitHub: `gh auth login` (o `gh` precisa estar instalado).
+- Plugins e skills: as skills do projeto estão em `.claude/skills/` (versionadas: Impeccable, Ponytail, depuração, TDD, verificação). Os plugins Context7, code-review e Playwright são do usuário (instalados por `/plugin`); `.claude/settings.local.json` é local (ignorado pelo Git) e cada máquina mantém o seu.
+- **Claude Code remoto (nuvem):** só tem o que está no repositório. Não terá `.env.local`, credenciais do Supabase, CLI vinculada, login do GitHub além do que a sessão tiver, nem as permissões locais. Funciona para ler, editar e rodar `testar:regras`, `testar:agenda-regras`, `testar:fuso` e as suítes com banco de teste (PGlite), se o navegador necessário estiver instalado lá. Não dá para validar no Supabase real nem publicar sem configurar segredos de forma segura na própria sessão. Sessões na nuvem trabalham em `claude/...` e voltam por PR revisado.
+- Atualizar uma máquina que já tem o projeto: comandos no relatório da etapa e em `SINCRONIZA-PROJETINHO.md`.

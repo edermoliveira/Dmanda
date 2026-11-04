@@ -3,14 +3,32 @@
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
 **Última atualização:** 30/10/2026 (ajustes depois da aprovação funcional de Entradas: ver o bloco "AJUSTES DE 30/10/2026" logo abaixo; e antes, o bloco de Entradas); antes, 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos); antes, 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
-**Andamento do projeto: 37%** (cálculo item a item em `ANDAMENTO.md`, reavaliado em 30/10/2026; era 33%, 29% e 18% antes).
+**Andamento do projeto: 45%** (cálculo item a item em `ANDAMENTO.md`, reavaliado em 04/11/2026 com a aprovação da Agenda; era 37%, 33%, 29% e 18% antes).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
 ---
 
-## PONTO DE RETOMADA ATUAL (30/10/2026, leia primeiro)
+## PONTO DE RETOMADA ATUAL (04/11/2026, leia primeiro)
 
-Bloco funcional **publicado em 30/10/2026**: migrações 12 e 13 aplicadas no Supabase real (dry-run antes, só elas pendentes, dados intactos) e a `main` enviada em um único push (hash e implantação conferidos: `CONTINUIDADE-DMANDA.md`, seção M). **Atualização de 02/11/2026:** o experimento visual (Órbita, branch `visual/novo-estilo`) foi encerrado e descartado, e a branch foi excluída (local e remota); só existe a `main`, com o Catalyst mantido (decisão 44). **Agenda implementada em 02/11/2026 (Issue #6, decisões 46 a 49, migração 14), aguardando a avaliação do usuário; ver `CONTINUIDADE-DMANDA.md`, seção O.**
+**Agenda aprovada pelo usuário em 04/11/2026; fuso America/Sao_Paulo e expediente concluídos (expediente só documentado). Último código deste bloco: `f3ac746`. Retomar em `CONTINUIDADE-DMANDA.md`, seção Q (próximo bloco: resistência, confiabilidade e desempenho). Em outro computador: seção Q, subseção "Preparar outra máquina".**
+
+**Atualizar outro computador que já tem o projeto (PowerShell, preservando alterações locais):**
+
+```powershell
+cd C:\Users\SEU_USUARIO\Desktop\Dmanda
+git status --short
+git fetch origin --prune
+git stash push -u -m "antes de atualizar"   # só se houver alterações locais; para devolvê-las: git stash pop
+git pull --ff-only origin main
+npm ci
+git ls-remote origin refs/heads/main        # deve bater com: git rev-parse HEAD
+```
+
+`.env.local` e `.claude/settings.local.json` não vão pelo Git e permanecem como estão em cada máquina.
+
+### Histórico do ponto de retomada de 30/10/2026
+
+Bloco funcional **publicado em 30/10/2026**: migrações 12 e 13 aplicadas no Supabase real (dry-run antes, só elas pendentes, dados intactos) e a `main` enviada em um único push (hash e implantação conferidos: `CONTINUIDADE-DMANDA.md`, seção M). **Atualização de 02/11/2026:** o experimento visual (Órbita, branch `visual/novo-estilo`) foi encerrado e descartado, e a branch foi excluída (local e remota); só existe a `main`, com o Catalyst mantido (decisão 44). **Agenda implementada em 02/11/2026 (Issue #6, decisões 46 a 49, migração 14) e aprovada em 04/11/2026; ver `CONTINUIDADE-DMANDA.md`, seções O a Q.**
 
 ---
 

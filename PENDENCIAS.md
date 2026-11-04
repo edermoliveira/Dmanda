@@ -1,6 +1,6 @@
 # Pendências do Dmanda
 
-Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 29/10/2026. O resumo consolidado do estado, da validação e da retomada está em `CONTINUIDADE-DMANDA.md`.
+Arquivo lido no início de cada sessão. Fica no repositório para valer em qualquer computador. Atualizado em 04/11/2026. O resumo consolidado do estado, da validação e da retomada está em `CONTINUIDADE-DMANDA.md`.
 
 **Desde 25/10/2026 as tarefas, o estado, os bloqueios e os critérios de conclusão ficam nas GitHub Issues** (repositório privado edermoliveira/Dmanda). Este arquivo é só um índice curto e o histórico. Decisões duradouras continuam em `DECISOES.md`; ambiente e retomada, em `SINCRONIZA-PROJETINHO.md`. Uma Issue só é fechada quando os seus critérios são atendidos, incluindo a avaliação do usuário quando ela faz parte.
 
@@ -35,6 +35,7 @@ Relatório único em [`AUDITORIA.md`](AUDITORIA.md): achados confirmados, corrig
 - **Referência visual ampliada** do protótipo e comparação de telas da aplicação real, depois da avaliação do usuário.
 - **Itens de decisão antigos** (Open Notebook, direção iPhone e iPad, PNGs do Figma, padrões do Catalyst): seguem sem resposta. Ver o histórico abaixo e `SINCRONIZA-PROJETINHO.md`, seção 3.
 - **Entradas e Arquivo:** aprovados e encerrados pelo usuário em 30/10/2026 (Issue [#5](https://github.com/edermoliveira/Dmanda/issues/5) fechada). Próximo bloco: Agenda, aguardando autorização para começar. Fora de Entradas: voz, foto, envelhecimento das notas e IA.
+- **Agenda:** aprovada pelo usuário em 04/11/2026 (Issue [#6](https://github.com/edermoliveira/Dmanda/issues/6) encerrada). Fuso America/Sao_Paulo e expediente fechados (expediente só documentado, decisão 51). Próximo bloco: resistência, confiabilidade e desempenho (`CONTINUIDADE-DMANDA.md`, seção Q). Reservado aos acabamentos: Calendário da Apple por assinatura. As Issues #2, #3 e #4 seguem abertas e independentes.
 - **Módulos futuros** (Agenda, Documentos, IA, Configurações, Perfil, busca global, Google Calendar e Drive, notificações, PWA e app nativo): ficam no planejamento (`FUNCIONALIDADES.md`). Uma Issue por bloco é criada quando ele entrar em execução. Não iniciar antes da base real validada e da avaliação do usuário.
 
 ## Como continuar em outro computador
