@@ -4,7 +4,7 @@ import {
   pendenciasSemPrazo, itensDoDia, descreverDia, diaMaisLivre, panorama, marcosPorDia, LIMIARES_CARGA,
 } from '../src/lib/agenda.ts';
 import { esperaPrefeita, ordemDaEtapa, ETAPAS, ETAPA_COR } from '../src/lib/demandas.ts';
-import { diaDaSemana } from '../src/lib/prazos.ts';
+import { diaDaSemana, ajustarPrazo, somarDias } from '../src/lib/prazos.ts';
 import { erroDoEvento, seSobrepoem, sobrepostosA, ordenarEventos, avisosDeHoje, minutosAgora, horarioDe, rotuloAviso } from '../src/lib/eventos.ts';
 import { validarEvento } from '../src/nucleo/validacao.ts';
 
@@ -128,6 +128,53 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
   ok(avisosDeHoje(lista, hoje, 9 * 60).map((a) => `${a.evento.id}:${a.tipo}:${a.minutos}`).join() === 'dia:no-dia:0,perto:em-breve:10' && avisosDeHoje(lista, hoje, 9 * 60 + 11).length === 1 && avisosDeHoje(lista, hoje, 8 * 60).map((a) => a.evento.id).join() === 'dia', 'avisos de hoje: com horário só dentro da antecedência escolhida e antes do início; dia inteiro no dia; sem aviso e outro dia ficam de fora');
   ok(minutosAgora(new Date('2026-11-03T15:30:00Z')) === 12 * 60 + 30 && minutosAgora(new Date('2026-11-03T03:05:00Z')) === 5 && rotuloAviso(null) === 'Sem aviso' && rotuloAviso(15) === '15 min antes' && rotuloAviso(120) === '2 h antes', 'hora de Brasília e rótulos de aviso (meia-noite é 0, nunca 24)');
   ok(validarEvento({ ...bom, id: '11111111-1111-4111-8111-111111111111' }, { criando: true }).id === '11111111-1111-4111-8111-111111111111' && /título/.test(lanca(() => validarEvento({ ...bom, titulo: '' }, { criando: true }))) && validarEvento({ titulo: 'Novo título' }, { criando: false }).titulo === 'Novo título' && Object.keys(validarEvento({ aviso_min: 30 }, { criando: false })).join() === 'aviso_min' && /Identificador/.test(lanca(() => validarEvento({ ...bom, id: 'x' }, { criando: true }))), 'validação do servidor: cria com todos os campos, altera só o que veio e recusa identificador inválido');
+}
+
+// ---------- varredura por data de referência (a causa das falhas de testar:agenda em 04/11/2026) ----------
+// O cenário do teste de navegador é relativo a "hoje": vencimentos em hoje-2, +3, +9, +20 e +25, acompanhamento em hoje+2 e feriado em hoje+7. Como o vencimento é antecipado para o primeiro
+// dia disponível, o resultado depende do dia da semana e do mês de hoje (hoje+3 num sábado vira sexta e pode cair no mesmo dia de hoje+2; hoje-2 pode ser do mês anterior). Aqui o mesmo
+// cenário passa por TODAS as datas de 2026 a 2028 (fins de semana, virada de mês e de ano, 29/02/2028) e as regras reais são conferidas contra uma conta independente e simples.
+{
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  const andar = (de, ate) => { const l = []; for (let d = new Date(`${de}T00:00:00Z`); fmt(d) <= ate; d.setUTCDate(d.getUTCDate() + 1)) l.push(fmt(d)); return l; };
+  let datas = 0, colisoes = 0, mesAnterior = 0;
+  const erros = [];
+  for (const R of andar('2026-01-01', '2028-12-31')) {
+    datas++;
+    const feriado = { id: 'f', data: somarDias(R, 7), descricao: 'Feriado de teste', categoria: 'Feriado', criado_em: '2026-01-01T00:00:00Z' };
+    const dias = [feriado];
+    const comPrazo = (n) => { const a = ajustarPrazo(somarDias(R, n), dias); return { prazo_original: somarDias(R, n), prazo: a.prazo }; };
+    const L = [
+      dem('a', { ...comPrazo(3), tarefas: tf(3, 1) }), dem('b', { ...comPrazo(-2), tarefas: tf(1) }), dem('d', { acompanhar_em: somarDias(R, 2), tarefas: tf(2) }),
+      dem('e', { ...comPrazo(20) }), dem('f', { ...comPrazo(25) }), dem('h', { ...comPrazo(9), tarefas: tf(9) }),
+    ];
+    // 1) o vencimento ajustado nunca cai em dia indisponível, nunca passa do original e só recua por dias realmente indisponíveis
+    const indisp = (iso) => diaDaSemana(iso) === 0 || diaDaSemana(iso) === 6 || iso === feriado.data;
+    for (const d of L.filter((x) => x.prazo)) {
+      if (indisp(d.prazo) || d.prazo > d.prazo_original) erros.push(`${R} ${d.id}: prazo ${d.prazo} inválido`);
+      for (let x = somarDias(d.prazo, 1); x <= d.prazo_original; x = somarDias(x, 1)) if (!indisp(x)) erros.push(`${R} ${d.id}: antecipou por um dia disponível (${x})`);
+    }
+    // 2) cada demanda soma uma vez, no dia da primeira data; o total do mês bate com a conta direta
+    const carga = cargaPorDia(L, dias, R);
+    const soma = [...carga.values()].reduce((t, c) => t + c.carga, 0), esperadoTotal = L.reduce((t, d) => t + (d.tarefas.filter((x) => !x.concluida).length || 1), 0);
+    if (soma !== esperadoTotal) erros.push(`${R}: carga total ${soma} diferente de ${esperadoTotal}`);
+    const h = L.find((x) => x.id === 'h'), mes = h.prazo.slice(0, 7), de = `${mes}-01`, ate = `${mes}-${String(diasNoMes(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)))).padStart(2, '0')}`;
+    const direto = L.reduce((t, d) => { const datasD = [d.prazo, d.acompanhar_em].filter(Boolean).sort(); return t + (datasD.length && datasD[0] >= de && datasD[0] <= ate ? (d.tarefas.filter((x) => !x.concluida).length || 1) : 0); }, 0);
+    const pan = panorama(carga, [], dias, R, de, ate).pendencias;
+    if (pan !== direto) erros.push(`${R}: pendências do mês ${pan} diferente da conta direta ${direto}`);
+    // 3) o dia do vencimento de "a" lista os marcos de todas as demandas que têm marco nesse dia (colisão incluída)
+    const a = L.find((x) => x.id === 'a');
+    const marcosNoDia = itensDoDia(a.prazo, { demandas: L, eventos: [], indisponiveis: dias, hoje: R }).marcos.length;
+    const diretoMarcos = L.reduce((t, d) => t + [d.prazo, d.acompanhar_em].filter((x) => x === a.prazo).length, 0);
+    if (marcosNoDia !== diretoMarcos) erros.push(`${R}: ${marcosNoDia} marcos no dia ${a.prazo}, esperado ${diretoMarcos}`);
+    if (diretoMarcos > 1) colisoes++;
+    if (L.find((x) => x.id === 'b').prazo.slice(0, 7) !== h.prazo.slice(0, 7)) mesAnterior++;
+  }
+  ok(erros.length === 0, `varredura de ${datas} datas de referência (2026 a 2028): vencimento ajustado, carga por dia, total do mês e marcos do dia batem com a conta direta${erros.length ? ': ' + erros.slice(0, 3).join(' | ') : ''}`);
+  ok(colisoes > 100 && mesAnterior > 100, `a varredura exercita os dois casos que quebravam o teste de navegador: ${colisoes} datas com vencimento e acompanhamento no mesmo dia e ${mesAnterior} com a demanda atrasada no mês anterior`);
+  // o dia em que o teste de navegador falhou (quarta 04/11/2026): hoje+3 é sábado e vira sexta 06/11, junto do acompanhamento de hoje+2
+  const R = '2026-11-04', ap = ajustarPrazo(somarDias(R, 3), []);
+  ok(diaDaSemana(somarDias(R, 3)) === 6 && ap.prazo === '2026-11-06' && somarDias(R, 2) === '2026-11-06', 'caso de 04/11/2026: o vencimento de hoje+3 (sábado) é antecipado para sexta 06/11, o mesmo dia do acompanhamento de hoje+2');
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

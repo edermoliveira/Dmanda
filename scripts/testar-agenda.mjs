@@ -12,8 +12,15 @@ import { minutosAgora } from '../src/lib/eventos.ts';
 
 const PORTA = process.env.PORTA_TESTE_AGENDA || '7108', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/agenda';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
-const S = await semearAgenda(PASTA);   // dados semeados, todos relativos a hoje (data do banco, em Brasília)
+// DATA DE REFERÊNCIA CONTROLADA. Os dados são relativos a "hoje" (vencimentos, acompanhamentos, retorno do setor), e o resultado depende do dia da semana e do mês em que se roda:
+// hoje+3 pode cair no sábado e ser antecipado para a sexta, no mesmo dia do acompanhamento de hoje+2, e hoje-2 pode cair no mês anterior. Por isso a semente e o relógio do navegador
+// partem de uma data fixa (terça-feira 03/11/2026, com a hora do dia real, para os avisos de horário seguirem funcionando). Outra data: DMANDA_DATA_REFERENCIA=AAAA-MM-DD
+// (as expectativas numéricas valem para a data padrão; outras datas servem para investigar). As regras de data em si são varridas em muitas datas por testar:agenda-regras.
+const REFERENCIA = process.env.DMANDA_DATA_REFERENCIA || '2026-11-03';
+const S = await semearAgenda(PASTA, REFERENCIA);
 const HOJE = S.hoje;
+const horaSP = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Sao_Paulo', hour12: false });
+const INSTANTE_REFERENCIA = new Date(`${REFERENCIA}T${horaSP}-03:00`);
 const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste' }, stdio: 'ignore' });
 const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
 process.on('exit', parar);
@@ -24,7 +31,9 @@ for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/login'); if
 const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
 const erros = [];
 const novo = async (opcoes, { tema = 'claro', prefs = null, ui = null } = {}) => {
-  const ctx = await nav.newContext(opcoes);
+  const { semRelogio, ...opcoesCtx } = opcoes;
+  const ctx = await nav.newContext(opcoesCtx);
+  if (!semRelogio) await ctx.clock.install({ time: INSTANTE_REFERENCIA }); // o navegador também vive na data de referência (o tempo segue correndo)
   await ctx.addInitScript(([t, p, u]) => { try { if (!localStorage.getItem('dmanda-tema')) localStorage.setItem('dmanda-tema', JSON.stringify(t)); if (p && !localStorage.getItem('dmanda:agenda')) localStorage.setItem('dmanda:agenda', JSON.stringify(p)); if (u && !localStorage.getItem('dmanda:ui')) localStorage.setItem('dmanda:ui', JSON.stringify(u)); } catch { /* sem armazenamento */ } }, [tema, prefs, ui]);
   const pg = await ctx.newPage();
   pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
@@ -418,7 +427,7 @@ const t4 = await novo({ viewport: { width: 820, height: 1180 }, isMobile: true, 
 // ================= 7) fuso horário: aparelho em Auckland, referência de São Paulo (decisão 51) =================
 {
   // 03/11/2026 às 02h40 UTC: 02/11 às 23h40 em São Paulo e 03/11 às 15h40 em Auckland. O aplicativo precisa seguir São Paulo.
-  const { ctx, pg } = await novo({ viewport: { width: 1360, height: 900 }, timezoneId: 'Pacific/Auckland', locale: 'en-NZ' }, { prefs: { modo: 'mes' } });
+  const { ctx, pg } = await novo({ viewport: { width: 1360, height: 900 }, timezoneId: 'Pacific/Auckland', locale: 'en-NZ', semRelogio: true }, { prefs: { modo: 'mes' } });
   await pg.clock.install({ time: new Date('2026-11-03T02:40:00Z') });
   await ir(pg);
   const hojeCel = async () => pg.$$eval('.agd-cel[data-hoje]', (c) => c.map((x) => x.getAttribute('data-data')));
