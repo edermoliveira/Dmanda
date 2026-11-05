@@ -10,7 +10,7 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 ## PONTO DE RETOMADA ATUAL (04/11/2026, leia primeiro)
 
-**Atualização do bloco de resistência e desempenho (05/11/2026, Issue #7):** commits locais, sem push; ver as seções R e R2 de `CONTINUIDADE-DMANDA.md` (as 3 falhas de `testar:agenda` foram diagnosticadas: dados relativos a hoje; hoje a suíte usa data de referência fixa). Pendente: autorização do usuário para o push.
+**Atualização do bloco de resistência e desempenho (05/11/2026, Issue #7):** commits locais, sem push; ver as seções R e R2 de `CONTINUIDADE-DMANDA.md` (as 3 falhas de `testar:agenda` foram diagnosticadas: dados relativos a hoje; hoje a suíte usa data de referência fixa). Base salva na branch `checkpoint/resistencia-desempenho`; próximo passo na seção S de `CONTINUIDADE-DMANDA.md` (visual Apple, depois ui-humanizer, depois avaliação do usuário). A `main` não foi alterada.
 
 **Agenda aprovada pelo usuário em 04/11/2026; fuso America/Sao_Paulo e expediente concluídos (expediente só documentado). Último código deste bloco: `f3ac746`. Retomar em `CONTINUIDADE-DMANDA.md`, seção Q (próximo bloco: resistência, confiabilidade e desempenho). Em outro computador: seção Q, subseção "Preparar outra máquina".**
 

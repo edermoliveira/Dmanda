@@ -493,3 +493,17 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 - **Tempos ainda elevados (cenário grande).** Ver Cards com 300 demandas leva ~1,3 s em computador e ~10 s com CPU 4x; abrir Demandas em rede lenta, ~10 s. Perfil de CPU na troca para Cards (sem limitação): ~1,3 de ~1,6 s são leituras de layout do próprio ajuste de espaço (cada rodada do lote recalcula o layout dos 300 cards); React e DOM somam pouco. Reduzir mais exigiria contenção de layout (risco visual) ou ajustar só os cards visíveis (complexidade): **não feito**, sem correção proporcional. O uso real hoje é de dezenas de demandas (médio: 243 ms, 2 s com CPU 4x).
 
 **Revisão `ponytail-review` do complemento.** Sem achado que bloqueie. Registrado: (a) na Agenda com falha nas demandas a grade segue desenhada sem carga, o número e o aviso dizem a verdade (decisão de desenho do usuário); (b) o teste de falha parcial depende do formato do fluxo do React: se o Next mudar, ele falha alto (não passa em silêncio).
+
+## S. Ponto de retomada: base verificada salva e preparação do visual (05/11/2026)
+
+**Decisão do usuário sobre a Agenda:** com falha só na consulta de demandas, a grade continua visível; ficam o aviso de erro e o traço no resumo. Nenhum outro ajuste nesse estado.
+
+**Base funcional verificada:** os oito commits do bloco de resistência e desempenho (Issue #7), de `9e59b24` a `1beb09e`, sobre `7cff1de`, estão na branch de checkpoint `checkpoint/resistencia-desempenho` no GitHub (ver o hash confirmado no `git ls-remote`). A `main` local e a remota seguem em `7cff1de`: nada foi mesclado nem publicado na Vercel, e o Supabase real não foi tocado. Arquivos de dados de teste (`.dados-teste/`) e `.env*` ficam fora do Git por `.gitignore`.
+
+**Ordem da próxima etapa (definida pelo usuário):**
+1. Visual inspirado na Apple, na branch `visual/apple-design`, criada a partir do checkpoint. Nenhuma skill visual foi instalada e a interface não foi alterada.
+2. Revisão de acabamento com `ui-humanizer`.
+3. Avaliação do usuário antes de qualquer integração à `main`.
+
+**Retomar em outro computador:**
+`git fetch origin`, `git checkout visual/apple-design` (se só existir o checkpoint: `git checkout -b visual/apple-design origin/checkpoint/resistencia-desempenho`), `npm ci`, `npm run dev:teste`. A `main` só recebe o visual depois da aprovação do usuário.
