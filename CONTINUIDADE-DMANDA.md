@@ -494,16 +494,28 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 
 **Revisão `ponytail-review` do complemento.** Sem achado que bloqueie. Registrado: (a) na Agenda com falha nas demandas a grade segue desenhada sem carga, o número e o aviso dizem a verdade (decisão de desenho do usuário); (b) o teste de falha parcial depende do formato do fluxo do React: se o Next mudar, ele falha alto (não passa em silêncio).
 
-## S. Ponto de retomada: base verificada salva e preparação do visual (05/11/2026)
+## S. Ponto de retomada: base publicada e continuação em casa (05/11/2026)
 
 **Decisão do usuário sobre a Agenda:** com falha só na consulta de demandas, a grade continua visível; ficam o aviso de erro e o traço no resumo. Nenhum outro ajuste nesse estado.
 
-**Base funcional verificada:** os oito commits do bloco de resistência e desempenho (Issue #7), de `9e59b24` a `1beb09e`, sobre `7cff1de`, estão na branch de checkpoint `checkpoint/resistencia-desempenho` no GitHub (ver o hash confirmado no `git ls-remote`). A `main` remota segue em `7cff1de` e a `main` local em `1beb09e` (os mesmos oito commits, sem push): nada foi mesclado nem publicado na Vercel, e o Supabase real não foi tocado. Arquivos de dados de teste (`.dados-teste/`) e `.env*` ficam fora do Git por `.gitignore`.
+**Experimento Apple encerrado (05/11/2026):** o usuário reprovou o protótipo visual. A etapa Apple e a revisão com `ui-humanizer` foram canceladas; o Catalyst segue como único design. A branch `visual/apple-design` (commit `2b99812`) existe só no computador de trabalho, não foi enviada ao GitHub e não faz parte deste envio. O stash local "Trabalho local antes da branch visual - 05-11-2026" também fica só lá e não foi aplicado.
 
-**Ordem da próxima etapa (definida pelo usuário):**
-1. Visual inspirado na Apple, na branch `visual/apple-design`, criada a partir do checkpoint. Nenhuma skill visual foi instalada e a interface não foi alterada.
-2. Revisão de acabamento com `ui-humanizer`.
-3. Avaliação do usuário antes de qualquer integração à `main`.
+**Publicado (05/11/2026, com autorização do usuário):** o commit `7504f1d3c37f9850118feac11bbdfac3aa65a56b` (bloco de resistência e desempenho, Issue #7, 10 commits sobre `7cff1de`) foi enviado à `main` por avanço simples e a Vercel concluiu o deploy (status `success` no GitHub). O domínio respondeu: `/login` 200, `/demandas` sem sessão redireciona ao login, manifesto 200, cron sem segredo 401. **Falta a validação autenticada do usuário** (Início, Demandas, Entradas, Arquivo, Agenda) e confirmar no painel da Vercel que o deploy ativo é `7504f1d`. Sem migração nova (continuam 15 aplicadas), sem mudança de dependências, de `vercel.json` ou de variáveis. A origem automática do cron segue na Issue #3. Reversão, se preciso: Instant Rollback no painel da Vercel para o deploy `7cff1de`. Antes do envio: `tsc` e `eslint` sem erro e `npm run build` aprovado nesse commit.
 
-**Retomar em outro computador:**
-`git fetch origin`, `git checkout visual/apple-design` (se só existir o checkpoint: `git checkout -b visual/apple-design origin/checkpoint/resistencia-desempenho`), `npm ci`, `npm run dev:teste`. A `main` só recebe o visual depois da aprovação do usuário.
+**Repositório público:** a API do GitHub respondeu sem autenticação, então o repositório está público, embora este documento dissesse privado. Nada de segredo vai ao Git (`.env*` e `.dados-teste/` ignorados), mas a visibilidade é decisão do usuário e não foi alterada.
+
+**Continuar em casa:** a `main` do GitHub está em `7504f1d`. Comandos no PowerShell:
+
+```powershell
+cd C:\Users\SEU_USUARIO\Desktop\Dmanda
+git status --short                    # deve estar vazio; se não, preserve antes: git stash push -u -m "antes de atualizar"
+git fetch origin --prune
+git log --oneline origin/main..main   # commits próprios da main de casa; deve estar vazio
+git switch main
+git merge --ff-only origin/main       # se recusar, não force: git branch salvo-casa main e decida com o assistente
+npm ci
+git rev-parse HEAD                    # deve ser 7504f1d3c37f9850118feac11bbdfac3aa65a56b
+npm run dev:teste                     # http://localhost:7100, banco de teste
+```
+
+Próximo passo: a avaliação autenticada do usuário em produção e o que ela revelar; depois, as Issues #2, #3 e #4. Nenhuma nova etapa visual está em andamento.
