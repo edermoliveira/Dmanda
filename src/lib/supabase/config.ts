@@ -7,11 +7,22 @@ export function configSupabase() {
   return { url, chave };
 }
 
-/** Modo de teste: banco local descartável, só em desenvolvimento. Em produção a variável é recusada, com uma única exceção
- *  para medir o build de produção NESTE computador: exige DMANDA_MEDICAO_LOCAL=sim e nunca vale na Vercel (que define VERCEL). */
-export function modoTeste(env: Record<string, string | undefined> = process.env): boolean {
+/** Variáveis que só existem numa implantação na nuvem (Vercel e as funções AWS Lambda em que ela roda). As da Vercel dependem da opção "System Environment Variables" do projeto,
+ *  então as da Lambda entram também: basta UMA delas definida para a medição local ser recusada. */
+const SINAIS_DE_NUVEM = ['VERCEL', 'VERCEL_ENV', 'VERCEL_TARGET_ENV', 'VERCEL_URL', 'VERCEL_REGION', 'VERCEL_DEPLOYMENT_ID', 'AWS_LAMBDA_FUNCTION_NAME', 'AWS_EXECUTION_ENV', 'LAMBDA_TASK_ROOT'];
+// fs pelo process, para este arquivo (também importado pelo código do navegador) não puxar módulo de servidor para o pacote
+const existeNoDisco = (caminho: string) => { try { return process.getBuiltinModule('node:fs').existsSync(caminho); } catch { return false; } };
+
+/** Medição do build de produção NESTE computador. Só vale com as TRÊS condições juntas: DMANDA_MEDICAO_LOCAL=sim; nenhum sinal de nuvem nas variáveis;
+ *  e a pasta .dados-teste existindo na pasta de trabalho (ela é ignorada pelo Git e nunca vai numa implantação). */
+export function medicaoLocalPermitida(env: Record<string, string | undefined> = process.env, existe: (caminho: string) => boolean = existeNoDisco): boolean {
+  return env.DMANDA_MEDICAO_LOCAL === 'sim' && !SINAIS_DE_NUVEM.some((k) => !!env[k]) && existe('.dados-teste');
+}
+
+/** Modo de teste: banco local descartável, só em desenvolvimento. Em produção a variável é recusada, com uma única exceção: a medição local (medicaoLocalPermitida). */
+export function modoTeste(env: Record<string, string | undefined> = process.env, existe: (caminho: string) => boolean = existeNoDisco): boolean {
   if (env.DMANDA_BANCO !== 'teste') return false;
-  if (env.NODE_ENV === 'production' && !(env.DMANDA_MEDICAO_LOCAL === 'sim' && !env.VERCEL)) throw new Error('DMANDA_BANCO=teste não é permitido em produção.');
+  if (env.NODE_ENV === 'production' && !medicaoLocalPermitida(env, existe)) throw new Error('DMANDA_BANCO=teste não é permitido em produção.');
   return true;
 }
 

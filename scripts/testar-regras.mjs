@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { emailAutorizado, contaAutorizada, situacaoDoErroAuth, ehCookieDeSessao, COOKIE_LEGADO_ULTIMO_USO } from '../src/lib/sessao.ts';
 import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO } from '../src/lib/prazos.ts';
-import { modoTeste } from '../src/lib/supabase/config.ts';
+import { modoTeste, medicaoLocalPermitida } from '../src/lib/supabase/config.ts';
 import { gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada, eObjeto } from '../src/lib/armazenamento.ts';
 import { googleLigado } from '../src/lib/login.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
@@ -187,10 +187,22 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
 
 // banco de teste: recusado em produção; a única exceção é a medição local explícita, que nunca vale na Vercel
 {
-  const lanca = (env) => { try { modoTeste(env); return false; } catch { return true; } };
+  const lanca = (env, existe) => { try { modoTeste(env, existe); return false; } catch { return true; } };
   ok(modoTeste({ DMANDA_BANCO: 'teste', NODE_ENV: 'development' }) === true && modoTeste({ NODE_ENV: 'production' }) === false, 'banco de teste: liga só em desenvolvimento com DMANDA_BANCO=teste; sem a variável é sempre o Supabase');
   ok(lanca({ DMANDA_BANCO: 'teste', NODE_ENV: 'production' }) && lanca({ DMANDA_BANCO: 'teste', NODE_ENV: 'production', DMANDA_MEDICAO_LOCAL: 'nao' }), 'banco de teste: recusado em produção, com ou sem a medição desligada');
-  ok(modoTeste({ DMANDA_BANCO: 'teste', NODE_ENV: 'production', DMANDA_MEDICAO_LOCAL: 'sim' }) === true && lanca({ DMANDA_BANCO: 'teste', NODE_ENV: 'production', DMANDA_MEDICAO_LOCAL: 'sim', VERCEL: '1' }), 'banco de teste: a medição local explícita vale no computador e é recusada na Vercel');
+  const local = () => true, nuvem = () => false;   // "existe(.dados-teste)": só neste computador
+  const prod = { DMANDA_BANCO: 'teste', NODE_ENV: 'production', DMANDA_MEDICAO_LOCAL: 'sim' };
+  ok(modoTeste(prod, local) === true, 'banco de teste: a medição local explícita vale no computador (variável ligada, sem sinal de nuvem, pasta .dados-teste presente)');
+  ok(lanca(prod, nuvem) && !medicaoLocalPermitida({ DMANDA_MEDICAO_LOCAL: 'sim' }, nuvem), 'banco de teste: sem a pasta .dados-teste (que o Git ignora e nenhuma implantação tem) a medição local é recusada');
+  // Vercel: produção, Preview e Development, com a variável configurada por engano
+  for (const [nome, extra] of [['produção', { VERCEL: '1', VERCEL_ENV: 'production' }], ['Preview', { VERCEL: '1', VERCEL_ENV: 'preview', VERCEL_URL: 'dmanda-git-x.vercel.app' }], ['Development', { VERCEL: '1', VERCEL_ENV: 'development' }]]) {
+    ok(lanca({ ...prod, ...extra }, local), `banco de teste: na Vercel (${nome}) a medição local é recusada mesmo com DMANDA_MEDICAO_LOCAL=sim e até com a pasta presente`);
+  }
+  // projeto com "System Environment Variables" desligado: só sobram os sinais da função Lambda
+  for (const k of ['AWS_LAMBDA_FUNCTION_NAME', 'AWS_EXECUTION_ENV', 'LAMBDA_TASK_ROOT', 'VERCEL_REGION', 'VERCEL_URL', 'VERCEL_DEPLOYMENT_ID', 'VERCEL_TARGET_ENV']) {
+    ok(lanca({ ...prod, [k]: 'x' }, local), `banco de teste: com só ${k} definida a medição local é recusada`);
+  }
+  ok(!medicaoLocalPermitida({}, local) && !medicaoLocalPermitida({ DMANDA_MEDICAO_LOCAL: 'nao' }, local) && !medicaoLocalPermitida({ DMANDA_MEDICAO_LOCAL: 'SIM' }, local) && !medicaoLocalPermitida({ DMANDA_MEDICAO_LOCAL: 'sim', VERCEL: '' }, nuvem), 'banco de teste: só o valor exato "sim" liga a medição local');
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

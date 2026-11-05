@@ -15,6 +15,19 @@ const PERFIS = {
   muito_lenta: { rede: { latency: 600, down: (400 * 1024) / 8, up: (400 * 1024) / 8 }, cpu: 4 }, // 3G ruim
 };
 const PERF = (process.argv[4] || 'rede_boa,lenta,muito_lenta').split(',');
+const RODADAS = Number(process.argv[5] || 1);   // quantas vezes repetir as mesmas medições (a mediana e a variação saem daqui)
+const folhas = (o, pre = '') => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' ? folhas(v, pre + k + '.') : typeof v === 'number' ? [[pre + k, v]] : []));
+const mediana = (l) => { const o = [...l].sort((a, b) => a - b), m = o.length >> 1; return o.length % 2 ? o[m] : Math.round((o[m - 1] + o[m]) / 2); };
+/** Mediana de cada número, com a mesma forma de uma rodada; e [mínimo, máximo] de cada um. */
+function resumir(rodadas) {
+  const r = JSON.parse(JSON.stringify(rodadas[0])), variacao = {};
+  for (const [caminho] of folhas(rodadas[0])) {
+    const v = rodadas.map((x) => caminho.split('.').reduce((a, k) => a?.[k], x)).filter((n) => typeof n === 'number');
+    const partes = caminho.split('.'); let alvo = r; for (const k of partes.slice(0, -1)) alvo = alvo[k]; alvo[partes.at(-1)] = mediana(v);
+    variacao[caminho] = [Math.min(...v), Math.max(...v)];
+  }
+  return { ...r, rodadas: rodadas.length, variacao };
+}
 const PORTA = process.env.PORTA_MEDICAO || '7110', BASE = `http://localhost:${PORTA}`;
 if (!existsSync('.next/BUILD_ID')) { console.error('Faça `npm run build` antes.'); process.exit(2); }
 mkdirSync('.dados-teste/medicoes', { recursive: true });
@@ -64,6 +77,8 @@ for (const vol of VOLS) {
     };
     const zerar = (est) => { est.reqs = 0; est.bytes = 0; est.js = 0; est.acoes = 0; est.falhas = 0; };
     const esperaPronto = async (pg) => { await pg.waitForFunction(() => window.__pronto != null, null, { timeout: 240000, polling: 100 }); await pg.waitForTimeout(500); };
+    const rodadas = [];
+    for (let rod = 0; rod < RODADAS; rod++) {
     const r = { frio: {}, quente: {}, navegacao: {}, interacao: {} };
 
     // 1) carga fria (sem cache) e quente (recarregando) de cada tela
@@ -100,7 +115,7 @@ for (const vol of VOLS) {
 
       // 3) interações: trocar a visão de Demandas, filtrar, buscar nas Entradas (tempo até o próximo quadro pintado)
       await pg.evaluate(() => document.querySelector('.side .navi[data-nav="demandas"]').click());
-      await pg.waitForSelector('.tabs button[data-v]', { timeout: 60000 });
+      await pg.waitForSelector('.tabs button[data-v]', { timeout: 300000 });
       await pg.waitForTimeout(800);
       for (const v of ['quadro', 'tabela', 'lista', 'cards']) {
         r.interacao['Demandas: ver ' + v] = await pg.evaluate(async (x) => { const t0 = performance.now(); document.querySelector(`.tabs button[data-v="${x}"]`).click(); await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res))); return Math.round(performance.now() - t0); }, v);
@@ -111,7 +126,7 @@ for (const vol of VOLS) {
         return Math.round(max);
       });
       await pg.evaluate(() => document.querySelector('.side .navi[data-nav="entradas"]').click());
-      await pg.waitForSelector('#eq', { timeout: 60000 });
+      await pg.waitForSelector('#eq', { timeout: 300000 });
       await pg.waitForTimeout(800);
       r.interacao['Entradas: buscar digitando (pior tecla)'] = await pg.evaluate(async () => {
         const el = document.querySelector('#eq'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; let max = 0;
@@ -120,6 +135,9 @@ for (const vol of VOLS) {
       });
       await ctx.close();
     }
+    rodadas.push(r);
+    }
+    const r = resumir(rodadas);
     resultado[vol].perfis[perfil] = r;
     console.log(`[${vol}/${perfil}] frio: ` + ROTAS.map(([, n]) => `${n} ${r.frio[n].pronto}ms`).join(', '));
   }
@@ -132,9 +150,11 @@ writeFileSync(`.dados-teste/medicoes/${ROTULO}.json`, JSON.stringify(resultado, 
 for (const vol of VOLS) for (const perfil of PERF) {
   const r = resultado[vol].perfis[perfil]; if (!r) continue;
   console.log(`\n### ${vol} (${JSON.stringify(VOLUMES[vol])}) | rede: ${perfil}`);
+  const vr = (r, c) => { const v = r.variacao?.[c]; return v && RODADAS > 1 ? ` (${v[0]}-${v[1]})` : ''; };
+  console.log(`${RODADAS} rodada(s); valores = mediana (mínimo-máximo)`);
   console.log('| Tela | pronto frio (ms) | FCP | requisições | KB | JS KB | ações | pronto quente (ms) | KB quente | navegação (ms) | ações na navegação |');
   console.log('|---|---|---|---|---|---|---|---|---|---|---|');
-  for (const [, n] of ROTAS) { const f = r.frio[n], q = r.quente[n], nv = r.navegacao[n]; console.log(`| ${n} | ${f.pronto} | ${f.fcp} | ${f.reqs} | ${f.kb} | ${f.jsKb} | ${f.acoes} | ${q.pronto} | ${q.kb} | ${nv?.ms ?? ''} | ${nv?.acoes ?? ''} |`); }
-  console.log('Interações (ms): ' + Object.entries(r.interacao).map(([k, v]) => `${k}: ${v}`).join('; '));
+  for (const [, n] of ROTAS) { const f = r.frio[n], q = r.quente[n], nv = r.navegacao[n]; console.log(`| ${n} | ${f.pronto}${vr(r, `frio.${n}.pronto`)} | ${f.fcp} | ${f.reqs} | ${f.kb} | ${f.jsKb} | ${f.acoes} | ${q.pronto}${vr(r, `quente.${n}.pronto`)} | ${q.kb} | ${nv?.ms ?? ''}${nv ? vr(r, `navegacao.${n}.ms`) : ''} | ${nv?.acoes ?? ''} |`); }
+  console.log('Interações (ms): ' + Object.entries(r.interacao).map(([k, v]) => `${k}: ${v}${vr(r, `interacao.${k}`)}`).join('; '));
 }
 process.exit(0);

@@ -22,6 +22,7 @@
     "testar:agenda": "node scripts/testar-agenda.mjs",
     "testar:resistencia": "node scripts/testar-resistencia.mjs",
     "medir:desempenho": "node scripts/medir-desempenho.mjs",
+    "testar:medicao-local": "node scripts/testar-medicao-local.mjs",
     "verificar:ajuste-cards": "node scripts/verificar-ajuste-cards.mjs",
     "testar:sessao": "node scripts/testar-sessao.mjs",
     "conferir:env": "node scripts/conferir-env.mjs",
