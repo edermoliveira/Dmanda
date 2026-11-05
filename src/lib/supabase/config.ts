@@ -7,10 +7,11 @@ export function configSupabase() {
   return { url, chave };
 }
 
-/** Modo de teste: banco local descartável, só em desenvolvimento. Em produção a variável é recusada. */
-export function modoTeste(): boolean {
-  if (process.env.DMANDA_BANCO !== 'teste') return false;
-  if (process.env.NODE_ENV === 'production') throw new Error('DMANDA_BANCO=teste não é permitido em produção.');
+/** Modo de teste: banco local descartável, só em desenvolvimento. Em produção a variável é recusada, com uma única exceção
+ *  para medir o build de produção NESTE computador: exige DMANDA_MEDICAO_LOCAL=sim e nunca vale na Vercel (que define VERCEL). */
+export function modoTeste(env: Record<string, string | undefined> = process.env): boolean {
+  if (env.DMANDA_BANCO !== 'teste') return false;
+  if (env.NODE_ENV === 'production' && !(env.DMANDA_MEDICAO_LOCAL === 'sim' && !env.VERCEL)) throw new Error('DMANDA_BANCO=teste não é permitido em produção.');
   return true;
 }
 
