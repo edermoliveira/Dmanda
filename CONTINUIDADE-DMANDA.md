@@ -498,7 +498,7 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 
 **Decisão do usuário sobre a Agenda:** com falha só na consulta de demandas, a grade continua visível; ficam o aviso de erro e o traço no resumo. Nenhum outro ajuste nesse estado.
 
-**Base funcional verificada:** os oito commits do bloco de resistência e desempenho (Issue #7), de `9e59b24` a `1beb09e`, sobre `7cff1de`, estão na branch de checkpoint `checkpoint/resistencia-desempenho` no GitHub (ver o hash confirmado no `git ls-remote`). A `main` local e a remota seguem em `7cff1de`: nada foi mesclado nem publicado na Vercel, e o Supabase real não foi tocado. Arquivos de dados de teste (`.dados-teste/`) e `.env*` ficam fora do Git por `.gitignore`.
+**Base funcional verificada:** os oito commits do bloco de resistência e desempenho (Issue #7), de `9e59b24` a `1beb09e`, sobre `7cff1de`, estão na branch de checkpoint `checkpoint/resistencia-desempenho` no GitHub (ver o hash confirmado no `git ls-remote`). A `main` remota segue em `7cff1de` e a `main` local em `1beb09e` (os mesmos oito commits, sem push): nada foi mesclado nem publicado na Vercel, e o Supabase real não foi tocado. Arquivos de dados de teste (`.dados-teste/`) e `.env*` ficam fora do Git por `.gitignore`.
 
 **Ordem da próxima etapa (definida pelo usuário):**
 1. Visual inspirado na Apple, na branch `visual/apple-design`, criada a partir do checkpoint. Nenhuma skill visual foi instalada e a interface não foi alterada.
