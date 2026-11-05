@@ -10,6 +10,8 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 ## PONTO DE RETOMADA ATUAL (04/11/2026, leia primeiro)
 
+**Atualização do bloco de resistência e desempenho (04/11/2026, Issue #7):** commits locais, sem push; ver a seção R de `CONTINUIDADE-DMANDA.md`. Pendente: investigar as 3 falhas de `testar:agenda` que também ocorrem na base (dependem da data), e autorização do usuário para o push.
+
 **Agenda aprovada pelo usuário em 04/11/2026; fuso America/Sao_Paulo e expediente concluídos (expediente só documentado). Último código deste bloco: `f3ac746`. Retomar em `CONTINUIDADE-DMANDA.md`, seção Q (próximo bloco: resistência, confiabilidade e desempenho). Em outro computador: seção Q, subseção "Preparar outra máquina".**
 
 **Atualizar outro computador que já tem o projeto (PowerShell, preservando alterações locais):**
