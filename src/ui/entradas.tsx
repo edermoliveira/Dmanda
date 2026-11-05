@@ -105,6 +105,7 @@ export function PaginaEntradas() {
         </div>
       ) : null}
       {carregandoEntradas && !entradas.length ? <div className="vazio-c" role="status">Carregando as entradas...</div>
+        : !entradas.length && erroEntradas ? null // a leitura falhou: o erro e o botão de tentar de novo já estão acima; não se diz que não há entradas
         : !entradas.length ? (
           <div className="vazio"><Icone nome="nav-entradas" extra="grande" /><h3>Nenhuma entrada ainda</h3><p>Anote rápido o que não pode esquecer. Use # para criar tags e transforme a anotação em demanda quando for a hora.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'entrada' })}>Nova entrada</button></div>
         ) : !lista.length ? (

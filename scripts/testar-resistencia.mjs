@@ -23,7 +23,6 @@ const subir = async (pasta) => {
 };
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
-const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const dados = async () => (await fetch(BASE + '/api/exportar')).json();
 
 const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
@@ -55,7 +54,7 @@ const perderResposta = async (pg, marcador, vezes = 1) => {
   });
   return () => n;
 };
-const comMarca = (lista, marca, campo = 'texto') => lista.filter((x) => JSON.stringify(x).includes(marca));
+const comMarca = (lista, marca) => lista.filter((x) => JSON.stringify(x).includes(marca));
 const rede = async (pg, o) => { const c = await pg.context().newCDPSession(pg); await c.send('Network.enable'); await c.send('Network.emulateNetworkConditions', o); return c; };
 
 // ================= 1) rede lenta, latência alta: digitar durante o salvamento não perde nada =================
@@ -340,6 +339,88 @@ await subir(PASTA_A);
   await A.waitForTimeout(2000);
   ok((await dados()).demandas.find((x) => /TAREFAS base/.test(x.assunto)).tarefas.some((t) => t.concluida), 'marcar tarefa depois de voltar a internet: grava');
   await ctx.close();
+}
+
+// ================= 7d) falha parcial da carga conjunta =================
+// A abertura do aplicativo é UMA ação do servidor com seis partes (demandas, entradas, eventos, dias, rotina, ambiente), cada uma com o próprio resultado. O teste troca, na resposta REAL
+// do servidor, só uma parte por uma falha (do mesmo formato que o servidor devolve quando uma leitura falha) e confere: as outras partes aparecem certas, a parte afetada mostra o erro (e não uma
+// lista vazia "carregada com sucesso"), "Tentar de novo" recupera só ela e o rascunho guardado no aparelho continua intacto. A proteção de sessão da mesma ação é provada em testar:sessao.
+{
+  const MARCA = 'PARCIAL rascunho que não pode sumir';
+  const rascunho = JSON.stringify({ 'e:nova': { dados: { titulo: '', texto: MARCA, cor: null, fixada: false }, tocados: ['texto'], base: {} } });
+  const mesAgora = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+  const falharParte = async (pg, parte) => {
+    let n = 0, ativa = true;
+    await pg.route('**/*', async (route) => {
+      const q = route.request();
+      if (!(q.method() === 'POST' && q.headers()['next-action'])) { await route.continue(); return; }
+      const r = await route.fetch(); const texto = await r.text();
+      const linhas = texto.split('\n'), i = linhas.findIndex((l) => /^1:\{"ok":true,"dados":\{"demandas":/.test(l));
+      if (ativa && i >= 0) {
+        const j = JSON.parse(linhas[i].slice(2)); j.dados[parte] = { ok: false, erro: `Falha simulada em ${parte}.` }; linhas[i] = '1:' + JSON.stringify(j); n++;
+        const corpo = linhas.join('\n');
+        await route.fulfill({ response: r, body: corpo, headers: { ...r.headers(), 'content-length': String(Buffer.byteLength(corpo)) } }); return;
+      }
+      await route.fulfill({ response: r, body: texto });
+    });
+    return { vezes: () => n, parar: () => { ativa = false; } };
+  };
+  const irPara = async (pg, nav) => { await pg.click(`.side .navi[data-nav="${nav}"]`); await pg.waitForTimeout(700); };
+  const contagens = async (pg) => {
+    const r = {};
+    await irPara(pg, 'entradas'); r.entradas = (await pg.$$('.postit')).length; r.vazioEntradas = !!(await pg.$('.vazio'));
+    await irPara(pg, 'demandas'); r.demandas = (await pg.$$('.dcard')).length; r.vazioDemandas = !!(await pg.$('.vazio'));
+    await irPara(pg, 'agenda'); r.eventos = Number(((await pg.textContent('.agd-chips-res')) ?? '').match(/(\d+) compromisso/)?.[1] ?? -1); r.chipEventos = ((await pg.textContent('.agd-chips-res')) ?? '').replace(/\s+/g, ' '); r.pendencias = ((await pg.textContent('[data-total-pendencias]')) ?? '').trim();
+    return r;
+  };
+  for (const parte of ['eventos', 'entradas', 'demandas']) {
+    const { ctx, pg } = await novoContexto();
+    await ctx.addInitScript((r) => { try { if (!sessionStorage.getItem('rasc-inicial')) { sessionStorage.setItem('rasc-inicial', '1'); localStorage.setItem('dmanda:rascunhos', r); } } catch { /* sem armazenamento */ } }, rascunho);
+    const certo = await dados();
+    const esperado = { entradas: certo.entradas.length, demandas: certo.demandas.length, eventos: certo.eventos.filter((e) => e.data.startsWith(mesAgora)).length };
+    const f = await falharParte(pg, parte);
+    const antes = erros.length;
+    await ir(pg, parte === 'eventos' ? '/agenda' : parte === 'entradas' ? '/entradas' : '/demandas');
+    ok(f.vezes() >= 1, `falha parcial (${parte}): a resposta da carga conjunta foi alterada só na parte "${parte}"`);
+    const alerta = (await pg.$$eval('.erro-carga[role="alert"]', (e) => e.map((x) => x.textContent))).join(' | ');
+    ok(new RegExp(`Falha simulada em ${parte}`).test(alerta) && alerta.split('Falha simulada').length === 2, `falha parcial (${parte}): aparece o erro correspondente, uma só vez e só dessa parte (${alerta.slice(0, 80)})`);
+    const c = await contagens(pg);
+    // as partes que não falharam chegaram certas
+    if (parte !== 'entradas') ok(c.entradas === esperado.entradas && esperado.entradas > 0, `falha parcial (${parte}): as entradas chegaram certas (${c.entradas} de ${esperado.entradas})`);
+    if (parte !== 'demandas') ok(c.demandas === esperado.demandas && esperado.demandas > 0, `falha parcial (${parte}): as demandas chegaram certas (${c.demandas} de ${esperado.demandas})`);
+    if (parte !== 'eventos') ok(c.eventos === esperado.eventos && esperado.eventos > 0, `falha parcial (${parte}): os eventos do mês chegaram certos (${c.eventos} de ${esperado.eventos})`);
+    // a parte que falhou não é mostrada como lista vazia carregada com sucesso
+    if (parte === 'entradas') ok(c.entradas === 0 && !c.vazioEntradas, 'falha parcial (entradas): a tela não diz "Nenhuma entrada ainda" (o erro e o botão de tentar de novo aparecem no lugar)');
+    if (parte === 'demandas') ok(c.demandas === 0 && !c.vazioDemandas, 'falha parcial (demandas): a tela não diz "Nenhuma demanda cadastrada" (o erro e o botão de tentar de novo aparecem no lugar)');
+    if (parte === 'eventos') ok(!/compromisso/.test(c.chipEventos), `falha parcial (eventos): o resumo da Agenda não afirma "0 compromissos" (mostra: "${c.chipEventos.slice(0, 60)}")`);
+    if (parte === 'demandas') ok(c.pendencias === '–', `falha parcial (demandas): a Agenda mostra "–" nas pendências, não "0" (mostra: "${c.pendencias}")`);
+    ok(JSON.stringify(await rascunhos(pg)).includes(MARCA), `falha parcial (${parte}): o rascunho guardado no aparelho continua intacto`);
+    // tentar de novo recupera só a parte afetada
+    f.parar();
+    await irPara(pg, parte === 'eventos' ? 'agenda' : parte === 'entradas' ? 'entradas' : 'demandas');
+    await pg.click('.erro-carga[role="alert"] .btn:has-text("Tentar de novo")');
+    await pg.waitForFunction(() => !document.querySelector('.erro-carga[role="alert"]'), null, { timeout: 20000 });
+    await pg.waitForTimeout(500);
+    const d = await contagens(pg);
+    ok(d.entradas === esperado.entradas && d.demandas === esperado.demandas && d.eventos === esperado.eventos && d.pendencias !== '–' && /compromisso/.test(d.chipEventos), `falha parcial (${parte}): depois de "Tentar de novo" tudo está certo (entradas ${d.entradas}, demandas ${d.demandas}, eventos do mês ${d.eventos})`);
+    ok(JSON.stringify(await rascunhos(pg)).includes(MARCA) && erros.length === antes, `falha parcial (${parte}): o rascunho continua intacto depois de recuperar e não houve erro de página`);
+    await ctx.close();
+  }
+  // as atualizações da tela continuam valendo depois da falha parcial: voltar à tela e reconectar releem tudo em uma chamada
+  {
+    const { ctx, pg } = await novoContexto();
+    await ir(pg, '/entradas');
+    const outra = await ctx.newPage(); await ir(outra, '/entradas');
+    await novaEntrada(outra); await outra.fill('#e-texto', 'PARCIAL criada em outra aba'); await esperaEstado(outra, 'salvo'); await outra.click('.modal .btn.pri'); await janelaFechada(outra);
+    await ctx.setOffline(true); await pg.evaluate(() => dispatchEvent(new Event('offline')));
+    await pg.evaluate(() => { Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+    await pg.waitForTimeout(1500);
+    ok(!/PARCIAL criada em outra aba/.test(await pg.textContent('.postits')) && (await pg.$$('.postit')).length > 0, 'releitura sem rede: a lista que estava na tela continua (não some nem vira vazia)');
+    await ctx.setOffline(false);
+    await pg.waitForFunction(() => /PARCIAL criada em outra aba/.test(document.querySelector('.postits')?.textContent ?? ''), null, { timeout: 20000 }).catch(() => {});
+    ok(/PARCIAL criada em outra aba/.test(await pg.textContent('.postits')), 'ao reconectar a releitura traz o que mudou em outra aba, sem recarregar a página');
+    await ctx.close();
+  }
 }
 
 // ================= 7c) armazenamento do navegador corrompido ou bloqueado, textos grandes e Unicode =================

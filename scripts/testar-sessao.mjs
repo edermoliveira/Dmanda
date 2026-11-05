@@ -263,7 +263,14 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
   // entrada correta (usuário criado pelo Google, que ganhou senha: provider continua google); o servidor regrava a sessão por Set-Cookie
   provedorSenha = 'google';
   const acoes = [];
-  p0.on('response', async (resp) => { if (resp.request().method() === 'POST' && resp.request().headers()['next-action']) acoes.push(String((await resp.allHeaders().catch(() => ({})))['set-cookie'] ?? '').split(String.fromCharCode(10))); });
+  const capturadas = [];   // as ações do servidor que o painel chamou (para repeti-las sem sessão)
+  p0.on('response', async (resp) => {
+    const rq = resp.request();
+    if (rq.method() === 'POST' && rq.headers()['next-action']) {
+      acoes.push(String((await resp.allHeaders().catch(() => ({})))['set-cookie'] ?? '').split(String.fromCharCode(10)));
+      capturadas.push({ url: rq.url(), id: rq.headers()['next-action'], tipo: rq.headers()['content-type'] ?? 'text/plain;charset=UTF-8', corpo: rq.postData() ?? '[]', texto: await resp.text().catch(() => '') });
+    }
+  });
   await Promise.all([p0.waitForURL((u) => u.pathname === '/', { timeout: 120000 }), entrar(EMAIL, SENHA)]);
   await p0.waitForSelector('.app .main', { timeout: 120000 });
   const ck = await c0.cookies();
@@ -272,6 +279,23 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
   ok(acoes.flat().some((c) => /^sb-127-auth-token/.test(c) && /Max-Age=\d{7,}/i.test(c)), 'login: o servidor regrava a sessão por Set-Cookie com validade longa (cookies escritos só por script têm validade limitada no Safari do iPhone)');
   ok(!!sessaoCk && (sessaoCk.expires === -1 || sessaoCk.expires * 1000 - Date.now() > 300 * 24 * HORA), 'login: o cookie da sessão é persistente (vale por mais de 300 dias), não de sessão do navegador');
   ok(!(await p0.content()).includes(SENHA), 'login: a senha não aparece na página depois da entrada');
+  // a carga conjunta (uma só ação com demandas, entradas, eventos, dias, rotina e ambiente) só responde com a sessão da conta autorizada
+  {
+    const acharCarga = () => capturadas.find((x) => /"demandas":{"ok":true/.test(x.texto) && /"eventos":{"ok":true/.test(x.texto));
+    for (let i = 0; i < 100 && !acharCarga(); i++) await new Promise((r) => setTimeout(r, 200));
+    const carga = acharCarga();
+    ok(!!carga, 'carga conjunta: com a sessão válida o painel a chama uma vez e recebe as seis partes juntas');
+    const repetir = async (ctx) => { const r = await ctx.request.post(carga.url, { headers: { 'next-action': carga.id, 'content-type': carga.tipo, accept: 'text/x-component' }, data: carga.corpo, maxRedirects: 0, failOnStatusCode: false }); return { status: r.status(), local: r.headers()['location'] ?? '', texto: await r.text().catch(() => '') }; };
+    const anonimo = await nav0.newContext();
+    const semSessao = await repetir(anonimo);
+    ok(carga && semSessao.status >= 300 && semSessao.status < 400 && /login/.test(semSessao.local) && !/"dados"/.test(semSessao.texto), `carga conjunta: repetida sem sessão é desviada para o login (status ${semSessao.status}) e não devolve nenhum dado`);
+    await anonimo.close();
+    const adulterado = await nav0.newContext();
+    await adulterado.addCookies((await c0.cookies()).map(({ name, value, domain, path }) => ({ name, value: name.startsWith('sb-') ? 'adulterado' + value.slice(10) : value, domain, path })));
+    const comLixo = await repetir(adulterado);
+    ok(carga && !/"dados"/.test(comLixo.texto) && !/conta-de-teste/.test(comLixo.texto), `carga conjunta: com cookie de sessão adulterado também não devolve dados (status ${comLixo.status})`);
+    await adulterado.close();
+  }
   // fechar e reabrir o navegador mantém a sessão: novo contexto com os mesmos cookies (como o iPhone reabrindo a PWA depois de horas)
   const guardados = await c0.cookies();
   const c0b = await nav0.newContext({ viewport: { width: 1100, height: 800 } });

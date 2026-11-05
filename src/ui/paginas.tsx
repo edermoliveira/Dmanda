@@ -26,7 +26,7 @@ function textoRotina(r: EstadoRotina | null) {
 }
 
 export function PaginaInicio() {
-  const { demandas, carregando, abrirJanela, hoje, rotina, dias } = useApp();
+  const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina, dias } = useApp();
   const [sel, setSel] = useState<'atrasadas' | 'hoje' | 'sete' | null>(null);
   const foco = focoDoDia(demandas, hoje, dias);
   useAjustar(`${demandas.length}${sel}`);
@@ -34,7 +34,7 @@ export function PaginaInicio() {
     <>
       <CabecaPagina titulo="Início" sub="Seu dia em um só lugar." />
       {carregando && !demandas.length ? <Carregando /> : null}
-      {!carregando && !demandas.length ? (
+      {!carregando && !erroCarga && !demandas.length ? (
         <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Foco do dia.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
       ) : null}
       {demandas.length ? (
@@ -94,7 +94,7 @@ function PainelFiltros({ pos, fechar }: { pos: { x: number; y: number }; fechar:
 }
 
 export function PaginaDemandas() {
-  const { demandas, carregando, visao, setVisao, filtro, setFiltro, abrirJanela, hoje, setAbaArquivo, dias } = useApp();
+  const { demandas, carregando, erroCarga, visao, setVisao, filtro, setFiltro, abrirJanela, hoje, setAbaArquivo, dias } = useApp();
   const router = useRouter();
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const lista = filtrar(demandas, filtro, hoje, dias);
@@ -130,6 +130,7 @@ export function PaginaDemandas() {
       {pos ? <PainelFiltros pos={pos} fechar={() => setPos(null)} /> : null}
       <div id="vista">
         {carregando && !demandas.length ? <Carregando />
+          : !demandas.length && erroCarga ? null // a leitura falhou: o erro e o botão de tentar de novo já estão no topo; não se diz que não há demandas
           : !demandas.length ? <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda cadastrada</h3><p>Cadastre a primeira com o botão Nova demanda.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
           : !lista.length ? <div className="vazio"><Icone nome="busca" extra="grande" /><h3>Nenhuma demanda encontrada</h3><p>Ajuste o filtro para ver mais.</p><button className="btn mini" onClick={() => setFiltro({ ...FILTRO_VAZIO })}>Limpar filtros</button></div>
           : visao === 'cards' ? <Cards lista={lista} /> : visao === 'quadro' ? <Quadro lista={lista} /> : visao === 'tabela' ? <Tabela lista={lista} /> : <Lista lista={lista} />}

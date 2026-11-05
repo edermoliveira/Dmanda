@@ -236,7 +236,7 @@ function ColunaDia({ data, o, cat, hoje, sel, carga, escolher }: { data: string;
 
 // ---------- página ----------
 export function PaginaAgenda() {
-  const { demandas, dias, eventos, hoje, carregando, carregandoEventos, erroEventos, recarregarEventos, abrirJanela } = useApp();
+  const { demandas, dias, eventos, hoje, carregando, carregandoEventos, erroEventos, erroCarga, recarregarEventos, abrirJanela } = useApp();
   const [modo, setModo] = useState<Modo>('mes');
   const [cat, setCat] = useState<Categoria>('tudo');
   const [concluidas, setConcluidas] = useState(false);
@@ -274,6 +274,8 @@ export function PaginaAgenda() {
   const rotuloPeriodo = modo === 'mes' ? maiuscula(tituloMes(dia)) : modo === 'semana' ? rotuloSemana(semana) : maiuscula(dataPorExtenso(dia));
   const nomePeriodo = modo === 'mes' ? NOMES_MES[mes - 1] : modo === 'semana' ? 'a semana' : 'o dia';
   const aguardando = carregando || carregandoEventos;
+  // a leitura de uma das partes falhou: os números dela não são zero, são desconhecidos (o erro e o botão de tentar de novo estão acima)
+  const semDem = !!erroCarga, semEv = !!erroEventos;
 
   return (
     <div className="agd" data-modo={modo}>
@@ -302,13 +304,13 @@ export function PaginaAgenda() {
         <div>
           <h2 className="agd-periodo" aria-live="polite">{rotuloPeriodo}</h2>
           {verDemandas ? (
-            <p className="agd-grande"><b data-total-pendencias>{aguardando ? '–' : pan.pendencias}</b> {pan.pendencias === 1 ? 'pendência' : 'pendências'} {modo === 'hoje' ? 'neste dia' : modo === 'semana' ? 'nesta semana' : `em ${NOMES_MES[mes - 1]}`}</p>
-          ) : <p className="agd-grande"><b>{aguardando ? '–' : pan.compromissos}</b> {pan.compromissos === 1 ? 'compromisso' : 'compromissos'}</p>}
+            <p className="agd-grande"><b data-total-pendencias>{aguardando || semDem ? '–' : pan.pendencias}</b> {pan.pendencias === 1 ? 'pendência' : 'pendências'} {modo === 'hoje' ? 'neste dia' : modo === 'semana' ? 'nesta semana' : `em ${NOMES_MES[mes - 1]}`}</p>
+          ) : <p className="agd-grande"><b>{aguardando || semEv ? '–' : pan.compromissos}</b> {pan.compromissos === 1 ? 'compromisso' : 'compromissos'}</p>}
         </div>
         <ul className="agd-chips-res">
-          {verDemandas ? <li className="chip neutro">{plural(pan.demandas, 'demanda')}</li> : null}
-          {verDemandas && pan.atrasadas ? <li className="chip perigo">{plural(pan.atrasadas, 'atrasada')}</li> : null}
-          {verEventos ? <li className="chip neutro">{plural(pan.compromissos, 'compromisso')}</li> : null}
+          {verDemandas && !semDem ? <li className="chip neutro">{plural(pan.demandas, 'demanda')}</li> : null}
+          {verDemandas && !semDem && pan.atrasadas ? <li className="chip perigo">{plural(pan.atrasadas, 'atrasada')}</li> : null}
+          {verEventos && !semEv ? <li className="chip neutro">{plural(pan.compromissos, 'compromisso')}</li> : null}
         </ul>
       </section>
 
