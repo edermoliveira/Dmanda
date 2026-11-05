@@ -2,6 +2,7 @@
 // As quatro visões de Demandas (Cards, Quadro, Tabela, Lista) sobre a mesma lista de demandas do banco, mais o menu "Mover para" e o ajuste de espaço dos cards.
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Icone } from './Icone';
+import { emLote, epocaDoApp, pendentes, registrar, type Pedido } from './ajuste';
 import { useApp } from './contexto';
 import { AcaoCard, BarraProg, CardDemanda, ChipEspera, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
 import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordemDaEtapa, ordenar, origemDe, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
@@ -12,56 +13,65 @@ import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordemDaEtapa, ordenar, o
 // Tudo é recalculado do zero a cada ajuste: ao voltar a existir espaço (janela maior, menu recolhido, zoom menor), o que saiu reaparece.
 const TETO_TITULO = 4;
 const MINIMO_TITULO = 2;
-/** Ajuste ao espaço (card e nota nunca têm barra de rolagem). */
-export function ajustar() {
+/** Ajuste de um card (frente): as escritas ficam no gerador e as leituras do layout são entregues ao executor em lote (ver ajuste.ts). A ordem dos passos é a de sempre. */
+function* ajusteFrente(f: HTMLElement, cw: number): Pedido {
+  f.querySelectorAll('.oculto').forEach((x) => x.classList.remove('oculto'));
+  const ds = f.querySelector<HTMLElement>('.desc');
+  const t = f.querySelector<HTMLElement>('.assunto.fit');
+  const sobra = () => f.scrollHeight > f.clientHeight + 1;
+  let tit = 0, minT = 0;
+  if (t) {
+    t.style.webkitLineClamp = 'none';
+    const { lh, h } = (yield () => { const cs = getComputedStyle(t); return { lh: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3, h: t.scrollHeight }; }) as { lh: number; h: number };
+    const naturais = Math.max(1, Math.round(h / lh));
+    tit = Math.min(naturais, TETO_TITULO); minT = Math.min(naturais, MINIMO_TITULO);
+    t.style.webkitLineClamp = String(tit);
+  }
+  if (ds) { let n = cw >= 640 && cw < 900 ? 2 : 3; ds.style.webkitLineClamp = String(n); while (n > 1 && (yield sobra)) { n--; ds.style.webkitLineClamp = String(n); } if (yield sobra) ds.classList.add('oculto'); }
+  { const x = f.querySelector('.tempo'); if (x && (yield sobra)) x.classList.add('oculto'); }
+  while (t && tit > minT && (yield sobra)) { tit--; t.style.webkitLineClamp = String(tit); }
+  for (const q of ['.tags .chip', '.prog']) { const x = f.querySelector(q); if (x && (yield sobra)) x.classList.add('oculto'); }
+}
+/** Ajuste das tarefas do verso do card: as que não cabem saem do fim e o aviso "+N tarefas" aparece. */
+function* ajusteVerso(ul: HTMLElement): Pedido {
+  const mais = ul.querySelector<HTMLElement>('.mais-t');
+  const lis = Array.from(ul.querySelectorAll<HTMLElement>('li:not(.mais-t)'));
+  lis.forEach((l) => { l.style.display = ''; });
+  if (mais) mais.style.display = 'none';
+  let n = 0;
+  const sobra = () => ul.scrollHeight > ul.clientHeight + 1;
+  while ((yield sobra) && n < lis.length - 1) { lis[lis.length - 1 - n].style.display = 'none'; n++; }
+  if (n && mais) {
+    mais.style.display = '';
+    while (n < lis.length - 1 && (yield sobra)) { lis[lis.length - 1 - n].style.display = 'none'; n++; }
+    mais.textContent = `+${n} ${n === 1 ? 'tarefa' : 'tarefas'}, abra em Editar`;
+  }
+}
+/** Ajuste ao espaço (card e nota nunca têm barra de rolagem). Sem `forcar`, só os cards cuja largura, altura, classes ou texto mudaram são ajustados de novo
+ *  (um filtro, uma tarefa marcada ou um novo desenho não refazem as centenas de cards); redimensionar e carregar fontes forçam tudo. */
+export function ajustar(forcar = false) {
   const app = document.querySelector('.app');
   if (!app) return;
   const cw = (document.querySelector('.frame') as HTMLElement | null)?.clientWidth ?? 0;
-  app.querySelectorAll<HTMLElement>('.face.front').forEach((f) => {
-    f.querySelectorAll('.oculto').forEach((x) => x.classList.remove('oculto'));
-    const ds = f.querySelector<HTMLElement>('.desc');
-    const t = f.querySelector<HTMLElement>('.assunto.fit');
-    const sobra = () => f.scrollHeight > f.clientHeight + 1;
-    let tit = 0, minT = 0;
-    if (t) {
-      t.style.webkitLineClamp = 'none';
-      const lh = parseFloat(getComputedStyle(t).lineHeight) || parseFloat(getComputedStyle(t).fontSize) * 1.3;
-      const naturais = Math.max(1, Math.round(t.scrollHeight / lh));
-      tit = Math.min(naturais, TETO_TITULO); minT = Math.min(naturais, MINIMO_TITULO);
-      t.style.webkitLineClamp = String(tit);
-    }
-    const tirarLinhaDoTitulo = () => { if (t && tit > minT) { tit--; t.style.webkitLineClamp = String(tit); } };
-    if (ds) { let n = cw >= 640 && cw < 900 ? 2 : 3; ds.style.webkitLineClamp = String(n); while (n > 1 && sobra()) { n--; ds.style.webkitLineClamp = String(n); } if (sobra()) ds.classList.add('oculto'); }
-    { const x = f.querySelector('.tempo'); if (x && sobra()) x.classList.add('oculto'); }
-    while (t && tit > minT && sobra()) tirarLinhaDoTitulo();
-    for (const q of ['.tags .chip', '.prog']) { const x = f.querySelector(q); if (x && sobra()) x.classList.add('oculto'); }
-  });
-  app.querySelectorAll<HTMLElement>('.face.back .tarefas').forEach((ul) => {
-    const mais = ul.querySelector<HTMLElement>('.mais-t');
-    const lis = Array.from(ul.querySelectorAll<HTMLElement>('li:not(.mais-t)'));
-    lis.forEach((l) => { l.style.display = ''; });
-    if (mais) mais.style.display = 'none';
-    let n = 0;
-    const sobra = () => ul.scrollHeight > ul.clientHeight + 1;
-    while (sobra() && n < lis.length - 1) { lis[lis.length - 1 - n].style.display = 'none'; n++; }
-    if (n && mais) {
-      mais.style.display = '';
-      while (n < lis.length - 1 && sobra()) { lis[lis.length - 1 - n].style.display = 'none'; n++; }
-      mais.textContent = `+${n} ${n === 1 ? 'tarefa' : 'tarefas'}, abra em Editar`;
-    }
-  });
+  const epoca = epocaDoApp(app, cw);
+  const frentes = pendentes(Array.from(app.querySelectorAll<HTMLElement>('.face.front')), epoca, forcar, (f) => f.textContent ?? '');
+  // o aviso "+N tarefas" é escrito pelo próprio ajuste: fora do texto que decide se é preciso ajustar de novo
+  const versos = pendentes(Array.from(app.querySelectorAll<HTMLElement>('.face.back .tarefas')), epoca, forcar, (ul) => Array.from(ul.querySelectorAll('li:not(.mais-t)'), (l) => l.textContent).join(''));
+  if (!frentes.length && !versos.length) return;
+  emLote([...frentes.map((f) => ajusteFrente(f, cw)), ...versos.map((ul) => ajusteVerso(ul))]);
+  registrar(frentes, versos); // só depois de o ajuste terminar
 }
 export function useAjustar(dep: unknown) {
   useLayoutEffect(() => { ajustar(); });
   useEffect(() => {
     let t: ReturnType<typeof setTimeout>;
-    const f = () => { clearTimeout(t); t = setTimeout(ajustar, 120); };
+    const f = () => { clearTimeout(t); t = setTimeout(() => ajustar(true), 120); };
     window.addEventListener('resize', f);
     // a largura dos cards também muda sem a janela mudar (menu lateral recolhido ou aberto, zoom, rotação): observa o próprio quadro de conteúdo
     const quadro = document.querySelector('.frame');
     const ro = quadro && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(f) : null;
     if (quadro) ro?.observe(quadro);
-    void document.fonts?.ready.then(ajustar);
+    void document.fonts?.ready.then(() => ajustar(true));
     return () => { window.removeEventListener('resize', f); ro?.disconnect(); clearTimeout(t); };
   }, [dep]);
 }

@@ -12,6 +12,7 @@ import { flushSync } from 'react-dom';
 import { Icone } from './Icone';
 import { Janela } from './janela-base';
 import { novoUuid } from './campos';
+import { emLote, epocaDoApp, pendentes, registrar, type Pedido } from './ajuste';
 import * as srvE from '@/servidor/entradas';
 import { useApp, useOnline } from './contexto';
 import {
@@ -24,32 +25,40 @@ const CAMPOS: (keyof CamposEntrada)[] = ['titulo', 'texto', 'cor', 'fixada'];
 const camposDe = (e: Entrada): CamposEntrada => ({ titulo: e.titulo, texto: e.texto, cor: e.cor, fixada: e.fixada });
 const resumoOuVazio = (e: Entrada) => resumoDe(e) || '(só tags)';
 
-/** Ajuste ao espaço do post-it: nunca há barra de rolagem. O texto ocupa as linhas que couberem; se sobra pouco, as tags saem antes do texto. */
-export function ajustarNotas() {
-  document.querySelectorAll<HTMLElement>('.app .postit').forEach((p) => {
-    const tags = p.querySelector<HTMLElement>('.p-tags'), x = p.querySelector<HTMLElement>('.p-txt.fit, .p-desc.fit');
-    tags?.classList.remove('oculto'); x?.classList.remove('oculto'); if (x) x.style.maxHeight = '';
-    if (!x) return;
-    x.style.webkitLineClamp = 'none';
-    const cs = getComputedStyle(x), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4;
-    // sem título, o texto é o conteúdo e as tags saem antes dele se faltar espaço; com título, as tags ficam e a descrição é que cede
-    if (tags && !x.classList.contains('p-desc') && tags.textContent?.trim() && x.clientHeight < lh * 3.2) { tags.classList.add('oculto'); }
-    const linhas = Math.floor((x.clientHeight + 1) / lh);
-    if (x.classList.contains('p-desc') && linhas < 1) { x.classList.add('oculto'); return; } // a descrição só aparece se couber ao menos uma linha inteira
-    x.style.webkitLineClamp = String(Math.max(1, linhas));
-    x.style.maxHeight = `${Math.max(1, linhas) * lh}px`; // a caixa tem exatamente as linhas inteiras que couberam (nunca meia linha)
-  });
+/** Ajuste de um post-it: as escritas ficam no gerador e as leituras do layout vão em lote ao executor (ver ajuste.ts). A ordem dos passos é a de sempre. */
+function* ajusteNota(p: HTMLElement): Pedido {
+  const tags = p.querySelector<HTMLElement>('.p-tags'), x = p.querySelector<HTMLElement>('.p-txt.fit, .p-desc.fit');
+  tags?.classList.remove('oculto'); x?.classList.remove('oculto'); if (x) x.style.maxHeight = '';
+  if (!x) return;
+  x.style.webkitLineClamp = 'none';
+  const { lh, h0 } = (yield () => { const cs = getComputedStyle(x); return { lh: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4, h0: x.clientHeight }; }) as { lh: number; h0: number };
+  // sem título, o texto é o conteúdo e as tags saem antes dele se faltar espaço; com título, as tags ficam e a descrição é que cede
+  if (tags && !x.classList.contains('p-desc') && tags.textContent?.trim() && h0 < lh * 3.2) { tags.classList.add('oculto'); }
+  const h1 = (yield () => x.clientHeight) as number; // esconder as tags muda a altura do texto: lê de novo
+  const linhas = Math.floor((h1 + 1) / lh);
+  if (x.classList.contains('p-desc') && linhas < 1) { x.classList.add('oculto'); return; } // a descrição só aparece se couber ao menos uma linha inteira
+  x.style.webkitLineClamp = String(Math.max(1, linhas));
+  x.style.maxHeight = `${Math.max(1, linhas) * lh}px`; // a caixa tem exatamente as linhas inteiras que couberam (nunca meia linha)
+}
+/** Ajuste ao espaço do post-it: nunca há barra de rolagem. O texto ocupa as linhas que couberem; se sobra pouco, as tags saem antes do texto.
+ *  Sem `forcar`, só os post-its cuja largura, altura, classes ou texto mudaram são ajustados de novo. */
+export function ajustarNotas(forcar = false) {
+  const app = document.querySelector('.app');
+  if (!app) return;
+  const epoca = epocaDoApp(app, (document.querySelector('.frame') as HTMLElement | null)?.clientWidth ?? 0);
+  const notas = pendentes(Array.from(app.querySelectorAll<HTMLElement>('.postit')), epoca, forcar, (p) => p.textContent ?? '');
+  if (notas.length) { emLote(notas.map(ajusteNota)); registrar(notas); }
 }
 function useAjustarNotas(dep: unknown) {
   useLayoutEffect(() => { ajustarNotas(); });
   useEffect(() => {
     let t: ReturnType<typeof setTimeout>;
-    const f = () => { clearTimeout(t); t = setTimeout(ajustarNotas, 120); };
+    const f = () => { clearTimeout(t); t = setTimeout(() => ajustarNotas(true), 120); };
     window.addEventListener('resize', f);
     const quadro = document.querySelector('.frame');
     const ro = quadro && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(f) : null;
     if (quadro) ro?.observe(quadro);
-    void document.fonts?.ready.then(ajustarNotas);
+    void document.fonts?.ready.then(() => ajustarNotas(true));
     return () => { window.removeEventListener('resize', f); ro?.disconnect(); clearTimeout(t); };
   }, [dep]);
 }
