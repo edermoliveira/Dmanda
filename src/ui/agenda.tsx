@@ -9,6 +9,7 @@ import { ChipEspera } from './cartoes';
 import { diasDesde, plural, titulo, type Demanda } from '@/lib/demandas';
 import { diaDaSemana, somarDias, type DiaIndisponivel } from '@/lib/prazos';
 import { horarioDe, sobrepostosA, type Evento } from '@/lib/eventos';
+import { eObjeto } from '@/lib/armazenamento';
 import {
   anoMes, cargaPorDia, dataPorExtenso, descreverDia, diaDoMes, fimDeSemana, gradeMes, itensDoDia, LIMIARES_CARGA, marcosPorDia, nivelDaCarga, nomeLongoDoDia, NOMES_MES, panorama,
   pendenciasSemPrazo, primeiroDoMes, ROTULO_MARCO, ROTULO_NIVEL, rotuloSemana, SEMANA_INICIAIS, SEMANA_NOMES, semanaDe, somarMeses, tituloMes, diasNoMes, type CargaDia, type Marco, type NivelCarga, type OpcoesAgenda,
@@ -25,7 +26,14 @@ const maiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const NIVEIS: NivelCarga[] = ['zero', 'baixa', 'media', 'alta'];
 const FAIXA_NIVEL: Record<NivelCarga, string> = { zero: '0', baixa: `${LIMIARES_CARGA.baixa} a ${LIMIARES_CARGA.media - 1}`, media: `${LIMIARES_CARGA.media} a ${LIMIARES_CARGA.alta - 1}`, alta: `${LIMIARES_CARGA.alta} ou mais` };
 
-function lerPrefs(): Preferencias { try { const v = localStorage.getItem(CHAVE); return v ? (JSON.parse(v) as Preferencias) : {}; } catch { return {}; } }
+// o que está guardado pode estar corrompido ou ser de outra versão: só entra o que tem a forma esperada
+function lerPrefs(): Preferencias {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHAVE) ?? 'null') as unknown;
+    if (!eObjeto(v)) return {};
+    return { modo: MODOS.some(([m]) => m === v.modo) ? (v.modo as Modo) : undefined, cat: CATEGORIAS.some(([c]) => c === v.cat) ? (v.cat as Categoria) : undefined, concluidas: v.concluidas === true, finalizadas: v.finalizadas === true };
+  } catch { return {}; }
+}
 function gravarPrefs(p: Preferencias) { try { localStorage.setItem(CHAVE, JSON.stringify(p)); } catch { /* sem armazenamento: vale só nesta visita */ } }
 
 // ---------- peças ----------

@@ -6,6 +6,8 @@ import { FILTRO_VAZIO, hojeISO, type Coluna, type DadosDemanda, type Demanda, ty
 import * as srv from '@/servidor/demandas';
 import * as srvE from '@/servidor/entradas';
 import * as srvA from '@/servidor/agenda';
+import { cargaInicial } from '@/servidor/carga';
+import { eObjeto, gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada } from '@/lib/armazenamento';
 import { avisosDeHoje, compararEventos, minutosAgora, type AvisoEvento, type DadosEvento, type Evento } from '@/lib/eventos';
 import type { Entrada } from '@/lib/entradas';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
@@ -194,13 +196,15 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   useEffect(() => {
     const t = lerLS<string | null>('dmanda-tema', null);
     setTema(t === 'escuro' || t === 'claro' ? t : matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro');
-    setMenuAberto(lerLS<boolean>('dmanda:menu-aberto', false));
-    const ui = lerLS<{ visao?: Visao; ordem?: { coluna: Coluna; sentido: 1 | -1 }; grupos?: Record<string, boolean> }>('dmanda:ui', {});
-    if (ui.visao) setVisaoE(ui.visao);
-    if (ui.ordem) setOrdem(ui.ordem);
-    if (ui.grupos) setGrupos(ui.grupos);
-    setRascunhos(lerLS<Record<string, Rascunho>>('dmanda:rascunhos', {}));
-    setDispensados(lerLS<string[]>('dmanda:avisos-vistos', []).slice(-200));
+    setMenuAberto(lerLS<unknown>('dmanda:menu-aberto', false) === true);
+    // o que está guardado pode estar corrompido ou ser de outra versão: só entra o que tem a forma esperada (ver lib/armazenamento.ts)
+    const ui = lerLS<Record<string, unknown> | null>('dmanda:ui', null) ?? {};
+    const visaoUi = visaoGuardada(ui.visao), ordemUi = ordemGuardada(ui.ordem);
+    if (visaoUi) setVisaoE(visaoUi);
+    if (ordemUi) setOrdem(ordemUi);
+    setGrupos(gruposGuardados(ui.grupos));
+    setRascunhos(rascunhosGuardados<Rascunho>(lerLS<unknown>('dmanda:rascunhos', null)));
+    setDispensados(textosGuardados(lerLS<unknown>('dmanda:avisos-vistos', null)));
     setPronto(true);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -259,18 +263,26 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setHoje(hojeISO());
-    void recarregar();
-    void recarregarEntradas();
-    void recarregarEventos();
+    // uma só chamada ao servidor traz tudo (ver servidor/carga.ts); cada parte tem o seu resultado e o seu erro
+    void protegido(() => cargaInicial()).then((r) => {
+      if (!r.ok) { setErroCarga(r.erro); setErroEntradas(r.erro); setErroEventos(r.erro); setCarregando(false); setCarregandoEntradas(false); setCarregandoEventos(false); return; }
+      const c = r.dados;
+      if (c.demandas.ok) { setHoje(hojeISO()); setDemandas(c.demandas.dados); setErroCarga(null); } else setErroCarga(c.demandas.erro);
+      setCarregando(false);
+      if (c.entradas.ok) { setEntradas(c.entradas.dados); setErroEntradas(null); } else setErroEntradas(c.entradas.erro);
+      setCarregandoEntradas(false);
+      if (c.eventos.ok) { setEventos(c.eventos.dados); setErroEventos(null); } else setErroEventos(c.eventos.erro);
+      setCarregandoEventos(false);
+      if (c.dias.ok) setDias(c.dias.dados);
+      if (c.rotina?.ok) setRotina(c.rotina.dados);
+      if (c.ambiente) setAmbiente(c.ambiente);
+    });
     // um só relógio para o dia e para a hora (os dois lidos do MESMO instante, em America/Sao_Paulo), senão na virada do dia o aviso pode juntar a data de ontem com a hora de hoje
     const tique = () => { const a = new Date(); setHoje(hojeISO(a)); setAgoraMin(minutosAgora(a)); };
     const relogio = setInterval(tique, 30_000);
     setAgoraMin(minutosAgora());
-    void srv.ambiente().then(setAmbiente).catch(() => {});
-    void srv.listarDias().then((x) => { if (x.ok) setDias(x.dados); }).catch(() => {});
-    void srv.estadoRotina().then((x) => { if (x.ok) setRotina(x.dados); }).catch(() => {});
     return () => { clearInterval(relogio); };
-  }, [recarregar, recarregarEntradas, recarregarEventos]);
+  }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => { janelaAberta.current = janela !== null; }, [janela]);
@@ -281,7 +293,9 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       if (document.visibilityState === 'visible') { const a = new Date(); setHoje(hojeISO(a)); setAgoraMin(minutosAgora(a)); } // o dia pode ter virado enquanto o aplicativo estava em segundo plano, com ou sem rede para reler
       if (document.visibilityState !== 'visible' || janelaAberta.current || pendentes.current > 0) return;
       const antes = gravacoes.current;
-      const [r, d, en, evs] = await Promise.all([protegido(() => srv.listarDemandas(false)), protegido(() => srv.listarDias()), protegido(() => srvE.listarEntradas(false)), protegido(() => srvA.listarEventos())]);
+      const c = await protegido(() => cargaInicial(false)); // uma só chamada, sem o estado da rotina nem o ambiente
+      if (!c.ok) return; // sem rede agora: o que está na tela continua
+      const { demandas: r, dias: d, entradas: en, eventos: evs } = c.dados;
       if (gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) {
         if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) setDias(d.dados); }
         if (en.ok) { setEntradas(en.dados); setErroEntradas(null); }
@@ -295,7 +309,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
 
   // estável (identidade fixa): as janelas a usam em efeitos que gravam o rascunho sozinhos
   // parte do que está guardado no navegador, não só da memória desta aba: outra aba ou a PWA do mesmo aparelho pode ter guardado um rascunho que esta não conhece, e gravar o mapa da memória o apagaria
-  const guardarRascunho = useCallback((chave: string, r: Rascunho | null) => setRascunhos((m) => { const n = { ...(lerLS<Record<string, Rascunho> | null>('dmanda:rascunhos', null) ?? m) }; if (r) n[chave] = r; else delete n[chave]; gravarLS('dmanda:rascunhos', n); return n; }), []);
+  const guardarRascunho = useCallback((chave: string, r: Rascunho | null) => setRascunhos((m) => { const guardado = lerLS<unknown>('dmanda:rascunhos', null); const n = { ...(eObjeto(guardado) ? rascunhosGuardados<Rascunho>(guardado) : m) }; if (r) n[chave] = r; else delete n[chave]; gravarLS('dmanda:rascunhos', n); return n; }), []);
 
   const gravando = useCallback(async <T,>(f: () => Promise<T>): Promise<T> => {
     gravacoes.current++; pendentes.current++;

@@ -3,6 +3,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { emailAutorizado, contaAutorizada, situacaoDoErroAuth, ehCookieDeSessao, COOKIE_LEGADO_ULTIMO_USO } from '../src/lib/sessao.ts';
 import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO } from '../src/lib/prazos.ts';
+import { modoTeste } from '../src/lib/supabase/config.ts';
+import { gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada, eObjeto } from '../src/lib/armazenamento.ts';
 import { googleLigado } from '../src/lib/login.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
 import { esperaPrefeita, dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
@@ -170,6 +172,25 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   // carimbo da criação (criado_em): America/Sao_Paulo, 24 h, sem segundos, e cinco cores oferecidas (a 5, retirada, ainda é aceita em notas antigas)
   ok(carimbo('2026-10-30T17:48:00Z') === '30/10/2026 às 14:48' && carimbo('2026-10-31T02:30:59.999Z') === '30/10/2026 às 23:30' && carimbo('2026-01-01T03:00:00Z') === '01/01/2026 às 00:00' && !/:\d{2}:\d{2}/.test(carimbo('2026-10-30T17:48:35Z')), 'carimbo: dia/mês/ano às hh:mm no horário de Brasília, 24 h, sem segundos');
   ok(QTD_CORES === 5 && validarEntrada({ texto: 'a', cor: 4 }, { criando: true }).cor === 4 && validarEntrada({ texto: 'a', cor: 5 }, { criando: false }).cor === 5 && /Cor inválida/.test(fe(() => validarEntrada({ texto: 'a', cor: 6 }, { criando: true }))), 'entradas: cinco cores oferecidas; a cor retirada (5) continua aceita em notas antigas; 6 é recusada');
+}
+
+// armazenamento do navegador: valor corrompido ou de outra versão nunca trava a abertura e só o que tem a forma esperada é aproveitado
+{
+  ok(eObjeto({}) && !eObjeto(null) && !eObjeto([]) && !eObjeto('x') && !eObjeto(5), 'armazenamento: só objeto simples conta como objeto (nulo, lista, texto e número não)');
+  ok(visaoGuardada('quadro') === 'quadro' && visaoGuardada('zzz') === null && visaoGuardada(7) === null && visaoGuardada(null) === null, 'armazenamento: a visão guardada precisa ser uma das quatro');
+  ok(ordemGuardada({ coluna: 'prazo', sentido: -1 })?.coluna === 'prazo' && ordemGuardada({ coluna: 'nada', sentido: 1 }) === null && ordemGuardada({ coluna: 'prazo', sentido: 5 }) === null && ordemGuardada([]) === null && ordemGuardada(null) === null, 'armazenamento: a ordem guardada precisa ter coluna conhecida e sentido 1 ou -1');
+  ok(JSON.stringify(gruposGuardados({ a: true, b: 'x', c: false })) === '{"a":true,"c":false}' && JSON.stringify(gruposGuardados([1])) === '{}' && JSON.stringify(gruposGuardados(5)) === '{}', 'armazenamento: grupos fechados só aceitam valores verdadeiro ou falso');
+  const rg = rascunhosGuardados({ 'e:nova': { dados: { texto: 'a' } }, 'e:x': null, 'e:y': {}, 'e:z': { dados: null }, 'n:1': 5 });
+  ok(Object.keys(rg).join() === 'e:nova' && rg['e:nova'].dados.texto === 'a' && Object.keys(rascunhosGuardados([])).length === 0 && Object.keys(rascunhosGuardados('x')).length === 0, 'armazenamento: rascunhos sem a forma mínima (objeto com "dados") são ignorados e o válido é mantido');
+  ok(textosGuardados(['a', 5, 'b', null]).join() === 'a,b' && textosGuardados({}).length === 0 && textosGuardados('x').length === 0 && textosGuardados(Array.from({ length: 300 }, (_, i) => String(i))).length === 200, 'armazenamento: lista de avisos vistos só aceita textos e guarda os 200 últimos');
+}
+
+// banco de teste: recusado em produção; a única exceção é a medição local explícita, que nunca vale na Vercel
+{
+  const lanca = (env) => { try { modoTeste(env); return false; } catch { return true; } };
+  ok(modoTeste({ DMANDA_BANCO: 'teste', NODE_ENV: 'development' }) === true && modoTeste({ NODE_ENV: 'production' }) === false, 'banco de teste: liga só em desenvolvimento com DMANDA_BANCO=teste; sem a variável é sempre o Supabase');
+  ok(lanca({ DMANDA_BANCO: 'teste', NODE_ENV: 'production' }) && lanca({ DMANDA_BANCO: 'teste', NODE_ENV: 'production', DMANDA_MEDICAO_LOCAL: 'nao' }), 'banco de teste: recusado em produção, com ou sem a medição desligada');
+  ok(modoTeste({ DMANDA_BANCO: 'teste', NODE_ENV: 'production', DMANDA_MEDICAO_LOCAL: 'sim' }) === true && lanca({ DMANDA_BANCO: 'teste', NODE_ENV: 'production', DMANDA_MEDICAO_LOCAL: 'sim', VERCEL: '1' }), 'banco de teste: a medição local explícita vale no computador e é recusada na Vercel');
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
