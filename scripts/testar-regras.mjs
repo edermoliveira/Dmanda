@@ -6,6 +6,7 @@ import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_P
 import { modoTeste, medicaoLocalPermitida } from '../src/lib/supabase/config.ts';
 import { gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada, eObjeto } from '../src/lib/armazenamento.ts';
 import { googleLigado } from '../src/lib/login.ts';
+import { aparenciaGuardada, APARENCIA_PADRAO, ePadrao, modoGuardado, temaDoModo, variaveisAparencia, CONJUNTOS, FONTES_TITULO, FONTES_TEXTO, FONTES_MONO, PALETAS, TEXTO, ICONE, CARD } from '../src/lib/aparencia.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
 import { esperaPrefeita, dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
 import { validarDados, validarDia, validarEntrada } from '../src/nucleo/validacao.ts';
@@ -203,6 +204,27 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
     ok(lanca({ ...prod, [k]: 'x' }, local), `banco de teste: com só ${k} definida a medição local é recusada`);
   }
   ok(!medicaoLocalPermitida({}, local) && !medicaoLocalPermitida({ DMANDA_MEDICAO_LOCAL: 'nao' }, local) && !medicaoLocalPermitida({ DMANDA_MEDICAO_LOCAL: 'SIM' }, local) && !medicaoLocalPermitida({ DMANDA_MEDICAO_LOCAL: 'sim', VERCEL: '' }, nuvem), 'banco de teste: só o valor exato "sim" liga a medição local');
+}
+
+// Aparência de Configurações (bloco de 06/11/2026): leitura segura do que está guardado, limites, modo e variáveis
+{
+  const ap = aparenciaGuardada;
+  ok(ePadrao(ap(null)) && ePadrao(ap(undefined)) && ePadrao(ap('lixo')) && ePadrao(ap([1])) && ePadrao(ap(7)) && ePadrao(ap({})), 'aparência: ausente, ilegível ou de forma errada volta ao padrão');
+  ok(ePadrao(ap(JSON.parse(JSON.stringify(APARENCIA_PADRAO)))), 'aparência: o padrão gravado e lido continua sendo o padrão');
+  const x = ap({ textoPct: 9999, icone: -4, card: 'x', titulo: 'nada', texto: 7, mono: null, paleta: 99, fundo: 'piscante', movimento: 3 });
+  ok(x.textoPct === TEXTO.max && x.icone === ICONE.min && x.card === CARD.padrao && x.titulo === 'inter' && x.texto === 'inter' && x.mono === 'plex' && x.paleta === null && x.fundo === 'padrao' && x.movimento === 'sistema', 'aparência: valores absurdos são limitados ou voltam ao padrão, campo a campo');
+  ok(ap({ textoPct: 1 }).textoPct === TEXTO.min && ap({ textoPct: 112.4 }).textoPct === 112 && ap({ textoPct: NaN }).textoPct === 100 && ap({ icone: Infinity }).icone === 20, 'aparência: o texto nunca fica abaixo de 100% nem acima de 125% e número inválido volta ao padrão');
+  const y = ap({ paleta: 2, textoPct: 120, titulo: 'sora', fundo: 'animado', movimento: 'reduzido', extra: 1 });
+  ok(y.paleta === 2 && y.textoPct === 120 && y.titulo === 'sora' && y.texto === 'inter' && y.fundo === 'animado' && y.movimento === 'reduzido' && !('extra' in y), 'aparência: o que é válido é aproveitado e o resto volta ao padrão');
+  ok(ap({ paleta: 1.5 }).paleta === null && ap({ paleta: -1 }).paleta === null && ap({ paleta: 9 }).paleta === 9 && PALETAS.length === 10, 'aparência: dez destaques, índice inválido volta ao padrão');
+  ok(CONJUNTOS.every((c) => FONTES_TITULO.some((f) => f.id === c.titulo) && FONTES_TEXTO.some((f) => f.id === c.texto) && FONTES_MONO.some((f) => f.id === c.mono)) && CONJUNTOS[0].titulo === APARENCIA_PADRAO.titulo, 'fontes: todo conjunto usa fontes que existem e o primeiro é o padrão');
+  ok([FONTES_TITULO, FONTES_TEXTO, FONTES_MONO].every((l) => new Set(l.map((f) => f.id)).size === l.length && l.every((f) => /^var\(--f-[a-z]+\), /.test(f.css))), 'fontes: identificadores únicos e todas vêm das variáveis do layout');
+  ok(modoGuardado('claro') === 'claro' && modoGuardado('escuro') === 'escuro' && modoGuardado('sistema') === 'sistema' && modoGuardado('Claro') === null && modoGuardado(null) === null && modoGuardado(1) === null, 'modo: só Claro, Escuro e Sistema são aceitos');
+  ok(temaDoModo('claro', true) === 'claro' && temaDoModo('escuro', false) === 'escuro' && temaDoModo('sistema', true) === 'escuro' && temaDoModo('sistema', false) === 'claro', 'modo: Sistema segue o aparelho, os outros ignoram');
+  const v = variaveisAparencia(APARENCIA_PADRAO);
+  ok(v['--esc'] === '0.85' && v['--icn'] === '20px' && v['--cardh'] === '340px' && !('--acc' in v), 'variáveis: o padrão mantém escala 0,85, ícone 20 px, card 340 px e nenhum destaque forçado');
+  ok(variaveisAparencia({ ...APARENCIA_PADRAO, textoPct: 125 })['--esc'] === '1.0625' && variaveisAparencia({ ...APARENCIA_PADRAO, textoPct: 105 })['--esc'] === '0.8925', 'variáveis: a escala é 0,85 vezes a porcentagem escolhida');
+  ok(!ePadrao({ ...APARENCIA_PADRAO, fundo: 'animado' }) && !ePadrao({ ...APARENCIA_PADRAO, paleta: 0 }), 'ePadrao: qualquer mudança conta');
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
