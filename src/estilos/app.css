@@ -203,3 +203,82 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
   .app .lista-dem .ld-abrir .tx { display: none; }
   .app .lista-dem .linha-d { padding-left: 14px; }
 }
+
+/* ---------- Configurações > Aparência (decisões 11 e 35) ---------- */
+.app[data-dir="d"] .cfg .cfg-bloco { max-width: none; }
+.app[data-dir="d"] .cfg .data { margin: 6px 0 0; }
+.app[data-dir="d"] .cfg .cfg-nota { column-span: all; margin: 0 0 16px; }
+.app[data-dir="d"] .cfg .seg-p { flex-wrap: wrap; }
+.app[data-dir="d"] .cfg .seg-p button { min-height: 40px; padding: 0 16px; }
+.app[data-dir="d"][data-dev="toque"] .cfg .seg-p button { min-height: 44px; }
+.app[data-dir="d"] .cfg .sw { min-height: 64px; }
+.app[data-dir="d"] .cfg .sw.padrao i { background: linear-gradient(90deg, var(--padrao-sw1) 0 55%, var(--padrao-sw2) 55%); }
+.app[data-dir="d"][data-tema="claro"] .cfg .sw.padrao { --padrao-sw1: #0071E3; --padrao-sw2: #0062C4; }
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw.padrao { --padrao-sw1: #3D9BFF; --padrao-sw2: #6DB3FF; }
+.app[data-dir="d"] .cfg .amostra { display: block; margin-top: 6px; padding: 0 14px; color: var(--text2); font-size: calc(14px * var(--esc)); overflow-wrap: anywhere; }
+.app[data-dir="d"] .cfg .fld { margin-top: 12px; }
+.app[data-dir="d"] .cfg .fld select { min-height: 44px; }
+.app[data-dir="d"] .cfg .rng input[type="range"] { min-height: 44px; }
+.app[data-dir="d"] .cfg-previa { display: grid; gap: 6px; justify-items: start; margin: 4px 0 12px; padding: 14px; border-radius: var(--r-card); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
+.app[data-dir="d"] .cfg-previa p { margin: 0; }
+.app[data-dir="d"] .cfg-previa b { font-family: var(--font-h); font-size: calc(15px * var(--esc)); }
+.app[data-dir="d"] .cfg-previa .data .ic { vertical-align: -0.2em; }
+/* Fundo animado (opcional): véu de destaque que deriva devagar atrás de tudo. Parado com movimento reduzido (sistema ou escolha). */
+.app[data-dir="d"][data-fundo="animado"] .bg { display: block; overflow: hidden; background: var(--bgbase); }
+.app[data-dir="d"][data-fundo="animado"] .bg::before {
+  content: ""; position: absolute; inset: -30%;
+  background:
+    radial-gradient(38% 38% at 20% 25%, color-mix(in srgb, var(--acc) 34%, transparent), transparent 70%),
+    radial-gradient(34% 34% at 80% 30%, color-mix(in srgb, var(--acc-text) 24%, transparent), transparent 70%),
+    radial-gradient(40% 40% at 55% 85%, color-mix(in srgb, var(--acc) 26%, transparent), transparent 70%);
+  animation: fundo-deriva 48s ease-in-out infinite alternate;
+}
+@keyframes fundo-deriva { from { transform: translate3d(-4%, -3%, 0) rotate(0deg) scale(1); } to { transform: translate3d(5%, 4%, 0) rotate(14deg) scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .app[data-dir="d"][data-fundo="animado"] .bg::before { animation: none; } }
+.app[data-dir="d"][data-reduzir="true"][data-fundo="animado"] .bg::before { animation: none !important; }
+
+/* o atalho da busca respeita o piso de 10 px mesmo com o texto no mínimo */
+.app .buscabtn kbd { font-size: max(10px, calc(12px * var(--esc))); }
+
+/* PALETAS: gerado por scripts/gerar-paletas.mjs (não editar à mão). Contraste conferido nos dois modos. */
+.app[data-dir="d"][data-tema="claro"][data-paleta="0"] { --acc: hsl(170 72% 37%); --acc-ink: hsl(170 90% 9%); --acc-soft: hsl(170 72% 37% / 0.18); --acc-text: hsl(170 80% 24%); --foco: hsl(170 72% 37%); } /* Água-marinha */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="0"] i { background: linear-gradient(90deg, hsl(170 72% 37%) 0 55%, hsl(170 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="1"] { --acc: hsl(200 72% 48%); --acc-ink: hsl(200 90% 9%); --acc-soft: hsl(200 72% 48% / 0.18); --acc-text: hsl(200 80% 24%); --foco: hsl(200 72% 48%); } /* Céu */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="1"] i { background: linear-gradient(90deg, hsl(200 72% 48%) 0 55%, hsl(200 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="2"] { --acc: hsl(220 72% 48%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(220 72% 48% / 0.18); --acc-text: hsl(220 80% 24%); --foco: hsl(220 72% 48%); } /* Oceano */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="2"] i { background: linear-gradient(90deg, hsl(220 72% 48%) 0 55%, hsl(220 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="3"] { --acc: hsl(245 72% 48%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(245 72% 48% / 0.18); --acc-text: hsl(245 80% 24%); --foco: hsl(245 72% 48%); } /* Índigo */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="3"] i { background: linear-gradient(90deg, hsl(245 72% 48%) 0 55%, hsl(245 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="4"] { --acc: hsl(270 72% 48%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(270 72% 48% / 0.18); --acc-text: hsl(270 80% 24%); --foco: hsl(270 72% 48%); } /* Violeta */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="4"] i { background: linear-gradient(90deg, hsl(270 72% 48%) 0 55%, hsl(270 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="5"] { --acc: hsl(300 72% 44%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(300 72% 44% / 0.18); --acc-text: hsl(300 80% 24%); --foco: hsl(300 72% 44%); } /* Orquídea */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="5"] i { background: linear-gradient(90deg, hsl(300 72% 44%) 0 55%, hsl(300 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="6"] { --acc: hsl(330 72% 48%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(330 72% 48% / 0.18); --acc-text: hsl(330 80% 24%); --foco: hsl(330 72% 48%); } /* Rosa */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="6"] i { background: linear-gradient(90deg, hsl(330 72% 48%) 0 55%, hsl(330 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="7"] { --acc: hsl(42 72% 41%); --acc-ink: hsl(42 90% 9%); --acc-soft: hsl(42 72% 41% / 0.18); --acc-text: hsl(42 80% 24%); --foco: hsl(42 72% 41%); } /* Âmbar */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="7"] i { background: linear-gradient(90deg, hsl(42 72% 41%) 0 55%, hsl(42 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="8"] { --acc: hsl(90 72% 29%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(90 72% 29% / 0.18); --acc-text: hsl(90 80% 24%); --foco: hsl(90 72% 29%); } /* Oliva */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="8"] i { background: linear-gradient(90deg, hsl(90 72% 29%) 0 55%, hsl(90 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="9"] { --acc: hsl(220 7% 45%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(220 7% 45% / 0.18); --acc-text: hsl(220 8% 24%); --foco: hsl(220 7% 45%); } /* Grafite */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="9"] i { background: linear-gradient(90deg, hsl(220 7% 45%) 0 55%, hsl(220 8% 24%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="0"] { --acc: hsl(170 78% 58%); --acc-ink: hsl(170 90% 8%); --acc-soft: hsl(170 78% 58% / 0.16); --acc-text: hsl(170 85% 68%); --foco: hsl(170 85% 68%); } /* Água-marinha */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="0"] i { background: linear-gradient(90deg, hsl(170 78% 58%) 0 55%, hsl(170 85% 68%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="1"] { --acc: hsl(200 78% 58%); --acc-ink: hsl(200 90% 8%); --acc-soft: hsl(200 78% 58% / 0.16); --acc-text: hsl(200 85% 68%); --foco: hsl(200 85% 68%); } /* Céu */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="1"] i { background: linear-gradient(90deg, hsl(200 78% 58%) 0 55%, hsl(200 85% 68%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="2"] { --acc: hsl(220 78% 59%); --acc-ink: hsl(220 90% 8%); --acc-soft: hsl(220 78% 59% / 0.16); --acc-text: hsl(220 85% 72%); --foco: hsl(220 85% 72%); } /* Oceano */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="2"] i { background: linear-gradient(90deg, hsl(220 78% 59%) 0 55%, hsl(220 85% 72%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="3"] { --acc: hsl(245 78% 67%); --acc-ink: hsl(245 90% 8%); --acc-soft: hsl(245 78% 67% / 0.16); --acc-text: hsl(245 85% 79%); --foco: hsl(245 85% 79%); } /* Índigo */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="3"] i { background: linear-gradient(90deg, hsl(245 78% 67%) 0 55%, hsl(245 85% 79%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="4"] { --acc: hsl(270 78% 63%); --acc-ink: hsl(270 90% 8%); --acc-soft: hsl(270 78% 63% / 0.16); --acc-text: hsl(270 85% 76%); --foco: hsl(270 85% 76%); } /* Violeta */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="4"] i { background: linear-gradient(90deg, hsl(270 78% 63%) 0 55%, hsl(270 85% 76%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="5"] { --acc: hsl(300 78% 58%); --acc-ink: hsl(300 90% 8%); --acc-soft: hsl(300 78% 58% / 0.16); --acc-text: hsl(300 85% 70%); --foco: hsl(300 85% 70%); } /* Orquídea */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="5"] i { background: linear-gradient(90deg, hsl(300 78% 58%) 0 55%, hsl(300 85% 70%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="6"] { --acc: hsl(330 78% 58%); --acc-ink: hsl(330 90% 8%); --acc-soft: hsl(330 78% 58% / 0.16); --acc-text: hsl(330 85% 72%); --foco: hsl(330 85% 72%); } /* Rosa */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="6"] i { background: linear-gradient(90deg, hsl(330 78% 58%) 0 55%, hsl(330 85% 72%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="7"] { --acc: hsl(42 78% 58%); --acc-ink: hsl(42 90% 8%); --acc-soft: hsl(42 78% 58% / 0.16); --acc-text: hsl(42 85% 68%); --foco: hsl(42 85% 68%); } /* Âmbar */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="7"] i { background: linear-gradient(90deg, hsl(42 78% 58%) 0 55%, hsl(42 85% 68%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="8"] { --acc: hsl(90 78% 58%); --acc-ink: hsl(90 90% 8%); --acc-soft: hsl(90 78% 58% / 0.16); --acc-text: hsl(90 85% 68%); --foco: hsl(90 85% 68%); } /* Oliva */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="8"] i { background: linear-gradient(90deg, hsl(90 78% 58%) 0 55%, hsl(90 85% 68%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="9"] { --acc: hsl(220 8% 58%); --acc-ink: hsl(220 9% 8%); --acc-soft: hsl(220 8% 58% / 0.16); --acc-text: hsl(220 9% 68%); --foco: hsl(220 9% 68%); } /* Grafite */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="9"] i { background: linear-gradient(90deg, hsl(220 8% 58%) 0 55%, hsl(220 9% 68%) 55%); }
+/* FIM PALETAS */

@@ -2,6 +2,7 @@
 // Moldura do aplicativo: menu lateral, barra do topo, barra inferior do celular, botão "+", avisos e janelas. Mesmo desenho e mesmas classes do protótipo aprovado.
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { variaveisAparencia } from '@/lib/aparencia';
 import { Capsula } from './Capsula';
 import { Icone, LOGO } from './Icone';
 import { ProvedorApp, useApp, useOnline } from './contexto';
@@ -23,7 +24,7 @@ function useToque() {
 }
 
 function Interior({ children }: { children: ReactNode }) {
-  const { tema, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover, avisosEventos, dispensarAviso } = useApp();
+  const { tema, aparencia, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover, avisosEventos, dispensarAviso } = useApp();
   const caminho = usePathname();
   const router = useRouter();
   const toque = useToque();
@@ -67,8 +68,8 @@ function Interior({ children }: { children: ReactNode }) {
   );
   return (
     <div className="frame real" id="frame">
-      <div ref={appRef} className="app" data-dir="d" data-tema={tema} data-ico="fino" data-dev={toque ? 'toque' : 'desktop'} data-col="true" data-aberto={menuAberto} data-reduzir="false"
-        style={{ '--icn': '20px', '--cardh': '340px', '--font': 'var(--f-inter), system-ui, sans-serif', '--font-h': 'var(--f-inter), system-ui, sans-serif', '--font-ui': 'var(--f-inter), system-ui, sans-serif', '--font-n': 'var(--f-mono), ui-monospace, monospace' }as CSSProperties}>
+      <div ref={appRef} className="app" data-dir="d" data-tema={tema} data-ico="fino" data-dev={toque ? 'toque' : 'desktop'} data-col="true" data-aberto={menuAberto} data-paleta={aparencia.paleta ?? undefined} data-reduzir={aparencia.movimento === 'reduzido'} data-fundo={aparencia.fundo === 'animado' ? 'animado' : undefined}
+        style={variaveisAparencia(aparencia) as CSSProperties}>
         <div className="bg"><i className="bg-img" /></div>
         <aside className="side" aria-label="Menu">
           <Capsula sel=".navi[aria-current='page']" chave={caminho} />

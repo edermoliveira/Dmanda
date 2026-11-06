@@ -7,6 +7,7 @@ import * as srv from '@/servidor/demandas';
 import * as srvE from '@/servidor/entradas';
 import * as srvA from '@/servidor/agenda';
 import { cargaInicial } from '@/servidor/carga';
+import { APARENCIA_PADRAO, aparenciaGuardada, CONJUNTOS, PALETAS, temaDoModo, type Aparencia, type Modo } from '@/lib/aparencia';
 import { eObjeto, gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada } from '@/lib/armazenamento';
 import { avisosDeHoje, compararEventos, minutosAgora, type AvisoEvento, type DadosEvento, type Evento } from '@/lib/eventos';
 import type { Entrada } from '@/lib/entradas';
@@ -80,6 +81,13 @@ type Ctx = {
   rotina: EstadoRotina | null;
   tema: 'claro' | 'escuro';
   alternarTema: () => void;
+  /** Escolha do modo (Claro, Escuro ou Sistema); `tema` é o que vale agora. */
+  modo: Modo;
+  setModo: (m: Modo) => void;
+  aparencia: Aparencia;
+  mudarAparencia: (p: Partial<Aparencia>) => void;
+  restaurarAparencia: () => void;
+  surpreenda: () => void;
   menuAberto: boolean;
   alternarMenu: () => void;
   visao: Visao;
@@ -166,7 +174,10 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [aviso, setAviso] = useState<Aviso>(null);
   const [ambiente, setAmbiente] = useState<Ctx['ambiente']>(null);
   const [rotina, setRotina] = useState<Ctx['rotina']>(null);
-  const [tema, setTema] = useState<'claro' | 'escuro'>('claro');
+  const [modo, setModo] = useState<Modo>('sistema');
+  const [sistemaEscuro, setSistemaEscuro] = useState(false);
+  const [aparencia, setAparencia] = useState<Aparencia>(APARENCIA_PADRAO);
+  const tema = temaDoModo(modo, sistemaEscuro);
   const [menuAberto, setMenuAberto] = useState(false);
   const [visao, setVisaoE] = useState<Visao>('cards');
   const [filtro, setFiltroE] = useState<Filtro>(FILTRO_VAZIO);
@@ -194,8 +205,11 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   // Lê as preferências do navegador depois da hidratação (no servidor elas não existem): é sincronizar com um sistema externo, o localStorage.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    const t = lerLS<string | null>('dmanda-tema', null);
-    setTema(t === 'escuro' || t === 'claro' ? t : matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro');
+    // quem já escolheu Claro ou Escuro mantém a escolha; sem escolha guardada, o modo é Sistema (era o comportamento até aqui)
+    const t = lerLS<unknown>('dmanda-tema', null);
+    setModo(t === 'escuro' || t === 'claro' ? t : 'sistema');
+    setSistemaEscuro(matchMedia('(prefers-color-scheme: dark)').matches);
+    setAparencia(aparenciaGuardada(lerLS<unknown>('dmanda:aparencia', null)));
     setMenuAberto(lerLS<unknown>('dmanda:menu-aberto', false) === true);
     // o que está guardado pode estar corrompido ou ser de outra versão: só entra o que tem a forma esperada (ver lib/armazenamento.ts)
     const ui = lerLS<Record<string, unknown> | null>('dmanda:ui', null) ?? {};
@@ -209,7 +223,19 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
   useEffect(() => { if (pronto) gravarLS('dmanda:ui', { visao, ordem, grupos: gruposFechados }); }, [pronto, visao, ordem, gruposFechados]);
-  useEffect(() => { if (pronto) gravarLS('dmanda-tema', tema); }, [pronto, tema]);
+  // Claro e Escuro ficam guardados; Sistema apaga a escolha (o script do <head> e a primeira leitura já seguem o aparelho sem ela)
+  useEffect(() => {
+    if (!pronto) return;
+    if (modo === 'sistema') { try { localStorage.removeItem('dmanda-tema'); } catch { /* sem armazenamento: vale só nesta visita */ } } else gravarLS('dmanda-tema', modo);
+  }, [pronto, modo]);
+  useEffect(() => { if (pronto) gravarLS('dmanda:aparencia', aparencia); }, [pronto, aparencia]);
+  // no modo Sistema, acompanha o aparelho enquanto o aplicativo está aberto
+  useEffect(() => {
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const ouvir = () => setSistemaEscuro(mq.matches);
+    mq.addEventListener('change', ouvir);
+    return () => mq.removeEventListener('change', ouvir);
+  }, []);
 
   const aplicar = useCallback((d: Demanda) => {
     if (d.arquivada_em) {
@@ -382,7 +408,14 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     avisosEventos,
     dispensarAviso: (e) => setDispensados((l) => { const n = [...l, chaveAviso(e)].slice(-200); gravarLS('dmanda:avisos-vistos', n); return n; }),
     aviso, avisar, ambiente, rotina, tema,
-    alternarTema: () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')),
+    alternarTema: () => setModo(tema === 'claro' ? 'escuro' : 'claro'),
+    modo, setModo, aparencia,
+    mudarAparencia: (p) => setAparencia((a) => aparenciaGuardada({ ...a, ...p })),
+    restaurarAparencia: () => setAparencia(APARENCIA_PADRAO),
+    surpreenda: () => {
+      const c = CONJUNTOS[Math.floor(Math.random() * CONJUNTOS.length)];
+      setAparencia((a) => ({ ...a, paleta: Math.floor(Math.random() * PALETAS.length), titulo: c.titulo, texto: c.texto, mono: c.mono }));
+    },
     menuAberto,
     alternarMenu: () => setMenuAberto((v) => { gravarLS('dmanda:menu-aberto', !v); return !v; }),
     visao, setVisao: setVisaoE, filtro, setFiltro: (f) => setFiltroE((x) => ({ ...x, ...f })),
@@ -443,7 +476,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario]);
+  }), [eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

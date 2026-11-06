@@ -1,10 +1,11 @@
 'use client';
-// Configurações: por enquanto só o cadastro mínimo de dias indisponíveis (feriados e eventos externos de dia inteiro), que as regras de prazo exigem (decisão 27).
-// Cores, fontes, ícones, tamanhos e demais ajustes ainda não foram construídos (o protótipo mostra o desenho aprovado). Os dias ficam no Supabase, valem em todos
-// os aparelhos e nada é importado nem presumido: só entra o que a pessoa cadastra.
+// Configurações: aparência (modo, destaque, fontes, tamanhos, fundo e movimento, guardados só neste navegador: ver config-aparencia.tsx) e o cadastro de
+// dias indisponíveis (feriados e eventos externos de dia inteiro), que as regras de prazo exigem (decisão 32). Os dias ficam no Supabase, valem em todos
+// os aparelhos e nada é importado nem presumido: só entra o que a pessoa cadastra. Ícones, widgets, preferências do dia a dia e dados seguem em construção.
 import { useRef, useState } from 'react';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
+import { SecoesAparencia } from './config-aparencia';
 import { dataBR } from '@/lib/demandas';
 import { CATEGORIAS_DIA, dataComSemana, ROTULO_CATEGORIA, type CategoriaDia, type DiaIndisponivel } from '@/lib/prazos';
 
@@ -33,8 +34,10 @@ export function PaginaConfig() {
 
   return (
     <>
-      <div className="pagehead"><h1>Configurações</h1><p>Dias indisponíveis para prazos. Cores, fontes e tamanhos ainda estão em construção.</p></div>
-      <section className="cfg-bloco" aria-labelledby="cfg-dias-t">
+      <div className="pagehead"><h1>Configurações</h1><p>Aparência e dias indisponíveis para prazos. Ícones, widgets e dados ainda estão em construção.</p></div>
+      <div className="cfg">
+      <SecoesAparencia />
+      <section className="cfg-bloco painel" aria-labelledby="cfg-dias-t">
         <h2 id="cfg-dias-t" style={{ fontSize: 'calc(17px * var(--esc))', margin: '0 0 6px' }}>Dias indisponíveis</h2>
         <p className="data">Feriados e eventos externos de dia inteiro. Sábados e domingos já são considerados. Quando o prazo de uma demanda cai em um desses dias, o vencimento é antecipado para o dia disponível anterior, e é recalculado sozinho (nos dois sentidos) quando você cadastra, altera ou exclui um dia aqui. Nada é importado nem presumido.</p>
         <div ref={formRef} className="cfg-form" role="group" aria-label={f.id ? 'Alterar dia indisponível' : 'Cadastrar dia indisponível'}>
@@ -73,6 +76,7 @@ export function PaginaConfig() {
           </ul>
         )}
       </section>
+      </div>
     </>
   );
 }
