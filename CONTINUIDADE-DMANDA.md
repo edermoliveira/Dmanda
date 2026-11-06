@@ -519,3 +519,7 @@ npm run dev:teste                     # http://localhost:7100, banco de teste
 ```
 
 Próximo passo: a avaliação autenticada do usuário em produção e o que ela revelar; depois, as Issues #2, #3 e #4. Nenhuma nova etapa visual está em andamento.
+
+**Retomada no computador do trabalho (06/11/2026):** branch `base/resistencia-desempenho` em `65c2686`, árvore limpa, stash "Trabalho local antes da branch visual - 05-11-2026" e branches preservados. `7504f1d` é ancestral do `HEAD` e `origin/main` está em `7504f1d` (`main` local ainda em `7cff1de`, não alterada). Ferramentas: Node 24.22.0 (`C:\Tools\nodejs`), npm 12.2.1, Git 2.56.0 (`C:\Users\adminpmt04\Tools\Git`), Claude Code 2.1.319 (`C:\Users\adminpmt04\.local\bin`; o registro do npm lista 2.1.318). Atualizações disponíveis, nada instalado: Next 16.4.5, Supabase JS 2.119.0, Tailwind 4.3.4, PGlite 0.5.15, Playwright 1.65.0.
+- **Confirmado hoje, sem sessão:** `/login` 200, `/demandas` 307 para `/login`, manifesto 200, cron sem segredo 401.
+- **Não confirmado:** deploy ativo `7504f1d` (a consulta à API do GitHub e o painel da Vercel não foram acessados nesta sessão); validação autenticada (Início, Demandas, Entradas, Arquivo, Agenda), que depende do usuário; origem automática do cron (Issue #3).
