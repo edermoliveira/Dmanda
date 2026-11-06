@@ -11,6 +11,7 @@ import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
 import { esperaPrefeita, dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
 import { validarDados, validarDia, validarEntrada } from '../src/nucleo/validacao.ts';
 import { estadoDe, tagsDe, semTags, resumoDe, temTitulo, contarTags, filtrarEntradas, ordenarEntradas, paraDemanda, diferencas, vazia, camposEmConflito, carimbo, QTD_CORES } from '../src/lib/entradas.ts';
+import { buscar, palavrasDa, simplificar as simplificarBusca, LIMITE_RESULTADOS } from '../src/lib/busca.ts';
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const hoje = '2026-10-25';
@@ -225,6 +226,44 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(v['--esc'] === '0.85' && v['--icn'] === '20px' && v['--cardh'] === '340px' && !('--acc' in v), 'variáveis: o padrão mantém escala 0,85, ícone 20 px, card 340 px e nenhum destaque forçado');
   ok(variaveisAparencia({ ...APARENCIA_PADRAO, textoPct: 125 })['--esc'] === '1.0625' && variaveisAparencia({ ...APARENCIA_PADRAO, textoPct: 105 })['--esc'] === '0.8925', 'variáveis: a escala é 0,85 vezes a porcentagem escolhida');
   ok(!ePadrao({ ...APARENCIA_PADRAO, fundo: 'animado' }) && !ePadrao({ ...APARENCIA_PADRAO, paleta: 0 }), 'ePadrao: qualquer mudança conta');
+}
+
+// ---------- busca global (src/lib/busca.ts) ----------
+{
+  const dm = (id, o = {}) => ({ id, tipo: 'Processo', area: 'Geral', numero: '', assunto: id, descricao: '', origem: '', etapa: 'Fazendo', setor: null, arquivada_em: null, tarefas: [], ...o });
+  const en = (id, o = {}) => ({ id, titulo: '', texto: '', cor: 0, fixada: false, arquivada_em: null, demanda_id: null, ...o });
+  const evt = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-10', dia_inteiro: false, inicio: '09:00', fim: null, descricao: '', ...o });
+  const F = {
+    demandas: [dm('d1', { numero: '1842/2026', assunto: 'Revisão do contrato', descricao: 'Fiscalização', tarefas: [{ id: 't1', texto: 'Conferir certidão', concluida: true, posicao: 0 }] }), dm('d2', { etapa: 'Finalizado', assunto: 'Concluída' })],
+    arquivadas: [dm('d3', { assunto: 'Antiga licitação', arquivada_em: 'x', tarefas: [{ id: 't3', texto: 'Anexar planilha', concluida: false, posicao: 0 }] })],
+    entradas: [en('e1', { titulo: 'Ligar ao Jurídico', texto: 'reunião às 14h #tce' }), en('e0', { texto: 'sem título, só texto' })],
+    entradasArquivadas: [en('e2', { titulo: 'Compras', arquivada_em: 'x' }), en('e3', { titulo: 'Ideia', demanda_id: 'd9' })],
+    eventos: [evt('v1', { titulo: 'Reunião de secretariado' }), evt('v2', { titulo: 'Audiência', data: '2027-03-15', dia_inteiro: true, inicio: null, descricao: 'pública' })],
+  };
+  const q = (t, f = F) => buscar(t, f).resultados;
+  ok(simplificarBusca('Reunião ÇÃO') === 'reuniao cao' && palavrasDa('  a   B ').join('|') === 'a|b' && palavrasDa('   ').length === 0, 'busca: simplifica acentos e maiúsculas e separa as palavras');
+  ok(q('').length === 0 && q('   ').length === 0 && buscar('', F).total === 0, 'busca: consulta vazia não devolve nada');
+  ok(q('1842').length === 1 && q('1842')[0].tipo === 'demanda' && q('1842/2026').length === 1 && q('842/20').length === 1, 'busca: por número, inteiro e por trecho');
+  ok(q('fiscaliz')[0]?.chave === 'd:d1' && q('contrato revisao')[0]?.chave === 'd:d1', 'busca: por trecho da descrição e com palavras em qualquer ordem');
+  const t = q('certidao');
+  ok(t.length === 1 && t[0].tipo === 'tarefa' && t[0].destino.t === 'editar' && t[0].destino.id === 'd1' && /Da demanda Processo 1842\/2026 · Revisão do contrato · concluída/.test(t[0].detalhe), 'busca: tarefa traz a demanda de origem e abre essa demanda');
+  ok(q('planilha')[0].estado === 'Arquivada' && q('licitacao')[0].estado === 'Arquivada', 'busca: demanda e tarefa arquivadas trazem o estado');
+  ok(q('concluida')[0].estado === 'Finalizada' && q('revisao')[0].estado === null, 'busca: finalizada tem estado; ativa não');
+  ok(q('compras')[0].estado === 'Arquivada' && q('ideia')[0].estado === 'Convertida em demanda' && q('ideia')[0].destino.t === 'entrada', 'busca: entrada arquivada e convertida trazem o estado e abrem como entrada');
+  ok(q('#tce').length === 1 && q('tce')[0].tipo === 'entrada' && q('so texto')[0]?.titulo === 'sem título, só texto', 'busca: tag, e entrada sem título usa a primeira linha do texto');
+  const ev = q('audiencia 15/03/2027');
+  ok(ev.length === 1 && ev[0].tipo === 'evento' && ev[0].destino.t === 'evento' && /15\/03\/2027 · dia inteiro/.test(ev[0].detalhe) && q('2027-03-15').length === 1 && q('publica')[0].tipo === 'evento', 'busca: evento por título, data (br e ISO) e descrição');
+  const r = q('reuniao');
+  ok(r.length === 2 && r.some((x) => x.tipo === 'entrada') && r.some((x) => x.tipo === 'evento'), 'busca: acha em tipos diferentes e identifica o tipo');
+  ok(q('xyz').length === 0 && buscar('xyz', F).total === 0, 'busca: sem correspondência devolve lista vazia');
+  ok(Object.keys(q('antiga')[0]).sort().join() === 'chave,destino,detalhe,estado,tipo,titulo', 'busca: o resultado não expõe campos internos');
+  const grande = { ...F, demandas: Array.from({ length: 100 }, (_, i) => dm(`g${i}`, { assunto: `Pauta ${i}` })), arquivadas: [], entradas: [], entradasArquivadas: [], eventos: [] };
+  const gr = buscar('pauta', grande);
+  ok(gr.resultados.length === LIMITE_RESULTADOS && gr.total === 100, 'busca: limita a lista mostrada e informa o total');
+  const dup = buscar('compras', { ...F, entradas: [en('e2', { titulo: 'Compras' })], entradasArquivadas: F.entradasArquivadas });
+  ok(dup.resultados.length === 1 && dup.resultados[0].estado === null, 'busca: o mesmo registro nas duas listas aparece uma vez');
+  const ord = buscar('contrato', { ...F, demandas: [dm('a', { assunto: 'Outra', descricao: 'contrato aqui' }), dm('b', { assunto: 'Contrato novo' })], arquivadas: [dm('c', { assunto: 'Contrato velho', arquivada_em: 'x' })] }).resultados.map((x) => x.chave).join();
+  ok(ord === 'd:b,d:a,d:c', 'busca: título casando vem antes do corpo, e arquivados por último');
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

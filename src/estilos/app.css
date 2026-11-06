@@ -317,3 +317,20 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app[data-dir="d"][data-tema="escuro"][data-paleta="9"] { --acc: hsl(220 8% 58%); --acc-ink: hsl(220 9% 8%); --acc-soft: hsl(220 8% 58% / 0.16); --acc-text: hsl(220 9% 68%); --foco: hsl(220 9% 68%); } /* Grafite */
 .app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="9"] i { background: linear-gradient(90deg, hsl(220 8% 58%) 0 55%, hsl(220 9% 68%) 55%); }
 /* FIM PALETAS */
+
+/* ---------- busca global ---------- */
+.app .busca-ov { z-index: 40; padding-top: max(16px, 8%); }
+.app .busca-box { max-height: min(80%, 640px); display: flex; flex-direction: column; overflow: hidden; }
+.app .busca-campo { display: flex; align-items: center; gap: 8px; }
+.app .busca-campo input { flex: 1; min-width: 0; }
+.app .busca-box [role="listbox"] { overflow-y: auto; margin-top: 8px; min-height: 0; }
+.app .busca-box .res { min-height: 52px; padding: 6px 10px; }
+.app .busca-box .res[data-ativo="sim"], .app .busca-box .res:focus-visible { background: var(--acc-soft); }
+.app .res-tipo { flex: none; min-width: 64px; font-family: var(--font-n); font-size: max(10px, calc(12px * var(--esc))); color: var(--text2); }
+.app .res-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.app .res-t { font-weight: 600; font-size: calc(14px * var(--esc)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app .res-d { font-size: max(10px, calc(12px * var(--esc))); color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app .res-estado { flex: none; font-size: max(10px, calc(12px * var(--esc))); font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--brd); color: var(--text2); }
+.app .busca-aviso { margin: 10px 6px 2px; font-size: calc(13px * var(--esc)); color: var(--text2); }
+.app .busca-aviso.erro { color: var(--text); background: var(--cat-venc); padding: 8px 12px; border-radius: 12px; margin: 10px 0 0; }
+@media (max-width: 640px) { .app .res-tipo { min-width: 0; } .app .busca-box .res { flex-wrap: wrap; } }

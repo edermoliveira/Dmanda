@@ -9,6 +9,7 @@ import { ProvedorApp, useApp, useOnline } from './contexto';
 import { Janelas } from './janelas';
 import { MenuMover } from './visoes';
 import { MenuConta } from './MenuConta';
+import { Busca } from './busca';
 
 const NAV: [string, string, string, string][] = [
   ['/', 'Início', 'nav-inicio', 'inicio'], ['/entradas', 'Entradas', 'nav-entradas', 'entradas'], ['/demandas', 'Demandas', 'nav-demandas', 'demandas'],
@@ -30,6 +31,7 @@ function Interior({ children }: { children: ReactNode }) {
   const toque = useToque();
   const online = useOnline();
   const [plus, setPlus] = useState(false);
+  const [buscando, setBuscando] = useState(false);
   const [conta, setConta] = useState<{ x: number; y: number } | null>(null);
   const fecharConta = useCallback(() => setConta(null), []);
   const appRef = useRef<HTMLDivElement>(null);
@@ -41,14 +43,31 @@ function Interior({ children }: { children: ReactNode }) {
   useEffect(() => { if (primeira.current) { primeira.current = false; return; } marca('tela'); }, [caminho]);
   useEffect(() => { if (janela) marca('modal'); }, [janela]);
   useEffect(() => { if (plus) marca('plus'); }, [plus]);
+  // Esc fecha o menu "+" e devolve o foco ao botão que o abriu
+  useEffect(() => {
+    if (!plus) return;
+    const f = (e: KeyboardEvent) => { if (e.key !== 'Escape') return; e.stopImmediatePropagation(); setPlus(false); [...document.querySelectorAll<HTMLElement>('.fab, .mais-c')].find((b) => b.offsetParent)?.focus(); };
+    document.addEventListener('keydown', f, true);
+    return () => document.removeEventListener('keydown', f, true);
+  }, [plus]);
   useEffect(() => { if (!plus) return; const f = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest('.menuplus, .fab, .mais-c')) setPlus(false); }; document.addEventListener('click', f, true); return () => document.removeEventListener('click', f, true); }, [plus]);
   useLayoutEffect(() => { document.documentElement.dataset.tema = tema; }, [tema]);
   // atalho N (computador): nova entrada. Não vale digitando em um campo, com janela ou menu aberto, nem com Ctrl, Cmd ou Alt.
   const janelaAberta = janela !== null;
+  // Ctrl+K ou Cmd+K abre a busca. Não vale digitando em um campo, com uma janela aberta (para não tirar a pessoa do que ela escreve) nem com a busca já aberta.
+  useEffect(() => {
+    const f = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 'k' || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.repeat || e.isComposing || janelaAberta || buscando) return;
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]') || document.querySelector('.modal-ov, .busca-ov')) return;
+      e.preventDefault(); setPlus(false); setConta(null); fecharMenuMover(); setBuscando(true);
+    };
+    document.addEventListener('keydown', f);
+    return () => document.removeEventListener('keydown', f);
+  }, [janelaAberta, buscando, fecharMenuMover]);
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== 'n' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat || e.isComposing || janelaAberta) return;
-      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]') || document.querySelector('.modal-ov, .mv-menu, .menuplus.aberto')) return;
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]') || document.querySelector('.modal-ov, .busca-ov, .mv-menu, .menuplus.aberto')) return;
       e.preventDefault(); abrirJanela({ t: 'entrada' });
     };
     document.addEventListener('keydown', f);
@@ -59,8 +78,8 @@ function Interior({ children }: { children: ReactNode }) {
   const breve = (o: string) => () => avisar(`${o} ainda não está implementado: fica para um dos próximos blocos.`);
   const emMais = EM_MAIS.some((r) => ativo(caminho, r));
   const itensPlus: [string, string, boolean, () => void][] = [
-    ['Nova entrada', 'sticky-note', true, () => { setPlus(false); abrirJanela({ t: 'entrada' }); }], ['Demanda', 'square-kanban', true, () => { setPlus(false); abrirJanela({ t: 'nova' }); }], ['Evento', 'calendar', true, () => { setPlus(false); abrirJanela({ t: 'evento' }); }],
-    ['Tarefa', 'check', true, () => { setPlus(false); abrirJanela({ t: 'tarefa' }); }], ['Documento', 'file-text', false, breve('Documento')], ['Chat com a IA', 'message-circle', false, breve('Chat com a IA')],
+    ['Nova entrada', 'sticky-note', true, () => { setPlus(false); abrirJanela({ t: 'entrada' }); }], ['Nova demanda', 'square-kanban', true, () => { setPlus(false); abrirJanela({ t: 'nova' }); }], ['Novo evento', 'calendar', true, () => { setPlus(false); abrirJanela({ t: 'evento' }); }],
+    ['Nova tarefa', 'check', true, () => { setPlus(false); abrirJanela({ t: 'tarefa' }); }], ['Documento', 'file-text', false, breve('Documento')], ['Chat com a IA', 'message-circle', false, breve('Chat com a IA')],
   ];
   const label = menuAberto ? 'Recolher menu' : 'Mostrar menu';
   const tbtn = (n: [string, string, string, string]) => (
@@ -81,7 +100,7 @@ function Interior({ children }: { children: ReactNode }) {
         </aside>
         <header className="top">
           <div className="top-logo">{LOGO}<span>Dmanda</span></div>
-          <button className="icbtn buscabtn" aria-label="Buscar em tudo (ainda não implementado)" aria-disabled="true" title="A busca global fica para um dos próximos blocos" onClick={breve('A busca global')}><Icone nome="busca" /><span className="tx">Buscar demanda, entrada, evento ou documento</span><kbd>Ctrl K</kbd></button>
+          <button className="icbtn buscabtn" aria-label="Buscar em tudo" aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K" title="Buscar em tudo (Ctrl K)" onClick={() => { setPlus(false); setConta(null); fecharMenuMover(); setBuscando(true); }}><Icone nome="busca" /><span className="tx">Buscar demanda, tarefa, entrada ou evento</span><kbd>Ctrl K</kbd></button>
           <button className="icbtn sino" aria-label={avisosEventos.length ? `Avisos: ${avisosEventos.length} para hoje. Abrir a Agenda` : 'Avisos: nenhum agora. Abrir a Agenda'} title={avisosEventos.length ? 'Há avisos de hoje' : 'Nenhum aviso agora'} data-avisos={avisosEventos.length || undefined} onClick={ir('/agenda')}><Icone nome="bell" />{avisosEventos.length ? <i className="sino-n" aria-hidden="true">{avisosEventos.length}</i> : null}</button>
           <button className="icbtn" aria-label="Alternar tema claro e escuro" onClick={alternarTema}><Icone nome={tema === 'claro' ? 'moon' : 'sun'} /></button>
           <button className="perfil-b" aria-label="Menu da conta" aria-haspopup="menu" aria-expanded={!!conta} title="Conta" onClick={(e) => { if (conta) { setConta(null); return; } fecharMenuMover(); setPlus(false); const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setConta({ x: b.right - a.left, y: b.bottom - a.top }); }}><span className="avatar">{nome.charAt(0).toUpperCase()}</span><span className="tx">{nome}</span></button>
@@ -116,10 +135,11 @@ function Interior({ children }: { children: ReactNode }) {
           {itensPlus.map(([nomeI, icone, pronto, acao], i) => (
             <Fragment key={nomeI}>
               {i === 3 ? <hr /> : null}
-              <button className={i < 3 ? 'rapido' : ''} role="menuitem" aria-disabled={pronto ? undefined : true} title={pronto ? undefined : 'Fica para um dos próximos blocos'} style={pronto ? undefined : { opacity: 0.5 }} onClick={acao}><Icone nome={icone} />{nomeI}</button>
+              <button className={i < 3 ? 'rapido' : ''} role="menuitem" aria-disabled={pronto ? undefined : true} title={pronto ? undefined : 'Fica para um dos próximos blocos'} style={pronto ? undefined : { opacity: 0.5 }} onClick={acao}><Icone nome={icone} />{nomeI}{pronto ? null : <small className="data" style={{ marginLeft: 'auto' }}>em breve</small>}</button>
             </Fragment>
           ))}
         </div>
+        {buscando ? <Busca aoFechar={() => setBuscando(false)} /> : null}
         <Janelas />
         <MenuMover />
         {conta ? <MenuConta ponto={conta} fechar={fecharConta} /> : null}

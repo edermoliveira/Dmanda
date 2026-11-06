@@ -309,7 +309,7 @@ for (const tema of ['claro', 'escuro']) {
   ok(campoNovo === null, 'a lista agora mostra as tarefas (a demanda deixou de estar sem tarefas)');
   // depois de uma inclusão confirmada, o mesmo texto numa nova tentativa recebe outra identidade e cria outra tarefa (nada é deduplicado pelo conteúdo)
   await pg.evaluate(() => [...document.querySelectorAll('[aria-label="Criar novo"]')].find((e) => e.offsetParent)?.click());
-  await pg.evaluate(() => [...document.querySelectorAll('.menuplus [role="menuitem"], .menuplus button')].find((e) => /^\s*Tarefa\s*$/.test(e.textContent))?.click());
+  await pg.evaluate(() => [...document.querySelectorAll('.menuplus [role="menuitem"], .menuplus button')].find((e) => /^\s*Nova tarefa\s*$/.test(e.textContent))?.click());
   await pg.waitForSelector('#t-texto'); await pg.selectOption('#t-dem', { label: (await pg.$$eval('#t-dem option', (o) => o.map((x) => x.textContent))).find((x) => /Tarefa perdida/.test(x)) });
   await pg.fill('#t-texto', 'Tarefa de resposta perdida'); await pg.click('.modal .btn.pri:has-text("Adicionar")');
   await pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 }); await pg.waitForTimeout(600);
