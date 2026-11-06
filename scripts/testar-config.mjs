@@ -39,6 +39,7 @@ const ir = async (pg, rota = '/config') => {
 const app = (pg, nome) => pg.evaluate((n) => getComputedStyle(document.querySelector('.app')).getPropertyValue(n).trim(), nome);
 const guardado = (pg, chave) => pg.evaluate((c) => localStorage.getItem(c), chave);
 const apar = async (pg) => JSON.parse((await guardado(pg, 'dmanda:aparencia')) || 'null');
+const escolher = async (pg, papel, id) => { await pg.click(`#cfg-f-${papel} [data-fonte="${id}"]`); };
 const modo = (pg) => pg.$eval('.cfg [data-modo][aria-pressed="true"]', (b) => b.dataset.modo).catch(() => null);
 
 // ---------- contraste (WCAG) ----------
@@ -70,7 +71,7 @@ const CONTRASTE = `(() => {
   ok(await pg.$eval('.cfg button:has-text("Restaurar padrão")', (b) => b.disabled), 'Restaurar padrão fica desligado quando já está no padrão');
   ok(!!(await pg.$('#cfg-dias-t')) && !!(await pg.$('#cfg-data')) && !!(await pg.$('#cfg-desc')), 'o cadastro de Dias indisponíveis continua na página');
   ok((await pg.$$('.cfg .sw')).length === 11, 'destaques: o padrão e as dez paletas');
-  ok((await pg.$$eval('.cfg-cab ~ * select, .cfg select', (s) => s.length)) >= 4, 'três seletores de fonte e a categoria dos dias');
+  ok((await pg.$$eval('.cfg [role="radiogroup"]', (s) => s.length)) === 3 && (await pg.$$('.fonte-op')).length === 20, 'três listas de fontes (9 principais, 6 secundárias e 5 mono, com o nome de cada família)');
   await ctx.close();
 }
 
@@ -138,11 +139,11 @@ const CONTRASTE = `(() => {
   await ir(pg);
   const fam = (sel) => pg.$eval(sel, (e) => getComputedStyle(e).fontFamily);
   ok(/inter/i.test(await fam('.pagehead h1')) && /plex/i.test(await pg.$eval('.rng b', (e) => getComputedStyle(e).fontFamily)), 'padrão: Inter nos títulos e IBM Plex Mono nos detalhes');
-  await pg.selectOption('#cfg-f-titulo', 'sora');
+  await escolher(pg, 'titulo', 'sora');
   ok(/sora/i.test(await fam('.pagehead h1')), 'título Sora aplica na hora (o h3 e o h4 seguem a fonte secundária, como no protótipo aprovado)');
   const carregou = await pg.evaluate(async () => { await document.fonts.ready; return [...document.fonts].some((f) => /sora/i.test(f.family) && f.status === 'loaded'); });
   ok(carregou, 'a fonte Sora foi de fato carregada pelo navegador');
-  await pg.selectOption('#cfg-f-texto', 'dmsans'); await pg.selectOption('#cfg-f-mono', 'jetbrains');
+  await escolher(pg, 'texto', 'dmsans'); await escolher(pg, 'mono', 'jetbrains');
   ok(/dm.?sans/i.test(await pg.$eval('.app', (e) => getComputedStyle(e).fontFamily)) && /jetbrains/i.test(await pg.$eval('.rng b', (e) => getComputedStyle(e).fontFamily)), 'texto DM Sans e mono JetBrains aplicam');
   await pg.click('.cfg [data-conjunto="4"]');
   ok(/dm.?serif/i.test(await fam('.pagehead h1')), 'o conjunto DM Serif, DM Sans e DM Mono aplica os três papéis');
@@ -150,9 +151,7 @@ const CONTRASTE = `(() => {
   await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(500);
   ok(/dm.?serif/i.test(await fam('.pagehead h1')), 'fontes sobrevivem à recarga');
   // todas as fontes carregam sem erro
-  for (const [sel, lista] of [['#cfg-f-titulo', await pg.$$eval('#cfg-f-titulo option', (o) => o.map((x) => x.value))], ['#cfg-f-texto', await pg.$$eval('#cfg-f-texto option', (o) => o.map((x) => x.value))], ['#cfg-f-mono', await pg.$$eval('#cfg-f-mono option', (o) => o.map((x) => x.value))]]) {
-    for (const v of lista) await pg.selectOption(sel, v);
-  }
+  for (const papel of ['titulo', 'texto', 'mono']) for (const v of await pg.$$eval(`#cfg-f-${papel} [data-fonte]`, (o) => o.map((x) => x.dataset.fonte))) await escolher(pg, papel, v);
   await pg.evaluate(async () => { await document.fonts.ready; });
   const falhou = await pg.evaluate(() => [...document.fonts].filter((f) => f.status === 'error').map((f) => f.family));
   ok(falhou.length === 0, 'as 17 fontes escolhidas, uma a uma, sem erro de carregamento' + (falhou.length ? ': ' + falhou.join(', ') : ''));
@@ -173,8 +172,8 @@ const faixa = (pg, id, valor) => pg.$eval('#' + id, (el, v) => { const s = Objec
   ok((await app(pg, '--icn')) === '28px' && (await pg.$eval('.navi .ic', (e) => e.getBoundingClientRect().width)) === 28, 'ícones a 28 px aplicam');
   await faixa(pg, 'cfg-t-card', 420);
   ok((await app(pg, '--cardh')) === '420px', 'altura dos cards a 420 px aplica');
-  const prev = await pg.$eval('.cfg-previa p', (e) => parseFloat(getComputedStyle(e).fontSize));
-  ok(prev > t0 && await pg.$eval('.cfg-previa .ic', (e) => e.getBoundingClientRect().width) === 28, 'a prévia reflete texto e ícone novos');
+  const prev = await pg.$eval('.previa-aparencia .assunto', (e) => parseFloat(getComputedStyle(e).fontSize));
+  ok(prev > 17 * 0.85 * 1.2 && await pg.$eval('.previa-aparencia .previa-icones .ic', (e) => e.getBoundingClientRect().width) === 28 && Math.round(await pg.$eval('.previa-aparencia .dcard', (e) => e.getBoundingClientRect().height)) === 420, 'o card de prévia reflete texto, ícone e altura novos');
   await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(400);
   ok((await app(pg, '--esc')) === '1.0625' && (await app(pg, '--icn')) === '28px' && (await app(pg, '--cardh')) === '420px', 'tamanhos sobrevivem à recarga');
   // limites
@@ -186,6 +185,62 @@ const faixa = (pg, id, valor) => pg.$eval('#' + id, (el, v) => { const s = Objec
   ok(menor.m >= 10, 'no mínimo (100%) o menor texto visível da tela tem ' + menor.m.toFixed(1) + ' px (' + menor.onde + ')');
   await pg.click('.cfg button:has-text("Restaurar tamanhos")');
   ok((await app(pg, '--esc')) === '0.85' && (await app(pg, '--icn')) === '20px' && (await app(pg, '--cardh')) === '340px', 'Restaurar tamanhos volta aos três padrões');
+  await ctx.close();
+}
+
+// ================= 5b) prévias: fontes e card fictício =================
+{
+  const { ctx, pg } = await novo();
+  await ir(pg);
+  // --- Fontes: nome e amostra de cada família, com o mesmo texto por papel
+  const op = await pg.$$eval('.fonte-op', (bs) => bs.map((b) => ({ papel: b.closest('[role="radiogroup"]').id, id: b.dataset.fonte, nome: b.querySelector('.fonte-nome').textContent, amostra: b.querySelector('.fonte-amostra').textContent, fNome: getComputedStyle(b.querySelector('.fonte-nome')).fontFamily, fAmostra: getComputedStyle(b.querySelector('.fonte-amostra')).fontFamily })));
+  const por = (p) => op.filter((o) => o.papel === 'cfg-f-' + p);
+  ok(por('titulo').length === 9 && por('texto').length === 6 && por('mono').length === 5, 'fontes: 9 + 6 + 5 famílias listadas');
+  ok(['titulo', 'texto', 'mono'].every((p) => new Set(por(p).map((o) => o.amostra)).size === 1) && new Set(['titulo', 'texto', 'mono'].map((p) => por(p)[0].amostra)).size === 3, 'fontes: o mesmo texto compara as opções do mesmo papel e cada papel tem o seu');
+  ok(op.every((o) => o.fAmostra === o.fNome && o.fNome.toLowerCase().includes(o.nome.split(' ')[0].toLowerCase().replace(/[^a-z]/g, ''))), 'fontes: nome e amostra de cada opção usam a própria família');
+  ok(por('titulo')[0].amostra.includes('Ofício') && por('texto')[0].amostra.includes('responsável') && por('mono')[0].amostra.includes('4521/2026'), 'fontes: as amostras estão em português, com acentos, números e datas');
+  const fam = (sel) => pg.$eval(sel, (e) => getComputedStyle(e).fontFamily);
+  const rot = await pg.$$eval('.fonte-previa small', (e) => e.map((x) => x.textContent));
+  ok(/Título · Inter/.test(rot[0]) && /Texto · Inter/.test(rot[1]) && /Detalhes · IBM Plex Mono/.test(rot[2]), 'prévia do conjunto: rótulos de título, texto e detalhes com o nome da família escolhida');
+  await pg.click('.cfg [data-conjunto="4"]');
+  const [ft, fx, fm] = [await fam('.fonte-previa .p-titulo'), await fam('.fonte-previa .p-texto'), await fam('.fonte-previa .p-mono')];
+  ok(/dm.?serif/i.test(ft) && /dm.?sans/i.test(fx) && /dm.?mono/i.test(fm) && new Set([ft, fx, fm]).size === 3, 'prévia do conjunto: título, texto e detalhes aparecem em três fontes diferentes');
+  ok((await pg.$$eval('.fonte-previa small', (e) => e.map((x) => x.textContent))).join('|') === 'Título · DM Serif Display|Texto · DM Sans|Detalhes · DM Mono', 'prévia do conjunto: os rótulos acompanham a escolha');
+  ok((await pg.$eval('#cfg-f-titulo [data-fonte="dmserif"]', (b) => b.getAttribute('aria-checked'))) === 'true' && (await pg.$$eval('#cfg-f-titulo [aria-checked="true"]', (b) => b.length)) === 1, 'fontes: a opção escolhida fica marcada, uma só por lista');
+  // teclado: setas mudam a escolha e levam o foco
+  await pg.focus('#cfg-f-texto [data-fonte="dmsans"]'); await pg.keyboard.press('ArrowDown');
+  ok((await pg.$eval('#cfg-f-texto [aria-checked="true"]', (b) => b.dataset.fonte)) === 'jakarta' && (await pg.evaluate(() => document.activeElement.dataset.fonte)) === 'jakarta', 'fontes: seta para baixo escolhe a próxima família e move o foco');
+  ok((await pg.$$eval('.fonte-op[tabindex="0"]', (b) => b.length)) === 3, 'fontes: um só ponto de Tab por lista');
+
+  // --- Card fictício único
+  ok((await pg.$$('.previa-aparencia')).length === 1 && (await pg.$$('.previa-aparencia .dcard')).length === 1, 'prévia: um único card fictício na tela');
+  ok(await pg.$eval('.previa-fundo', (e) => e.hasAttribute('inert')) && await pg.$eval('.previa-aparencia', (e) => e.getAttribute('role') === 'img'), 'prévia: não recebe foco nem clique (inert) e é anunciada como imagem');
+  ok(await pg.$eval('.previa-aparencia', (e) => ['.dcard', '.face.front', '.cab', '.tags .tag', '.tags .chip', '.assunto', '.chips .pz', '.prox-t', '.prog .barra'].every((s) => !!e.querySelector(s))), 'prévia: usa as classes reais do card de demanda');
+  await pg.click('.previa-aparencia .prox-t input', { force: true, timeout: 3000 }).catch(() => {});
+  ok(!(await pg.$eval('.previa-aparencia .prox-t input', (i) => i.checked)), 'prévia: clicar nela não marca nada');
+  // reflete modo, destaque, fontes, tamanhos e fundo
+  const cor = (sel, prop) => pg.$eval(sel, (e, p) => getComputedStyle(e)[p], prop);
+  const faceClaro = await cor('.previa-aparencia .face', 'backgroundColor');
+  await pg.click('[data-modo="escuro"]'); await pg.waitForTimeout(400);
+  const faceEscuro = await cor('.previa-aparencia .face', 'backgroundColor');
+  ok(faceClaro !== faceEscuro && (await cor('.previa-fundo', 'backgroundColor')) === (await cor('.app', 'backgroundColor')), 'prévia: acompanha o modo (card e fundo trocam de claro para escuro)');
+  const barraAntes = await cor('.previa-aparencia .barra i', 'backgroundColor');
+  await pg.click('.cfg .sw[data-paleta="7"]'); await pg.waitForTimeout(500);
+  const barraDepois = await cor('.previa-aparencia .barra i', 'backgroundColor');
+  ok(barraAntes !== barraDepois, 'prévia: acompanha o destaque (barra de progresso ' + barraAntes + ' para ' + barraDepois + ')');
+  await escolher(pg, 'texto', 'nunito'); await escolher(pg, 'mono', 'fira'); await escolher(pg, 'titulo', 'playfair');
+  ok(/playfair/i.test(await fam('.previa-aparencia .assunto')) && /nunito/i.test(await fam('.previa-aparencia .prox-c .t-txt')) && /fira/i.test(await fam('.previa-aparencia .num')), 'prévia: o título do card usa a fonte principal, o texto a secundária e os números a mono');
+  await pg.click('.cfg [data-fundo="animado"]');
+  const anim = () => pg.$eval('.previa-fundo', (e) => getComputedStyle(e, '::before').animationName);
+  ok((await anim()) === 'fundo-deriva', 'prévia: acompanha o fundo animado');
+  await pg.click('.cfg [data-movimento]'); ok((await anim()) === 'none', 'prévia: o fundo animado para com Reduzir movimento');
+  await pg.click('.cfg [data-fundo="padrao"]'); ok((await anim()) === 'none' && (await pg.$eval('.previa-fundo', (e) => getComputedStyle(e, '::before').content)) === 'none', 'prévia: no fundo padrão não há gradiente');
+  // altura e tamanhos
+  await pg.click('.cfg-cab button:has-text("Restaurar padrão")');
+  ok(Math.round(await pg.$eval('.previa-aparencia .dcard', (e) => e.getBoundingClientRect().height)) === 340 && /inter/i.test(await fam('.previa-aparencia .assunto')) && /plex/i.test(await fam('.previa-aparencia .num')), 'prévia: Restaurar padrão devolve o card ao padrão');
+  ok(await pg.$eval('.previa-aparencia .face', (f) => f.scrollHeight <= f.clientHeight + 1 && f.scrollWidth <= f.clientWidth + 1), 'prévia: o conteúdo do card cabe no card padrão');
+  await faixa(pg, 'cfg-t-texto', 125);
+  ok(await pg.$eval('.previa-aparencia .face', (f) => f.scrollHeight <= f.clientHeight + 1 && f.scrollWidth <= f.clientWidth + 1), 'prévia: o conteúdo do card cabe com o texto a 125% (altura padrão)');
   await ctx.close();
 }
 
@@ -226,7 +281,7 @@ const faixa = (pg, id, valor) => pg.$eval('#' + id, (el, v) => { const s = Objec
   const { ctx, pg } = await novo();
   await ir(pg);
   await pg.click('[data-modo="escuro"]');
-  await pg.click('.cfg .sw[data-paleta="3"]'); await pg.selectOption('#cfg-f-titulo', 'fraunces'); await faixa(pg, 'cfg-t-texto', 110); await faixa(pg, 'cfg-t-icone', 24); await faixa(pg, 'cfg-t-card', 380);
+  await pg.click('.cfg .sw[data-paleta="3"]'); await escolher(pg, 'titulo', 'fraunces'); await faixa(pg, 'cfg-t-texto', 110); await faixa(pg, 'cfg-t-icone', 24); await faixa(pg, 'cfg-t-card', 380);
   await pg.click('.cfg [data-fundo="animado"]'); await pg.click('.cfg [data-movimento]');
   await pg.click('.cfg-cab button:has-text("Restaurar padrão")');
   const a = await apar(pg);
@@ -289,6 +344,9 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
     ok(g.rolagemH <= 0 && g.mainH <= 0, `${perfil}/${m}: sem rolagem horizontal`);
     ok(g.filhos.length === 0, `${perfil}/${m}: nenhum controle passa da largura da tela` + (g.filhos.length ? ': ' + g.filhos.join(', ') : ''));
     ok(g.sec.every((s) => s.l >= -1 && s.r <= g.vw + 1), `${perfil}/${m}: todos os painéis cabem na largura`);
+    const pos = await pg.evaluate(() => { const a = document.querySelector('.previa-aparencia').getBoundingClientRect(), c = document.querySelector('.apar-controles').getBoundingClientRect(); return { pl: a.left, pt: a.top, pr: a.right, cr: c.right, ct: c.top, w: a.width }; });
+    ok(perfil === 'celular' ? pos.pt < pos.ct : perfil === 'computador' ? pos.pl >= pos.cr - 1 : (pos.pl >= pos.cr - 1 || pos.pt < pos.ct), `${perfil}/${m}: a prévia do card fica ${perfil === 'celular' ? 'acima dos controles' : perfil === 'computador' ? 'ao lado dos controles' : 'ao lado ou acima dos controles, sem cobri-los'}`);
+    ok(pos.pr <= g.vw + 1 && pos.w >= 240, `${perfil}/${m}: a prévia cabe na tela (${Math.round(pos.w)} px de largura)`);
     if (m === 'claro') {
       const colunas = new Set(g.sec.filter((s) => s.c.includes('painel') && !s.c.includes('cfg-topo')).map((s) => Math.round(s.l / 10))).size;
       ok(perfil === 'computador' ? colunas >= 2 : perfil === 'celular' ? colunas === 1 : colunas >= 1, `${perfil}: painéis em ${colunas} coluna(s)`);

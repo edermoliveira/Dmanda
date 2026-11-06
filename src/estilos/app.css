@@ -215,17 +215,10 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app[data-dir="d"] .cfg .sw.padrao i { background: linear-gradient(90deg, var(--padrao-sw1) 0 55%, var(--padrao-sw2) 55%); }
 .app[data-dir="d"][data-tema="claro"] .cfg .sw.padrao { --padrao-sw1: #0071E3; --padrao-sw2: #0062C4; }
 .app[data-dir="d"][data-tema="escuro"] .cfg .sw.padrao { --padrao-sw1: #3D9BFF; --padrao-sw2: #6DB3FF; }
-.app[data-dir="d"] .cfg .amostra { display: block; margin-top: 6px; padding: 0 14px; color: var(--text2); font-size: calc(14px * var(--esc)); overflow-wrap: anywhere; }
-.app[data-dir="d"] .cfg .fld { margin-top: 12px; }
-.app[data-dir="d"] .cfg .fld select { min-height: 44px; }
 .app[data-dir="d"] .cfg .rng input[type="range"] { min-height: 44px; }
-.app[data-dir="d"] .cfg-previa { display: grid; gap: 6px; justify-items: start; margin: 4px 0 12px; padding: 14px; border-radius: var(--r-card); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
-.app[data-dir="d"] .cfg-previa p { margin: 0; }
-.app[data-dir="d"] .cfg-previa b { font-family: var(--font-h); font-size: calc(15px * var(--esc)); }
-.app[data-dir="d"] .cfg-previa .data .ic { vertical-align: -0.2em; }
 /* Fundo animado (opcional): véu de destaque que deriva devagar atrás de tudo. Parado com movimento reduzido (sistema ou escolha). */
 .app[data-dir="d"][data-fundo="animado"] .bg { display: block; overflow: hidden; background: var(--bgbase); }
-.app[data-dir="d"][data-fundo="animado"] .bg::before {
+.app[data-dir="d"][data-fundo="animado"] :is(.bg, .previa-fundo)::before {
   content: ""; position: absolute; inset: -30%;
   background:
     radial-gradient(38% 38% at 20% 25%, color-mix(in srgb, var(--acc) 34%, transparent), transparent 70%),
@@ -234,11 +227,44 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
   animation: fundo-deriva 48s ease-in-out infinite alternate;
 }
 @keyframes fundo-deriva { from { transform: translate3d(-4%, -3%, 0) rotate(0deg) scale(1); } to { transform: translate3d(5%, 4%, 0) rotate(14deg) scale(1.12); } }
-@media (prefers-reduced-motion: reduce) { .app[data-dir="d"][data-fundo="animado"] .bg::before { animation: none; } }
-.app[data-dir="d"][data-reduzir="true"][data-fundo="animado"] .bg::before { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .app[data-dir="d"][data-fundo="animado"] :is(.bg, .previa-fundo)::before { animation: none; } }
+.app[data-dir="d"][data-reduzir="true"][data-fundo="animado"] :is(.bg, .previa-fundo)::before { animation: none !important; }
 
 /* o atalho da busca respeita o piso de 10 px mesmo com o texto no mínimo */
 .app .buscabtn kbd { font-size: max(10px, calc(12px * var(--esc))); }
+
+/* ---------- Configurações: prévia do card e das fontes ---------- */
+.app[data-dir="d"] .apar-grade { margin-top: 10px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 340px); gap: 4px 20px; align-items: start; }
+.app[data-dir="d"] .apar-controles { grid-column: 1; grid-row: 1; min-width: 0; }
+.app[data-dir="d"] .previa-aparencia { grid-column: 2; grid-row: 1; position: sticky; top: 4px; min-width: 0; }
+.app[data-dir="d"] .previa-aparencia > .data { margin: 8px 0 0; }
+@container tela (max-width: 760px) {
+  .app[data-dir="d"] .apar-grade { grid-template-columns: minmax(0, 1fr); }
+  .app[data-dir="d"] .apar-controles, .app[data-dir="d"] .previa-aparencia { grid-column: 1; }
+  .app[data-dir="d"] .previa-aparencia { grid-row: 1; position: static; }
+  .app[data-dir="d"] .apar-controles { grid-row: 2; }
+}
+/* caixa que faz o papel do fundo do aplicativo: liso no padrão, com o gradiente (parado ou animado) na opção animada */
+.app[data-dir="d"] .previa-fundo { position: relative; overflow: hidden; padding: 14px; border-radius: var(--r-card); background: var(--bgbase); box-shadow: 0 0 0 1px var(--card-brd); pointer-events: none; }
+.app[data-dir="d"] .previa-fundo > .dcard { position: relative; z-index: 1; }
+.app[data-dir="d"] .previa-icones { position: relative; z-index: 1; display: flex; align-items: center; gap: 14px; margin-top: 10px; padding: 6px 14px; width: max-content; max-width: 100%; border-radius: 999px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); color: var(--acc-text); }
+.app[data-dir="d"][data-fundo="animado"] .previa-fundo::before { inset: -30%; }
+.app[data-dir="d"] .fonte-grupo { margin-top: 6px; }
+.app[data-dir="d"] .fonte-lista { display: grid; gap: 6px; }
+.app[data-dir="d"] .fonte-op { display: grid; gap: 2px; min-height: 44px; padding: 8px 14px; text-align: left; border: 0; border-radius: var(--r-field); background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--card-brd); cursor: pointer; font: inherit; }
+.app[data-dir="d"] .fonte-op[aria-checked="true"] { box-shadow: 0 0 0 2.5px var(--acc); }
+.app[data-dir="d"] .fonte-op:focus-visible { outline: 3px solid color-mix(in srgb, var(--acc) 55%, transparent); outline-offset: 2px; }
+.app[data-dir="d"] .fonte-nome { font-size: max(10px, calc(12px * var(--esc))); font-weight: 700; color: var(--text2); }
+.app[data-dir="d"] .fonte-amostra { overflow-wrap: anywhere; line-height: 1.35; }
+.app[data-dir="d"] .fonte-amostra.titulo { font-size: calc(17px * var(--esc)); font-weight: 700; }
+.app[data-dir="d"] .fonte-amostra.texto { font-size: calc(14px * var(--esc)); }
+.app[data-dir="d"] .fonte-amostra.mono { font-size: calc(13px * var(--esc)); font-variant-numeric: tabular-nums; }
+.app[data-dir="d"] .fonte-previa { display: grid; gap: 10px; margin: 10px 0 4px; padding: 14px; border-radius: var(--r-card); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
+.app[data-dir="d"] .fonte-previa small { display: block; margin-bottom: 2px; font-family: var(--font); font-size: max(10px, calc(12px * var(--esc))); font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .fonte-previa p { margin: 0; overflow-wrap: anywhere; line-height: 1.35; }
+.app[data-dir="d"] .fonte-previa .p-titulo { font-size: calc(19px * var(--esc)); font-weight: 800; }
+.app[data-dir="d"] .fonte-previa .p-texto { font-size: calc(15px * var(--esc)); }
+.app[data-dir="d"] .fonte-previa .p-mono { font-size: calc(13px * var(--esc)); }
 
 /* PALETAS: gerado por scripts/gerar-paletas.mjs (não editar à mão). Contraste conferido nos dois modos. */
 .app[data-dir="d"][data-tema="claro"][data-paleta="0"] { --acc: hsl(170 72% 37%); --acc-ink: hsl(170 90% 9%); --acc-soft: hsl(170 72% 37% / 0.18); --acc-text: hsl(170 80% 24%); --foco: hsl(170 72% 37%); } /* Água-marinha */
