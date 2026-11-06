@@ -215,7 +215,7 @@ const faixa = (pg, id, valor) => pg.$eval('#' + id, (el, v) => { const s = Objec
   // --- Card fictício único
   ok((await pg.$$('.previa-aparencia')).length === 1 && (await pg.$$('.previa-aparencia .dcard')).length === 1, 'prévia: um único card fictício na tela');
   ok(await pg.$eval('.previa-fundo', (e) => e.hasAttribute('inert')) && await pg.$eval('.previa-aparencia', (e) => e.getAttribute('role') === 'img'), 'prévia: não recebe foco nem clique (inert) e é anunciada como imagem');
-  ok(await pg.$eval('.previa-aparencia', (e) => ['.dcard', '.face.front', '.cab', '.tags .tag', '.tags .chip', '.assunto', '.chips .pz', '.prox-t', '.prog .barra'].every((s) => !!e.querySelector(s))), 'prévia: usa as classes reais do card de demanda');
+  ok(await pg.$eval('.previa-aparencia', (e) => ['.dcard', '.face.front', '.cab', '.tags .tag', '.tags .chip', '.assunto', '.desc', '.chips .pz', '.prox-t', '.prog .barra'].every((s) => !!e.querySelector(s))), 'prévia: usa as classes reais do card de demanda');
   await pg.click('.previa-aparencia .prox-t input', { force: true, timeout: 3000 }).catch(() => {});
   ok(!(await pg.$eval('.previa-aparencia .prox-t input', (i) => i.checked)), 'prévia: clicar nela não marca nada');
   // reflete modo, destaque, fontes, tamanhos e fundo
@@ -241,6 +241,34 @@ const faixa = (pg, id, valor) => pg.$eval('#' + id, (el, v) => { const s = Objec
   ok(await pg.$eval('.previa-aparencia .face', (f) => f.scrollHeight <= f.clientHeight + 1 && f.scrollWidth <= f.clientWidth + 1), 'prévia: o conteúdo do card cabe no card padrão');
   await faixa(pg, 'cfg-t-texto', 125);
   ok(await pg.$eval('.previa-aparencia .face', (f) => f.scrollHeight <= f.clientHeight + 1 && f.scrollWidth <= f.clientWidth + 1), 'prévia: o conteúdo do card cabe com o texto a 125% (altura padrão)');
+  await ctx.close();
+}
+
+// ================= 5c) descrição da prévia: regra de ajuste dos cards de Demandas =================
+{
+  const { ctx, pg } = await novo();
+  await ir(pg);
+  const est = () => pg.evaluate(() => {
+    const f = document.querySelector('.previa-aparencia .face'), d = f.querySelector('.desc'), t = f.querySelector('.assunto');
+    const lh = parseFloat(getComputedStyle(d).lineHeight) || parseFloat(getComputedStyle(d).fontSize) * 1.3;
+    return { oculta: d.classList.contains('oculto') || getComputedStyle(d).display === 'none', linhas: d.classList.contains('oculto') ? 0 : Math.round(d.getBoundingClientRect().height / lh), sobra: f.scrollHeight > f.clientHeight + 1, titulo: Math.round(t.getBoundingClientRect().height / (parseFloat(getComputedStyle(t).lineHeight) || parseFloat(getComputedStyle(t).fontSize) * 1.3)), nome: d.textContent.length > 10 };
+  });
+  let r = await est();
+  ok(!r.oculta && r.linhas >= 1 && !r.sobra && r.nome, `descrição no tamanho padrão: aparece (${r.linhas} linha) e nada passa do card`);
+  await faixa(pg, 'cfg-t-texto', 125); await pg.waitForTimeout(300);
+  r = await est();
+  ok(!r.sobra && r.titulo >= 2, `texto a 125%, altura padrão: nada passa do card, o título mantém ${r.titulo} linhas e a descrição ${r.oculta ? 'cedeu (some)' : 'cedeu linhas (' + r.linhas + ')'}`);
+  await faixa(pg, 'cfg-t-card', 420); await pg.waitForTimeout(300);
+  r = await est();
+  ok(!r.oculta && !r.sobra && r.titulo >= 2, `texto a 125%, altura maior (420 px): a descrição volta (${r.linhas} linha(s)) e nada passa do card`);
+  await faixa(pg, 'cfg-t-texto', 100); await pg.waitForTimeout(300);
+  await faixa(pg, 'cfg-t-card', 300); await pg.waitForTimeout(300);
+  r = await est();
+  ok(!r.sobra, 'altura mínima (300 px), texto padrão: nada passa do card' + (r.oculta ? ' (descrição cedeu)' : ''));
+  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(800);
+  ok((await app(pg, '--cardh')) === '300px' && !(await est()).sobra, 'depois de recarregar a prévia mantém o ajuste e a preferência');
+  await pg.click('.cfg-cab button:has-text("Restaurar padrão")'); await pg.waitForTimeout(300);
+  r = await est(); ok(!r.oculta && !r.sobra && (await app(pg, '--cardh')) === '340px', 'Restaurar padrão traz a descrição de volta');
   await ctx.close();
 }
 

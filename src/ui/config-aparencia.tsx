@@ -1,7 +1,8 @@
 'use client';
 // Configurações > Aparência, Fontes, Tamanhos e Fundo (decisões 11 e 35, protótipo Catalyst). Tudo vale na hora, é guardado só neste navegador
 // (lib/aparencia.ts) e nunca toca no banco. Restaurar padrão volta cores, fontes, tamanhos, fundo e movimento; o modo e os dias indisponíveis não mudam.
-import { useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
+import { ajustar } from './visoes';
 import { useApp } from './contexto';
 import { Icone } from './Icone';
 import {
@@ -59,7 +60,14 @@ function PreviaFontes({ titulo, texto, mono }: { titulo: string; texto: string; 
 }
 
 /** Um card fictício, com as classes e os tokens reais do card de demanda. Só mostra: nada nele é clicável nem grava (inert e sem dados reais). */
-function PreviaCard() {
+function PreviaCard({ dep }: { dep: unknown }) {
+  // mesma regra de ajuste dos cards de Demandas (título primeiro, a descrição cede linhas e depois some): refaz a cada mudança de aparência e quando uma fonte termina de carregar
+  useLayoutEffect(() => { ajustar(true); }, [dep]);
+  useLayoutEffect(() => {
+    const f = () => ajustar(true);
+    document.fonts?.addEventListener('loadingdone', f);
+    return () => document.fonts?.removeEventListener('loadingdone', f);
+  }, []);
   return (
     <div className="previa-aparencia" role="img" aria-label="Prévia: um card de demanda fictício com a aparência escolhida">
       <div className="previa-fundo" inert>
@@ -68,7 +76,8 @@ function PreviaCard() {
             <div className="face front">
               <div className="cab"><span className="origem-p"><i className="pt" style={{ '--h': 212 } as React.CSSProperties} />Secretaria de Obras</span><span className="girar" aria-hidden="true"><Icone nome="rotate-cw" /></span></div>
               <div className="tags"><span className="tag" style={{ '--h': 28 } as React.CSSProperties}>Ofício</span><span className="num mono">311/2026</span><span className="chip neutro">Fazendo</span></div>
-              <div className="assunto">Resposta sobre a reforma do prédio</div>
+              <div className="assunto fit">Resposta sobre a reforma do prédio</div>
+              <div className="desc">Reunir os documentos e confirmar o valor com a Contabilidade.</div>
               <div className="chips"><span className="pz n-amar"><Icone nome="calendar" />12/11 · faltam 5 d</span><span className="tempo mono"><Icone nome="clock" />Chegou há 4 d</span></div>
               <div className="prox-t"><input type="checkbox" tabIndex={-1} readOnly checked={false} aria-hidden="true" /><span className="prox-c"><small>Próxima tarefa</small><span className="t-txt">Pedir o parecer jurídico</span></span></div>
               <div className="prog"><div className="barra"><i style={{ width: '43%' }} /></div><b className="mono">3/7 · 43%</b></div>
@@ -106,7 +115,7 @@ export function SecoesAparencia() {
           </div>
         </div>
         <div className="apar-grade">
-        <PreviaCard />
+        <PreviaCard dep={a} />
         <div className="apar-controles">
         <h4 className="cfg-sub" id="cfg-modo-t">Modo</h4>
         <div className="seg-p" role="group" aria-labelledby="cfg-modo-t">
