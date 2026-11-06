@@ -272,6 +272,37 @@ const faixa = (pg, id, valor) => pg.$eval('#' + id, (el, v) => { const s = Objec
   await ctx.close();
 }
 
+// ================= 5d) composição em janela larga, intermediária e estreita =================
+for (const [nome, w, h] of [['larga', 1800, 1000], ['intermediária', 1100, 900], ['estreita', 700, 900]]) {
+  const ctx = await nav.newContext({ viewport: { width: w, height: h } });
+  const pg = await ctx.newPage();
+  pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
+  await ir(pg);
+  const g = await pg.evaluate(() => {
+    const m = document.querySelector('.main').getBoundingClientRect(), pad = parseFloat(getComputedStyle(document.querySelector('.main')).paddingRight) || 0;
+    const blocos = [...document.querySelectorAll('.cfg-controles > section, .cfg > .cfg-bloco')].map((s) => s.getBoundingClientRect());
+    const lado = document.querySelector('.cfg-lado').getBoundingClientRect();
+    const dir = Math.max(...blocos.map((b) => b.right), lado.right);
+    const sob = blocos.some((b) => b.right > lado.left + 1 && b.left < lado.right - 1 && b.bottom > lado.top && b.top < lado.bottom);
+    return { vazio: m.right - pad - dir, sob, hov: document.documentElement.scrollWidth - innerWidth, diasL: document.querySelector('.cfg-bloco').getBoundingClientRect().width, ladoL: lado.left, ctlR: document.querySelector('.cfg-controles').getBoundingClientRect().right, mw: m.width };
+  });
+  ok(g.vazio < 24, `${nome} (${w} px): sem espaço vazio à direita (${Math.round(g.vazio)} px)`);
+  ok(!g.sob && g.hov <= 0, `${nome}: sem sobreposição com a prévia e sem rolagem horizontal`);
+  ok(g.diasL > g.mw * 0.6, `${nome}: Dias indisponíveis usa a largura útil (${Math.round(g.diasL)} px)`);
+  if (w >= 760) {
+    await pg.evaluate(() => document.querySelector('#cfg-tam-t').scrollIntoView({ block: 'start' })); await pg.waitForTimeout(300);
+    const v = await pg.evaluate(() => { const r = document.querySelector('.cfg-lado').getBoundingClientRect(); return { t: r.top, b: r.bottom }; });
+    ok(v.t >= 0 && v.t < 200 && v.b > 100, `${nome}: a prévia continua à vista ao rolar até Tamanhos`);
+    await faixa(pg, 'cfg-t-texto', 125); await pg.waitForTimeout(300);
+    const barra = await pg.$eval('.previa-aparencia .face', (f) => f.scrollHeight <= f.clientHeight + 1);
+    ok(barra, `${nome}: a prévia reage ao ajuste feito enquanto ela está visível (texto a 125%)`);
+  } else {
+    const o = await pg.evaluate(() => document.querySelector('.cfg-lado').getBoundingClientRect().top < document.querySelector('.cfg-controles').getBoundingClientRect().top);
+    ok(o, `${nome}: uma coluna, prévia primeiro`);
+  }
+  await ctx.close();
+}
+
 // ================= 6) fundo animado e movimento =================
 {
   const { ctx, pg } = await novo();
@@ -372,12 +403,12 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
     ok(g.rolagemH <= 0 && g.mainH <= 0, `${perfil}/${m}: sem rolagem horizontal`);
     ok(g.filhos.length === 0, `${perfil}/${m}: nenhum controle passa da largura da tela` + (g.filhos.length ? ': ' + g.filhos.join(', ') : ''));
     ok(g.sec.every((s) => s.l >= -1 && s.r <= g.vw + 1), `${perfil}/${m}: todos os painéis cabem na largura`);
-    const pos = await pg.evaluate(() => { const a = document.querySelector('.previa-aparencia').getBoundingClientRect(), c = document.querySelector('.apar-controles').getBoundingClientRect(); return { pl: a.left, pt: a.top, pr: a.right, cr: c.right, ct: c.top, w: a.width }; });
+    const pos = await pg.evaluate(() => { const a = document.querySelector('.previa-aparencia').getBoundingClientRect(), c = document.querySelector('.cfg-controles').getBoundingClientRect(); return { pl: a.left, pt: a.top, pr: a.right, cr: c.right, ct: c.top, w: a.width }; });
     ok(perfil === 'celular' ? pos.pt < pos.ct : perfil === 'computador' ? pos.pl >= pos.cr - 1 : (pos.pl >= pos.cr - 1 || pos.pt < pos.ct), `${perfil}/${m}: a prévia do card fica ${perfil === 'celular' ? 'acima dos controles' : perfil === 'computador' ? 'ao lado dos controles' : 'ao lado ou acima dos controles, sem cobri-los'}`);
     ok(pos.pr <= g.vw + 1 && pos.w >= 240, `${perfil}/${m}: a prévia cabe na tela (${Math.round(pos.w)} px de largura)`);
     if (m === 'claro') {
       const colunas = new Set(g.sec.filter((s) => s.c.includes('painel') && !s.c.includes('cfg-topo')).map((s) => Math.round(s.l / 10))).size;
-      ok(perfil === 'computador' ? colunas >= 2 : perfil === 'celular' ? colunas === 1 : colunas >= 1, `${perfil}: painéis em ${colunas} coluna(s)`);
+      ok(perfil === 'celular' ? colunas === 1 : colunas >= 1, `${perfil}: painéis em ${colunas} coluna(s)`);
       const toque = perfil !== 'computador';
       // botões .btn têm 32 px visíveis e área de toque de 44 px por um ::after (regra do app, v5.css); os demais controles têm 44 px reais
       const pequenos = await pg.evaluate((toque) => [...document.querySelectorAll('.cfg button, .cfg select, .cfg input:not([type=hidden])')].filter((e) => !e.closest('[aria-hidden="true"]')).map((e) => ({ r: e.getBoundingClientRect(), t: (e.getAttribute('aria-label') || e.textContent || e.id).trim().slice(0, 28), c: e.className })).filter(({ r, c }) => r.width && r.height < (toque && !/\bbtn\b/.test(c) ? 43.5 : 31.5)).map(({ t, r, c }) => `${t} ${Math.round(r.height)}px [${c}]`), toque);

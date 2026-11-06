@@ -207,7 +207,6 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 /* ---------- Configurações > Aparência (decisões 11 e 35) ---------- */
 .app[data-dir="d"] .cfg .cfg-bloco { max-width: none; }
 .app[data-dir="d"] .cfg .data { margin: 6px 0 0; }
-.app[data-dir="d"] .cfg .cfg-nota { column-span: all; margin: 0 0 16px; }
 .app[data-dir="d"] .cfg .seg-p { flex-wrap: wrap; }
 .app[data-dir="d"] .cfg .seg-p button { min-height: 40px; padding: 0 16px; }
 .app[data-dir="d"][data-dev="toque"] .cfg .seg-p button { min-height: 44px; }
@@ -234,16 +233,26 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .buscabtn kbd { font-size: max(10px, calc(12px * var(--esc))); }
 
 /* ---------- Configurações: prévia do card e das fontes ---------- */
-.app[data-dir="d"] .apar-grade { margin-top: 10px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 340px); gap: 4px 20px; align-items: start; }
-.app[data-dir="d"] .apar-controles { grid-column: 1; grid-row: 1; min-width: 0; }
-.app[data-dir="d"] .previa-aparencia { grid-column: 2; grid-row: 1; position: sticky; top: 4px; min-width: 0; }
-.app[data-dir="d"] .previa-aparencia > .data { margin: 8px 0 0; }
-@container tela (max-width: 760px) {
-  .app[data-dir="d"] .apar-grade { grid-template-columns: minmax(0, 1fr); }
-  .app[data-dir="d"] .apar-controles, .app[data-dir="d"] .previa-aparencia { grid-column: 1; }
-  .app[data-dir="d"] .previa-aparencia { grid-row: 1; position: static; }
-  .app[data-dir="d"] .apar-controles { grid-row: 2; }
+/* Composição da aparência: controles de um lado, prévia do outro (fixa enquanto se percorrem os blocos). Largura menor: uma coluna, prévia primeiro. */
+.app[data-dir="d"] .cfg-apar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 20px; align-items: start; margin-bottom: 4px; }
+.app[data-dir="d"] .cfg-controles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.app[data-dir="d"] .cfg-controles > section { margin: 0; min-width: 0; }
+.app[data-dir="d"] .cfg-lado { margin-bottom: 16px; }
+.app[data-dir="d"] .cfg .cfg-topo .pal { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+@container tela (min-width: 760px) {
+  .app[data-dir="d"] .cfg-apar { grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); }
+  .app[data-dir="d"] .cfg-controles { grid-column: 1; grid-row: 1; }
+  .app[data-dir="d"] .cfg-lado { grid-column: 2; grid-row: 1; margin: 0; position: sticky; top: 4px; }
 }
+/* janela larga: Fontes de um lado, Tamanhos e Fundo do outro (ocupa a largura em vez de deixar a direita vazia) */
+@container tela (min-width: 1280px) {
+  .app[data-dir="d"] .cfg-controles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app[data-dir="d"] .cfg-controles > .cfg-topo { grid-column: 1 / -1; }
+  .app[data-dir="d"] .cfg-controles > section:nth-of-type(2) { grid-row: span 2; }
+}
+@media (max-height: 640px) { .app[data-dir="d"] .cfg-lado { position: static; } }
+.app[data-dir="d"] .cfg .cfg-nota { margin: 12px 0 16px; }
+.app[data-dir="d"] .previa-aparencia > .data { margin: 8px 0 0; }
 /* caixa que faz o papel do fundo do aplicativo: liso no padrão, com o gradiente (parado ou animado) na opção animada */
 .app[data-dir="d"] .previa-fundo { position: relative; overflow: hidden; padding: 14px; border-radius: var(--r-card); background: var(--bgbase); box-shadow: 0 0 0 1px var(--card-brd); pointer-events: none; }
 .app[data-dir="d"] .previa-fundo > .dcard { position: relative; z-index: 1; }

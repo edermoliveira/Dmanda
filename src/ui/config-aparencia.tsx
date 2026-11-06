@@ -105,7 +105,9 @@ export function SecoesAparencia() {
   const restaurar = () => { restaurarAparencia(); avisar('Cores, fontes, tamanhos e fundo voltaram ao padrão.'); };
   const tamanhoPadrao = a.textoPct === TEXTO.padrao && a.icone === ICONE.padrao && a.card === CARD.padrao;
   return (
-    <>
+    <div className="cfg-apar">
+      <aside className="cfg-lado" aria-label="Prévia da aparência"><PreviaCard dep={a} /></aside>
+      <div className="cfg-controles">
       <section className="painel cfg-topo" aria-labelledby="cfg-apar-t">
         <div className="cfg-cab">
           <h3 id="cfg-apar-t">Aparência</h3>
@@ -114,9 +116,6 @@ export function SecoesAparencia() {
             <button type="button" className="btn mini" disabled={padrao} onClick={restaurar}>Restaurar padrão</button>
           </div>
         </div>
-        <div className="apar-grade">
-        <PreviaCard dep={a} />
-        <div className="apar-controles">
         <h4 className="cfg-sub" id="cfg-modo-t">Modo</h4>
         <div className="seg-p" role="group" aria-labelledby="cfg-modo-t">
           {MODOS.map((m) => <button key={m} type="button" data-modo={m} aria-pressed={modo === m} onClick={() => setModo(m)}>{ROTULO_MODO[m]}</button>)}
@@ -130,8 +129,6 @@ export function SecoesAparencia() {
               <button key={p.nome} type="button" className="sw" data-paleta={i} aria-pressed={a.paleta === i} aria-label={`Destaque ${p.nome}`} onClick={() => mudarAparencia({ paleta: i })}><i /><span>{p.nome}</span></button>
             );
           })}
-        </div>
-              </div>
         </div>
       </section>
 
@@ -165,7 +162,8 @@ export function SecoesAparencia() {
         <p className="data">O gradiente usa a cor de destaque e se move devagar. Fica parado quando o aparelho pede para reduzir movimento ou quando você liga a opção abaixo. Só o fundo muda: cards, janelas e textos continuam como estão.</p>
         <div className="acoes"><button type="button" className="btn mini" data-movimento aria-pressed={a.movimento === 'reduzido'} onClick={() => mudarAparencia({ movimento: a.movimento === 'reduzido' ? 'sistema' : 'reduzido' })}>Reduzir movimento: {a.movimento === 'reduzido' ? 'ligado' : 'segue o aparelho'}</button></div>
       </section>
+      </div>
       <p className="data cfg-nota">Aparência, fontes, tamanhos e fundo ficam guardados só neste navegador e valem em todas as telas. Em outro aparelho, escolha de novo.</p>
-    </>
+    </div>
   );
 }
