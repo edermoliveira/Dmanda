@@ -9,9 +9,11 @@ import { googleLigado } from '../src/lib/login.ts';
 import { aparenciaGuardada, APARENCIA_PADRAO, ePadrao, modoGuardado, temaDoModo, variaveisAparencia, CONJUNTOS, FONTES_TITULO, FONTES_TEXTO, FONTES_MONO, PALETAS, TEXTO, ICONE, CARD } from '../src/lib/aparencia.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
 import { esperaPrefeita, dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
-import { validarDados, validarDia, validarEntrada } from '../src/nucleo/validacao.ts';
+import { validarDados, validarDia, validarEntrada, validarRegistros } from '../src/nucleo/validacao.ts';
 import { estadoDe, tagsDe, semTags, resumoDe, temTitulo, contarTags, filtrarEntradas, ordenarEntradas, paraDemanda, diferencas, vazia, camposEmConflito, carimbo, QTD_CORES } from '../src/lib/entradas.ts';
 import { buscar, palavrasDa, simplificar as simplificarBusca, LIMITE_RESULTADOS } from '../src/lib/busca.ts';
+import { diasPendentes, diaDeTrabalho, emJanelaDeCorrecao, serieDoPeriodo, textoDoDia, fraseDoDia, registrosValidos, substituirRegistros, textoConcluidas, AVISO_PERFIL } from '../src/lib/registros.ts';
+import { estadoInicial, lerEstado, tique, resolver, INTERVALO_S, PASSO_MAX, OCIOSO_MS } from '../src/lib/lembretes.ts';
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const hoje = '2026-10-25';
@@ -264,6 +266,91 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(dup.resultados.length === 1 && dup.resultados[0].estado === null, 'busca: o mesmo registro nas duas listas aparece uma vez');
   const ord = buscar('contrato', { ...F, demandas: [dm('a', { assunto: 'Outra', descricao: 'contrato aqui' }), dm('b', { assunto: 'Contrato novo' })], arquivadas: [dm('c', { assunto: 'Contrato velho', arquivada_em: 'x' })] }).resultados.map((x) => x.chave).join();
   ok(ord === 'd:b,d:a,d:c', 'busca: título casando vem antes do corpo, e arquivados por último');
+}
+
+// ---------- Perfil: registros, produtividade e lembretes (src/lib/registros.ts e src/lib/lembretes.ts) ----------
+{
+  const H = '2026-11-06'; // sexta-feira
+  const reg = (dia, h = 3, e = 3) => ({ dia, humor: h, energia: e });
+  const feriado = (data) => ({ id: 'f' + data, data, descricao: 'Feriado', categoria: 'Feriado' });
+  const externo = (data) => ({ id: 'x' + data, data, descricao: 'Congresso', categoria: 'Evento externo' });
+  ok(diaDaSemana(H) === 5 && emJanelaDeCorrecao('2026-11-06', H) && emJanelaDeCorrecao('2026-11-01', H) && !emJanelaDeCorrecao('2026-10-31', H) && !emJanelaDeCorrecao('2026-11-07', H), 'perfil: a janela de correção é hoje e os 5 dias anteriores (sexto dia e dia futuro ficam de fora)');
+  ok(diasPendentes(H, [], []).join() === '2026-11-02,2026-11-03,2026-11-04,2026-11-05', 'perfil: o convite pede os dias de trabalho dos 5 anteriores sem registro (sem hoje; domingo 01/11 fora), do mais antigo ao mais recente');
+  ok(diasPendentes(H, [reg('2026-11-03'), reg('2026-11-05')], []).join() === '2026-11-02,2026-11-04', 'perfil: o convite pede só o que falta (dias já registrados saem)');
+  ok(diasPendentes(H, [], [feriado('2026-11-02')]).join() === '2026-11-03,2026-11-04,2026-11-05' && !diaDeTrabalho('2026-11-02', [feriado('2026-11-02')]), 'perfil: feriado cadastrado sai do convite');
+  ok(diasPendentes(H, [], [externo('2026-11-03')]).includes('2026-11-03'), 'perfil: evento externo de dia inteiro não tira o dia do convite (só feriado)');
+  ok(diasPendentes('2026-11-09', [], []).join() === '2026-11-04,2026-11-05,2026-11-06', 'perfil: na segunda-feira, sábado e domingo ficam de fora e o convite pede quarta, quinta e sexta');
+  ok(diasPendentes(H, [reg('2026-11-02'), reg('2026-11-03'), reg('2026-11-04'), reg('2026-11-05')], []).length === 0, 'perfil: sem dia pendente, o convite não existe');
+  ok(diasPendentes(H, [reg('2026-10-20')], []).length === 4 && diasPendentes('2026-11-02', [], []).join() === '2026-10-28,2026-10-29,2026-10-30', 'perfil: um registro antigo não altera os pendentes e a janela cruza o fim do mês');
+
+  // produtividade: demandas finalizadas no dia, independentemente do prazo; zero é valor
+  const dem = (id, o) => ({ id, etapa: 'Fazendo', concluida_em: null, arquivada_em: null, tipo: 'Processo', numero: '', assunto: id, tarefas: [], ...o });
+  const fin = (id, dia, o = {}) => dem(id, { etapa: 'Finalizado', concluida_em: dia, prazo: '2026-12-31', ...o });
+  const serie = serieDoPeriodo([fin('a', H), fin('b', H, { prazo: '2020-01-01' }), fin('c', '2026-11-05'), dem('d', { etapa: 'Fazendo' }), fin('e', '2026-10-01', {})], [reg(H, 4, 2)], H, 7);
+  ok(serie.length === 7 && serie[6].dia === H && serie[0].dia === '2026-10-31' && serie[6].concluidas === 2 && serie[5].concluidas === 1 && serie[4].concluidas === 0, 'perfil: produtividade conta as finalizadas por data de conclusão (prazo vencido ou não é indiferente), em 7 dias que terminam em hoje');
+  ok(serie[6].registro?.humor === 4 && serie[5].registro === null && serie[4].concluidas === 0, 'perfil: zero é um valor (0 finalizadas) e a falta de registro é diferente (registro nulo)');
+  ok(serieDoPeriodo([fin('a', H), fin('a', H)], [], H, 1)[0].concluidas === 1, 'perfil: a mesma demanda nas duas listas (ativas e arquivadas durante uma atualização) conta uma vez');
+  ok(serieDoPeriodo([fin('a', H, { arquivada_em: '2026-11-06T10:00:00Z' })], [], H, 1)[0].concluidas === 1, 'perfil: demanda finalizada e arquivada ainda conta no dia da conclusão');
+  ok(serieDoPeriodo([dem('a', { concluida_em: H })], [], H, 1)[0].concluidas === 0 && serieDoPeriodo([fin('a', '2027-01-01')], [], H, 30).every((p) => p.concluidas === 0), 'perfil: só etapa Finalizado conta, e data de conclusão fora do período não entra');
+  ok(serieDoPeriodo([], [], '2026-03-01', 30)[0].dia === '2026-01-31' && serieDoPeriodo([], [], '2028-03-01', 3).map((p) => p.dia).join() === '2028-02-28,2028-02-29,2028-03-01', 'perfil: o período atravessa meses e ano bissexto sem pular dia');
+
+  // textos neutros
+  const t0 = textoDoDia({ dia: H, concluidas: 0, registro: null }, H), t1 = textoDoDia({ dia: '2026-11-05', concluidas: 1, registro: reg('2026-11-05', 5, 1) }, H);
+  ok(/Hoje, sexta-feira, 06\/11: nenhuma demanda finalizada, sem registro de humor e energia\./.test(t0) && /Quinta-feira, 05\/11: 1 demanda finalizada, humor muito bem, energia muito baixa\./.test(t1), 'perfil: o resumo do dia diz zero como zero, "sem registro" como falta, e usa os nomes dos níveis');
+  const frases = [0, 1, 2, 9].map(fraseDoDia).join(' ');
+  ok(!/meta|parab|bom trabalho|ruim|péssim|abaixo|acima|sequência|compar/i.test(frases + AVISO_PERFIL) && /zero também acontece/.test(fraseDoDia(0)) && textoConcluidas(2) === '2 demandas finalizadas', 'perfil: frases neutras, sem meta, nota, sequência nem comparação');
+  ok(/privados/.test(AVISO_PERFIL) && /não substitui acompanhamento profissional/.test(AVISO_PERFIL), 'perfil: o aviso previsto (privado e não substitui acompanhamento profissional) está preservado');
+
+  // leitura do banco e mescla
+  ok(registrosValidos([reg('2026-11-06', 5, 1), { dia: '2026-11-05', humor: 6, energia: 1 }, { dia: 'x', humor: 1, energia: 1 }, null, { dia: '2026-11-04', humor: '3', energia: 3 }]).length === 1 && registrosValidos({}).length === 0 && registrosValidos(undefined).length === 0, 'perfil: resposta fora do formato vira lista vazia ou descarta só o item ruim');
+  const mesc = substituirRegistros([reg('2026-11-04', 1, 1), reg('2026-11-06', 2, 2)], [reg('2026-11-06', 5, 5), reg('2026-11-05', 3, 3)]);
+  ok(mesc.map((r) => r.dia + ':' + r.humor).join() === '2026-11-04:1,2026-11-05:3,2026-11-06:5', 'perfil: gravar substitui o mesmo dia (sem duplicar) e mantém a ordem');
+  ok(validarRegistros([{ dia: H, humor: 3, energia: 2 }])[0].dia === H, 'perfil: a validação aceita um dia com os dois níveis');
+  const recusas = [[], null, 'x', [{ dia: H, humor: 0, energia: 3 }], [{ dia: H, humor: 3, energia: 6 }], [{ dia: H, humor: '3', energia: 3 }], [{ dia: H, humor: 3 }], [{ dia: '2026-02-30', humor: 3, energia: 3 }], [{ dia: 'ontem', humor: 3, energia: 3 }], [{ dia: H, humor: 3, energia: 3 }, { dia: H, humor: 4, energia: 4 }], Array.from({ length: 7 }, (_, i) => ({ dia: somarDias(H, -i), humor: 3, energia: 3 }))];
+  let recusadas = 0, vazou = false;
+  for (const r of recusas) { try { validarRegistros(r); } catch (e) { recusadas++; if (/[0-9]/.test(String(e.message).replace(/1 a 5|1 a 6/g, ''))) vazou = true; } }
+  ok(recusadas === recusas.length && !vazou, 'perfil: a validação recusa lista vazia, dia inexistente, nível fora de 1 a 5, nível ausente e dia repetido, sem repetir os valores na mensagem');
+
+  // relógio dos lembretes
+  const T0 = Date.UTC(2026, 10, 6, 11, 0, 0), ent = (o) => ({ agora: T0, dia: H, visivel: true, ativo: true, carregado: true, registradoHoje: false, temPendencias: false, ...o });
+  const r0 = tique(estadoInicial(H, T0), ent({}));
+  ok(r0.estado.pendente === 'entrada' && r0.estado.entrada && r0.estado.trabalhado === 0 && !r0.convidar, 'lembretes: a primeira vez do dia visível e em uso gera o lembrete de entrada');
+  ok(tique(estadoInicial(H, T0), ent({ registradoHoje: true })).estado.pendente === null && tique(estadoInicial(H, T0), ent({ registradoHoje: true })).estado.entrada, 'lembretes: com o dia já registrado (em outro aparelho), a entrada não pede de novo');
+  ok(tique(estadoInicial(H, T0), ent({ carregado: false })).estado.entrada === false && tique(estadoInicial(H, T0), ent({ visivel: false })).estado.entrada === false && tique(estadoInicial(H, T0), ent({ ativo: false })).estado.entrada === false, 'lembretes: sem registros lidos, com a aba escondida ou com o aparelho parado, nada é decidido nem contado');
+  ok(tique(estadoInicial(H, T0), ent({ temPendencias: true })).convidar === true && tique(r0.estado, ent({ agora: T0 + 30000, temPendencias: true })).convidar === false, 'lembretes: o convite para completar os dias vem uma vez por dia, só se houver pendência');
+  // 3 horas de trabalho em tiques de 30 s
+  let e = r0.estado, agora = T0, geradas = 0; const marcos = [];
+  for (let i = 0; i < 2 * 3 * 3600 / 30 + 10; i++) {
+    agora += 30000; const antes = e.lembretes;
+    e = tique(e, ent({ agora })).estado;
+    if (e.lembretes > antes) { geradas++; marcos.push(Math.round((agora - T0) / 3600000 * 100) / 100); e = resolver(e); }
+  }
+  ok(geradas === 2 && marcos.join() === '3,6' && e.pendente === null, 'lembretes: um lembrete a cada 3 horas de trabalho (3 h e 6 h) e, respondido, o balão some até o próximo marco');
+  // lembrete ignorado não repete nem se perde
+  let ig = tique(estadoInicial(H, T0), ent({ registradoHoje: true })).estado;
+  for (let i = 0; i < 3 * 3600 / 30 + 2; i++) ig = tique(ig, ent({ agora: T0 + (i + 1) * 30000, registradoHoje: true })).estado;
+  const n1 = ig.lembretes; ig = tique(ig, ent({ agora: T0 + 3 * 3600 * 1000 + 120000, registradoHoje: true })).estado;
+  ok(ig.pendente === 'horas' && n1 === 1 && ig.lembretes === 1, 'lembretes: o lembrete das 3 horas fica pendente sem ser respondido e não gera outro enquanto o marco é o mesmo');
+  // pausa longa e aba escondida não contam
+  let pz = tique(estadoInicial(H, T0), ent({})).estado;
+  pz = tique(pz, ent({ agora: T0 + 5 * 3600 * 1000 })).estado;
+  ok(pz.trabalhado <= PASSO_MAX && pz.lembretes === 0, 'lembretes: voltar depois de horas parado conta no máximo um tique (a pausa não paga o intervalo)');
+  let es = tique(estadoInicial(H, T0), ent({})).estado;
+  for (let i = 1; i <= 40; i++) es = tique(es, ent({ agora: T0 + i * 30000, visivel: false })).estado;
+  ok(es.trabalhado === 0, 'lembretes: aba escondida não conta tempo');
+  // duas abas do mesmo aparelho (o último tique é compartilhado): o tempo não passa a valer o dobro
+  let dupla = tique(estadoInicial(H, T0), ent({})).estado;
+  for (let i = 1; i <= 120; i++) { dupla = tique(dupla, ent({ agora: T0 + i * 30000 })).estado; dupla = tique(dupla, ent({ agora: T0 + i * 30000 + 5000 })).estado; }
+  ok(Math.abs(dupla.trabalhado - 120 * 30 - 5) <= 5, 'lembretes: duas abas visíveis contam o tempo uma só vez (cerca de 3600 s em 1 hora, não 7200 s)');
+  // virada do dia
+  let noite = tique(estadoInicial(H, T0), ent({ registradoHoje: true })).estado;
+  noite = { ...noite, trabalhado: 3 * 3600 - 20, lembretes: 0, pendente: 'horas', convite: true };
+  const amanha = tique(noite, ent({ agora: T0 + 24 * 3600000, dia: '2026-11-07', temPendencias: true }));
+  ok(amanha.estado.dia === '2026-11-07' && amanha.estado.trabalhado === 0 && amanha.estado.lembretes === 0 && amanha.estado.pendente === 'entrada' && amanha.convidar === true, 'lembretes: no dia seguinte o contador recomeça, a entrada e o convite voltam e o pendente de ontem não é carregado');
+  ok(tique(noite, ent({ agora: T0 + 24 * 3600000, dia: '2026-11-07', ativo: false })).estado.entrada === false, 'lembretes: virar o dia com o aparelho parado não gera lembrete: ele espera o primeiro uso');
+  ok(lerEstado({ dia: '2026-11-05', trabalhado: 100, entrada: true }, H, T0).trabalhado === 0 && lerEstado('lixo', H, T0).dia === H && lerEstado({ dia: H, trabalhado: -5, ultimo: 'x', pendente: 'outro', lembretes: 2.7 }, H, T0).pendente === null && lerEstado({ dia: H, trabalhado: -5, lembretes: 2.7 }, H, T0).lembretes === 2, 'lembretes: estado guardado de outro dia, ilegível ou fora do formato volta ao começo, sem quebrar');
+  ok(INTERVALO_S === 10800 && OCIOSO_MS === 900000, 'lembretes: o intervalo é de 3 horas e o aparelho conta como parado depois de 15 minutos sem uso');
+  ok(!/humor|energia/i.test(JSON.stringify(r0.estado)), 'lembretes: o estado guardado no aparelho não tem humor nem energia');
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

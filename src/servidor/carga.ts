@@ -6,10 +6,11 @@
 import { ambiente, estadoRotina, listarDemandas, listarDias } from './demandas';
 import { listarEntradas } from './entradas';
 import { listarEventos } from './agenda';
+import { listarRegistros } from './perfil';
 
 export async function cargaInicial(completa = true) {
-  const [demandas, entradas, eventos, dias, rotina, amb] = await Promise.all([
-    listarDemandas(false), listarEntradas(false), listarEventos(), listarDias(), completa ? estadoRotina() : null, completa ? ambiente() : null,
+  const [demandas, entradas, eventos, dias, registros, rotina, amb] = await Promise.all([
+    listarDemandas(false), listarEntradas(false), listarEventos(), listarDias(), listarRegistros(), completa ? estadoRotina() : null, completa ? ambiente() : null,
   ]);
-  return { ok: true as const, dados: { demandas, entradas, eventos, dias, rotina, ambiente: amb } };
+  return { ok: true as const, dados: { demandas, entradas, eventos, dias, registros, rotina, ambiente: amb } };
 }

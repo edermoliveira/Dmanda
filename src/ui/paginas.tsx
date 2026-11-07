@@ -9,6 +9,7 @@ import { useApp, type EstadoRotina } from './contexto';
 import { CardDemanda, ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
 import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
+import { RegistroNoInicio } from './perfil';
 import { filtrar, focoDoDia, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, TIPOS, titulo, type Demanda, type Tipo } from '@/lib/demandas';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
@@ -33,6 +34,7 @@ export function PaginaInicio() {
   return (
     <>
       <CabecaPagina titulo="Início" sub="Seu dia em um só lugar." />
+      <RegistroNoInicio />
       {carregando && !demandas.length ? <Carregando /> : null}
       {!carregando && !erroCarga && !demandas.length ? (
         <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Foco do dia.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>

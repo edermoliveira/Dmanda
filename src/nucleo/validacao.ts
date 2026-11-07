@@ -4,6 +4,7 @@ import { AREAS, ETAPAS, PRAZOS, TIPOS } from '../lib/demandas.ts';
 import { BOTOES_PRAZO, CATEGORIAS_DIA, type CategoriaDia } from '../lib/prazos.ts';
 import { COR_MAX_ACEITA, LIMITE_TEXTO, LIMITE_TITULO } from '../lib/entradas.ts';
 import { erroDoEvento, TIPOS_EVENTO, type DadosEvento } from '../lib/eventos.ts';
+import { DIAS_CORRECAO, NIVEIS, type Nivel } from '../lib/registros.ts';
 
 /** Erro com texto próprio para mostrar na tela. */
 export class ErroDmanda extends Error {}
@@ -117,4 +118,22 @@ export function validarEvento(entrada: unknown, { criando }: { criando: boolean 
     if (typeof s.descricao === 'string' && s.descricao.length > 5000) throw new ErroDmanda('A descrição passa de 5000 caracteres.');
   }
   return s;
+}
+
+/**
+ * Registros diários de humor e energia: de 1 a 6 dias (hoje e os 5 anteriores), cada um com os dois valores de 1 a 5. A janela de datas é conferida no banco, que tem o relógio;
+ * aqui só o formato. As mensagens de erro nunca repetem o que foi digitado.
+ */
+export function validarRegistros(entrada: unknown): { dia: string; humor: Nivel; energia: Nivel }[] {
+  if (!Array.isArray(entrada) || entrada.length < 1 || entrada.length > DIAS_CORRECAO + 1) throw new ErroDmanda('Informe de 1 a 6 dias para registrar.');
+  const vistos = new Set<string>();
+  return entrada.map((x) => {
+    if (!x || typeof x !== 'object') throw new ErroDmanda('Dia inválido.');
+    const r = x as Record<string, unknown>;
+    if (typeof r.dia !== 'string' || !DATA.test(r.dia) || !dataExiste(r.dia)) throw new ErroDmanda('Dia inválido.');
+    const nivel = (n: unknown): Nivel => { if (!NIVEIS.includes(n as Nivel)) throw new ErroDmanda('Humor e energia precisam ser escolhidos, de 1 a 5.'); return n as Nivel; };
+    if (vistos.has(r.dia)) throw new ErroDmanda('O mesmo dia aparece mais de uma vez.');
+    vistos.add(r.dia);
+    return { dia: r.dia, humor: nivel(r.humor), energia: nivel(r.energia) };
+  });
 }

@@ -334,3 +334,39 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .busca-aviso { margin: 10px 6px 2px; font-size: calc(13px * var(--esc)); color: var(--text2); }
 .app .busca-aviso.erro { color: var(--text); background: var(--cat-venc); padding: 8px 12px; border-radius: 12px; margin: 10px 0 0; }
 @media (max-width: 640px) { .app .res-tipo { min-width: 0; } .app .busca-box .res { flex-wrap: wrap; } }
+
+/* ---------- Perfil: humor, energia e produtividade (decisão 56) ---------- */
+/* gráfico "Seu ritmo": cada coluna é um botão (leitura por mouse, toque e teclado); as cores são só o destaque, nunca uma nota de bom ou ruim */
+.app .grafico { touch-action: pan-y; }
+.app .grafico .gcol { appearance: none; background: transparent; border: 0; padding: 0; font: inherit; color: var(--text2); cursor: pointer; min-width: 0; align-self: stretch; border-radius: 10px; }
+.app .grafico .gcol:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.app .grafico .gcol i { min-height: 8px; }
+.app .grafico .gcol.zero i { background: var(--track); box-shadow: inset 0 0 0 1px var(--card-brd); }
+.app .grafico .gcol.sel { color: var(--text); font-weight: 600; }
+.app .grafico .gcol.sel i { box-shadow: 0 0 0 2px var(--acc); }
+.app .grafico .gcol.zero.sel i { background: var(--track); box-shadow: 0 0 0 2px var(--acc); }
+.app .grafico .tip { z-index: 5; pointer-events: none; }
+.app .pf-det { margin: 0 0 10px; color: var(--text); font-size: calc(14px * var(--esc)); }
+.app .pf-sub { margin: 4px 0 8px; font-size: calc(14px * var(--esc)); }
+.app .pf-aviso { margin: 8px 0 0; }
+.app .reg-form { display: grid; gap: 10px; }
+.app .reg-form .reg-l > span { min-width: 64px; font-weight: 600; }
+.app .reg-dica { margin: 0; min-height: calc(18px * var(--esc)); }
+.app .reg-erro { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--cat-venc); color: var(--text); font-size: calc(13px * var(--esc)); }
+.app .balao .reg-form { margin-top: 6px; }
+.app .balao .reg-l { flex-wrap: wrap; gap: 4px 8px; }
+.app .balao .reg-l > span { flex-basis: 100%; min-width: 0; font-size: max(10px, calc(12px * var(--esc))); }
+.app .balao .emo { width: 44px; height: 44px; }
+.app .ini-reg { display: grid; gap: 10px; }
+.app .ini-reg-v { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; font-size: calc(14px * var(--esc)); }
+.app .ini-reg-i { display: inline-flex; align-items: center; gap: 8px; }
+.app .ini-reg-i .emo-img { width: 32px; height: 32px; }
+.app .dia-l .emos { margin: 0; }
+.app .dia-l > b { font-size: calc(14px * var(--esc)); }
+@media (prefers-reduced-motion: reduce) { .app .grafico .gcol i { transition: none; } }
+/* gaveta do Perfil: humor e energia lado a lado, produtividade embaixo, sem margem dobrada entre os quadros (a gaveta já tem espaçamento próprio) */
+.app .dr .ind3 { grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 0; }
+.app .dr .ind3 .ind[data-indicador="produtividade"] { grid-column: 1 / -1; }
+.app .dr .ind-v { flex-wrap: wrap; }
+.app .dr .painel + .painel, .app .dr .ind3 + .painel { margin-top: 0; }
+.app .dr .ind .data { margin: 0; }

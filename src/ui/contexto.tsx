@@ -6,11 +6,13 @@ import { FILTRO_VAZIO, hojeISO, type Coluna, type DadosDemanda, type Demanda, ty
 import * as srv from '@/servidor/demandas';
 import * as srvE from '@/servidor/entradas';
 import * as srvA from '@/servidor/agenda';
+import * as srvP from '@/servidor/perfil';
 import { cargaInicial } from '@/servidor/carga';
 import { APARENCIA_PADRAO, aparenciaGuardada, CONJUNTOS, PALETAS, temaDoModo, type Aparencia, type Modo } from '@/lib/aparencia';
 import { eObjeto, gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada } from '@/lib/armazenamento';
 import { avisosDeHoje, compararEventos, minutosAgora, type AvisoEvento, type DadosEvento, type Evento } from '@/lib/eventos';
 import type { Entrada } from '@/lib/entradas';
+import { substituirRegistros, type RegistroDia } from '@/lib/registros';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';
 
@@ -77,9 +79,24 @@ type Ctx = {
   /** Avisos de hoje dentro do aplicativo (eventos próximos do início, ou de dia inteiro com aviso), menos os que a pessoa já dispensou. */
   avisosEventos: AvisoEvento[];
   dispensarAviso: (e: Evento) => void;
+  /** Humor e energia por dia (privados: só o Perfil e o lembrete os usam). Gravar devolve o resultado para a janela mostrar o próprio estado e manter a escolha se falhar. */
+  registros: RegistroDia[];
+  carregandoRegistros: boolean;
+  erroRegistros: string | null;
+  registrarDias: (lista: { dia: string; humor: number; energia: number }[]) => Promise<{ ok: true } | { ok: false; erro: string }>;
+  /** O Perfil (gaveta à direita) abre pelo avatar e por Configurações. */
+  perfilAberto: boolean;
+  abrirPerfil: () => void;
+  fecharPerfil: () => void;
+  /** Releitura dos registros (depois de uma falha de leitura). */
+  recarregarRegistros: () => Promise<void>;
+  /** A janela "Completar os últimos dias" (humor e energia dos dias de trabalho sem registro): aberta pelo convite da entrada, pelo Início e pelo Perfil. */
+  completarAberto: boolean;
+  abrirCompletar: () => void;
+  fecharCompletar: () => void;
   aviso: Aviso;
   avisar: (msg: string, erro?: boolean) => void;
-  ambiente: { teste: boolean; nome: string } | null;
+  ambiente: { teste: boolean; nome: string; semLembretes?: boolean } | null;
   rotina: EstadoRotina | null;
   tema: 'claro' | 'escuro';
   alternarTema: () => void;
@@ -166,6 +183,11 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [carregandoEventos, setCarregandoEventos] = useState(true);
   const [erroEventos, setErroEventos] = useState<string | null>(null);
+  const [registros, setRegistros] = useState<RegistroDia[]>([]);
+  const [carregandoRegistros, setCarregandoRegistros] = useState(true);
+  const [erroRegistros, setErroRegistros] = useState<string | null>(null);
+  const [perfilAberto, setPerfilAberto] = useState(false);
+  const [completarAberto, setCompletarAberto] = useState(false);
   // hora de agora (minutos desde 00:00 em Brasília): começa nula e só vale depois de montar no navegador, para o servidor não depender do relógio
   const [agoraMin, setAgoraMin] = useState<number | null>(null);
   const [dispensados, setDispensados] = useState<string[]>([]);
@@ -297,7 +319,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setHoje(hojeISO());
     // uma só chamada ao servidor traz tudo (ver servidor/carga.ts); cada parte tem o seu resultado e o seu erro
     void protegido(() => cargaInicial()).then((r) => {
-      if (!r.ok) { setErroCarga(r.erro); setErroEntradas(r.erro); setErroEventos(r.erro); setCarregando(false); setCarregandoEntradas(false); setCarregandoEventos(false); return; }
+      if (!r.ok) { setErroCarga(r.erro); setErroEntradas(r.erro); setErroEventos(r.erro); setErroRegistros(r.erro); setCarregando(false); setCarregandoEntradas(false); setCarregandoEventos(false); setCarregandoRegistros(false); return; }
       const c = r.dados;
       if (c.demandas.ok) { setHoje(hojeISO()); setDemandas(c.demandas.dados); setErroCarga(null); } else setErroCarga(c.demandas.erro);
       setCarregando(false);
@@ -305,6 +327,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       setCarregandoEntradas(false);
       if (c.eventos.ok) { setEventos(c.eventos.dados); setErroEventos(null); } else setErroEventos(c.eventos.erro);
       setCarregandoEventos(false);
+      if (c.registros.ok) { setRegistros(c.registros.dados); setErroRegistros(null); } else setErroRegistros(c.registros.erro);
+      setCarregandoRegistros(false);
       if (c.dias.ok) setDias(c.dias.dados);
       if (c.rotina?.ok) setRotina(c.rotina.dados);
       if (c.ambiente) setAmbiente(c.ambiente);
@@ -327,11 +351,12 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       const antes = gravacoes.current;
       const c = await protegido(() => cargaInicial(false)); // uma só chamada, sem o estado da rotina nem o ambiente
       if (!c.ok) return; // sem rede agora: o que está na tela continua
-      const { demandas: r, dias: d, entradas: en, eventos: evs } = c.dados;
+      const { demandas: r, dias: d, entradas: en, eventos: evs, registros: rg } = c.dados;
       if (gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) {
         if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) setDias(d.dados); }
         if (en.ok) { setEntradas(en.dados); setErroEntradas(null); }
         if (evs.ok) { setEventos(evs.dados); setErroEventos(null); }
+        if (rg.ok) { setRegistros(rg.dados); setErroRegistros(null); }
         setAgoraMin(minutosAgora());
       }
     };
@@ -385,7 +410,27 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (lista.ok) { setDemandas(lista.dados); avisar(`${inicio}. ${resumo}`); } else avisar(`${inicio}. ${resumo} A tela não conseguiu ler os novos vencimentos: recarregue para vê-los.`, true);
   }, [avisar]);
 
+  const registrarDias = useCallback(async (lista: { dia: string; humor: number; energia: number }[]): Promise<{ ok: true } | { ok: false; erro: string }> => {
+    const r = await gravando(() => protegido(() => srvP.registrarDias(lista)));
+    if (!r.ok) return { ok: false, erro: r.erro };
+    setRegistros((atual) => substituirRegistros(atual, r.dados));
+    // avisa o relógio dos lembretes: registrar hoje, em qualquer lugar, responde ao lembrete pendente
+    window.dispatchEvent(new CustomEvent('dmanda:registro-gravado', { detail: lista.map((x) => x.dia) }));
+    return { ok: true };
+  }, [gravando]);
+  const recarregarRegistros = useCallback(async () => {
+    setCarregandoRegistros(true);
+    const r = await protegido(() => srvP.listarRegistros());
+    if (r.ok) { setRegistros(r.dados); setErroRegistros(null); } else setErroRegistros(r.erro);
+    setCarregandoRegistros(false);
+  }, []);
+  const abrirCompletar = useCallback(() => setCompletarAberto(true), []);
+  const fecharCompletar = useCallback(() => setCompletarAberto(false), []);
+  const abrirPerfil = useCallback(() => setPerfilAberto(true), []);
+  const fecharPerfil = useCallback(() => setPerfilAberto(false), []);
+
   const valor = useMemo<Ctx>(() => ({
+    registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar,
     demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, setAbaArquivo,
     criarEntrada: (dados) => rodarEntrada(() => srvE.criarEntrada(dados)),
     salvarEntrada: (id, dados, versao) => rodarEntrada(() => srvE.salvarEntrada(id, dados, versao)),
@@ -482,7 +527,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario]);
+  }), [eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

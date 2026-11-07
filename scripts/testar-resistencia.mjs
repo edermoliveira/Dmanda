@@ -17,7 +17,7 @@ const parar = () => { try { if (servidor) spawnSync('taskkill', ['/pid', String(
 process.on('exit', parar);
 const subir = async (pasta) => {
   parar();
-  servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: pasta, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
+  servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: pasta, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
   for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/login'); if (r.status < 500) return; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
   throw new Error('o servidor de teste não subiu');
 };

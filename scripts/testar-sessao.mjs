@@ -68,14 +68,14 @@ const auth = http.createServer(async (req, res) => {
     res.writeHead(204, CORS); return res.end();
   }
   // listas vazias: demandas, dias indisponíveis e entradas (a cópia dos dados, /api/exportar, lê as três; uma função desconhecida aqui vira 404 e a rota responde 500)
-  if (['listar_demandas', 'listar_dias_indisponiveis', 'listar_entradas', 'listar_eventos'].some((f) => u.pathname === `/rest/v1/rpc/${f}`)) return json(res, 200, []);
+  if (['listar_demandas', 'listar_dias_indisponiveis', 'listar_entradas', 'listar_eventos', 'listar_registros_dia'].some((f) => u.pathname === `/rest/v1/rpc/${f}`)) return json(res, 200, []);
   if (u.pathname === '/rest/v1/rpc/estado_rotina') return json(res, 200, { ultima_ok: null, ultima_falha: null, resumo_data: null, resumo_calculado_em: null });
   return json(res, 404, {});
 });
 await new Promise((r) => auth.listen(PORTA_AUTH, '127.0.0.1', r));
 
 // ---- aplicação real (modo real, apontada para o Auth falso) ----
-const env = { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${PORTA_AUTH}`, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_falsa_para_teste', DMANDA_EMAIL_AUTORIZADO: EMAIL, SUPABASE_SERVICE_ROLE_KEY: '', CRON_SECRET: 'segredo-de-teste-1234567890', DMANDA_BANCO: '', DMANDA_LOGIN_GOOGLE: '' };
+const env = { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${PORTA_AUTH}`, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_falsa_para_teste', DMANDA_EMAIL_AUTORIZADO: EMAIL, SUPABASE_SERVICE_ROLE_KEY: '', CRON_SECRET: 'segredo-de-teste-1234567890', DMANDA_BANCO: '', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_LOGIN_GOOGLE: '' };
 const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env, stdio: 'ignore' });
 const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } auth.close(); };
 process.on('exit', parar);
@@ -336,6 +336,36 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
     atual = usuario(EMAIL);
     ok(respostas.length === 2 && respostas.every((r) => !/"dados"/.test(r.texto)), `busca: a leitura dos arquivados com sessão de conta não autorizada não devolve dados (status ${respostas.map((r) => r.status).join(', ')})`);
     await intrusa.close();
+  }
+  // Perfil (humor e energia): gravar pelo Perfil com a sessão da conta autorizada; a mesma ação repetida sem sessão, com cookie adulterado ou por conta não autorizada não grava nem devolve nada
+  {
+    const antes = capturadas.length;
+    await p0.click('.perfil-b'); await p0.click('[data-item="perfil"]'); await p0.waitForSelector('[data-perfil] .reg-form', { timeout: 20000 });
+    await p0.click('[data-perfil] [data-escala="humor"] .emo[data-nivel="4"]'); await p0.click('[data-perfil] [data-escala="energia"] .emo[data-nivel="2"]');
+    await p0.click('[data-perfil] .reg-form .btn.pri');
+    for (let i = 0; i < 50 && !capturadas.slice(antes).some((x) => /"dia":"\d{4}-\d{2}-\d{2}"/.test(x.corpo)); i++) await new Promise((r) => setTimeout(r, 200));
+    const acao = capturadas.slice(antes).find((x) => /"dia":"\d{4}-\d{2}-\d{2}"/.test(x.corpo));
+    ok(!!acao, 'perfil: com a sessão válida, registrar humor e energia chama a ação do servidor');
+    await p0.keyboard.press('Escape');
+    const repetirP = async (ctx) => { const r = await ctx.request.post(acao.url, { headers: { 'next-action': acao.id, 'content-type': acao.tipo, accept: 'text/x-component' }, data: acao.corpo, maxRedirects: 0, failOnStatusCode: false }); return { status: r.status(), local: r.headers()['location'] ?? '', texto: await r.text().catch(() => '') }; };
+    const rotasRegistro = chamadas.filter((c) => /rpc\/registrar_dias/.test(c)).length;
+    const anonP = await nav0.newContext();
+    const semP = await repetirP(anonP);
+    ok(semP.status >= 300 && semP.status < 400 && /login/.test(semP.local) && !/"dados"/.test(semP.texto), `perfil: registrar sem sessão é desviado para o login (status ${semP.status}) e não devolve dados`);
+    await anonP.close();
+    const falsoP = await nav0.newContext();
+    await falsoP.addCookies((await c0.cookies()).map(({ name, value, domain, path }) => ({ name, value: name.startsWith('sb-') ? 'adulterado' + value.slice(10) : value, domain, path })));
+    const adP = await repetirP(falsoP);
+    ok(!/"dados"/.test(adP.texto), `perfil: registrar com cookie de sessão adulterado não grava (status ${adP.status})`);
+    await falsoP.close();
+    atual = usuario(EMAIL_FORA);
+    const intrusaP = await nav0.newContext();
+    await intrusaP.addCookies([{ name: 'sb-127-auth-token', value: sessaoSb({ sid: 'conta-fora-da-lista-2' }), domain: 'localhost', path: '/' }]);
+    const inP = await repetirP(intrusaP);
+    atual = usuario(EMAIL);
+    ok(!/"dados"/.test(inP.texto), `perfil: registrar com sessão de conta não autorizada não grava (status ${inP.status})`);
+    await intrusaP.close();
+    ok(chamadas.filter((c) => /rpc\/registrar_dias/.test(c)).length === rotasRegistro, 'perfil: nenhuma das três tentativas sem autorização chegou ao banco (nenhuma chamada nova a registrar_dias)');
   }
   // fechar e reabrir o navegador mantém a sessão: novo contexto com os mesmos cookies (como o iPhone reabrindo a PWA depois de horas)
   const guardados = await c0.cookies();

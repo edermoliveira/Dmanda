@@ -10,6 +10,8 @@ import { Janelas } from './janelas';
 import { MenuMover } from './visoes';
 import { MenuConta } from './MenuConta';
 import { Busca } from './busca';
+import { Lembretes } from './lembretes';
+import { PerfilGaveta } from './perfil';
 
 const NAV: [string, string, string, string][] = [
   ['/', 'Início', 'nav-inicio', 'inicio'], ['/entradas', 'Entradas', 'nav-entradas', 'entradas'], ['/demandas', 'Demandas', 'nav-demandas', 'demandas'],
@@ -25,7 +27,7 @@ function useToque() {
 }
 
 function Interior({ children }: { children: ReactNode }) {
-  const { tema, aparencia, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover, avisosEventos, dispensarAviso } = useApp();
+  const { tema, aparencia, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover, avisosEventos, dispensarAviso, perfilAberto } = useApp();
   const caminho = usePathname();
   const router = useRouter();
   const toque = useToque();
@@ -43,6 +45,7 @@ function Interior({ children }: { children: ReactNode }) {
   useEffect(() => { if (primeira.current) { primeira.current = false; return; } marca('tela'); }, [caminho]);
   useEffect(() => { if (janela) marca('modal'); }, [janela]);
   useEffect(() => { if (plus) marca('plus'); }, [plus]);
+  useEffect(() => { if (perfilAberto) marca('perfil'); }, [perfilAberto]);
   // Esc fecha o menu "+" e devolve o foco ao botão que o abriu
   useEffect(() => {
     if (!plus) return;
@@ -58,7 +61,7 @@ function Interior({ children }: { children: ReactNode }) {
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== 'k' || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.repeat || e.isComposing || janelaAberta || buscando) return;
-      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]') || document.querySelector('.modal-ov, .busca-ov')) return;
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]') || document.querySelector('.modal-ov, .busca-ov, .dr-ov')) return;
       e.preventDefault(); setPlus(false); setConta(null); fecharMenuMover(); setBuscando(true);
     };
     document.addEventListener('keydown', f);
@@ -67,7 +70,7 @@ function Interior({ children }: { children: ReactNode }) {
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== 'n' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat || e.isComposing || janelaAberta) return;
-      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]') || document.querySelector('.modal-ov, .busca-ov, .mv-menu, .menuplus.aberto')) return;
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]') || document.querySelector('.modal-ov, .busca-ov, .dr-ov, .mv-menu, .menuplus.aberto')) return;
       e.preventDefault(); abrirJanela({ t: 'entrada' });
     };
     document.addEventListener('keydown', f);
@@ -141,6 +144,8 @@ function Interior({ children }: { children: ReactNode }) {
         </div>
         {buscando ? <Busca aoFechar={() => setBuscando(false)} /> : null}
         <Janelas />
+        <PerfilGaveta />
+        <Lembretes ocupado={buscando || !!conta} />
         <MenuMover />
         {conta ? <MenuConta ponto={conta} fechar={fecharConta} /> : null}
         <div className={`toast${aviso ? ' on' : ''}${aviso?.erro ? ' erro' : ''}`} id="toast" role={aviso?.erro ? 'alert' : 'status'}>{aviso?.msg}</div>
