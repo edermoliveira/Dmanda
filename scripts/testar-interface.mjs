@@ -11,7 +11,7 @@ import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
 
 const PORTA = process.env.PORTA_TESTE_INTERFACE || '7104', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/interface';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
+const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
 const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
 process.on('exit', parar);
 let falhas = 0, total = 0;
@@ -309,7 +309,7 @@ for (const tema of ['claro', 'escuro']) {
   ok(campoNovo === null, 'a lista agora mostra as tarefas (a demanda deixou de estar sem tarefas)');
   // depois de uma inclusão confirmada, o mesmo texto numa nova tentativa recebe outra identidade e cria outra tarefa (nada é deduplicado pelo conteúdo)
   await pg.evaluate(() => [...document.querySelectorAll('[aria-label="Criar novo"]')].find((e) => e.offsetParent)?.click());
-  await pg.evaluate(() => [...document.querySelectorAll('.menuplus [role="menuitem"], .menuplus button')].find((e) => /^\s*Tarefa\s*$/.test(e.textContent))?.click());
+  await pg.evaluate(() => [...document.querySelectorAll('.menuplus [role="menuitem"], .menuplus button')].find((e) => /^\s*Nova tarefa\s*$/.test(e.textContent))?.click());
   await pg.waitForSelector('#t-texto'); await pg.selectOption('#t-dem', { label: (await pg.$$eval('#t-dem option', (o) => o.map((x) => x.textContent))).find((x) => /Tarefa perdida/.test(x)) });
   await pg.fill('#t-texto', 'Tarefa de resposta perdida'); await pg.click('.modal .btn.pri:has-text("Adicionar")');
   await pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 }); await pg.waitForTimeout(600);

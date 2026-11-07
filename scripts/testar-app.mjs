@@ -9,7 +9,7 @@ import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
 const SEGREDO = 'segredo-de-teste-1234567890';
 const PORTA = process.env.PORTA_TESTE || '7103', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/e2e';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: SEGREDO }, stdio: 'ignore' });
+const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: SEGREDO }, stdio: 'ignore' });
 const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
 process.on('exit', parar);
 let falhas = 0, total = 0;

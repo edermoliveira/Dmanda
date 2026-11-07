@@ -494,16 +494,76 @@ Detalhes e a lista completa em `AUDITORIA.md`, seção 23. **Estado:** código e
 
 **Revisão `ponytail-review` do complemento.** Sem achado que bloqueie. Registrado: (a) na Agenda com falha nas demandas a grade segue desenhada sem carga, o número e o aviso dizem a verdade (decisão de desenho do usuário); (b) o teste de falha parcial depende do formato do fluxo do React: se o Next mudar, ele falha alto (não passa em silêncio).
 
-## S. Ponto de retomada: base verificada salva e preparação do visual (05/11/2026)
+## S. Ponto de retomada: base publicada e continuação em casa (05/11/2026)
 
 **Decisão do usuário sobre a Agenda:** com falha só na consulta de demandas, a grade continua visível; ficam o aviso de erro e o traço no resumo. Nenhum outro ajuste nesse estado.
 
-**Base funcional verificada:** os oito commits do bloco de resistência e desempenho (Issue #7), de `9e59b24` a `1beb09e`, sobre `7cff1de`, estão na branch de checkpoint `checkpoint/resistencia-desempenho` no GitHub (ver o hash confirmado no `git ls-remote`). A `main` remota segue em `7cff1de` e a `main` local em `1beb09e` (os mesmos oito commits, sem push): nada foi mesclado nem publicado na Vercel, e o Supabase real não foi tocado. Arquivos de dados de teste (`.dados-teste/`) e `.env*` ficam fora do Git por `.gitignore`.
+**Experimento Apple encerrado (05/11/2026):** o usuário reprovou o protótipo visual. A etapa Apple e a revisão com `ui-humanizer` foram canceladas; o Catalyst segue como único design. A branch `visual/apple-design` (commit `2b99812`) existe só no computador de trabalho, não foi enviada ao GitHub e não faz parte deste envio. O stash local "Trabalho local antes da branch visual - 05-11-2026" também fica só lá e não foi aplicado.
 
-**Ordem da próxima etapa (definida pelo usuário):**
-1. Visual inspirado na Apple, na branch `visual/apple-design`, criada a partir do checkpoint. Nenhuma skill visual foi instalada e a interface não foi alterada.
-2. Revisão de acabamento com `ui-humanizer`.
-3. Avaliação do usuário antes de qualquer integração à `main`.
+**Publicado (05/11/2026, com autorização do usuário):** o commit `7504f1d3c37f9850118feac11bbdfac3aa65a56b` (bloco de resistência e desempenho, Issue #7, 10 commits sobre `7cff1de`) foi enviado à `main` por avanço simples e a Vercel concluiu o deploy (status `success` no GitHub). O domínio respondeu: `/login` 200, `/demandas` sem sessão redireciona ao login, manifesto 200, cron sem segredo 401. **Falta a validação autenticada do usuário** (Início, Demandas, Entradas, Arquivo, Agenda) e confirmar no painel da Vercel que o deploy ativo é `7504f1d`. Sem migração nova (continuam 15 aplicadas), sem mudança de dependências, de `vercel.json` ou de variáveis. A origem automática do cron segue na Issue #3. Reversão, se preciso: Instant Rollback no painel da Vercel para o deploy `7cff1de`. Antes do envio: `tsc` e `eslint` sem erro e `npm run build` aprovado nesse commit.
 
-**Retomar em outro computador:**
-`git fetch origin`, `git checkout visual/apple-design` (se só existir o checkpoint: `git checkout -b visual/apple-design origin/checkpoint/resistencia-desempenho`), `npm ci`, `npm run dev:teste`. A `main` só recebe o visual depois da aprovação do usuário.
+**Repositório público:** a API do GitHub respondeu sem autenticação, então o repositório está público, embora este documento dissesse privado. Nada de segredo vai ao Git (`.env*` e `.dados-teste/` ignorados), mas a visibilidade é decisão do usuário e não foi alterada.
+
+**Continuar em casa:** a `main` do GitHub está em `7504f1d`. Comandos no PowerShell:
+
+```powershell
+cd C:\Users\SEU_USUARIO\Desktop\Dmanda
+git status --short                    # deve estar vazio; se não, preserve antes: git stash push -u -m "antes de atualizar"
+git fetch origin --prune
+git log --oneline origin/main..main   # commits próprios da main de casa; deve estar vazio
+git switch main
+git merge --ff-only origin/main       # se recusar, não force: git branch salvo-casa main e decida com o assistente
+npm ci
+git rev-parse HEAD                    # deve ser 7504f1d3c37f9850118feac11bbdfac3aa65a56b
+npm run dev:teste                     # http://localhost:7100, banco de teste
+```
+
+Próximo passo: a avaliação autenticada do usuário em produção e o que ela revelar; depois, as Issues #2, #3 e #4. Nenhuma nova etapa visual está em andamento.
+
+**Retomada no computador do trabalho (06/11/2026):** branch `base/resistencia-desempenho` em `65c2686`, árvore limpa, stash "Trabalho local antes da branch visual - 05-11-2026" e branches preservados. `7504f1d` é ancestral do `HEAD` e `origin/main` está em `7504f1d` (`main` local ainda em `7cff1de`, não alterada). Ferramentas: Node 24.22.0 (`C:\Tools\nodejs`), npm 12.2.1, Git 2.56.0 (`C:\Users\adminpmt04\Tools\Git`), Claude Code 2.1.319 (`C:\Users\adminpmt04\.local\bin`; o registro do npm lista 2.1.318). Atualizações disponíveis, nada instalado: Next 16.4.5, Supabase JS 2.119.0, Tailwind 4.3.4, PGlite 0.5.15, Playwright 1.65.0.
+- **Confirmado hoje, sem sessão:** `/login` 200, `/demandas` 307 para `/login`, manifesto 200, cron sem segredo 401.
+- **Não confirmado:** deploy ativo `7504f1d` (a consulta à API do GitHub e o painel da Vercel não foram acessados nesta sessão); validação autenticada (Início, Demandas, Entradas, Arquivo, Agenda), que depende do usuário; origem automática do cron (Issue #3).
+
+## T. Configurações, aparência (06/11/2026, decisão 53, a validar pelo usuário)
+
+Branch `bloco/configuracoes-catalyst`, a partir de `c2876dc`, sem push, sem publicação, sem migração e sem tocar no Supabase real. A validação funcional em produção do bloco anterior foi concluída pelo usuário em 06/11; a evidência do cron segue em paralelo (Issue #3).
+
+**O que existe agora em Configurações:** Modo (Claro, Escuro, Sistema), cor de destaque (padrão azul do Catalyst e dez paletas), fontes (sete conjuntos, três seletores e Surpreenda-me), tamanhos (texto de 100% a 125%, ícones de 16 a 28 px, altura dos cards de 300 a 420 px, com prévia e Restaurar tamanhos), fundo (padrão liso do Catalyst ou gradiente animado) e Reduzir movimento, mais Restaurar padrão. Dias indisponíveis seguem iguais. Arquivos: `src/lib/aparencia.ts` (regras puras), `src/ui/config-aparencia.tsx` (telas), `src/ui/contexto.tsx` (estado e persistência), `src/ui/Casca.tsx` (aplicação no `.app`), `src/estilos/app.css` (estilos e paletas geradas por `scripts/gerar-paletas.mjs`), `src/app/(app)/layout.tsx` (15 fontes novas via `next/font`, sem pré-carga).
+
+**Persistência:** só no navegador. `dmanda-tema` (como antes; ausente = Sistema) e `dmanda:aparencia` (resto, lido campo a campo). Escolhas antigas de Claro e Escuro foram preservadas (testado).
+
+**Verificado (banco de teste, dados fictícios):** `tsc` e `eslint` sem erro (um aviso antigo de `useMemo` em `contexto.tsx`, de antes do bloco), `verificar:cores` ok, `npm run build` aprovado, `testar:regras` 126 (13 novas), `testar:config` 108 (novo: modo, ao vivo e após recarga, destaques, fontes carregadas, tamanhos, fundo, movimento reduzido do aparelho, restauração, armazenamento corrompido, contraste das 11 opções nos dois modos, alvos de toque, layout em computador, iPad e celular nos dois modos, cards nos limites, Dias indisponíveis, sem erro de console), `testar:interface` 148, `testar:app` 132, `testar:agenda` 114, `testar:entradas` 179 e `testar:ajustes` 417 (o WebKit não rodou neste computador, então faltam as verificações dele; as 604 documentadas incluem o WebKit).
+
+**Achados e correções durante o teste:** (1) o contraste do protótipo falhava em várias paletas (botão principal a 2,2:1 em Oceano, contorno a 1,8:1 em Água-marinha, texto de destaque a 4,1:1 em Índigo escuro): as paletas passaram a ser geradas com ajuste mínimo de luminosidade até 4,5:1 (botão), 5:1 (texto) e 3:1 (contorno); (2) texto abaixo de 100% quebrava o piso de 10 px em dezenas de textos de 12 e 13 px, então o limite inferior ficou em 100%; (3) o atalho Ctrl K ganhou piso de 10 px.
+
+**Limitações conhecidas:** (a) a aparência é aplicada depois da hidratação, então quem personalizou vê um instante do padrão ao recarregar (o modo claro ou escuro não pisca, ele já vem do script do `<head>`); (b) as escolhas não sincronizam entre aparelhos; (c) fontes: só o carregamento no Edge foi testado, não no Safari do iPhone; (d) não houve avaliação visual do usuário; (e) fora do bloco: fundo em cor ou imagem, ícones (Iconoir e Lucide), widgets, preferências do dia a dia, exportar e importar dados, aviso de lapso.
+
+**Como experimentar:** `git switch bloco/configuracoes-catalyst`, `npm ci` e `npm run dev:teste`, depois http://localhost:7100/config. Teste: trocar o modo e recarregar, escolher um destaque e abrir Demandas, mexer nas fontes, esticar o texto a 125% e ver os cards, ligar o gradiente animado e, no Windows, ligar "Mostrar animações" desligado para ver o gradiente parar; por fim Restaurar padrão. **Fora do Claude Code (opcional):** abrir a mesma tela na PWA do iPhone depois de um eventual deploy.
+
+**Recomendação:** aprovar ou ajustar a tela, e só então decidir se o próximo bloco é o fundo em cor ou imagem (reaproveitando o CSS que já existe), ícones ou as preferências do dia a dia. Aplicar a aparência antes da hidratação (sem o instante do padrão) cabe num ajuste pequeno, se incomodar. Andamento oficial mantido em 45%.
+
+**Refinamento das prévias (06/11/2026, decisão 54, a validar):** Fontes ganhou lista com nome e amostra de cada família e a prévia do conjunto (título, texto e detalhes); Aparência ganhou o card fictício único (as quatro opções de fundo, modo, destaque, fontes e tamanhos refletem na hora). Verificado: `tsc` e `eslint` sem erro novo, `verificar:cores` ok, `npm run build` aprovado, `testar:config` 143 de 143 (35 novas: famílias e amostras, mesmo texto por papel, rótulos, teclado, card único e inerte, modo, destaque, fontes, fundo, movimento, Restaurar padrão, 125%, posição da prévia em computador, iPad e celular), `testar:interface` 148 e `testar:app` 132. Achados: a prévia antiga media o ícone num chip que não usa o tamanho de ícones (corrigido com uma faixa de ícones do menu); o card real usa a fonte principal no título e mono nos números e no prazo; na primeira abertura de /config depois de subir o servidor de desenvolvimento, a aparência guardada demora a chegar (compilação), sem relação com o código. Custo novo: abrir Fontes baixa as 17 famílias de uma vez (só o subconjunto latino, uma única vez por aparelho). Como abrir: `npm run dev:teste`, http://localhost:7100/config. Andamento oficial mantido em 45%.
+
+
+**Descrição na prévia (06/11/2026):** o card fictício agora tem descrição e usa o ajuste real dos cards de Demandas (`ajustar`). Conferido: padrão (2 linhas), texto a 125% com altura padrão (cede para 1 linha, título mantém 2), 125% com altura 420 px (volta a 2 linhas), altura 300 px, recarga e Restaurar padrão. `testar:config` 149 de 149. O card real não foi alterado.
+
+**Layout de /config (06/11/2026):** o espaço vazio à direita em janela larga vinha de `src/estilos/catalyst.css:374` (`.cfg { columns: 3 300px }`, colunas CSS que balanceavam os blocos em duas colunas e deixavam a terceira vazia; em 1704 px de área útil os blocos iam de 120 a 1219 px). Agora `.cfg-apar` (app.css) põe os controles (Aparência, Fontes, Tamanhos, Fundo, blocos separados, na mesma ordem) de um lado e a prévia fixa do outro a partir de 760 px de largura do conteúdo; a partir de 1280 px Fontes fica de um lado e Tamanhos e Fundo do outro; abaixo de 760 px é uma coluna com a prévia primeiro; Dias indisponíveis ocupa a largura toda, fora da prévia. Conferido em 1800, 1100, 700 e 390 px, claro e escuro, texto a 125%: sem vazio, sobreposição ou rolagem horizontal, prévia à vista ao rolar. `testar:config` 163 de 163.
+
+
+## U. Configurações aprovada e Busca global com botão "+" (06/11/2026, decisão 55, aguardando avaliação do usuário)
+
+- **Configurações (aparência) aprovada pelo usuário** na prévia local de casa, em 06/11/2026: base `bloco/configuracoes-catalyst` no commit `8473dde`, já no GitHub. A `main` não foi alterada (o avanço dela publica o aplicativo).
+- **Este bloco** (branch local `bloco/busca-global-atalhos`, saída de `8473dde`, sem push): lupa e Ctrl+K ou Cmd+K, busca em demandas, tarefas, entradas e eventos (arquivados e convertidos com estado), menu "+" completo. Código: `src/lib/busca.ts` (regras puras), `src/ui/busca.tsx` (janela), `src/ui/Casca.tsx` (atalho, lupa e menu), `src/ui/contexto.tsx` (as leituras dos arquivados passam a devolver se deu certo), estilos no fim de `src/estilos/app.css`. Nenhuma migração, nenhuma ação de servidor nova, nada no Supabase real.
+- **Testes:** `npm run testar:busca` (novo, porta 7112, 93 verificações no Edge com banco de teste e dados fictícios), 17 regras novas em `testar:regras` (142), e regressões `testar:interface` (148), `testar:entradas` (179), `testar:agenda` (114), `testar:config` (163), `testar:sessao` (83), `testar:resistencia` (90), `tsc`, `eslint` (só avisos antigos) e `build`. O teste de interface passou a procurar "Nova tarefa" no menu.
+- **Larguras:** computador 1360 e 1088 px (zoom de 125%, densidade 1,25), iPad emulado 820 px e iPhone emulado 390 px (emulação do Edge, **não** aparelho real nem Safari), claro e escuro.
+- **Limites conhecidos:** a busca vê o que o aplicativo carregou (as demandas ativas, entradas ativas e eventos vêm na carga inicial; os arquivados são lidos ao abrir a busca); sem internet ao abrir, ela avisa que o resultado pode estar incompleto. Ctrl+K não abre digitando em um campo (decisão para não atrapalhar quem escreve). Não validado: iPhone e iPad reais, Supabase real, publicação.
+- **Revisão `ponytail-review`:** 2 achados procedentes, corrigidos (reuso de `titulo()` de `demandas.ts`; `useDeferredValue` para a digitação não esperar a busca); o evento deixou de casar pelo tipo ("Reunião" casaria todos).
+
+## V. Perfil: humor, energia, produtividade e lembretes (06/11/2026, decisão 56, aguardando avaliação do usuário)
+
+- **Base:** a Busca (decisão 55) foi aprovada pelo usuário na prévia local; a branch `bloco/busca-global-atalhos` (saída de `8473dde`) termina no commit de fechamento da Busca (leitura dos arquivados sem aviso duplicado; `testar:sessao` ganhou 9 verificações de acesso: navegador sem sessão não abre a busca nem recebe os arquivados, cookie adulterado e conta não autorizada também não). Este bloco está na branch local `bloco/perfil-indicadores`, saída desse commit. Nada foi enviado ao GitHub.
+- **Código:** `src/lib/registros.ts` (regras puras: janela de correção, dias pendentes, produtividade, textos neutros), `src/lib/lembretes.ts` (relógio dos lembretes, puro), `src/ui/escala.tsx` (escala de cinco níveis e formulário), `src/ui/lembretes.tsx` (balão, tique, convite), `src/ui/perfil.tsx` (gaveta, quadro do Início e cartão de Configurações), `src/servidor/perfil.ts` e operações `listarRegistros` e `registrarDias` (a carga conjunta ganhou a parte `registros`), migração 16 (só no banco de teste). `executar(..., { privado: true })` registra só o código do erro.
+- **Chave de teste:** `DMANDA_SEM_LEMBRETES=sim` (só fora de produção) desliga o relógio dos lembretes; as outras suítes a usam porque o convite é uma janela e atrapalharia os cliques. `testar:perfil` roda com os lembretes ligados.
+- **Testes:** `npm run testar:perfil` (novo, porta 7113, 115 verificações com relógio falso e banco de teste), `testar:banco` (309, 24 novas, migração 16), `testar:regras` (177, 35 novas), `testar:sessao` (acesso sem sessão do registro), mais as regressões, `tsc`, `eslint` e `build` (ver o relatório da entrega para os números finais).
+- **Limites e pendências:** emulação do Edge para computador, zoom de 125%, texto do aplicativo a 125%, iPad e iPhone (**não** aparelho real nem Safari); as colunas do gráfico semanal ficam com cerca de 39 px de largura no iPhone (o arrasto do dedo cobre a largura toda e o histórico tem alvos de 44 px); os cinco SVGs de energia pesam 7,9 MB no total (carregam sob demanda, vale otimizar com a autorização do usuário); edição rápida do perfil (nome, cargo, órgão, expediente, intervalo do balão) fica para outro bloco; clima, foto, IA e integrações fora; migração 16 **não** aplicada no Supabase real.
+- **Decisões que dependem do usuário:** (1) incluir humor e energia na cópia dos dados (versão 5) quando houver destino privado; (2) contar o tempo de trabalho só dentro do expediente; (3) guardar cada conclusão de demanda para o histórico de produtividade não encolher ao reabrir ou excluir; (4) intervalo do balão configurável (2, 3 ou 4 horas, como no protótipo).

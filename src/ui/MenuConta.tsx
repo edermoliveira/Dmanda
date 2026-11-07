@@ -1,11 +1,11 @@
 'use client';
-// Menu do avatar do topo (computador e celular). Por ora só tem "Sair"; o Perfil ainda não existe. Mesmo desenho e teclado do menu "Mover para".
+// Menu do avatar do topo (computador e celular): Perfil, cópia dos dados e Sair. Mesmo desenho e teclado do menu "Mover para".
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useApp } from './contexto';
 import { sairDaConta } from '@/servidor/demandas';
 
 export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; fechar: () => void }) {
-  const { ambiente, avisar } = useApp();
+  const { ambiente, avisar, abrirPerfil } = useApp();
   const ref = useRef<HTMLDivElement>(null);
   const gatilho = useRef<Element | null>(null);
   const [saindo, setSaindo] = useState(false);
@@ -63,6 +63,9 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
   return (
     <div ref={ref} className="mv-menu" role="menu" aria-label="Conta">
       <div className="mv-t">{ambiente?.nome || 'Conta'}</div>
+      <button type="button" role="menuitem" data-item="perfil" onClick={() => { fechar(); abrirPerfil(); }}>
+        <span>Perfil</span><small>humor, energia e ritmo</small>
+      </button>
       <button type="button" role="menuitem" aria-disabled={baixando || undefined} onClick={() => void baixar()}>
         <span>{baixando ? 'Gerando...' : 'Baixar cópia dos dados'}</span><small>arquivo JSON</small>
       </button>

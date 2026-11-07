@@ -5,8 +5,9 @@ import { ETAPAS, type DadosDemanda, type Demanda, type Etapa } from '@/lib/deman
 import type { DiaIndisponivel } from '@/lib/prazos';
 import type { Entrada } from '@/lib/entradas';
 import type { DadosEvento, Evento } from '@/lib/eventos';
-import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
-export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada, validarEvento };
+import { registrosValidos, type RegistroDia } from '@/lib/registros';
+import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
+export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada, validarEvento, validarRegistros };
 export type { TarefaEdicao };
 
 export type Chamar = (funcao: string, args: Record<string, unknown>) => Promise<unknown>;
@@ -61,6 +62,11 @@ export function criarOperacoes(chamar: Chamar) {
     /** Só os campos enviados mudam; `versao` é a que a janela viu por último (se mudou, o banco recusa com ErroConflito em vez de sobrescrever). */
     salvarEvento: (eventoId: string, dados: DadosEvento, versao: number) => evento('salvar_evento', { p_id: id(eventoId, 'Evento'), p: validarEvento(dados, { criando: false }), p_versao: versaoDe(versao) }),
     excluirEvento: async (eventoId: string, confirmado: boolean) => (await chamar('excluir_evento', { p_id: id(eventoId, 'Evento'), p_confirmado: confirmado === true })) as { id: string; excluido: true },
+    // ---------- Perfil (humor e energia por dia; a produtividade é derivada das demandas e não tem operação própria) ----------
+    /** Os registros dos últimos `dias` dias (62 por padrão: o mês do gráfico e o histórico). */
+    listarRegistros: async (dias = 62): Promise<RegistroDia[]> => registrosValidos(await chamar('listar_registros_dia', { p_dias: dias })),
+    /** Grava de 1 a 6 dias de uma vez (hoje e os 5 anteriores), humor e energia juntos; o mesmo dia de novo substitui o anterior. Tudo ou nada. */
+    registrarDias: async (lista: { dia: string; humor: number; energia: number }[]): Promise<RegistroDia[]> => registrosValidos(await chamar('registrar_dias', { p: validarRegistros(lista) })),
     /** `tarefaId` (opcional) é a identidade da tentativa: repetir com o mesmo identificador, depois de uma resposta perdida, devolve a tarefa já gravada em vez de criar outra. */
     adicionarTarefa: (demandaId: string, t: string, tarefaId?: string) => demanda('adicionar_tarefa', { p_demanda: id(demandaId, 'Demanda'), p_texto: texto(t, 'Tarefa', 1000), ...(tarefaId ? { p_id: id(tarefaId, 'Tarefa') } : {}) }),
     editarTarefa: (tarefaId: string, t: string) => demanda('editar_tarefa', { p_id: id(tarefaId, 'Tarefa'), p_texto: texto(t, 'Tarefa', 1000) }),
@@ -71,12 +77,14 @@ export function criarOperacoes(chamar: Chamar) {
 export type Operacoes = ReturnType<typeof criarOperacoes>;
 
 /** Executa uma operação e devolve sempre um resultado; nunca finge sucesso. */
-export async function executar<T>(f: () => Promise<T>): Promise<Resultado<T>> {
+export async function executar<T>(f: () => Promise<T>, { privado = false }: { privado?: boolean } = {}): Promise<Resultado<T>> {
   try { return { ok: true, dados: await f() }; }
   catch (e) {
     if (e instanceof ErroConflito) return { ok: false, erro: e.message, conflito: true };
     if (e instanceof ErroDmanda) return { ok: false, erro: e.message };
-    console.error('[dmanda] falha na operação:', e);
+    // dado privado (humor e energia): o log leva só o código do erro, nunca a mensagem nem o objeto, que podem repetir o que foi enviado
+    if (privado) console.error('[dmanda] falha na operação privada:', (e as { code?: string })?.code ?? 'sem código');
+    else console.error('[dmanda] falha na operação:', e);
     return { ok: false, erro: 'Não foi possível concluir a operação. Nada foi gravado. Tente de novo.' };
   }
 }

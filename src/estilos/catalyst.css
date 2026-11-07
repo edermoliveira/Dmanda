@@ -371,9 +371,9 @@
 
 /* ---------- Configurações: painéis em colunas que se acomodam (sem vazios sob os painéis menores) ---------- */
 /* Aparência (modo e cores de destaque) ocupa a largura toda, com as amostras em uma grade larga; os demais painéis fluem em até 3 colunas na ordem do documento */
-.app[data-dir="d"] .cfg { display: block; columns: 3 300px; column-gap: 16px; }
-.app[data-dir="d"] .cfg > section { break-inside: avoid; margin: 0 0 16px; }
-.app[data-dir="d"] .cfg > .cfg-topo { column-span: all; }
+/* Configurações: blocos em uma coluna de largura útil; a composição da aparência (controles e prévia) fica em app.css (.cfg-apar). Antes eram colunas CSS (columns: 3 300px), que deixavam a direita vazia em janela larga. */
+.app[data-dir="d"] .cfg { display: block; }
+.app[data-dir="d"] .cfg > section { margin: 0 0 16px; }
 .app[data-dir="d"] .cfg-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 4px; }
 .app[data-dir="d"] .cfg-cab h3 { margin: 0; }
 .app[data-dir="d"] .cfg-cab .acoes { margin: 0; }
