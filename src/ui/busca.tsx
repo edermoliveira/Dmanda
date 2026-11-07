@@ -21,9 +21,10 @@ export function Busca({ aoFechar }: { aoFechar: () => void }) {
   const id = useId();
 
   // Lê os arquivados ao abrir (podem ter mudado em outro aparelho). Os resultados normais já aparecem enquanto isso.
+  // A falha é dita aqui dentro (leitura incompleta, com role=alert); o aviso rápido de erro não repete a mesma notícia.
   useEffect(() => {
     let vivo = true;
-    void Promise.all([carregarArquivadas(), carregarEntradasArquivadas()]).then(([a, e]) => { if (vivo) setArquivo(a && e ? 'ok' : 'falhou'); });
+    void Promise.all([carregarArquivadas(true), carregarEntradasArquivadas(true)]).then(([a, e]) => { if (vivo) setArquivo(a && e ? 'ok' : 'falhou'); });
     return () => { vivo = false; };
   }, [carregarArquivadas, carregarEntradasArquivadas]);
 

@@ -202,7 +202,15 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok((await itens(pg)).some((x) => x.tipo === 'evento'), 'mesmo com a falha, os resultados já carregados continuam à vista');
   await digitar(pg, 'zzzqqq');
   ok(/Nada encontrado no que foi possível ler/.test((await pg.textContent('.busca-box')) ?? '') && !/Nenhum resultado para/.test((await pg.textContent('.busca-box')) ?? ''), 'sem resultado e com falha: não afirma "nenhum resultado", diz que só pôde olhar o que carregou');
+  // a falha é dita uma só vez: dentro da busca, sem o aviso rápido de erro repetindo a mesma notícia
+  ok(!(await pg.$('#toast.on')) && (await pg.$$('.busca-aviso.erro')).length === 1, 'falha ao ler os arquivados: nenhum aviso rápido de erro na tela, só a indicação de leitura incompleta dentro da busca (sem duplicidade)');
+  // sem a falha, fechar e abrir de novo: lê os arquivados, o aviso some e os arquivados voltam aos resultados
   await pg.unroute('**/*'); await fechaBusca(pg);
+  await abrirBusca(pg); await digitar(pg, 'licitacao'); await esperarArquivo(pg);
+  const rec = await itens(pg);
+  ok(!(await pg.$('.busca-aviso.erro')) && rec.some((x) => x.tipo === 'demanda' && x.estado === 'Arquivada'), 'recuperação: com a conexão de volta, a busca reaberta lê os arquivados, tira o aviso e mostra a demanda arquivada');
+  ok(!(await pg.$('#toast.on')), 'recuperação: nenhum aviso de erro na tela depois da busca reaberta');
+  await fechaBusca(pg);
 }
 
 // ================= 2) botão "+": menu, várias telas, cancelar, salvar =================

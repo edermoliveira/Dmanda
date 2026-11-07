@@ -296,6 +296,47 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
     ok(carga && !/"dados"/.test(comLixo.texto) && !/conta-de-teste/.test(comLixo.texto), `carga conjunta: com cookie de sessão adulterado também não devolve dados (status ${comLixo.status})`);
     await adulterado.close();
   }
+  // busca global: com a sessão da conta autorizada ela abre e lê os arquivados; sem sessão, com cookie adulterado ou com conta não autorizada, nem abre nem recebe resultado
+  {
+    await p0.waitForFunction(() => { const a = document.querySelector('.app'); return !!a && Object.keys(a).some((k) => k.startsWith('__reactProps')); }, null, { timeout: 60000 });
+    await p0.waitForTimeout(800);
+    const antes = capturadas.length;
+    await p0.keyboard.press('Control+k');
+    const abriu = await p0.waitForSelector('.busca-box input', { timeout: 20000 }).then(() => true, () => false);
+    ok(abriu, 'busca: com a sessão da conta autorizada, Ctrl+K abre a busca');
+    for (let i = 0; i < 50 && capturadas.slice(antes).filter((x) => x.corpo === '[true]' && /"dados"/.test(x.texto)).length < 2; i++) await new Promise((r) => setTimeout(r, 200));
+    const arquivos = capturadas.slice(antes).filter((x) => x.corpo === '[true]' && /"ok":true/.test(x.texto));
+    ok(arquivos.length === 2, `busca: ao abrir, lê as demandas e as entradas arquivadas (duas ações do servidor, ${arquivos.length} vistas) e recebe os dados com a sessão válida`);
+    ok(!(await p0.$('.busca-aviso.erro')), 'busca: com a sessão válida não há aviso de leitura incompleta');
+    await p0.keyboard.press('Escape');
+    const repetir = async (ctx, a) => { const r = await ctx.request.post(a.url, { headers: { 'next-action': a.id, 'content-type': a.tipo, accept: 'text/x-component' }, data: a.corpo, maxRedirects: 0, failOnStatusCode: false }); return { status: r.status(), local: r.headers()['location'] ?? '', texto: await r.text().catch(() => '') }; };
+    // navegador sem sessão: o painel (e a lupa) nem carregam, e o atalho não faz nada
+    const anonimo = await nav0.newContext({ viewport: { width: 1100, height: 800 } });
+    const pa = await anonimo.newPage();
+    await pa.goto(BASE + '/', { waitUntil: 'load', timeout: 120000 });
+    await pa.waitForTimeout(800);
+    await pa.keyboard.press('Control+k'); await pa.waitForTimeout(400);
+    ok(new URL(pa.url()).pathname === '/login' && !(await pa.$('.top .buscabtn')) && !(await pa.$('.busca-ov')), 'busca: sem sessão o navegador cai no login, sem lupa, e Ctrl+K não abre busca nenhuma');
+    for (const a of arquivos) {
+      const r = await repetir(anonimo, a);
+      ok(r.status >= 300 && r.status < 400 && /login/.test(r.local) && !/"dados"/.test(r.texto), `busca: a leitura dos arquivados repetida sem sessão é desviada para o login (status ${r.status}) e não devolve dados`);
+    }
+    await anonimo.close();
+    // cookie de sessão adulterado
+    const falso = await nav0.newContext();
+    await falso.addCookies((await c0.cookies()).map(({ name, value, domain, path }) => ({ name, value: name.startsWith('sb-') ? 'adulterado' + value.slice(10) : value, domain, path })));
+    for (const a of arquivos) { const r = await repetir(falso, a); ok(!/"dados"/.test(r.texto), `busca: a leitura dos arquivados com cookie de sessão adulterado não devolve dados (status ${r.status})`); }
+    await falso.close();
+    // sessão válida no Auth, mas de uma conta que não é a autorizada
+    atual = usuario(EMAIL_FORA);
+    const intrusa = await nav0.newContext();
+    await intrusa.addCookies([{ name: 'sb-127-auth-token', value: sessaoSb({ sid: 'conta-fora-da-lista' }), domain: 'localhost', path: '/' }]);
+    const respostas = [];
+    for (const a of arquivos) respostas.push(await repetir(intrusa, a));
+    atual = usuario(EMAIL);
+    ok(respostas.length === 2 && respostas.every((r) => !/"dados"/.test(r.texto)), `busca: a leitura dos arquivados com sessão de conta não autorizada não devolve dados (status ${respostas.map((r) => r.status).join(', ')})`);
+    await intrusa.close();
+  }
   // fechar e reabrir o navegador mantém a sessão: novo contexto com os mesmos cookies (como o iPhone reabrindo a PWA depois de horas)
   const guardados = await c0.cookies();
   const c0b = await nav0.newContext({ viewport: { width: 1100, height: 800 } });

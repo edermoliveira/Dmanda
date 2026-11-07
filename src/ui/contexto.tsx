@@ -46,14 +46,15 @@ type Ctx = {
   erroCarga: string | null;
   recarregar: () => Promise<void>;
   /** Lê as demandas arquivadas; devolve false se a leitura falhou (o erro já foi avisado). */
-  carregarArquivadas: () => Promise<boolean>;
+  /** Com `silencioso`, a falha não mostra o aviso rápido: quem chamou (a busca) mostra o seu próprio. */
+  carregarArquivadas: (silencioso?: boolean) => Promise<boolean>;
   /** Entradas ativas (as arquivadas e as que viraram demanda ficam em entradasArquivadas, carregadas ao abrir o Arquivo). */
   entradas: Entrada[];
   entradasArquivadas: Entrada[] | null;
   carregandoEntradas: boolean;
   erroEntradas: string | null;
   recarregarEntradas: () => Promise<void>;
-  carregarEntradasArquivadas: () => Promise<boolean>;
+  carregarEntradasArquivadas: (silencioso?: boolean) => Promise<boolean>;
   abaArquivo: AbaArquivo;
   setAbaArquivo: (a: AbaArquivo) => void;
   criarEntrada: (dados: { id?: string; titulo?: string; texto?: string; cor?: number | null; fixada?: boolean }) => Promise<ResultadoEntrada>;
@@ -255,10 +256,11 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); } else setErroCarga(r.erro);
     setCarregando(false);
   }, []);
-  const carregarArquivadas = useCallback(async () => {
+  const carregarArquivadas = useCallback(async (silencioso = false) => {
     const r = await protegido(() => srv.listarDemandas(true));
     if (r.ok) { setArquivadas(r.dados); return true; }
-    avisar(r.erro, true); return false;
+    if (!silencioso) avisar(r.erro, true);
+    return false;
   }, [avisar]);
   // Entradas: as ativas carregam junto com as demandas; as arquivadas (e as que viraram demanda) só ao abrir o Arquivo.
   const recarregarEntradas = useCallback(async () => {
@@ -272,10 +274,11 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setCarregandoEventos(false);
   }, []);
   const aplicarEvento = useCallback((e: Evento) => setEventos((l) => ordenarEventosPorData([...l.filter((x) => x.id !== e.id), e])), []);
-  const carregarEntradasArquivadas = useCallback(async () => {
+  const carregarEntradasArquivadas = useCallback(async (silencioso = false) => {
     const r = await protegido(() => srvE.listarEntradas(true));
     if (r.ok) { setEntradasArquivadas(r.dados); return true; }
-    avisar(r.erro, true); return false;
+    if (!silencioso) avisar(r.erro, true);
+    return false;
   }, [avisar]);
   // Uma anotação gravada entra na lista certa: ativa em Entradas; arquivada ou convertida no Arquivo.
   const aplicarEntrada = useCallback((e: Entrada) => {
