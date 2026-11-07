@@ -1055,5 +1055,146 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   await antigo.close();
 }
 
+// ---------- Perfil: a janela de correção (hoje e 5 dias) vale também na escrita direta (migração 17) ----------
+{
+  const S = 'a2a2a2a2-9999-4999-8999-a2a2a2a2a2a2', W = 'a3a3a3a3-9999-4999-8999-a3a3a3a3a3a3', V = 'a4a4a4a4-9999-4999-8999-a4a4a4a4a4a4';
+  await db.exec(`insert into auth.users (id, email) values ('${S}', 'js@teste'), ('${W}', 'jw@teste'), ('${V}', 'jv@teste')`);
+  await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('js@teste'), ('jw@teste')");   // jv não é autorizado
+  const pc = (u, f, a) => chamarComoUsuario(db, u, f, a);
+  const pm = async (u, f, a) => { try { await pc(u, f, a); return null; } catch (e) { return e.message; } };
+  const hoje = (await db.query('select public.hoje()::text as h')).rows[0].h;
+  const dia = (n) => { const [a, m, d] = hoje.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
+  // escrita direta na tabela com a conta logada (o que a API de dados permite), devolvendo o erro e quantas linhas foram afetadas
+  const direto = (u, sql, par = []) => db.transaction(async (tx) => { try { await entrarComo(tx, u); const r = await tx.query(sql, par); return { erro: null, n: r.rows.length || (r.affectedRows ?? 0) }; } catch (e) { return { erro: e.message, n: 0 }; } });
+  const estado = async (u) => JSON.stringify((await db.query('select dia::text, humor, energia from public.registros_dia where user_id = $1 order by dia', [u])).rows);
+  const ins = (d, h = 3, e = 3) => ['insert into public.registros_dia (dia, humor, energia) values ($1, $2, $3)', [d, h, e]];
+
+  // limites: hoje e o quinto dia anterior entram; o dia seguinte e o sexto dia anterior não
+  const iHoje = await direto(S, ...ins(hoje, 4, 2)), iQuinto = await direto(S, ...ins(dia(-5), 2, 4));
+  ok(iHoje.erro === null && iHoje.n === 1 && iQuinto.erro === null && iQuinto.n === 1, 'janela 17: a escrita direta de hoje e do quinto dia anterior funciona');
+  const antesRecusas = await estado(S);
+  const rFut = await direto(S, ...ins(dia(1))), rSexto = await direto(S, ...ins(dia(-6))), rMuito = await direto(S, ...ins(dia(-400))), rAno = await direto(S, ...ins(dia(365)));
+  ok([rFut, rSexto, rMuito, rAno].every((r) => /row-level|policy/i.test(r.erro || '') && r.n === 0) && await estado(S) === antesRecusas, 'janela 17: a escrita direta de dia futuro, do sexto dia anterior ou de dia muito antigo é recusada e nada é gravado');
+  ok([rFut, rSexto, rMuito].every((r) => r.erro && !r.erro.includes(dia(1)) && !r.erro.includes(dia(-6)) && !r.erro.includes(dia(-400))), 'janela 17: a mensagem de recusa não repete a data informada');
+
+  // atualização: dentro da janela vale; levar a linha para fora da janela (inclusive alterando a data) é recusado
+  const uOk = await direto(S, 'update public.registros_dia set humor = 5 where dia = $1', [hoje]);
+  ok(uOk.erro === null && uOk.n === 1 && JSON.parse(await estado(S)).find((x) => x.dia === hoje).humor === 5, 'janela 17: corrigir o humor de hoje (mesmo dia) direto na tabela segue funcionando');
+  const antesUp = await estado(S);
+  const uFut = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [hoje, dia(1)]);
+  const uSexto = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [hoje, dia(-6)]);
+  const uQuintoFora = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [dia(-5), dia(-7)]);
+  ok([uFut, uSexto, uQuintoFora].every((r) => /row-level|policy/i.test(r.erro || '')) && await estado(S) === antesUp, 'janela 17: alterar a data de uma linha para o futuro ou para além do quinto dia anterior é recusado e a linha não muda');
+
+  // registros antigos (já existentes, fora da janela) continuam legíveis, mas não são alterados nem movidos
+  await db.query("insert into public.registros_dia (user_id, dia, humor, energia) values ($1, $2, 1, 1), ($1, $3, 2, 2), ($1, $4, 3, 3)", [S, dia(-6), dia(-40), dia(3)]);   // como administrador: sexto dia, histórico e uma linha futura de antes da correção
+  const antes = await estado(S);
+  const aSexto = await direto(S, 'update public.registros_dia set humor = 5 where dia = $1', [dia(-6)]);
+  const aHist = await direto(S, 'update public.registros_dia set energia = 5 where dia = $1', [dia(-40)]);
+  const aMover = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [dia(-40), dia(-2)]);
+  const aFut = await direto(S, 'update public.registros_dia set humor = 5 where dia = $1', [dia(3)]);
+  const aFutPraHoje = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [dia(3), dia(-1)]);
+  ok([aSexto, aHist, aMover, aFut, aFutPraHoje].every((r) => r.n === 0) && await estado(S) === antes, 'janela 17: linha fora da janela (sexto dia, histórico, futura) não é alterada nem movida para dentro da janela pela escrita direta');
+  const lerDireto = await direto(S, 'select dia::text from public.registros_dia order by dia');
+  const lista = await pc(S, 'listar_registros_dia', {});
+  ok(lerDireto.n === 5 && lista.some((x) => x.dia === dia(-40)) && lista.some((x) => x.dia === dia(-6)) && lista.map((x) => x.dia).join() === [...lista.map((x) => x.dia)].sort().join(), 'janela 17: a leitura histórica (direta e pela listagem de 62 dias) continua devolvendo todos os registros, em ordem');
+
+  // regravação do mesmo dia (função e escrita direta com conflito)
+  const rg = await pc(S, 'registrar_dias', { p: [{ dia: hoje, humor: 1, energia: 5 }, { dia: dia(-5), humor: 5, energia: 1 }] });
+  ok(rg.length === 2 && rg.find((x) => x.dia === hoje).humor === 1 && rg.find((x) => x.dia === dia(-5)).energia === 1, 'janela 17: registrar_dias continua regravando hoje e o quinto dia anterior no mesmo lote');
+  const up1 = await direto(S, 'insert into public.registros_dia (dia, humor, energia) values ($1, 2, 2) on conflict (user_id, dia) do update set humor = excluded.humor, energia = excluded.energia', [hoje]);
+  const up2 = await direto(S, 'insert into public.registros_dia (dia, humor, energia) values ($1, 2, 2) on conflict (user_id, dia) do update set humor = excluded.humor', [dia(-6)]);
+  const up3 = await direto(S, 'insert into public.registros_dia (dia, humor, energia) values ($1, 5, 5) on conflict (user_id, dia) do update set humor = excluded.humor', [dia(-40)]);
+  const lidos = JSON.parse(await estado(S));
+  ok(up1.erro === null && lidos.find((x) => x.dia === hoje).humor === 2 && /row-level|policy/i.test(up2.erro || '') && /row-level|policy/i.test(up3.erro || '') && lidos.find((x) => x.dia === dia(-6)).humor === 1 && lidos.find((x) => x.dia === dia(-40)).humor === 2, 'janela 17: o upsert direto regrava hoje, mas não regrava o sexto dia anterior nem o histórico');
+
+  // lote inválido não grava nada (a função continua tudo ou nada)
+  const antesLote = await estado(S);
+  const mLote = [
+    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3, energia: 3 }, { dia: dia(-6), humor: 3, energia: 3 }] }),
+    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3, energia: 3 }, { dia: dia(1), humor: 3, energia: 3 }] }),
+    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3, energia: 3 }, { dia: dia(-3), humor: 9, energia: 3 }] }),
+  ];
+  ok(mLote.every((m) => m !== null) && await estado(S) === antesLote, 'janela 17: lote com item fora da janela ou inválido não grava nenhum dos itens');
+
+  // acesso: só a conta autorizada, só os próprios registros
+  const nA = await direto(V, ...ins(hoje));
+  const outro = await direto(S, 'insert into public.registros_dia (user_id, dia, humor, energia) values ($1, $2, 3, 3)', [W, hoje]);
+  const alheio = await direto(W, 'update public.registros_dia set humor = 1 where user_id = $1', [S]);
+  ok(/row-level|policy/i.test(nA.erro || '') && /row-level|policy/i.test(outro.erro || '') && alheio.n === 0, 'janela 17: conta não autorizada não grava, e ninguém grava ou altera registro de outro usuário');
+  const wLeitura = await direto(W, 'select 1 from public.registros_dia');
+  ok(wLeitura.n === 0 && (await direto(W, ...ins(hoje))).erro === null, 'janela 17: outro usuário autorizado grava o próprio hoje e não enxerga os registros do primeiro');
+
+  // a regra vem do banco, pela data civil de São Paulo, e as funções seguem SECURITY INVOKER
+  const pol = (await db.query("select policyname, permissive, cmd, roles::text as roles, coalesce(qual, '') as qual, coalesce(with_check, '') as wc from pg_policies where schemaname = 'public' and tablename = 'registros_dia' order by policyname")).rows;
+  const dono = pol.find((p) => p.policyname === 'registros_dia_dono'), restritivas = pol.filter((p) => p.permissive === 'RESTRICTIVE');
+  ok(dono && dono.permissive === 'PERMISSIVE' && dono.cmd === 'ALL' && /conta_autorizada/.test(dono.qual) && /conta_autorizada/.test(dono.wc), 'janela 17: a política da conta autorizada continua como era (permissiva, para todos os comandos)');
+  ok(restritivas.length === 2 && restritivas.every((p) => /hoje\(\)/.test(p.qual + p.wc) && !/current_date|now\(\)|timezone/i.test(p.qual + p.wc) && p.roles.includes('authenticated')) && restritivas.map((p) => p.cmd).sort().join() === 'INSERT,UPDATE', 'janela 17: as políticas da janela são restritivas, para inserir e atualizar, e usam public.hoje() (dia civil de São Paulo)');
+  const inv = (await db.query("select proname, prosecdef from pg_proc where proname in ('registrar_dias','listar_registros_dia') order by 1")).rows;
+  ok(inv.length === 2 && inv.every((p) => p.prosecdef === false), 'janela 17: registrar_dias e listar_registros_dia seguem SECURITY INVOKER');
+}
+
+// ---------- migração 17 sobre dados da migração 16: o que existe fica idêntico e a falha de antes deixa de se repetir ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m17 = todas.find((f) => f.includes('registros_dia_janela'));
+  const m16 = todas.find((f) => f.endsWith('_registros_dia.sql'));
+  ok(!!m17 && !!m16 && todas.indexOf(m17) === todas.indexOf(m16) + 1, 'migração 17: existe, vem logo depois da 16 e a 16 não foi reescrita (arquivo à parte)');
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig17-'));
+  for (const f of todas.filter((f) => f < m17)) copyFileSync(join('supabase/migrations', f), join(pasta, f));   // só as migrações 1 a 16: uma futura 18 não entra no banco "antigo"
+  const a16 = await abrirBancoTeste({ raizMigracoes: pasta });   // schema com as migrações 1 a 16
+  const X = 'a5a5a5a5-9999-4999-8999-a5a5a5a5a5a5';
+  await a16.exec(`insert into auth.users (id, email) values ('${X}', 'jx@teste')`);
+  await a16.exec("insert into dmanda_privado.acesso_autorizado (email) values ('jx@teste')");
+  const cx = (f, a) => chamarComoUsuario(a16, X, f, a);
+  const hoje = (await a16.query('select public.hoje()::text as h')).rows[0].h;
+  const dia = (n) => { const [a, m, d] = hoje.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
+  const direto = (sql, par = []) => a16.transaction(async (tx) => { try { await entrarComo(tx, X); const r = await tx.query(sql, par); return { erro: null, n: r.rows.length || (r.affectedRows ?? 0) }; } catch (e) { return { erro: e.message, n: 0 }; } });
+  const ins = (d) => ['insert into public.registros_dia (dia, humor, energia) values ($1, 3, 3)', [d]];
+
+  // dados fictícios preexistentes: demandas, tarefa, anotação e registros (hoje, quinto dia, histórico e uma linha futura gravada pela falha)
+  const d1 = await cx('criar_demanda', { p: { assunto: 'Fictícia A', prazo: '2027-03-09', numero: '1/2026', origem: 'Origem fictícia', chegou_em: '2026-09-01' } });
+  await cx('criar_demanda', { p: { assunto: 'Fictícia B' } });
+  await cx('adicionar_tarefa', { p_demanda: d1.id, p_texto: 'Tarefa fictícia' });
+  await a16.query("insert into public.entradas (user_id, titulo, texto) values ($1, 'Nota fictícia', 'texto fictício')", [X]);
+  await cx('registrar_dias', { p: [{ dia: hoje, humor: 4, energia: 2 }, { dia: dia(-5), humor: 2, energia: 4 }] });
+  await a16.query("insert into public.registros_dia (user_id, dia, humor, energia) values ($1, $2, 1, 1), ($1, $3, 5, 5)", [X, dia(-6), dia(-40)]);
+
+  // a falha reproduzida na 16: a conta autorizada grava direto fora da janela
+  const falhaFut = await direto(...ins(dia(2))), falhaAntigo = await direto(...ins(dia(-20)));
+  ok(falhaFut.erro === null && falhaAntigo.erro === null, 'migração 17 (antes): na migração 16 a escrita direta de dia futuro e de dia antigo é aceita (falha reproduzida)');
+
+  const tabelas = (await a16.query("select table_schema as s, table_name as t from information_schema.tables where table_schema in ('public','dmanda_privado') and table_type = 'BASE TABLE' order by 1, 2")).rows;
+  const foto = async () => { const o = {}; for (const { s, t } of tabelas) o[`${s}.${t}`] = (await a16.query(`select coalesce(jsonb_agg(to_jsonb(x) order by to_jsonb(x)::text), '[]'::jsonb) as j from ${s}.${t} x`)).rows[0].j; return JSON.stringify(o); };
+  const funcoes = async () => JSON.stringify((await a16.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl, md5(pg_get_functiondef(p.oid)) as def from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') order by 1")).rows);
+  const donoAntes = JSON.stringify((await a16.query("select * from pg_policies where tablename = 'registros_dia' and policyname = 'registros_dia_dono'")).rows);
+  const privAntes = JSON.stringify((await a16.query("select grantee, privilege_type from information_schema.role_table_grants where table_name = 'registros_dia' order by 1, 2")).rows);
+  const listaAntes = JSON.stringify(await cx('listar_registros_dia', {}));
+  const fotoAntes = await foto(), funcoesAntes = await funcoes();
+
+  await a16.exec(readFileSync(join('supabase/migrations', m17), 'utf8'));
+
+  ok(await foto() === fotoAntes, 'migração 17: todas as linhas de todas as tabelas (demandas, tarefas, anotações, registros de humor e energia) ficam idênticas');
+  ok(await funcoes() === funcoesAntes, 'migração 17: nenhuma função muda (definição, SECURITY INVOKER e privilégios), inclusive registrar_dias e listar_registros_dia');
+  ok(JSON.stringify((await a16.query("select * from pg_policies where tablename = 'registros_dia' and policyname = 'registros_dia_dono'")).rows) === donoAntes && JSON.stringify((await a16.query("select grantee, privilege_type from information_schema.role_table_grants where table_name = 'registros_dia' order by 1, 2")).rows) === privAntes, 'migração 17: a política da conta autorizada e os privilégios da tabela não mudam (a janela é acrescentada por políticas restritivas)');
+  const listaDepois = await cx('listar_registros_dia', {});
+  ok(JSON.stringify(listaDepois) === listaAntes && listaDepois.some((x) => x.dia === dia(-40)) && listaDepois.some((x) => x.dia === dia(-6)) && listaDepois.some((x) => x.dia === dia(2)), 'migração 17: a leitura histórica devolve o mesmo, incluindo o registro antigo, o do sexto dia e a linha futura que a falha deixou');
+
+  const depoisFut = await direto(...ins(dia(3))), depoisSexto = await direto(...ins(dia(-7))), depoisHoje = await direto('insert into public.registros_dia (dia, humor, energia) values ($1, 5, 5) on conflict (user_id, dia) do update set humor = excluded.humor', [hoje]);
+  ok(/row-level|policy/i.test(depoisFut.erro || '') && /row-level|policy/i.test(depoisSexto.erro || '') && depoisHoje.erro === null, 'migração 17 (depois): futuro e além do quinto dia anterior passam a ser recusados na escrita direta; hoje continua regravável');
+  const reg = await cx('registrar_dias', { p: [{ dia: hoje, humor: 2, energia: 2 }, { dia: dia(-5), humor: 3, energia: 3 }] });
+  let loteRuim = null;
+  try { await cx('registrar_dias', { p: [{ dia: dia(-1), humor: 3, energia: 3 }, { dia: dia(-6), humor: 3, energia: 3 }] }); } catch (e) { loteRuim = e.message; }
+  ok(reg.length === 2 && loteRuim !== null && !(await cx('listar_registros_dia', {})).some((x) => x.dia === dia(-1)), 'migração 17: registrar_dias continua gravando o lote válido e recusando o inválido por inteiro');
+
+  const fotoMeio = await foto();
+  await a16.exec(readFileSync(join('supabase/migrations', m17), 'utf8'));
+  ok(await foto() === fotoMeio && (await a16.query("select count(*)::int as n from pg_policies where tablename = 'registros_dia'")).rows[0].n === 3, 'migração 17: reaplicar é inofensivo (continuam as 3 políticas e nenhuma linha muda)');
+  await a16.close();
+}
+
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);
