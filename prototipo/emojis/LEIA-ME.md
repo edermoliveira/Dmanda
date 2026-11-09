@@ -12,7 +12,7 @@
 
 Quadrados, fundo transparente, 128 por 128 px ou maior (até 512 por 512 px).
 
-## Energia (SVG colorido)
+## Energia (SVG colorido, fora de uso: o indicador foi retirado pela decisão 59; os arquivos ficam só como registro do envio)
 
 | Arquivo | Energia |
 |---|---|
