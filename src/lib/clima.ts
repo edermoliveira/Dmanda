@@ -10,6 +10,10 @@
 // Privacidade: o navegador envia ao Open-Meteo só latitude e longitude da cidade (ou o nome digitado na busca), sem cookie e sem referência (`no-referrer`).
 // Nada do Dmanda (demandas, humor, conta) entra nestes pedidos. Os endereços são fixos: `pedirJson` recusa qualquer outro.
 import { eObjeto } from './armazenamento.ts';
+import { hojeISO } from './demandas.ts';
+
+/** Todos os horários e o "dia" do clima valem em Brasília (decisão 51): o pedido fixa o fuso, então "observado" e "consultado" são o mesmo relógio, qualquer que seja a cidade. */
+export const FUSO = 'America/Sao_Paulo';
 
 export const API_PREVISAO = 'https://api.open-meteo.com/v1/forecast';
 export const API_CIDADES = 'https://geocoding-api.open-meteo.com/v1/search';
@@ -52,7 +56,7 @@ export function urlPrevisao(c: Cidade): string {
   const q = new URLSearchParams({
     latitude: c.lat.toFixed(4), longitude: c.lon.toFixed(4),
     current: 'temperature_2m,weather_code,is_day', daily: 'temperature_2m_max,temperature_2m_min,weather_code',
-    timezone: 'auto', forecast_days: '1',
+    timezone: FUSO, forecast_days: '1',
   });
   return `${API_PREVISAO}?${q}`;
 }
@@ -127,6 +131,8 @@ const TEMP: [number, number] = [-90, 60];
 export function lerPrevisao(x: unknown): Previsao | null {
   if (!eObjeto(x) || !eObjeto(x.current) || !eObjeto(x.daily) || !eObjeto(x.current_units) || !eObjeto(x.daily_units)) return null;
   const { current: c, daily: d } = x;
+  // o horário observado só é comparável ao da consulta se vier em Brasília: uma resposta em outro fuso é recusada
+  if (x.timezone !== undefined && x.timezone !== FUSO) return null;
   if (x.current_units.temperature_2m !== '°C' || x.daily_units.temperature_2m_max !== '°C' || x.daily_units.temperature_2m_min !== '°C') return null;
   const um = (v: unknown) => (Array.isArray(v) && v.length >= 1 ? v[0] : undefined);
   const data = um(d.time), max = um(d.temperature_2m_max), min = um(d.temperature_2m_min), codDia = um(d.weather_code);
@@ -177,6 +183,8 @@ export function estadoDoCache(c: EntradaCache | null, cidade: Cidade, agora: num
   if (!c) return 'nenhum';
   if (c.cidade.id !== cidade.id) return 'outra-cidade';
   const idade = agora - c.buscadoEm;
+  // "previsão de hoje" de um dia que já passou (em Brasília) nunca é mostrada, nem como desatualizada
+  if (hojeISO(new Date(c.buscadoEm)) !== hojeISO(new Date(agora))) return 'expirado';
   if (idade < 0) return 'velho';   // relógio do aparelho voltou: não dá para saber a idade, então se consulta de novo
   if (idade <= TTL_FRESCO_MS) return 'fresco';
   return idade <= TTL_MAXIMO_MS ? 'velho' : 'expirado';
@@ -184,12 +192,22 @@ export function estadoDoCache(c: EntradaCache | null, cidade: Cidade, agora: num
 
 /** Só a consulta mais recente vale: iniciar uma nova cancela a anterior, e `vale(id)` diz se a resposta que chegou ainda é a esperada. */
 export function criarUltimaConsulta() {
-  let n = 0, ctl: AbortController | null = null;
+  let n = 0, ctl: AbortController | null = null, andando = false;
   return {
-    iniciar() { ctl?.abort(); ctl = new AbortController(); return { id: ++n, sinal: ctl.signal }; },
+    iniciar() { ctl?.abort(); ctl = new AbortController(); andando = true; return { id: ++n, sinal: ctl.signal }; },
     vale: (id: number) => id === n,
-    cancelar() { ctl?.abort(); ctl = null; n++; },
+    /** Marca o fim da consulta `id` (resposta, falha ou limite de tempo); a de uma consulta já substituída não conta. */
+    concluir(id: number) { if (id === n) andando = false; },
+    /** Há uma consulta em andamento que ainda vale: voltar para a aba ou para a rede não deve começar outra por cima. */
+    emAndamento: () => andando,
+    cancelar() { ctl?.abort(); ctl = null; n++; andando = false; },
   };
+}
+
+/** Milissegundos até o próximo dia de Brasília começar (o Brasil não tem horário de verão desde 2019: meia-noite é 03:00 UTC). Serve para renovar a previsão na virada do dia. */
+export function msAteVirarODia(agora: number): number {
+  const [a, m, d] = hojeISO(new Date(agora)).split('-').map(Number);
+  return Date.UTC(a, m - 1, d + 1, 3, 0, 0) - agora;
 }
 
 // ---------- textos em português ----------
@@ -211,13 +229,15 @@ export const descricaoDoTempo = (codigo: number) => DESCRICAO[codigo] ?? 'Condi�
  */
 export const iconeDoTempo = (codigo: number, diurno: boolean) => (codigo <= 1 ? (diurno ? 'sun' : 'moon') : 'cloud-sun');
 
-export const graus = (t: number) => `${Math.round(t)}°`;
-const grausFala = (t: number) => { const n = Math.abs(Math.round(t)), um = n === 1; return `${n} ${um ? 'grau' : 'graus'}${Math.round(t) < 0 ? (um ? ' negativo' : ' negativos') : ''}`; };
+/** Inteiro mais próximo, com a metade se afastando do zero (-3,5 vira -4 e 3,5 vira 4, como na tabela de temperaturas), e nunca "-0". */
+export const arredondar = (t: number) => { const r = Math.sign(t) * Math.round(Math.abs(t)); return r === 0 ? 0 : r; };
+export const graus = (t: number) => `${arredondar(t)}°`;
+const grausFala = (t: number) => { const r = arredondar(t), n = Math.abs(r), um = n === 1; return `${n} ${um ? 'grau' : 'graus'}${r < 0 ? (um ? ' negativo' : ' negativos') : ''}`; };
 
-/** "00:15" da hora local da cidade, tirada do instante devolvido pelo Open-Meteo (AAAA-MM-DDTHH:MM). */
+/** "08:15" em Brasília, tirada do instante devolvido pelo Open-Meteo (AAAA-MM-DDTHH:MM, já em Brasília porque o pedido fixa o fuso). */
 export const horaDoMomento = (m: string) => m.slice(11, 16);
 /** Hora de Brasília de um instante (ms), para "consultado às". */
-export const horaDeBrasilia = (ms: number) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).format(ms);
+export const horaDeBrasilia = (ms: number) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hourCycle: 'h23', hour: '2-digit', minute: '2-digit' }).format(ms);
 
 /** A frase completa, para a leitura de tela e o título do widget. */
 export function resumoDoClima(c: Cidade, p: Previsao): string {

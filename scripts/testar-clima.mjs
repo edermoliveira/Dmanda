@@ -14,7 +14,7 @@ import * as F from './clima-fixtures.mjs';
 const PORTA = process.env.PORTA_TESTE_CLIMA || '7116', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/clima', CAPTURAS = '.dados-teste/clima-capturas';
 rmSync(PASTA, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true });
 
-// ---- semente fictícia: três demandas (atrasada, para hoje, daqui a 5 dias) para o Início ter os grupos de prazo e o Foco do dia ----
+// ---- semente fictícia: três demandas (atrasada, para hoje, daqui a 5 dias) para o Início ter os grupos de prazo e o Para hoje ----
 const USUARIO = '00000000-0000-4000-8000-000000000001';
 let db = await abrirBancoTeste({ pasta: PASTA });
 await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
@@ -46,7 +46,7 @@ const POR_LAT = {
   '-30.0328': F.previsao({ temp: 22.4, codigo: 3, max: 25.0, min: 18.0, codigoDia: 3 }),
   '41.1496': F.previsao({ temp: 14.2, codigo: 61, dia: 1, max: 17.0, min: 11.0, codigoDia: 63 }),
 };
-const NOVA_TAQUARA = F.previsao({ temp: 19.6, codigo: 2, dia: 1, max: 26.0, min: 16.0, codigoDia: 2, hora: '2026-11-07T09:00' });
+const NOVA_TAQUARA = F.previsao({ temp: 19.6, codigo: 2, dia: 1, max: 26.0, min: 16.0, codigoDia: 2, hora: '2026-11-07T08:15' });
 const GEO = {
   taquara: F.resultados(F.TAQUARA_RS, F.TAQUARA_AL, F.TAQUARA_PB),
   por: F.resultados(F.PORTO_ALEGRE), porto: F.resultados(F.PORTO_PT), zzzz: F.SEM_RESULTADO,
@@ -70,6 +70,7 @@ function instalar(ctx) {
       if (e.modo === '400') return dar(400, { error: true, reason: 'Parameter x' });
       if (e.modo === 'invalido') return dar(200, { latitude: 1, current: { temperature_2m: 'quente' } });
       if (e.modo === 'ok2' && lat === '-29.6506') return dar(200, NOVA_TAQUARA);
+      if (e.modo === 'virada' && lat === '-29.6506') return dar(200, F.previsao({ hora: '2026-11-08T00:15', data: '2026-11-08', temp: 15.2, codigo: 3, max: 21.0, min: 14.0, codigoDia: 3 }));
       return dar(200, POR_LAT[lat] ?? F.previsao());
     }
     const nome = (u.searchParams.get('name') ?? '').toLowerCase();
@@ -128,16 +129,18 @@ const guardado = (pg, chave) => pg.evaluate((k) => { try { return JSON.parse(loc
   ok(w.nome === 'Taquara' && w.local === 'Rio Grande do Sul, Brasil', 'clima: a cidade padrão é Taquara, com estado e país');
   ok(w.temp === '17°' && /Pancadas de chuva fracas/.test(w.ceu) && w.rotulos.join() === 'Agora,Previsão de hoje', 'clima: mostra a temperatura de agora e a condição de agora (current), em graus Celsius, em português');
   ok(w.mm === 'máx. 25° · mín. 15°' && w.cond === 'Pancadas de chuva moderadas', 'clima: a previsão do dia (daily) tem máxima, mínima e a própria condição, separada da de agora');
-  ok(/Observado às 08:15 · consultado às 08:0\d/.test(w.hora), 'clima: mostra a hora da observação e a hora da consulta (timestamp da informação)');
+  ok(/^Observado às 07:45 · consultado às 08:0\d \(Brasília\)$/.test(w.hora), 'clima: mostra a hora da observação e a hora da consulta, as duas em Brasília (timestamp da informação)');
   ok(w.cred && w.cred.t === 'Weather data by Open-Meteo.com' && w.cred.href === 'https://open-meteo.com/' && /noopener/.test(w.cred.rel) && w.cred.alvo === '_blank', 'clima: a atribuição exigida pelo Open-Meteo (CC BY 4.0) está ao lado dos dados, com link');
   ok(/Taquara: agora 17 graus, pancadas de chuva fracas\. Previsão de hoje: máxima de 25 graus e mínima de 15 graus\./.test(w.sr ?? '') && w.icone, 'clima: leitores de tela recebem agora e previsão do dia por extenso; o ícone é decorativo');
+  const regioes = await pg.evaluate(() => ({ vivas: document.querySelectorAll('section.wg-clima [role="status"], section.wg-clima [aria-live]').length, resumoRole: document.querySelector('section.wg-clima [data-clima-resumo]')?.getAttribute('role') ?? null }));
+  ok(regioes.vivas === 0 && regioes.resumoRole === null, 'acessibilidade: com o clima na tela não há região ao vivo (o resumo para leitores de tela é lido ao navegar, não anunciado a cada atualização)');
   const p1 = previsoes(e);
   ok(p1.length === 1 && buscas(e).length === 0, 'clima: abrir o Início faz uma consulta de previsão e nenhuma busca de cidade (nenhuma consulta por desenho da tela)');
   const q = p1[0].params;
-  ok(p1[0].host === 'api.open-meteo.com' && p1[0].path === '/v1/forecast' && q.latitude === '-29.6506' && q.longitude === '-50.7806' && q.current === 'temperature_2m,weather_code,is_day' && q.daily === 'temperature_2m_max,temperature_2m_min,weather_code' && q.timezone === 'auto' && q.forecast_days === '1' && Object.keys(q).length === 6, 'clima: o pedido leva só a localização e as variáveis meteorológicas');
+  ok(p1[0].host === 'api.open-meteo.com' && p1[0].path === '/v1/forecast' && q.latitude === '-29.6506' && q.longitude === '-50.7806' && q.current === 'temperature_2m,weather_code,is_day' && q.daily === 'temperature_2m_max,temperature_2m_min,weather_code' && q.timezone === 'America/Sao_Paulo' && q.forecast_days === '1' && Object.keys(q).length === 6, 'clima: o pedido leva só a localização e as variáveis meteorológicas');
   ok(!('cookie' in p1[0].headers) && !('referer' in p1[0].headers) && !('authorization' in p1[0].headers) && p1[0].metodo === 'GET' && !/dmanda|user|email|humor|energia|token/i.test(p1[0].url), 'clima: o pedido não leva cookie, referência, autorização nem dado do Dmanda (humor, energia, conta)');
   // o resto do Início continua inteiro
-  ok((await pg.$$('.stat')).length === 3 && (await pg.$$('.sec .cards .dcard, .sec .cards article')).length >= 1 && /Foco do dia/.test(await texto(pg, 'main')), 'Início: os grupos de prazo e o Foco do dia continuam ao lado do Clima');
+  ok((await pg.$$('.stat')).length === 3 && (await pg.$$('.sec .cards .dcard, .sec .cards article')).length >= 1 && /Para hoje/.test(await texto(pg, '[data-painel="para-hoje"]')), 'Início: os grupos de prazo e o Para hoje continuam ao lado do Clima');
   await pg.click('.stat >> nth=0'); await pg.waitForTimeout(300);
   ok((await pg.$$eval('.stat[aria-pressed="true"]', (l) => l.length)) === 1 && await estadoW(pg) === 'ok', 'Início: filtrar por prazo continua funcionando e não mexe no Clima');
   // cache: ir e voltar e recarregar dentro dos 15 minutos não consulta de novo
@@ -235,7 +238,7 @@ for (const [modo, esperado, rotulo] of [['429', /pediu uma pausa/, 'HTTP 429'], 
   await pg.waitForSelector('.wg-cl-falha', { timeout: 15000 });
   const t = await texto(pg, '.wg-cl-falha');
   ok(esperado.test(t) && await estadoW(pg) === 'sem-dados' && /Clima indisponível por enquanto/.test(await texto(pg, 'section.wg-clima')) && !/culp|erro seu/i.test(t), `falha (${rotulo}): o widget diz o que aconteceu em tom neutro e oferece "Tentar de novo"`);
-  ok((await pg.$$('.stat')).length === 3 && /Foco do dia/.test(await texto(pg, 'main')) && !(await pg.$('.erro-carga')), `falha (${rotulo}): o resto do Início (grupos de prazo e Foco do dia) segue funcionando`);
+  ok((await pg.$$('.stat')).length === 3 && /Para hoje/.test(await texto(pg, '[data-painel="para-hoje"]')) && !(await pg.$('.erro-carga')), `falha (${rotulo}): o resto do Início (grupos de prazo e Para hoje) segue funcionando`);
   e.modo = 'ok'; await pg.click('.wg-cl-falha .btn');
   await esperarW(pg, 'ok', 15000);
   ok(!(await pg.$('.wg-cl-falha')) && (await texto(pg, '[data-clima-temp]')) === '17°', `falha (${rotulo}): "Tentar de novo" depois da recuperação mostra o clima e some a mensagem`);
@@ -247,12 +250,12 @@ for (const [modo, esperado, rotulo] of [['429', /pediu uma pausa/, 'HTTP 429'], 
   await abrir(pg); await esperarW(pg, 'ok');
   e.modo = '503'; await pg.clock.runFor(16 * 60000); await pg.waitForSelector('.wg-cl-falha', { timeout: 10000 });
   const tf = await texto(pg, 'section.wg-clima');
-  ok(await estadoW(pg) === 'desatualizado' && /Desatualizado: última atualização às 08:0\d/.test(tf) && (await texto(pg, '[data-clima-temp]')) === '17°' && (await cidadeNoW(pg)).nome === 'Taquara', 'desatualizado: com falha depois de um clima guardado, o dado continua na tela marcado como desatualizado, com a hora da última atualização e a mesma cidade');
+  ok(await estadoW(pg) === 'desatualizado' && /Desatualizado: última atualização às 08:0\d \(Brasília\)/.test(tf) && (await texto(pg, '[data-clima-temp]')) === '17°' && (await cidadeNoW(pg)).nome === 'Taquara', 'desatualizado: com falha depois de um clima guardado, o dado continua na tela marcado como desatualizado, com a hora da última atualização e a mesma cidade');
   const n = previsoes(e).length;
   await pg.clock.runFor(60000); await pg.waitForTimeout(300);
   ok(previsoes(e).length === n, 'desatualizado: depois de uma falha não há consulta automática repetida em sequência');
   e.modo = 'ok2'; await pg.evaluate(() => window.dispatchEvent(new Event('online'))); await esperarW(pg, 'ok');
-  ok((await texto(pg, '[data-clima-temp]')) === '20°' && !(await pg.$('.wg-cl-falha')) && /Observado às 09:00/.test(await texto(pg, '.wg-cl-hora')), 'recuperação: quando a conexão volta o clima é atualizado sozinho e a marca de desatualizado some');
+  ok((await texto(pg, '[data-clima-temp]')) === '20°' && !(await pg.$('.wg-cl-falha')) && /Observado às 08:15/.test(await texto(pg, '.wg-cl-hora')), 'recuperação: quando a conexão volta o clima é atualizado sozinho e a marca de desatualizado some');
   // falha de novo e recuperação pelo botão
   e.modo = '429'; await pg.clock.runFor(16 * 60000); await pg.waitForSelector('.wg-cl-falha');
   ok(await estadoW(pg) === 'desatualizado' && /pediu uma pausa/.test(await texto(pg, '.wg-cl-falha')), 'desatualizado: o limite do serviço (429) também mantém o dado anterior marcado');
@@ -272,6 +275,62 @@ for (const [modo, esperado, rotulo] of [['429', /pediu uma pausa/, 'HTTP 429'], 
   await pg.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' }); document.dispatchEvent(new Event('visibilitychange')); });
   await pg.waitForTimeout(800);
   ok(previsoes(e).length === n + 1, 'aba escondida: ao voltar para a aba, com o clima velho, uma consulta só atualiza');
+  await ctx.close();
+}
+
+
+// ================= 5b) aba ou rede que voltam durante uma consulta não a reiniciam =================
+{
+  const { ctx, pg, e } = await novo({ viewport: { width: 1280, height: 800 } });
+  e.lentaPor.add('-29.6506');   // a previsão de Taquara demora 2,5 s
+  await abrir(pg); await esperarW(pg, 'carregando');
+  const n0 = previsoes(e).length;
+  await pg.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' }); document.dispatchEvent(new Event('visibilitychange')); });
+  await pg.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' }); document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('online')); });
+  await pg.waitForTimeout(500);
+  ok(n0 === 1 && previsoes(e).length === 1, 'consulta em andamento: voltar para a aba e a conexão voltar durante a consulta não começam outra por cima');
+  await esperarW(pg, 'ok', 10000);
+  ok(previsoes(e).length === 1 && (await texto(pg, '[data-clima-temp]')) === '17°', 'consulta em andamento: a consulta original termina e mostra o clima (uma só requisição)');
+  await ctx.close();
+}
+
+// ================= 5c) cidade de outro fuso: o horário observado e o consultado são os mesmos de Brasília =================
+{
+  const { ctx, pg, e } = await novo({ viewport: { width: 1280, height: 800 } }, { antes: { 'dmanda:perfil': { balaoH: 3, cidade: F.comoCidade(F.PORTO_PT) } } });
+  await abrir(pg); await esperarW(pg, 'ok');
+  const p = previsoes(e);
+  ok(p.length === 1 && p[0].params.timezone === 'America/Sao_Paulo' && p[0].params.latitude === '41.1496', 'fuso: uma cidade de Portugal também é consultada em America/Sao_Paulo');
+  const hora = await texto(pg, '.wg-cl-hora');
+  const [, obs, cons] = hora.match(/Observado às (\d\d:\d\d) · consultado às (\d\d:\d\d) \(Brasília\)/) ?? [];
+  ok(obs === '07:45' && cons && obs <= cons, `fuso: em Porto, Portugal, o horário observado (${obs}) não passa do consultado (${cons}), os dois em Brasília`);
+  ok((await cidadeNoW(pg)).local === 'Porto, Portugal' && (await texto(pg, '[data-clima-temp]')) === '14°', 'fuso: a cidade escolhida segue sendo Porto, Portugal');
+  await ctx.close();
+}
+
+// ================= 5d) virada do dia em Brasília =================
+{
+  // o aplicativo aberto passa da meia-noite: a "previsão de hoje" de ontem sai e uma consulta nova entra, sem esperar os 15 minutos
+  const { ctx, pg, e } = await novo({ viewport: { width: 1280, height: 800 } }, { instante: new Date('2026-11-07T23:50:00-03:00') });
+  await abrir(pg); await esperarW(pg, 'ok');
+  ok(previsoes(e).length === 1 && (await texto(pg, '[data-clima-temp]')) === '17°' && /Observado às 07:45/.test(await texto(pg, '.wg-cl-hora')), 'virada do dia: às 23:50 o widget mostra a previsão do dia 07');
+  e.modo = 'virada';
+  await pg.clock.runFor(10 * 60000 + 30000);   // 00:00:30 do dia 08: a virada (aos 10 min) vem antes do fim dos 15 minutos do dado
+  await pg.waitForFunction(() => document.querySelector('[data-clima-temp]')?.textContent === '15°', null, { timeout: 10000 });
+  ok(previsoes(e).length === 2 && /^Observado às 00:15 · consultado às 00:0\d \(Brasília\)$/.test(await texto(pg, '.wg-cl-hora')) && (await texto(pg, '[data-clima-mm]')) === 'máx. 21° · mín. 14°', 'virada do dia: na meia-noite o widget consulta de novo (antes dos 15 minutos) e passa a mostrar a previsão do dia 08');
+  ok((await guardado(pg, 'dmanda:clima')).previsao.hoje.data === '2026-11-08', 'virada do dia: o guardado no aparelho passa a ser o do dia 08');
+  await ctx.close();
+}
+{
+  // o guardado é de ontem (23:50 do dia 07) e o aplicativo abre às 00:30 do dia 08: nunca aparece como "previsão de hoje", nem como desatualizado
+  const ontem = { cidade: F.comoCidade(F.TAQUARA_RS), previsao: { atual: { temperatura: 17.4, codigo: 3, diurno: false, observadoEm: '2026-11-07T23:45' }, hoje: { data: '2026-11-07', max: 24.7, min: 15.3, codigo: 81 } }, buscadoEm: new Date('2026-11-07T23:50:00-03:00').getTime() };
+  const { ctx, pg, e } = await novo({ viewport: { width: 1280, height: 800 } }, { instante: new Date('2026-11-08T00:30:00-03:00'), antes: { 'dmanda:clima': ontem } });
+  e.modo = '503';
+  await abrir(pg); await pg.waitForSelector('.wg-cl-falha');
+  const t = await texto(pg, 'section.wg-clima');
+  ok(await estadoW(pg) === 'sem-dados' && !/17°|Previsão de hoje|Desatualizado/.test(t) && /Clima indisponível/.test(t), 'virada do dia: com a consulta falhando, o clima guardado de ontem não aparece como previsão de hoje');
+  e.modo = 'virada';
+  await pg.click('.wg-cl-falha .btn'); await pg.waitForFunction(() => document.querySelector('[data-clima-temp]')?.textContent === '15°', null, { timeout: 10000 });
+  ok((await guardado(pg, 'dmanda:clima')).previsao.hoje.data === '2026-11-08', 'virada do dia: "Tentar de novo" traz o dia 08');
   await ctx.close();
 }
 

@@ -3,7 +3,7 @@
 //   cidades:   { results: [{ id, name, latitude, longitude, ..., country, admin1, ... }], generationtime_ms }  (sem resultado, a chave `results` não vem)
 // Dados fictícios de tempo: nenhum número aqui veio de uma consulta de verdade, só a forma.
 
-export const previsao = ({ temp = 16.9, codigo = 80, dia = 0, max = 24.7, min = 15.3, codigoDia = 81, hora = '2026-11-07T08:15', data = '2026-11-07' } = {}) => ({
+export const previsao = ({ temp = 16.9, codigo = 80, dia = 0, max = 24.7, min = 15.3, codigoDia = 81, hora = '2026-11-07T07:45', data = '2026-11-07' } = {}) => ({
   latitude: -29.63, longitude: -50.79, generationtime_ms: 0.19, utc_offset_seconds: -10800, timezone: 'America/Sao_Paulo', timezone_abbreviation: 'GMT-3', elevation: 30,
   current_units: { time: 'iso8601', interval: 'seconds', temperature_2m: '°C', weather_code: 'wmo code', is_day: '' },
   current: { time: hora, interval: 900, temperature_2m: temp, weather_code: codigo, is_day: dia },

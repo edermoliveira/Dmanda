@@ -3,7 +3,7 @@
 // aqui ficam o ciclo de consulta, o armazenamento no aparelho e a interface.
 // - A cidade é a preferência do Perfil (`prefsPerfil.cidade`, Taquara/RS por padrão): uma só fonte, lida e gravada no contexto.
 // - A previsão guardada (dmanda:clima) leva a própria cidade junto: o clima de uma cidade nunca aparece sob o nome de outra.
-// - Consulta só com a aba visível: ao abrir, ao voltar para a aba quando o dado ficou velho (15 min) e quando a conexão volta. Sem consulta por desenho da tela e sem repetição em aba escondida.
+// - Consulta só com a aba visível: ao abrir, ao voltar para a aba quando o dado ficou velho (15 min) ou o dia virou, e quando a conexão volta; nunca por cima de uma consulta em andamento. Sem consulta por desenho da tela e sem repetição em aba escondida.
 // - Falha do serviço afeta só este widget. Com dado guardado, ele continua na tela marcado como desatualizado, com a hora da última atualização.
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useApp } from './contexto';
@@ -11,7 +11,7 @@ import { Icone } from './Icone';
 import { Janela } from './janela-base';
 import {
   ATRIBUICAO, CIDADE_PADRAO, DEBOUNCE_MS, ESPERA_APOS_FALHA_MS, FalhaClima, TEXTO_FALHA, TTL_FRESCO_MS, cacheGuardado, consultarCidades, consultarPrevisao, criarUltimaConsulta,
-  descricaoDoTempo, estadoDoCache, graus, horaDeBrasilia, horaDoMomento, iconeDoTempo, localDaCidade, resumoDoClima, termoDeBusca,
+  descricaoDoTempo, estadoDoCache, graus, horaDeBrasilia, horaDoMomento, iconeDoTempo, localDaCidade, msAteVirarODia, resumoDoClima, termoDeBusca,
   type Cidade, type EntradaCache, type TipoFalha,
 } from '@/lib/clima';
 
@@ -45,6 +45,7 @@ function useClima(cidade: Cidade) {
       if (tipo === 'cancelado') return;
       ultimaFalha.current = Date.now(); setFalha(tipo);
     } finally {
+      ultima.current.concluir(id);
       if (ultima.current.vale(id)) setCarregando(false);
     }
   }, []);
@@ -69,12 +70,18 @@ function useClima(cidade: Cidade) {
     const precisa = () => estadoDoCache(cache, atual.current, Date.now()) !== 'fresco';
     const tentar = (forcar: boolean) => {
       if (document.visibilityState !== 'visible' || !navigator.onLine || !precisa()) return;
+      if (ultima.current.emAndamento()) return;   // voltar para a aba ou para a rede não reinicia uma consulta que já está a caminho
       if (!forcar && Date.now() - ultimaFalha.current < ESPERA_APOS_FALHA_MS) return;
       void buscar();
     };
-    // +1 s: no instante exato dos 15 minutos o dado ainda conta como fresco, e a consulta não sairia
-    const restante = cache ? Math.max(1000, cache.buscadoEm + TTL_FRESCO_MS - Date.now() + 1000) : null;
-    const t = restante !== null && !falha ? setTimeout(() => tentar(false), restante) : null;
+    // +1 s: no instante exato dos 15 minutos (ou da virada do dia) o dado ainda conta como fresco, e a consulta não sairia
+    const restante = cache ? Math.max(1000, Math.min(cache.buscadoEm + TTL_FRESCO_MS - Date.now(), msAteVirarODia(Date.now())) + 1000) : null;
+    const renovar = () => {
+      // virou o dia em Brasília: a "previsão de hoje" guardada é de ontem, então sai da tela antes da nova consulta
+      if (estadoDoCache(cache, atual.current, Date.now()) === 'expirado') setCache(null);
+      tentar(false);
+    };
+    const t = restante !== null && !falha ? setTimeout(renovar, restante) : null;
     const voltou = () => tentar(false);
     const rede = () => tentar(true);
     document.addEventListener('visibilitychange', voltou);
@@ -101,12 +108,12 @@ export function WidgetClima() {
         <button ref={botao} type="button" className="wg-cid wg-cid-b" id={idTitulo} aria-haspopup="dialog" onClick={() => setTrocando(true)} title="Trocar a cidade do clima">
           <span className="wg-cid-n">{cidade.nome}</span><span className="wg-cid-l">{localDaCidade(cidade)}</span><Icone nome="chevron-down" />
         </button>
-        {dados && carregando ? <span className="data wg-atu" role="status">Atualizando…</span> : null}
+        {dados && carregando ? <span className="data wg-atu">Atualizando…</span> : null}
       </div>
 
       {p ? (
         <>
-          <p className="sr-only" role="status">{resumoDoClima(dados!.cidade, p)}{velho ? ' Informação desatualizada.' : ''}</p>
+          <p className="sr-only" data-clima-resumo>{resumoDoClima(dados!.cidade, p)}{velho ? ' Informação desatualizada.' : ''}</p>
           <div className="wg-cl-corpo" aria-hidden="true">
             <div className="wg-cl-agora">
               <span className="wg-cl-rot">Agora</span>
@@ -119,7 +126,7 @@ export function WidgetClima() {
               <span className="wg-cl-cond">{descricaoDoTempo(p.hoje.codigo)}</span>
             </div>
           </div>
-          <p className="data wg-cl-hora mono">Observado às {horaDoMomento(p.atual.observadoEm)} · consultado às {horaDeBrasilia(dados!.buscadoEm)}</p>
+          <p className="data wg-cl-hora mono">Observado às {horaDoMomento(p.atual.observadoEm)} · consultado às {horaDeBrasilia(dados!.buscadoEm)} (Brasília)</p>
         </>
       ) : (
         <p className="data wg-cl-vazio" role="status">{!lido || carregando ? 'Consultando o clima…' : 'Clima indisponível por enquanto.'}</p>
@@ -127,7 +134,7 @@ export function WidgetClima() {
 
       {falha ? (
         <div className="wg-cl-falha" role="status">
-          <span>{velho ? `Desatualizado: última atualização às ${horaDeBrasilia(dados!.buscadoEm)}. ` : ''}{TEXTO_FALHA[falha]}</span>
+          <span>{velho ? `Desatualizado: última atualização às ${horaDeBrasilia(dados!.buscadoEm)} (Brasília). ` : ''}{TEXTO_FALHA[falha]}</span>
           <button type="button" className="btn mini" onClick={tentarDeNovo} disabled={carregando}>Tentar de novo</button>
         </div>
       ) : null}

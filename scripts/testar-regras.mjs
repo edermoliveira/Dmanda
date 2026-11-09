@@ -419,7 +419,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
 
   // endereços e parâmetros
   const up = urlDe(L.urlPrevisao(TAQ));
-  ok(up.origin === 'https://api.open-meteo.com' && up.pathname === '/v1/forecast' && JSON.stringify(q(L.urlPrevisao(TAQ))) === JSON.stringify({ latitude: '-29.6506', longitude: '-50.7806', current: 'temperature_2m,weather_code,is_day', daily: 'temperature_2m_max,temperature_2m_min,weather_code', timezone: 'auto', forecast_days: '1' }), 'clima: o pedido da previsão usa o endereço fixo e só latitude, longitude, as variáveis de agora e do dia, fuso automático e 1 dia');
+  ok(up.origin === 'https://api.open-meteo.com' && up.pathname === '/v1/forecast' && JSON.stringify(q(L.urlPrevisao(TAQ))) === JSON.stringify({ latitude: '-29.6506', longitude: '-50.7806', current: 'temperature_2m,weather_code,is_day', daily: 'temperature_2m_max,temperature_2m_min,weather_code', timezone: 'America/Sao_Paulo', forecast_days: '1' }), 'clima: o pedido da previsão usa o endereço fixo e só latitude, longitude, as variáveis de agora e do dia, fuso automático e 1 dia');
   const uc = urlDe(L.urlCidades('  Porto   Alegre '));
   ok(uc.origin === 'https://geocoding-api.open-meteo.com' && uc.pathname === '/v1/search' && JSON.stringify(q(L.urlCidades('Porto Alegre'))) === JSON.stringify({ name: 'Porto Alegre', count: '8', language: 'pt', format: 'json' }) && q(L.urlCidades('  Porto   Alegre ')).name === 'Porto Alegre', 'clima: o pedido de cidades usa o endereço fixo, nome limpo, 8 resultados, português e JSON');
   const recusasUrl = [{ ...TAQ, lat: 91 }, { ...TAQ, lon: -181 }, { ...TAQ, lat: Number.NaN }, { ...TAQ, id: 0 }, { ...TAQ, nome: '' }, null, 'x'];
@@ -451,7 +451,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
 
   // leitura da previsão
   const p0 = L.lerPrevisao(previsao());
-  ok(p0 && p0.atual.temperatura === 16.9 && p0.atual.codigo === 80 && p0.atual.diurno === false && p0.atual.observadoEm === '2026-11-07T08:15' && p0.hoje.max === 24.7 && p0.hoje.min === 15.3 && p0.hoje.codigo === 81 && p0.hoje.data === '2026-11-07', 'clima: a resposta normal é lida, com agora (current) e previsão do dia (daily) separados');
+  ok(p0 && p0.atual.temperatura === 16.9 && p0.atual.codigo === 80 && p0.atual.diurno === false && p0.atual.observadoEm === '2026-11-07T07:45' && p0.hoje.max === 24.7 && p0.hoje.min === 15.3 && p0.hoje.codigo === 81 && p0.hoje.data === '2026-11-07', 'clima: a resposta normal é lida, com agora (current) e previsão do dia (daily) separados');
   const quebrar = (f) => { const x = previsao(); f(x); return L.lerPrevisao(x); };
   const invalidas = [
     quebrar((x) => { x.current.temperature_2m = '17'; }), quebrar((x) => { x.current.temperature_2m = 400; }), quebrar((x) => { x.current.temperature_2m = null; }),
@@ -495,7 +495,27 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(codigos.every((c) => L.codigoValido(c) && L.descricaoDoTempo(c).length > 3 && !/[a-z]\b.*\b(rain|snow|clear|cloud)/i.test(L.descricaoDoTempo(c))) && [4, 10, 44, 100, -1, 80.5, '80', null].every((c) => !L.codigoValido(c)) && L.descricaoDoTempo(1234) === 'Condição não identificada', 'clima: todos os códigos de tempo documentados têm descrição em português; código desconhecido não é aceito');
   ok(L.descricaoDoTempo(0) === 'Céu limpo' && L.descricaoDoTempo(3) === 'Nublado' && L.descricaoDoTempo(65) === 'Chuva forte' && L.descricaoDoTempo(95) === 'Trovoada' && L.descricaoDoTempo(75) === 'Neve forte' && L.descricaoDoTempo(82) === 'Pancadas de chuva violentas', 'clima: descrições conferidas contra a tabela do Open-Meteo');
   ok(L.iconeDoTempo(0, true) === 'sun' && L.iconeDoTempo(0, false) === 'moon' && L.iconeDoTempo(1, true) === 'sun' && L.iconeDoTempo(2, true) === 'cloud-sun' && L.iconeDoTempo(65, false) === 'cloud-sun' && L.iconeDoTempo(95, true) === 'cloud-sun', 'clima: só ícones que o aplicativo já tem (sol, lua e nuvem com sol)');
-  ok(L.graus(16.9) === '17°' && L.graus(-0.4) === '0°' && L.graus(-3.5) === '-3°' && L.horaDoMomento('2026-11-07T08:15') === '08:15' && L.horaDeBrasilia(Date.UTC(2026, 10, 7, 11, 5, 0)) === '08:05', 'clima: temperatura em graus Celsius arredondada, hora do momento e hora de Brasília');
+  ok(L.graus(16.9) === '17°' && L.graus(-0.4) === '0°' && L.horaDoMomento('2026-11-07T08:15') === '08:15' && L.horaDeBrasilia(Date.UTC(2026, 10, 7, 11, 5, 0)) === '08:05', 'clima: temperatura em graus Celsius arredondada, hora do momento e hora de Brasília');
+  // arredondamento: a metade se afasta do zero nos dois lados, nunca "-0°", e a fala concorda com o que está escrito
+  ok(L.graus(3.5) === '4°' && L.graus(-3.5) === '-4°' && L.graus(2.5) === '3°' && L.graus(-2.5) === '-3°' && L.graus(-0.5) === '-1°' && L.graus(0.49) === '0°' && L.graus(-0.49) === '0°' && L.graus(-0) === '0°' && Object.is(L.arredondar(-0.2), 0), 'clima: arredondamento simétrico (metade para longe do zero), sem "-0°"');
+  ok(/1 grau negativo/.test(L.resumoDoClima(TAQ, { ...p0, atual: { ...p0.atual, temperatura: -0.6 } })) && /4 graus negativos/.test(L.resumoDoClima(TAQ, { ...p0, atual: { ...p0.atual, temperatura: -3.5 } })) && /agora 0 graus,/.test(L.resumoDoClima(TAQ, { ...p0, atual: { ...p0.atual, temperatura: -0.3 } })), 'clima: a frase para leitores de tela usa o mesmo arredondamento do texto escrito');
+  // relógio de 24 horas: meia-noite é 00:05, nunca 24:05, e a hora é a de Brasília
+  ok(L.horaDeBrasilia(Date.UTC(2026, 10, 8, 3, 5, 0)) === '00:05' && L.horaDeBrasilia(Date.UTC(2026, 10, 8, 2, 59, 0)) === '23:59' && L.horaDeBrasilia(Date.UTC(2026, 10, 8, 14, 7, 0)) === '11:07', 'clima: a hora de Brasília usa 24 horas (00:05 à meia-noite, nunca 24:05)');
+  // fuso: o pedido fixa Brasília e uma resposta em outro fuso é recusada (o horário observado só vale se for comparável ao da consulta)
+  ok(L.FUSO === 'America/Sao_Paulo' && q(L.urlPrevisao(comoCidade(F.PORTO_PT))).timezone === 'America/Sao_Paulo' && q(L.urlPrevisao(comoCidade(F.TAQUARA_AL))).timezone === 'America/Sao_Paulo', 'clima: qualquer cidade é consultada em America/Sao_Paulo (horário observado e consultado no mesmo relógio)');
+  ok(L.lerPrevisao({ ...previsao(), timezone: 'Europe/Lisbon' }) === null && L.lerPrevisao({ ...previsao(), timezone: 'GMT' }) === null && L.lerPrevisao({ ...previsao(), timezone: 'America/Sao_Paulo' }) !== null, 'clima: resposta em outro fuso é recusada');
+  // consulta em andamento: voltar para a aba ou para a rede não pode começar outra por cima
+  const U2 = L.criarUltimaConsulta();
+  ok(U2.emAndamento() === false, 'clima: sem consulta, nada em andamento');
+  const c1 = U2.iniciar(); ok(U2.emAndamento() === true, 'clima: consulta iniciada fica em andamento');
+  U2.concluir(c1.id); ok(U2.emAndamento() === false, 'clima: concluir encerra o andamento');
+  const c2 = U2.iniciar(), c3 = U2.iniciar(); U2.concluir(c2.id); ok(U2.emAndamento() === true && !U2.vale(c2.id) && U2.vale(c3.id), 'clima: o fim de uma consulta já substituída não encerra a mais nova');
+  U2.cancelar(); ok(U2.emAndamento() === false, 'clima: cancelar (troca de cidade, janela fechada) encerra o andamento');
+  // virada do dia em Brasília: a previsão guardada de ontem nunca vale como "hoje"
+  const antesDaMeiaNoite = Date.UTC(2026, 10, 8, 2, 50, 0), depoisDaMeiaNoite = Date.UTC(2026, 10, 8, 3, 10, 0);   // 23:50 do dia 07 e 00:10 do dia 08, em Brasília
+  const gNoite = { cidade: TAQ, previsao: p0, buscadoEm: antesDaMeiaNoite };
+  ok(L.estadoDoCache(gNoite, TAQ, antesDaMeiaNoite + 5 * 60000) === 'fresco' && L.estadoDoCache(gNoite, TAQ, depoisDaMeiaNoite) === 'expirado' && L.estadoDoCache(gNoite, TAQ, depoisDaMeiaNoite + 3600000) === 'expirado', 'clima: depois da meia-noite de Brasília o guardado do dia anterior vira expirado, mesmo com menos de 15 minutos de idade');
+  ok(L.msAteVirarODia(Date.UTC(2026, 10, 8, 2, 59, 30)) === 30000 && L.msAteVirarODia(Date.UTC(2026, 10, 8, 3, 0, 0)) === 24 * 3600000 && L.msAteVirarODia(Date.UTC(2026, 10, 7, 15, 0, 0)) === 12 * 3600000, 'clima: quanto falta para o dia seguinte em Brasília (meia-noite é 03:00 UTC)');
   ok(/Taquara: agora 17 graus, pancadas de chuva fracas\. Previsão de hoje: máxima de 25 graus e mínima de 15 graus\./.test(L.resumoDoClima(TAQ, p0)) && /1 grau negativo/.test(L.resumoDoClima(TAQ, { ...p0, atual: { ...p0.atual, temperatura: -1 } })), 'clima: a frase para leitores de tela diz agora e previsão do dia, com unidades por extenso');
   ok(L.ATRIBUICAO.texto === 'Weather data by Open-Meteo.com' && L.ATRIBUICAO.url === 'https://open-meteo.com/' && L.TTL_FRESCO_MS === 900000 && L.TIMEOUT_MS === 8000 && L.DEBOUNCE_MS >= 250 && L.MAX_RESULTADOS === 8, 'clima: atribuição exigida pela licença, TTL de 15 minutos, limite de tempo de 8 s e espera da busca');
 }
