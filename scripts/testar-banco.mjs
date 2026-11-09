@@ -1481,5 +1481,90 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   await a19.close();
 }
 
+// ---------- restauração (restaurar-copia.sql) com o schema da migração 20: cópia v4 gerada ANTES dela e cópia atual ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const SQL = readFileSync('supabase/restaurar-copia.sql', 'utf8');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m20 = todas.find((f) => f.includes('origem_documento_para_hoje'));
+  const O = 'c1c1c1c1-8888-4888-8888-c1c1c1c1c1c1', N = 'c2c2c2c2-8888-4888-8888-c2c2c2c2c2c2';
+  const preparar = async (d, id, email) => { await d.query('insert into auth.users (id, email) values ($1, $2)', [id, email]); await d.query('insert into dmanda_privado.acesso_autorizado (email) values ($1) on conflict do nothing', [email]); return d; };
+  const rodar = async (d, json) => { try { await d.exec(SQL.replace('__COLE_AQUI_O_JSON__', () => JSON.stringify(json))); return null; } catch (e) { return e.message || String(e); } };
+  const exportar = async (d, u) => JSON.parse(JSON.stringify({ formato: 'dmanda-exportacao', versao: 4, exportado_em: new Date().toISOString(), fuso: 'America/Sao_Paulo',
+    demandas: await chamarComoUsuario(d, u, 'listar_demandas', { p_arquivadas: false }), arquivadas: await chamarComoUsuario(d, u, 'listar_demandas', { p_arquivadas: true }),
+    dias_indisponiveis: await chamarComoUsuario(d, u, 'listar_dias_indisponiveis', {}), entradas: await chamarComoUsuario(d, u, 'listar_entradas', { p_arquivadas: false }),
+    entradas_arquivadas: await chamarComoUsuario(d, u, 'listar_entradas', { p_arquivadas: true }), eventos: await chamarComoUsuario(d, u, 'listar_eventos', {}) }));
+  const conteudo = async (d) => JSON.stringify({
+    dem: (await d.query('select id, assunto, tipo, numero, origem, etapa, prazo, prazo_original, rapida, documento_ano, versao from public.demandas order by id')).rows,
+    tar: (await d.query('select id, demanda_id, texto, concluida, posicao from public.tarefas order by id')).rows,
+    ent: (await d.query('select id, titulo, texto, cor, fixada, arquivada_em, demanda_id, versao from public.entradas order by id')).rows,
+    eve: (await d.query('select id, titulo, tipo, data, dia_inteiro, versao from public.eventos order by id')).rows,
+    dia: (await d.query('select id, data, descricao from public.dias_indisponiveis order by id')).rows });
+
+  // cópia v4 realmente gerada por um banco com as migrações 1 a 19 (sem a coluna rapida)
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-rest19-'));
+  for (const f of todas.filter((f) => f < m20)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const velho = await preparar(await abrirBancoTeste({ raizMigracoes: pasta }), O, 'rv@teste');
+  const cv = (f, a) => chamarComoUsuario(velho, O, f, a);
+  const v1 = await cv('criar_demanda', { p: { assunto: 'Antiga com tipo "á"', tipo: 'Processo', numero: '12/2026', origem: 'TCE-RS', prazo_original: '2026-12-10' } });
+  await cv('adicionar_tarefa', { p_demanda: v1.id, p_texto: 'Primeira' }); await cv('adicionar_tarefa', { p_demanda: v1.id, p_texto: 'Segunda' });
+  const v2 = await cv('criar_demanda', { p: { assunto: 'Antiga arquivada', tipo: 'Ofício' } }); await cv('arquivar_demanda', { p_id: v2.id });
+  await cv('criar_evento', { p: { titulo: 'Reunião antiga', tipo: 'Reunião', data: '2026-12-01', inicio: '09:00' } });
+  const en = await cv('criar_entrada', { p: { titulo: 'Virou', texto: 'Conteúdo', cor: 2 } });
+  const demEn = await cv('criar_demanda_de_entrada', { p_entrada: en.id, p: { id: 'c3c3c3c3-8888-4888-8888-c3c3c3c3c3c3', assunto: 'Da entrada' } });
+  await cv('salvar_dia_indisponivel', { p: { data: '2026-12-25', descricao: 'Natal', categoria: 'Feriado' } });
+  const antiga = await exportar(velho, O);
+  ok(antiga.demandas.concat(antiga.arquivadas).length === 3 && antiga.demandas.concat(antiga.arquivadas).every((d) => !('rapida' in d)) && antiga.versao === 4, 'restauração 1 a 20: a cópia v4 de teste foi gerada antes da migração 20 e não tem o campo rapida');
+  await velho.close();
+
+  const destino = await preparar(await abrirBancoTeste(), N, 'rn@teste');   // schema completo, migrações 1 a 20
+  ok(await rodar(destino, antiga) === null, 'restauração 1 a 20: a cópia v4 anterior à migração 20 restaura sem erro no schema com Rápida NOT NULL');
+  const r = (await destino.query('select count(*)::int n, count(*) filter (where rapida = false)::int f, count(*) filter (where documento_ano is null)::int a from public.demandas')).rows[0];
+  ok(r.n === 3 && r.f === 3 && r.a === 3, 'restauração 1 a 20: as demandas voltam com Rápida desligada e sem ano confirmado');
+  const dep = (await destino.query('select (select count(*) from public.tarefas)::int t, (select count(*) from public.entradas)::int e, (select count(*) from public.eventos)::int v, (select count(*) from public.dias_indisponiveis)::int d, (select demanda_id from public.entradas where id = $1) vinc', [en.id])).rows[0];
+  ok(dep.t === 2 && dep.e === 1 && dep.v === 1 && dep.d === 1 && dep.vinc === demEn.id, 'restauração 1 a 20: tarefas, entrada com vínculo, evento e dia indisponível voltam');
+  ok((await destino.query('select tipo from public.demandas where id = $1', [v1.id])).rows[0].tipo === 'Processo', 'restauração 1 a 20: o tipo e a origem de cada demanda voltam no texto da própria demanda');
+  const foto = await conteudo(destino);
+  ok(await rodar(destino, antiga) === null && await conteudo(destino) === foto, 'restauração 1 a 20: repetir a restauração não duplica nem altera nada');
+
+  // Rápida presente (true e false), nula e ausente; leitura dos formatos v1 a v3
+  const mista = JSON.parse(JSON.stringify(antiga)); mista.demandas[0].rapida = true; mista.arquivadas[0].rapida = false; mista.demandas[1].rapida = null;
+  const d2 = await preparar(await abrirBancoTeste(), N, 'rm@teste');
+  ok(await rodar(d2, mista) === null, 'restauração 1 a 20: cópia com Rápida true, false, nula e ausente restaura sem erro');
+  const m = Object.fromEntries((await d2.query('select id, rapida from public.demandas')).rows.map((x) => [x.id, x.rapida]));
+  ok(m[mista.demandas[0].id] === true && m[mista.arquivadas[0].id] === false && m[mista.demandas[1].id] === false, 'restauração 1 a 20: Rápida true é preservada, false e nula viram false');
+  const c3 = JSON.parse(JSON.stringify(antiga)); c3.versao = 3; delete c3.eventos; for (const x of c3.demandas.concat(c3.arquivadas)) { delete x.encaminhada_em; delete x.reiterada_em; }
+  const c2 = JSON.parse(JSON.stringify(c3)); c2.versao = 2; delete c2.entradas; delete c2.entradas_arquivadas;
+  const c1 = JSON.parse(JSON.stringify(c2)); c1.versao = 1; delete c1.dias_indisponiveis; for (const x of c1.demandas.concat(c1.arquivadas)) { delete x.prazo_original; delete x.prazo_ajuste; delete x.prazo_legado; delete x.versao; }
+  for (const [vv, cop] of [[3, c3], [2, c2], [1, c1]]) { const dv = await preparar(await abrirBancoTeste(), N, 'rv' + vv + '@teste'); ok(await rodar(dv, cop) === null && (await dv.query('select count(*)::int n from public.demandas')).rows[0].n === 3, 'restauração 1 a 20: o formato v' + vv + ' continua sendo lido'); await dv.close(); }
+
+  // cópia atual (gerada com o schema completo: Rápida, origem e documento associado)
+  const atual = await preparar(await abrirBancoTeste(), O, 'ra@teste');
+  const ca = (f, a) => chamarComoUsuario(atual, O, f, a);
+  const a1 = await ca('criar_demanda', { p: { assunto: 'Rápida sem documento', origem: 'Reunião', rapida: true } });
+  const a2 = await ca('criar_demanda', { p: { assunto: 'Tipo personalizado', tipo: 'Certidão', numero: '5/2026', documento_ano: 2026 } });
+  await ca('adicionar_tarefa', { p_demanda: a2.id, p_texto: 'Tarefa atual' });
+  const cop = await exportar(atual, O);
+  ok(cop.demandas.find((x) => x.id === a1.id).rapida === true && cop.demandas.find((x) => x.id === a2.id).documento_ano === 2026, 'restauração 1 a 20: a cópia atual traz Rápida e o ano do documento');
+  const dest2 = await preparar(await abrirBancoTeste(), N, 'rb@teste');
+  ok(await rodar(dest2, cop) === null, 'restauração 1 a 20: a cópia atual restaura sem erro');
+  const q = (await dest2.query('select id, rapida, documento_ano, tipo from public.demandas')).rows;
+  ok(q.find((x) => x.id === a1.id).rapida === true && q.find((x) => x.id === a2.id).documento_ano === 2026 && q.find((x) => x.id === a2.id).tipo === 'Certidão', 'restauração 1 a 20: Rápida true, ano do documento e tipo personalizado são preservados');
+  const f2 = await conteudo(dest2);
+  ok(await rodar(dest2, cop) === null && await conteudo(dest2) === f2, 'restauração 1 a 20: repetir a cópia atual não duplica nem sobrescreve');
+  await dest2.query("update public.demandas set assunto = 'ALTERADA DEPOIS', rapida = false where id = $1", [a1.id]);
+  ok(await rodar(dest2, cop) === null && (await dest2.query('select assunto, rapida from public.demandas where id = $1', [a1.id])).rows[0].assunto === 'ALTERADA DEPOIS', 'restauração 1 a 20: demanda que já existe não é sobrescrita pela cópia');
+
+  // falha no meio: nada fica gravado
+  const quebrada = JSON.parse(JSON.stringify(antiga)); quebrada.eventos[0].data = 'não é data';
+  const dq = await preparar(await abrirBancoTeste(), N, 'rq@teste');
+  const antesQ = (await dq.query('select (select count(*) from public.demandas)::int d, (select count(*) from public.tarefas)::int t, (select count(*) from public.entradas)::int e')).rows[0];
+  ok(await rodar(dq, quebrada) !== null && JSON.stringify((await dq.query('select (select count(*) from public.demandas)::int d, (select count(*) from public.tarefas)::int t, (select count(*) from public.entradas)::int e')).rows[0]) === JSON.stringify(antesQ), 'restauração 1 a 20: falha no meio desfaz tudo (transação única), inclusive demandas e tarefas');
+  ok((await dq.query("select tgenabled from pg_trigger where tgname = 'tarefas_versao'")).rows[0].tgenabled === 'O', 'restauração 1 a 20: o gatilho de versão das tarefas continua ligado depois da falha');
+  for (const d of [destino, d2, atual, dest2, dq]) await d.close();
+}
+
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);
