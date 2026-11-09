@@ -1,13 +1,12 @@
-// Regras puras do Perfil: humor e energia por dia, dias pendentes do convite, produtividade derivada das demandas finalizadas e os textos neutros.
+// Regras puras do Perfil: humor por dia (opcional), dias pendentes do convite, produtividade derivada das demandas finalizadas e os textos neutros.
 // Sem banco, sem relógio e sem estado: a data de hoje vem de fora (America/Sao_Paulo, a mesma do banco). Nada daqui entra em busca, IA, telemetria nem log.
 import { somarDias, diaDaSemana, nomeDoDia, type DiaIndisponivel } from './prazos.ts';
 import { plural, type Demanda } from './demandas.ts';
 
 export type Nivel = 1 | 2 | 3 | 4 | 5;
 export const NIVEIS: readonly Nivel[] = [1, 2, 3, 4, 5];
-export type RegistroDia = { dia: string; humor: Nivel; energia: Nivel };
+export type RegistroDia = { dia: string; humor: Nivel };
 export const ROTULO_HUMOR: Record<Nivel, string> = { 1: 'Muito mal', 2: 'Mal', 3: 'Neutro', 4: 'Bem', 5: 'Muito bem' };
-export const ROTULO_ENERGIA: Record<Nivel, string> = { 1: 'Muito baixa', 2: 'Baixa', 3: 'Média', 4: 'Alta', 5: 'Muito alta' };
 
 /** Hoje e os 5 dias anteriores podem ser registrados ou corrigidos (DECISOES.md, seção 9). */
 export const DIAS_CORRECAO = 5;
@@ -25,7 +24,7 @@ export const diaDeTrabalho = (dia: string, dias: readonly DiaIndisponivel[]) => 
   return s >= 1 && s <= 5 && !dias.some((d) => d.categoria === 'Feriado' && d.data === dia);
 };
 
-/** Os dias que o convite pede: dos 5 dias anteriores a hoje, os de trabalho que ainda não têm humor e energia, do mais antigo ao mais recente. Hoje fica com o lembrete normal. */
+/** Os dias que o convite pede: dos 5 dias anteriores a hoje, os de trabalho que ainda não têm humor, do mais antigo ao mais recente. Hoje fica com o lembrete normal. */
 export function diasPendentes(hoje: string, registros: readonly RegistroDia[], dias: readonly DiaIndisponivel[]): string[] {
   const feitos = new Set(registros.map((r) => r.dia));
   const lista: string[] = [];
@@ -46,10 +45,10 @@ export function serieDoPeriodo(demandas: readonly Demanda[], registros: readonly
 }
 
 export const textoConcluidas = (n: number) => (n === 0 ? 'nenhuma demanda finalizada' : `${plural(n, 'demanda')} ${n === 1 ? 'finalizada' : 'finalizadas'}`);
-/** O resumo do dia por extenso (tooltip, leitura de tela e a linha de detalhe). Sem registro, diz "sem registro de humor e energia". */
+/** O resumo do dia por extenso (tooltip, leitura de tela e a linha de detalhe). Sem registro, diz "sem registro de humor". */
 export function textoDoDia(p: PontoDia, hoje: string): string {
   const quando = p.dia === hoje ? `Hoje, ${diaPorExtenso(p.dia)}` : diaPorExtenso(p.dia).replace(/^./, (c) => c.toUpperCase());
-  const hum = p.registro ? `humor ${ROTULO_HUMOR[p.registro.humor].toLowerCase()}, energia ${ROTULO_ENERGIA[p.registro.energia].toLowerCase()}` : 'sem registro de humor e energia';
+  const hum = p.registro ? `humor ${ROTULO_HUMOR[p.registro.humor].toLowerCase()}` : 'sem registro de humor';
   return `${quando}: ${textoConcluidas(p.concluidas)}, ${hum}.`;
 }
 
@@ -59,14 +58,14 @@ export function fraseDoDia(concluidasHoje: number): string {
   return `Hoje: ${textoConcluidas(concluidasHoje)}.`;
 }
 
-export const AVISO_PERFIL = 'Humor e energia são privados e nunca vão para a IA sem a sua permissão. Este espaço não substitui acompanhamento profissional.';
+export const AVISO_PERFIL = 'O humor é privado e nunca vai para a IA sem a sua permissão. Este espaço não substitui acompanhamento profissional.';
 
 /** Confere o que vem do banco antes de usar (resposta inesperada vira lista vazia, nunca um erro na tela). */
 export function registrosValidos(x: unknown): RegistroDia[] {
   if (!Array.isArray(x)) return [];
   const nivel = (v: unknown): v is Nivel => typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5;
-  return x.filter((r): r is RegistroDia => !!r && typeof r === 'object' && typeof (r as RegistroDia).dia === 'string' && /^\d{4}-\d{2}-\d{2}$/.test((r as RegistroDia).dia) && nivel((r as RegistroDia).humor) && nivel((r as RegistroDia).energia))
-    .map((r) => ({ dia: r.dia, humor: r.humor, energia: r.energia }));
+  return x.filter((r): r is RegistroDia => !!r && typeof r === 'object' && typeof (r as RegistroDia).dia === 'string' && /^\d{4}-\d{2}-\d{2}$/.test((r as RegistroDia).dia) && nivel((r as RegistroDia).humor))
+    .map((r) => ({ dia: r.dia, humor: r.humor }));
 }
 
 /** Os registros gravados (devolvidos pelo banco) entram no lugar dos do mesmo dia, sem duplicar, em ordem de data. */

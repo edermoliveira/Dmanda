@@ -1,14 +1,14 @@
 'use client';
-// Perfil (gaveta à direita, aberta pelo avatar e por Configurações > Perfil): humor e energia de hoje, produtividade, o gráfico "Seu ritmo" (semana e mês), o histórico
-// dos últimos 28 dias e o registro e a correção dos últimos 5 dias. Privado: sem metas, sem comparação, sem sequência de dias e sem alerta negativo. Humor e energia não vão
+// Perfil (gaveta à direita, aberta pelo avatar e por Configurações > Perfil): humor de hoje, produtividade, o gráfico "Seu ritmo" (semana e mês), o histórico
+// dos últimos 28 dias e o registro e a correção dos últimos 5 dias. Privado: sem metas, sem comparação, sem sequência de dias e sem alerta negativo. O humor não vai
 // para a busca, a IA, a telemetria nem a cópia dos dados. Zero demandas finalizadas é um valor normal; a falta de registro aparece como "Sem registro".
 // Produtividade = demandas finalizadas no dia (data de conclusão), lidas das listas que o aplicativo já tem mais as arquivadas, lidas ao abrir.
 import { useEffect, useRef, useState, type KeyboardEvent as TecladoReact } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
-import { EmojiNivel, FormularioRegistro, ROTULOS } from './escala';
-import { AVISO_PERFIL, dataCurta, diasPendentes, emJanelaDeCorrecao, fraseDoDia, semanaAbreviada, serieDoPeriodo, textoConcluidas, textoDoDia, DIAS_CORRECAO, type PontoDia } from '@/lib/registros';
+import { EmojiNivel, FormularioRegistro } from './escala';
+import { AVISO_PERFIL, ROTULO_HUMOR, dataCurta, diasPendentes, emJanelaDeCorrecao, fraseDoDia, semanaAbreviada, serieDoPeriodo, textoConcluidas, textoDoDia, DIAS_CORRECAO, type PontoDia } from '@/lib/registros';
 
 export function PerfilGaveta() {
   const { perfilAberto } = useApp();
@@ -95,7 +95,7 @@ function Gaveta() {
     escolher(serie[Math.max(0, Math.min(serie.length - 1, Math.floor(((e.clientX - r.left) / r.width) * serie.length)))].dia);
   };
 
-  const estadoDoDia = (p: PontoDia) => (p.registro ? `humor ${ROTULOS.humor[p.registro.humor].toLowerCase()}, energia ${ROTULOS.energia[p.registro.energia].toLowerCase()}` : 'sem registro');
+  const estadoDoDia = (p: PontoDia) => (p.registro ? `humor ${ROTULO_HUMOR[p.registro.humor].toLowerCase()}` : 'sem registro');
   const roteiroAtivo = serie.some((p) => p.dia === selecionado.dia) ? selecionado.dia : hojePt.dia;
   const histAtivo = hist.some((p) => p.dia === selecionado.dia) ? selecionado.dia : hojePt.dia;
 
@@ -106,21 +106,16 @@ function Gaveta() {
         <div className="pf-id"><span className="av" aria-hidden="true">{nome.charAt(0).toUpperCase()}</span><div><b>{nome}</b><span className="data">Seu espaço pessoal. Só você vê.</span></div></div>
 
         {erroRegistros ? (
-          <div className="erro-carga" role="alert"><b>Não foi possível ler o humor e a energia agora.</b><span>{erroRegistros}</span><button type="button" className="btn mini" onClick={() => void recarregarRegistros()}>Tentar de novo</button></div>
+          <div className="erro-carga" role="alert"><b>Não foi possível ler o humor agora.</b><span>{erroRegistros}</span><button type="button" className="btn mini" onClick={() => void recarregarRegistros()}>Tentar de novo</button></div>
         ) : null}
         {arquivo === 'falhou' ? <p className="data" role="status">Não foi possível ler as demandas arquivadas agora: a contagem de finalizadas pode estar incompleta.</p> : null}
 
         <div className="ind3">
-          {(['humor', 'energia'] as const).map((tipo) => {
-            const nivel = hojePt.registro?.[tipo] ?? null;
-            return (
-              <section key={tipo} className="painel ind" data-indicador={tipo}>
-                <h3>{tipo === 'humor' ? 'Humor' : 'Energia'}</h3>
-                <div className="ind-v">{!registroOk ? <b>Indisponível</b> : nivel ? <><EmojiNivel tipo={tipo} nivel={nivel} /><b>{ROTULOS[tipo][nivel]}</b></> : <b>Sem registro hoje</b>}</div>
-                <p className="data">Último registro de hoje. Só seu.</p>
-              </section>
-            );
-          })}
+          <section className="painel ind" data-indicador="humor">
+            <h3>Humor</h3>
+            <div className="ind-v">{!registroOk ? <b>Indisponível</b> : hojePt.registro ? <><EmojiNivel nivel={hojePt.registro.humor} /><b>{ROTULO_HUMOR[hojePt.registro.humor]}</b></> : <b>Sem registro hoje</b>}</div>
+            <p className="data">Último registro de hoje. Só seu.</p>
+          </section>
           <section className="painel ind" data-indicador="produtividade">
             <h3>Produtividade</h3>
             <div className="ind-v"><b className="grande-n">{hojePt.concluidas}</b>{' '}<b>{hojePt.concluidas === 1 ? 'demanda finalizada' : 'demandas finalizadas'} hoje</b></div>
@@ -158,7 +153,7 @@ function Gaveta() {
           {!registroOk ? null : emJanelaDeCorrecao(selecionado.dia, hoje) ? (
             <>
               <h4 className="pf-sub">{selecionado.registro ? 'Corrigir este dia' : 'Registrar este dia'}</h4>
-              <FormularioRegistro key={`${selecionado.dia}|${selecionado.registro?.humor ?? ''}|${selecionado.registro?.energia ?? ''}`} dia={selecionado.dia} inicial={selecionado.registro} rotuloBotao={selecionado.registro ? 'Atualizar registro' : 'Registrar'} idBase="pf" />
+              <FormularioRegistro key={`${selecionado.dia}|${selecionado.registro?.humor ?? ''}`} dia={selecionado.dia} inicial={selecionado.registro} rotuloBotao={selecionado.registro ? 'Atualizar registro' : 'Registrar'} idBase="pf" />
             </>
           ) : <p className="data">Só é possível registrar ou corrigir hoje e os {DIAS_CORRECAO} dias anteriores.</p>}
         </section>
@@ -166,7 +161,7 @@ function Gaveta() {
         <section className="painel" aria-labelledby="pf-hist">
           <h3 id="pf-hist">Histórico dos últimos dias</h3>
           <div className="hist-w">
-            <div className="hist-lab" aria-hidden="true"><i /><b>Humor</b><b>Energia</b></div>
+            <div className="hist-lab" aria-hidden="true"><i /><b>Humor</b></div>
             <div ref={rolagem} className="hist-rol" role="region" aria-label="Histórico dos últimos 28 dias; role para os lados para ver os dias anteriores">
               <table className="hist-t" onKeyDown={(e) => teclaGrupo(e, hist, 'button.hd')}>
                 <thead><tr><td className="sr">Registro</td>
@@ -178,14 +173,12 @@ function Gaveta() {
                     </th>
                   ))}</tr></thead>
                 <tbody>
-                  {(['humor', 'energia'] as const).map((tipo) => (
-                    <tr key={tipo}><th scope="row" className="sr">{tipo === 'humor' ? 'Humor' : 'Energia'}</th>
-                      {hist.map((p) => {
-                        const nivel = p.registro?.[tipo] ?? null;
-                        return <td key={p.dia} className={`hc2${nivel ? '' : ' vazio'}`} data-dia={p.dia}>{!registroOk ? <span aria-label="Indisponível">?</span> : nivel ? <EmojiNivel tipo={tipo} nivel={nivel} alt={`${tipo === 'humor' ? 'Humor' : 'Energia'}: ${ROTULOS[tipo][nivel]}`} /> : <span title="Sem registro" aria-label="Sem registro">—</span>}</td>;
-                      })}
-                    </tr>
-                  ))}
+                  <tr><th scope="row" className="sr">Humor</th>
+                    {hist.map((p) => {
+                      const nivel = p.registro?.humor ?? null;
+                      return <td key={p.dia} className={`hc2${nivel ? '' : ' vazio'}`} data-dia={p.dia}>{!registroOk ? <span aria-label="Indisponível">?</span> : nivel ? <EmojiNivel nivel={nivel} alt={`Humor: ${ROTULO_HUMOR[nivel]}`} /> : <span title="Sem registro" aria-label="Sem registro">—</span>}</td>;
+                    })}
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -209,37 +202,34 @@ export function SecaoPerfilConfig() {
   return (
     <section className="cfg-bloco painel" aria-labelledby="cfg-perfil-t" data-secao="perfil">
       <h2 id="cfg-perfil-t" style={{ fontSize: 'calc(17px * var(--esc))', margin: '0 0 6px' }}>Perfil</h2>
-      <p className="data">Humor, energia e produtividade dos seus dias, com o gráfico semanal e mensal, o histórico e a correção dos últimos 5 dias. É privado: nada disso vai para a busca, a IA nem a cópia dos dados.</p>
+      <p className="data">Humor e produtividade dos seus dias, com o gráfico semanal e mensal, o histórico e a correção dos últimos 5 dias. É privado: nada disso vai para a busca, a IA nem a cópia dos dados.</p>
       <div className="acoes"><button type="button" className="btn pri" onClick={abrirPerfil}>Abrir o Perfil</button></div>
     </section>
   );
 }
 
-/** O quadro de humor e energia no Início: o que foi registrado hoje, o registro (ou a atualização) ali mesmo e o atalho para completar os dias pendentes. */
+/** O quadro de humor no Início: o que foi registrado hoje, o registro (ou a atualização) ali mesmo e o atalho para completar os dias pendentes. */
 export function RegistroNoInicio() {
   const { registros, erroRegistros, carregandoRegistros, recarregarRegistros, hoje, dias, abrirCompletar, abrirPerfil } = useApp();
   const [aberto, setAberto] = useState(false);
   const reg = registros.find((r) => r.dia === hoje) ?? null;
   const pend = diasPendentes(hoje, registros, dias).length;
   return (
-    <section className="sec" aria-labelledby="ini-hum-t" data-quadro="humor-energia">
-      <h3 id="ini-hum-t">Humor e energia <small>só seus</small></h3>
+    <section className="sec" aria-labelledby="ini-hum-t" data-quadro="humor">
+      <h3 id="ini-hum-t">Humor <small>só seu</small></h3>
       <div className="painel ini-reg">
         {erroRegistros ? (
-          <div className="erro-carga" role="alert"><b>Não foi possível ler o humor e a energia agora.</b><button type="button" className="btn mini" onClick={() => void recarregarRegistros()}>Tentar de novo</button></div>
+          <div className="erro-carga" role="alert"><b>Não foi possível ler o humor agora.</b><button type="button" className="btn mini" onClick={() => void recarregarRegistros()}>Tentar de novo</button></div>
         ) : carregandoRegistros ? <p className="data" role="status">Carregando...</p> : (
           <>
             <div className="ini-reg-v">
               {reg ? (
-                <>
-                  <span className="ini-reg-i"><EmojiNivel tipo="humor" nivel={reg.humor} /><span>Humor: <b>{ROTULOS.humor[reg.humor]}</b></span></span>
-                  <span className="ini-reg-i"><EmojiNivel tipo="energia" nivel={reg.energia} /><span>Energia: <b>{ROTULOS.energia[reg.energia]}</b></span></span>
-                </>
+                <span className="ini-reg-i"><EmojiNivel nivel={reg.humor} /><span>Humor: <b>{ROTULO_HUMOR[reg.humor]}</b></span></span>
               ) : <span>Sem registro hoje.</span>}
               <button type="button" className="btn mini" aria-expanded={aberto} onClick={() => setAberto((v) => !v)}>{aberto ? 'Fechar' : reg ? 'Atualizar' : 'Registrar'}</button>
               <button type="button" className="btn mini" onClick={abrirPerfil}>Abrir o Perfil</button>
             </div>
-            {aberto ? <FormularioRegistro key={`${hoje}|${reg?.humor ?? ''}|${reg?.energia ?? ''}`} dia={hoje} inicial={reg} rotuloBotao={reg ? 'Atualizar registro' : 'Registrar'} idBase="ini" aoGravar={() => setAberto(false)} /> : null}
+            {aberto ? <FormularioRegistro key={`${hoje}|${reg?.humor ?? ''}`} dia={hoje} inicial={reg} rotuloBotao={reg ? 'Atualizar registro' : 'Registrar'} idBase="ini" aoGravar={() => setAberto(false)} /> : null}
             {pend ? <button type="button" className="pend" onClick={abrirCompletar}><Icone nome="clock" /><span>{pend === 1 ? 'Há 1 dia de trabalho sem registro. Completar (opcional)' : `Há ${pend} dias de trabalho sem registro. Completar (opcional)`}</span><Icone nome="right" /></button> : null}
           </>
         )}

@@ -20,7 +20,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Alertas ao abrir: atrasadas (vermelho), vencendo hoje, compromissos de hoje, aguardando retorno parado há mais de 7 dias (ajustável) [substituído em 02/11/2026: vale o retorno do setor em 10 dias corridos e a etapa Aguardando Prefeita, decisões 45 e 46].
 - "Foco do dia": até 3 demandas sugeridas (prazo legal primeiro, depois próprio, depois mais tempo parada). O usuário pode trocar.
 - Widget de clima da cidade (configurável).
-- Acesso rápido para registrar humor e energia.
+- Acesso rápido para registrar o humor.
 - Abrir uma demanda a partir da lista. Marcar como concluída.
 
 ### Entradas
@@ -94,11 +94,11 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Tipos de documento (adicionar, renomear, ocultar). Feriados.
 
 ### Perfil (avatar no topo)
-- Registro de **humor** (emojis), **energia** e **produtividade** (demandas finalizadas no dia, calculada).
+- Registro de **humor** (emojis; a energia foi retirada pela decisão 59) e **produtividade** (demandas finalizadas no dia, calculada).
 - Balões discretos a cada 3 horas de trabalho desde o login (cerca de 4 por dia, incluindo o primeiro do dia). Só o último registro de cada indicador fica no dia.
 - Correção até 5 dias depois. Janela antes do Início para completar pendências (ignora fins de semana e feriados, só o que falta, rápida, opcional). Dias sem registro ficam "Sem registro".
 - Painel: resumo do dia, gráfico interativo (semana e mês) com resumo ao passar o mouse, histórico visual compacto e os três indicadores juntos. Frase sempre neutra e acolhedora. Gráficos podem ser coloridos, animados e elegantes, desde que as cores não classifiquem a produtividade como boa ou ruim.
-- Humor e energia privados. Sem metas nem cobrança. Aviso de que não substitui acompanhamento profissional.
+- O humor é privado. Sem metas nem cobrança. Aviso de que não substitui acompanhamento profissional.
 
 ### Busca global (lupa)
 - Procura em tudo: demandas (número, assunto, origem), tarefas, entradas, documentos, eventos.

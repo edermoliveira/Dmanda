@@ -79,18 +79,18 @@ type Ctx = {
   /** Avisos de hoje dentro do aplicativo (eventos próximos do início, ou de dia inteiro com aviso), menos os que a pessoa já dispensou. */
   avisosEventos: AvisoEvento[];
   dispensarAviso: (e: Evento) => void;
-  /** Humor e energia por dia (privados: só o Perfil e o lembrete os usam). Gravar devolve o resultado para a janela mostrar o próprio estado e manter a escolha se falhar. */
+  /** Humor por dia (privado: só o Perfil e o lembrete os usam). Gravar devolve o resultado para a janela mostrar o próprio estado e manter a escolha se falhar. */
   registros: RegistroDia[];
   carregandoRegistros: boolean;
   erroRegistros: string | null;
-  registrarDias: (lista: { dia: string; humor: number; energia: number }[]) => Promise<{ ok: true } | { ok: false; erro: string }>;
+  registrarDias: (lista: { dia: string; humor: number }[]) => Promise<{ ok: true } | { ok: false; erro: string }>;
   /** O Perfil (gaveta à direita) abre pelo avatar e por Configurações. */
   perfilAberto: boolean;
   abrirPerfil: () => void;
   fecharPerfil: () => void;
   /** Releitura dos registros (depois de uma falha de leitura). */
   recarregarRegistros: () => Promise<void>;
-  /** A janela "Completar os últimos dias" (humor e energia dos dias de trabalho sem registro): aberta pelo convite da entrada, pelo Início e pelo Perfil. */
+  /** A janela "Completar os últimos dias" (humor dos dias de trabalho sem registro): aberta pelo convite da entrada, pelo Início e pelo Perfil. */
   completarAberto: boolean;
   abrirCompletar: () => void;
   fecharCompletar: () => void;
@@ -410,7 +410,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (lista.ok) { setDemandas(lista.dados); avisar(`${inicio}. ${resumo}`); } else avisar(`${inicio}. ${resumo} A tela não conseguiu ler os novos vencimentos: recarregue para vê-los.`, true);
   }, [avisar]);
 
-  const registrarDias = useCallback(async (lista: { dia: string; humor: number; energia: number }[]): Promise<{ ok: true } | { ok: false; erro: string }> => {
+  const registrarDias = useCallback(async (lista: { dia: string; humor: number }[]): Promise<{ ok: true } | { ok: false; erro: string }> => {
     const r = await gravando(() => protegido(() => srvP.registrarDias(lista)));
     if (!r.ok) return { ok: false, erro: r.erro };
     setRegistros((atual) => substituirRegistros(atual, r.dados));

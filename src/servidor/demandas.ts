@@ -11,7 +11,7 @@ import { cookies } from 'next/headers';
 
 const op = () => criarOperacoes(chamar);
 
-// Só para os testes automatizados: sem lembretes de humor e energia (o convite da entrada é uma janela e atrapalharia os testes de outras telas). Nunca vale em produção.
+// Só para os testes automatizados: sem lembretes de humor (o convite da entrada é uma janela e atrapalharia os testes de outras telas). Nunca vale em produção.
 const semLembretes = () => process.env.DMANDA_SEM_LEMBRETES === 'sim' && (modoTeste() || process.env.NODE_ENV !== 'production');
 
 export async function ambiente() {

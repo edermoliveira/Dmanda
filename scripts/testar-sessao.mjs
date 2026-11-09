@@ -337,15 +337,15 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
     ok(respostas.length === 2 && respostas.every((r) => !/"dados"/.test(r.texto)), `busca: a leitura dos arquivados com sessão de conta não autorizada não devolve dados (status ${respostas.map((r) => r.status).join(', ')})`);
     await intrusa.close();
   }
-  // Perfil (humor e energia): gravar pelo Perfil com a sessão da conta autorizada; a mesma ação repetida sem sessão, com cookie adulterado ou por conta não autorizada não grava nem devolve nada
+  // Perfil (humor): gravar pelo Perfil com a sessão da conta autorizada; a mesma ação repetida sem sessão, com cookie adulterado ou por conta não autorizada não grava nem devolve nada
   {
     const antes = capturadas.length;
     await p0.click('.perfil-b'); await p0.click('[data-item="perfil"]'); await p0.waitForSelector('[data-perfil] .reg-form', { timeout: 20000 });
-    await p0.click('[data-perfil] [data-escala="humor"] .emo[data-nivel="4"]'); await p0.click('[data-perfil] [data-escala="energia"] .emo[data-nivel="2"]');
+    await p0.click('[data-perfil] [data-escala="humor"] .emo[data-nivel="4"]');
     await p0.click('[data-perfil] .reg-form .btn.pri');
     for (let i = 0; i < 50 && !capturadas.slice(antes).some((x) => /"dia":"\d{4}-\d{2}-\d{2}"/.test(x.corpo)); i++) await new Promise((r) => setTimeout(r, 200));
     const acao = capturadas.slice(antes).find((x) => /"dia":"\d{4}-\d{2}-\d{2}"/.test(x.corpo));
-    ok(!!acao, 'perfil: com a sessão válida, registrar humor e energia chama a ação do servidor');
+    ok(!!acao, 'perfil: com a sessão válida, registrar o humor chama a ação do servidor');
     await p0.keyboard.press('Escape');
     const repetirP = async (ctx) => { const r = await ctx.request.post(acao.url, { headers: { 'next-action': acao.id, 'content-type': acao.tipo, accept: 'text/x-component' }, data: acao.corpo, maxRedirects: 0, failOnStatusCode: false }); return { status: r.status(), local: r.headers()['location'] ?? '', texto: await r.text().catch(() => '') }; };
     const rotasRegistro = chamadas.filter((c) => /rpc\/registrar_dias/.test(c)).length;

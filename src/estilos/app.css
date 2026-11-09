@@ -335,7 +335,7 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .busca-aviso.erro { color: var(--text); background: var(--cat-venc); padding: 8px 12px; border-radius: 12px; margin: 10px 0 0; }
 @media (max-width: 640px) { .app .res-tipo { min-width: 0; } .app .busca-box .res { flex-wrap: wrap; } }
 
-/* ---------- Perfil: humor, energia e produtividade (decisão 56) ---------- */
+/* ---------- Perfil: humor e produtividade (decisões 56 e 59) ---------- */
 /* gráfico "Seu ritmo": cada coluna é um botão (leitura por mouse, toque e teclado); as cores são só o destaque, nunca uma nota de bom ou ruim */
 .app .grafico { touch-action: pan-y; }
 .app .grafico .gcol { appearance: none; background: transparent; border: 0; padding: 0; font: inherit; color: var(--text2); cursor: pointer; min-width: 0; align-self: stretch; border-radius: 10px; }
@@ -364,9 +364,8 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .dia-l .emos { margin: 0; }
 .app .dia-l > b { font-size: calc(14px * var(--esc)); }
 @media (prefers-reduced-motion: reduce) { .app .grafico .gcol i { transition: none; } }
-/* gaveta do Perfil: humor e energia lado a lado, produtividade embaixo, sem margem dobrada entre os quadros (a gaveta já tem espaçamento próprio) */
+/* gaveta do Perfil: humor e produtividade lado a lado, sem margem dobrada entre os quadros (a gaveta já tem espaçamento próprio) */
 .app .dr .ind3 { grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 0; }
-.app .dr .ind3 .ind[data-indicador="produtividade"] { grid-column: 1 / -1; }
 .app .dr .ind-v { flex-wrap: wrap; }
 .app .dr .painel + .painel, .app .dr .ind3 + .painel { margin-top: 0; }
 .app .dr .ind .data { margin: 0; }

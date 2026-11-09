@@ -64,7 +64,7 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
     <div ref={ref} className="mv-menu" role="menu" aria-label="Conta">
       <div className="mv-t">{ambiente?.nome || 'Conta'}</div>
       <button type="button" role="menuitem" data-item="perfil" onClick={() => { fechar(); abrirPerfil(); }}>
-        <span>Perfil</span><small>humor, energia e ritmo</small>
+        <span>Perfil</span><small>humor e ritmo</small>
       </button>
       <button type="button" role="menuitem" aria-disabled={baixando || undefined} onClick={() => void baixar()}>
         <span>{baixando ? 'Gerando...' : 'Baixar cópia dos dados'}</span><small>arquivo JSON</small>

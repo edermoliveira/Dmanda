@@ -883,7 +883,7 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(/permission denied/i.test(await erro(T, 'retorno_setor_data', { p_user: T, p_encaminhada: '2026-11-02', p_reiterada: null, p_etapa_desde: agora })), 'rotina 15: a função interna do retorno não é chamável por usuário logado');
 }
 
-// ---------- Perfil: registros diários de humor e energia (migração 16) ----------
+// ---------- Perfil: registros diários de humor (migrações 16 e 19: a energia foi retirada) ----------
 {
   const P = '9e9e9e9e-9999-4999-8999-9e9e9e9e9e9e', Q = '9f9f9f9f-9999-4999-8999-9f9f9f9f9f9f', R = 'a0a0a0a0-9999-4999-8999-a0a0a0a0a0a0';
   await db.exec(`insert into auth.users (id, email) values ('${P}', 'pp@teste'), ('${Q}', 'pq@teste'), ('${R}', 'pr@teste')`);
@@ -894,32 +894,32 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const dia = (n) => { const [a, m, d] = hoje.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
   const linhas = async (u) => (await db.query('select count(*)::int as n from public.registros_dia where user_id = $1', [u])).rows[0].n;
 
-  const r1 = await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 4, energia: 2 }] });
-  ok(r1.length === 1 && r1[0].dia === hoje && r1[0].humor === 4 && r1[0].energia === 2, 'perfil: registrar hoje grava humor e energia juntos e devolve o dia');
-  const r2 = await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 5, energia: 3 }] });
+  const r1 = await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 4 }] });
+  ok(r1.length === 1 && r1[0].dia === hoje && r1[0].humor === 4 && Object.keys(r1[0]).sort().join() === 'dia,humor', 'perfil: registrar hoje grava só o humor e devolve o dia e o humor');
+  const r2 = await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 5 }] });
   const l2 = await pc(P, 'listar_registros_dia', {});
-  ok(r2[0].humor === 5 && r2[0].energia === 3 && l2.length === 1 && l2[0].humor === 5 && await linhas(P) === 1, 'perfil: gravar de novo no mesmo dia substitui o registro (só o último vale) e continua uma única linha');
-  await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 5, energia: 3 }] }); await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 5, energia: 3 }] });
+  ok(r2[0].humor === 5 && l2.length === 1 && l2[0].humor === 5 && await linhas(P) === 1, 'perfil: gravar de novo no mesmo dia substitui o registro (só o último vale) e continua uma única linha');
+  await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 5 }] }); await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 5 }] });
   ok(await linhas(P) === 1, 'perfil: repetir a mesma gravação (clique duplo, resposta perdida, duas abas) nunca duplica o dia');
-  const par = await Promise.all([pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 1, energia: 1 }] }), pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 2, energia: 2 }] })]);
+  const par = await Promise.all([pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 1 }] }), pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 2 }] })]);
   ok(par.length === 2 && await linhas(P) === 1, 'perfil: duas gravações simultâneas do mesmo dia deixam uma só linha');
 
   // janela de correção: hoje e os 5 dias anteriores
-  const lote = await pc(P, 'registrar_dias', { p: [{ dia: dia(-5), humor: 3, energia: 3 }, { dia: dia(-3), humor: 2, energia: 4 }, { dia: dia(-1), humor: 1, energia: 5 }] });
+  const lote = await pc(P, 'registrar_dias', { p: [{ dia: dia(-5), humor: 3 }, { dia: dia(-3), humor: 2 }, { dia: dia(-1), humor: 1 }] });
   ok(lote.map((x) => x.dia).join() === [dia(-5), dia(-3), dia(-1)].join() && await linhas(P) === 4, 'perfil: vários dias de uma vez (até 5 dias atrás) são gravados juntos, em ordem de data');
-  ok(/5 dias/.test(await pm(P, 'registrar_dias', { p: [{ dia: dia(-6), humor: 3, energia: 3 }] })) && /ainda não chegou/.test(await pm(P, 'registrar_dias', { p: [{ dia: dia(1), humor: 3, energia: 3 }] })), 'perfil: o sexto dia anterior e o dia futuro são recusados no banco');
+  ok(/5 dias/.test(await pm(P, 'registrar_dias', { p: [{ dia: dia(-6), humor: 3 }] })) && /ainda não chegou/.test(await pm(P, 'registrar_dias', { p: [{ dia: dia(1), humor: 3 }] })), 'perfil: o sexto dia anterior e o dia futuro são recusados no banco');
   // tudo ou nada
   const antes = JSON.stringify(await pc(P, 'listar_registros_dia', {}));
-  const msgLote = await pm(P, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3, energia: 3 }, { dia: dia(-4), humor: 9, energia: 3 }] });
+  const msgLote = await pm(P, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(-4), humor: 9 }] });
   ok(msgLote !== null && JSON.stringify(await pc(P, 'listar_registros_dia', {})) === antes, 'perfil: se um item do lote é inválido, nenhum é gravado (tudo ou nada)');
   // validação e privacidade das mensagens
-  const invalidos = [{ dia: hoje, humor: 0, energia: 3 }, { dia: hoje, humor: 3, energia: 6 }, { dia: hoje, humor: 'a', energia: 3 }, { dia: hoje, humor: 3 }, { dia: hoje, energia: 3 }, { dia: hoje, humor: 3.5, energia: 3 }, { dia: 'ontem', humor: 3, energia: 3 }, { dia: '2026-02-30', humor: 3, energia: 3 }, { humor: 3, energia: 3 }];
+  const invalidos = [{ dia: hoje, humor: 0 }, { dia: hoje, humor: 6 }, { dia: hoje, humor: 'a' }, { dia: hoje }, { dia: hoje, humor: null }, { dia: hoje, humor: 3.5 }, { dia: 'ontem', humor: 3 }, { dia: '2026-02-30', humor: 3 }, { humor: 3 }];
   let recusados = 0; for (const x of invalidos) if (await pm(P, 'registrar_dias', { p: [x] }) !== null) recusados++;
-  ok(recusados === invalidos.length && await linhas(P) === 4, 'perfil: humor ou energia fora de 1 a 5, ausente, não inteiro e dia inválido são recusados sem gravar nada');
-  ok(await pm(P, 'registrar_dias', { p: [] }) !== null && await pm(P, 'registrar_dias', { p: null }) !== null && await pm(P, 'registrar_dias', { p: { dia: hoje } }) !== null && await pm(P, 'registrar_dias', { p: Array.from({ length: 7 }, (_, i) => ({ dia: dia(-i), humor: 3, energia: 3 })) }) !== null, 'perfil: lista vazia, nula, fora do formato ou com mais de 6 dias é recusada');
-  ok(/repetid|mais de uma vez/.test(await pm(P, 'registrar_dias', { p: [{ dia: hoje, humor: 3, energia: 3 }, { dia: hoje, humor: 4, energia: 4 }] })), 'perfil: o mesmo dia duas vezes no mesmo lote é recusado');
-  const msgs = [await pm(P, 'registrar_dias', { p: [{ dia: hoje, humor: 7, energia: 8 }] }), await pm(P, 'registrar_dias', { p: [{ dia: dia(-9), humor: 4, energia: 4 }] })].join(' ');
-  ok(!/[78]/.test(msgs) && !msgs.includes(dia(-9)), 'perfil: as mensagens de erro nunca repetem os valores nem a data informada (nada de humor ou energia em log)');
+  ok(recusados === invalidos.length && await linhas(P) === 4, 'perfil: humor fora de 1 a 5, ausente, não inteiro e dia inválido são recusados sem gravar nada');
+  ok(await pm(P, 'registrar_dias', { p: [] }) !== null && await pm(P, 'registrar_dias', { p: null }) !== null && await pm(P, 'registrar_dias', { p: { dia: hoje } }) !== null && await pm(P, 'registrar_dias', { p: Array.from({ length: 7 }, (_, i) => ({ dia: dia(-i), humor: 3 })) }) !== null, 'perfil: lista vazia, nula, fora do formato ou com mais de 6 dias é recusada');
+  ok(/repetid|mais de uma vez/.test(await pm(P, 'registrar_dias', { p: [{ dia: hoje, humor: 3 }, { dia: hoje, humor: 4 }] })), 'perfil: o mesmo dia duas vezes no mesmo lote é recusado');
+  const msgs = [await pm(P, 'registrar_dias', { p: [{ dia: hoje, humor: 7 }] }), await pm(P, 'registrar_dias', { p: [{ dia: dia(-9), humor: 4 }] })].join(' ');
+  ok(!/[78]/.test(msgs) && !msgs.includes(dia(-9)), 'perfil: as mensagens de erro nunca repetem os valores nem a data informada (nada de humor em log)');
   const restr = await db.transaction(async (tx) => { try { await entrarComo(tx, P); await tx.query('update public.registros_dia set humor = 9 where dia = $1', [hoje]); return null; } catch (e) { return e.message; } });
   ok(/check|constraint|violates/i.test(restr || ''), 'perfil: a restrição da tabela também recusa humor fora de 1 a 5');
   const semAcertoDir = await db.transaction(async (tx) => { try { await entrarComo(tx, P); await tx.query('delete from public.registros_dia'); return null; } catch (e) { return e.message; } });
@@ -928,18 +928,18 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   // listagem e janela do histórico
   const so1 = await pc(P, 'listar_registros_dia', { p_dias: 1 });
   ok(so1.every((x) => x.dia >= dia(-1)) && so1.length === 2, 'perfil: a listagem respeita o número de dias pedido (hoje e ontem)');
-  const antigo = await db.query("insert into public.registros_dia (user_id, dia, humor, energia) values ($1, $2, 3, 3) returning dia::text", [P, dia(-40)]);
+  const antigo = await db.query("insert into public.registros_dia (user_id, dia, humor) values ($1, $2, 3) returning dia::text", [P, dia(-40)]);
   const l62 = await pc(P, 'listar_registros_dia', {});
   ok(antigo.rows.length === 1 && l62.some((x) => x.dia === dia(-40)) && l62.map((x) => x.dia).join() === [...l62.map((x) => x.dia)].sort().join() && (await pc(P, 'listar_registros_dia', { p_dias: 30 })).every((x) => x.dia >= dia(-30)), 'perfil: a listagem sai em ordem de data e o padrão de 62 dias alcança o histórico do mês');
-  ok(Object.keys(l62[0]).sort().join() === 'dia,energia,humor', 'perfil: a leitura devolve só dia, humor e energia (nem identificador do usuário nem carimbos)');
+  ok(Object.keys(l62[0]).sort().join() === 'dia,humor', 'perfil: a leitura devolve só dia e humor (nem identificador do usuário nem carimbos)');
 
   // isolamento e acesso
   ok((await pc(Q, 'listar_registros_dia', {})).length === 0, 'perfil: outro usuário autorizado não vê os registros');
-  const q1 = await pc(Q, 'registrar_dias', { p: [{ dia: hoje, humor: 1, energia: 1 }] });
+  const q1 = await pc(Q, 'registrar_dias', { p: [{ dia: hoje, humor: 1 }] });
   ok(q1[0].humor === 1 && (await pc(P, 'listar_registros_dia', {})).find((x) => x.dia === hoje).humor !== 1 && await linhas(Q) === 1, 'perfil: o mesmo dia de outro usuário é outra linha e não mexe nos registros do primeiro');
   const naoAut = await db.transaction(async (tx) => { await entrarComo(tx, R); try { return (await tx.query('select count(*)::int as n from public.registros_dia')).rows[0].n; } catch (e) { return e.message; } });
   ok(naoAut === 0, 'perfil: conta não autorizada (fora da lista) não lê registro nenhum');
-  ok((await pc(R, 'listar_registros_dia', {})).length === 0 && /row-level|policy/i.test(await pm(R, 'registrar_dias', { p: [{ dia: hoje, humor: 3, energia: 3 }] }) || ''), 'perfil: conta não autorizada não grava (RLS com conta autorizada) e a listagem vem vazia');
+  ok((await pc(R, 'listar_registros_dia', {})).length === 0 && /row-level|policy/i.test(await pm(R, 'registrar_dias', { p: [{ dia: hoje, humor: 3 }] }) || ''), 'perfil: conta não autorizada não grava (RLS com conta autorizada) e a listagem vem vazia');
   const anonP = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_registros_dia()'); return null; } catch (e) { return e.message; } });
   const anonG = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query("select public.registrar_dias('[]'::jsonb)"); return null; } catch (e) { return e.message; } });
   const anonT = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select count(*) from public.registros_dia'); return null; } catch (e) { return e.message; } });
@@ -951,9 +951,9 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const rq = await pc(Q, 'reabrir_demanda', { p_id: dq.id });
   const fq2 = await pc(Q, 'concluir_demanda', { p_id: dq.id });
   ok(rq.concluida_em === null && fq2.concluida_em === hoje, 'perfil: reabrir limpa a data de conclusão e concluir de novo grava a nova (o histórico guarda só a última conclusão)');
-  // a rotina diária e os resumos não carregam humor nem energia
+  // a rotina diária e os resumos não carregam o humor
   const fonte = (await db.query("select string_agg(pg_get_functiondef(p.oid), ' ') as s from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and p.proname not in ('registrar_dias','listar_registros_dia')")).rows[0].s;
-  ok(!/registros_dia/.test(fonte), 'perfil: nenhuma outra função do banco (rotina diária, resumos, buscas, exportação) lê os registros de humor e energia');
+  ok(!/registros_dia/.test(fonte), 'perfil: nenhuma outra função do banco (rotina diária, resumos, buscas, exportação) lê os registros de humor');
 }
 
 // ---------- migração sobre dados antigos: nada se perde ----------
@@ -1066,8 +1066,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const dia = (n) => { const [a, m, d] = hoje.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
   // escrita direta na tabela com a conta logada (o que a API de dados permite), devolvendo o erro e quantas linhas foram afetadas
   const direto = (u, sql, par = []) => db.transaction(async (tx) => { try { await entrarComo(tx, u); const r = await tx.query(sql, par); return { erro: null, n: r.rows.length || (r.affectedRows ?? 0) }; } catch (e) { return { erro: e.message, n: 0 }; } });
-  const estado = async (u) => JSON.stringify((await db.query('select dia::text, humor, energia from public.registros_dia where user_id = $1 order by dia', [u])).rows);
-  const ins = (d, h = 3, e = 3) => ['insert into public.registros_dia (dia, humor, energia) values ($1, $2, $3)', [d, h, e]];
+  const estado = async (u) => JSON.stringify((await db.query('select dia::text, humor from public.registros_dia where user_id = $1 order by dia', [u])).rows);
+  const ins = (d, h = 3) => ['insert into public.registros_dia (dia, humor) values ($1, $2)', [d, h]];
 
   // limites: hoje e o quinto dia anterior entram; o dia seguinte e o sexto dia anterior não
   const iHoje = await direto(S, ...ins(hoje, 4, 2)), iQuinto = await direto(S, ...ins(dia(-5), 2, 4));
@@ -1087,10 +1087,10 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok([uFut, uSexto, uQuintoFora].every((r) => /row-level|policy|permission denied/i.test(r.erro || '')) && await estado(S) === antesUp, 'janela 17: alterar a data de uma linha para o futuro ou para além do quinto dia anterior é recusado e a linha não muda (desde a migração 18 a recusa vem já do privilégio de coluna; a política da 17 continua como segunda camada)');
 
   // registros antigos (já existentes, fora da janela) continuam legíveis, mas não são alterados nem movidos
-  await db.query("insert into public.registros_dia (user_id, dia, humor, energia) values ($1, $2, 1, 1), ($1, $3, 2, 2), ($1, $4, 3, 3)", [S, dia(-6), dia(-40), dia(3)]);   // como administrador: sexto dia, histórico e uma linha futura de antes da correção
+  await db.query("insert into public.registros_dia (user_id, dia, humor) values ($1, $2, 1), ($1, $3, 2), ($1, $4, 3)", [S, dia(-6), dia(-40), dia(3)]);   // como administrador: sexto dia, histórico e uma linha futura de antes da correção
   const antes = await estado(S);
   const aSexto = await direto(S, 'update public.registros_dia set humor = 5 where dia = $1', [dia(-6)]);
-  const aHist = await direto(S, 'update public.registros_dia set energia = 5 where dia = $1', [dia(-40)]);
+  const aHist = await direto(S, 'update public.registros_dia set humor = 4 where dia = $1', [dia(-40)]);
   const aMover = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [dia(-40), dia(-2)]);
   const aFut = await direto(S, 'update public.registros_dia set humor = 5 where dia = $1', [dia(3)]);
   const aFutPraHoje = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [dia(3), dia(-1)]);
@@ -1100,26 +1100,26 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(lerDireto.n === 5 && lista.some((x) => x.dia === dia(-40)) && lista.some((x) => x.dia === dia(-6)) && lista.map((x) => x.dia).join() === [...lista.map((x) => x.dia)].sort().join(), 'janela 17: a leitura histórica (direta e pela listagem de 62 dias) continua devolvendo todos os registros, em ordem');
 
   // regravação do mesmo dia (função e escrita direta com conflito)
-  const rg = await pc(S, 'registrar_dias', { p: [{ dia: hoje, humor: 1, energia: 5 }, { dia: dia(-5), humor: 5, energia: 1 }] });
-  ok(rg.length === 2 && rg.find((x) => x.dia === hoje).humor === 1 && rg.find((x) => x.dia === dia(-5)).energia === 1, 'janela 17: registrar_dias continua regravando hoje e o quinto dia anterior no mesmo lote');
-  const up1 = await direto(S, 'insert into public.registros_dia (dia, humor, energia) values ($1, 2, 2) on conflict (user_id, dia) do update set humor = excluded.humor, energia = excluded.energia', [hoje]);
-  const up2 = await direto(S, 'insert into public.registros_dia (dia, humor, energia) values ($1, 2, 2) on conflict (user_id, dia) do update set humor = excluded.humor', [dia(-6)]);
-  const up3 = await direto(S, 'insert into public.registros_dia (dia, humor, energia) values ($1, 5, 5) on conflict (user_id, dia) do update set humor = excluded.humor', [dia(-40)]);
+  const rg = await pc(S, 'registrar_dias', { p: [{ dia: hoje, humor: 1 }, { dia: dia(-5), humor: 5 }] });
+  ok(rg.length === 2 && rg.find((x) => x.dia === hoje).humor === 1 && rg.find((x) => x.dia === dia(-5)).humor === 5, 'janela 17: registrar_dias continua regravando hoje e o quinto dia anterior no mesmo lote');
+  const up1 = await direto(S, 'insert into public.registros_dia (dia, humor) values ($1, 2) on conflict (user_id, dia) do update set humor = excluded.humor', [hoje]);
+  const up2 = await direto(S, 'insert into public.registros_dia (dia, humor) values ($1, 2) on conflict (user_id, dia) do update set humor = excluded.humor', [dia(-6)]);
+  const up3 = await direto(S, 'insert into public.registros_dia (dia, humor) values ($1, 5) on conflict (user_id, dia) do update set humor = excluded.humor', [dia(-40)]);
   const lidos = JSON.parse(await estado(S));
   ok(up1.erro === null && lidos.find((x) => x.dia === hoje).humor === 2 && /row-level|policy/i.test(up2.erro || '') && /row-level|policy/i.test(up3.erro || '') && lidos.find((x) => x.dia === dia(-6)).humor === 1 && lidos.find((x) => x.dia === dia(-40)).humor === 2, 'janela 17: o upsert direto regrava hoje, mas não regrava o sexto dia anterior nem o histórico');
 
   // lote inválido não grava nada (a função continua tudo ou nada)
   const antesLote = await estado(S);
   const mLote = [
-    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3, energia: 3 }, { dia: dia(-6), humor: 3, energia: 3 }] }),
-    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3, energia: 3 }, { dia: dia(1), humor: 3, energia: 3 }] }),
-    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3, energia: 3 }, { dia: dia(-3), humor: 9, energia: 3 }] }),
+    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(-6), humor: 3 }] }),
+    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(1), humor: 3 }] }),
+    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(-3), humor: 9 }] }),
   ];
   ok(mLote.every((m) => m !== null) && await estado(S) === antesLote, 'janela 17: lote com item fora da janela ou inválido não grava nenhum dos itens');
 
   // acesso: só a conta autorizada, só os próprios registros
   const nA = await direto(V, ...ins(hoje));
-  const outro = await direto(S, 'insert into public.registros_dia (user_id, dia, humor, energia) values ($1, $2, 3, 3)', [W, hoje]);
+  const outro = await direto(S, 'insert into public.registros_dia (user_id, dia, humor) values ($1, $2, 3)', [W, hoje]);
   const alheio = await direto(W, 'update public.registros_dia set humor = 1 where user_id = $1', [S]);
   ok(/row-level|policy/i.test(nA.erro || '') && /row-level|policy/i.test(outro.erro || '') && alheio.n === 0, 'janela 17: conta não autorizada não grava, e ninguém grava ou altera registro de outro usuário');
   const wLeitura = await direto(W, 'select 1 from public.registros_dia');
@@ -1270,6 +1270,95 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   await a17.exec(readFileSync(join('supabase/migrations', m18), 'utf8'));
   ok(await foto() === fotoMeio && (await priv('dia', 'UPDATE')) === false && (await priv('humor', 'UPDATE')) === true, 'migração 18: reaplicar é inofensivo');
   await a17.close();
+}
+
+// ---------- migração 19: o indicador de energia saiu; instalação limpa e upgrade sobre dados das migrações 16 a 18 ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m19 = todas.find((f) => f.includes('registros_dia_so_humor'));
+  const m18 = todas.find((f) => f.includes('registros_dia_colunas'));
+  ok(!!m19 && !!m18 && todas.indexOf(m19) === todas.indexOf(m18) + 1, 'migração 19: existe, vem logo depois da 18 e as migrações 16 a 18 não foram reescritas (arquivo à parte)');
+
+  // ---- instalação limpa: o esquema final
+  const L = 'a7a7a7a7-9999-4999-8999-a7a7a7a7a7a7', M = 'a8a8a8a8-9999-4999-8999-a8a8a8a8a8a8';
+  await db.exec(`insert into auth.users (id, email) values ('${L}', 'lx@teste'), ('${M}', 'mx@teste')`);
+  await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('lx@teste')");   // mx não é autorizado
+  const lc = (f, a) => chamarComoUsuario(db, L, f, a);
+  const hoje = (await db.query('select public.hoje()::text as h')).rows[0].h;
+  const dia = (n) => { const [a, m, d] = hoje.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
+  const direto = (u, sql, par = []) => db.transaction(async (tx) => { try { await entrarComo(tx, u); const r = await tx.query(sql, par); return { erro: null, n: r.affectedRows ?? r.rows.length }; } catch (e) { return { erro: e.message, n: 0 }; } });
+  const colunas = (await db.query("select column_name from information_schema.columns where table_schema = 'public' and table_name = 'registros_dia' order by column_name")).rows.map((r) => r.column_name).join();
+  ok(colunas === 'atualizado_em,criado_em,dia,humor,user_id', 'migração 19 (instalação limpa): a tabela tem só usuário, dia, humor e os dois carimbos (a coluna energia não existe)');
+  const priv = async (col, tipo) => (await db.query("select has_column_privilege('authenticated', 'public.registros_dia', $1, $2) as p", [col, tipo])).rows[0].p;
+  const upd = {}; for (const c of ['user_id', 'dia', 'humor', 'criado_em', 'atualizado_em']) upd[c] = await priv(c, 'UPDATE');
+  ok(JSON.stringify(upd) === JSON.stringify({ user_id: false, dia: false, humor: true, criado_em: false, atualizado_em: false }), 'migração 19 (instalação limpa): authenticated tem UPDATE somente em humor; dia, user_id, criado_em e atualizado_em ficam protegidos');
+  const tp = (await db.query("select has_table_privilege('authenticated','public.registros_dia','SELECT') as s, has_table_privilege('authenticated','public.registros_dia','INSERT') as i, has_table_privilege('authenticated','public.registros_dia','DELETE') as d, has_table_privilege('anon','public.registros_dia','SELECT') as a")).rows[0];
+  const upT = (await db.query("select count(*)::int as n from information_schema.role_table_grants where table_name = 'registros_dia' and grantee = 'authenticated' and privilege_type = 'UPDATE'")).rows[0].n;
+  ok(tp.s && tp.i && !tp.d && !tp.a && upT === 0, 'migração 19 (instalação limpa): SELECT e INSERT preservados, sem DELETE, sem UPDATE de tabela inteira e sem acesso de anon');
+  const pol = (await db.query("select policyname, permissive, cmd from pg_policies where tablename = 'registros_dia' order by policyname")).rows.map((p) => `${p.policyname}:${p.permissive}:${p.cmd}`).join();
+  const fn = (await db.query("select proname, prosecdef from pg_proc where proname in ('registrar_dias','listar_registros_dia') order by 1")).rows;
+  ok(pol === 'registros_dia_dono:PERMISSIVE:ALL,registros_dia_janela_atualizar:RESTRICTIVE:UPDATE,registros_dia_janela_inserir:RESTRICTIVE:INSERT' && fn.length === 2 && fn.every((p) => p.prosecdef === false), 'migração 19 (instalação limpa): as 3 políticas de RLS e o SECURITY INVOKER das duas funções estão preservados');
+
+  // ---- comportamento: humor sozinho, opcional, um por dia, janela, lote atômico, histórico
+  const g1 = await lc('registrar_dias', { p: [{ dia: hoje, humor: 4 }] });
+  ok(g1.length === 1 && g1[0].humor === 4 && Object.keys(g1[0]).sort().join() === 'dia,humor', 'migração 19: o humor é gravado sozinho, sem energia');
+  const g2 = await lc('registrar_dias', { p: [{ dia: hoje, humor: 2, energia: 5 }] });
+  ok(g2[0].humor === 2 && !('energia' in g2[0]) && (await lc('listar_registros_dia', {})).every((x) => !('energia' in x)), 'migração 19: um campo energia enviado por um aparelho antigo é ignorado, nunca guardado nem devolvido');
+  ok((await db.query('select count(*)::int as n from public.registros_dia where user_id = $1 and dia = $2', [L, hoje])).rows[0].n === 1, 'migração 19: gravar o mesmo dia de novo substitui (uma linha por dia)');
+  await lc('registrar_dias', { p: [{ dia: dia(-5), humor: 1 }, { dia: dia(-3), humor: 5 }] });
+  const antes = JSON.stringify(await lc('listar_registros_dia', {}));
+  const ruim = await lc('registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(-6), humor: 3 }] }).then(() => null, (e) => e.message);
+  const ruim2 = await lc('registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(-1) }] }).then(() => null, (e) => e.message);
+  ok(/5 dias/.test(ruim || '') && /humor/i.test(ruim2 || '') && JSON.stringify(await lc('listar_registros_dia', {})) === antes, 'migração 19: o lote continua tudo ou nada, com a janela de hoje e 5 dias; humor ausente é recusado');
+  ok(/ainda não chegou/.test(await lc('registrar_dias', { p: [{ dia: dia(1), humor: 3 }] }).then(() => '', (e) => e.message)), 'migração 19: dia futuro continua recusado');
+  const mover = await direto(L, 'update public.registros_dia set dia = $1 where dia = $2', [dia(-1), hoje]);
+  const dono = await direto(L, 'update public.registros_dia set user_id = $1 where dia = $2', [M, hoje]);
+  const hum = await direto(L, 'update public.registros_dia set humor = 3 where dia = $1', [hoje]);
+  ok(/permission denied/i.test(mover.erro || '') && /permission denied/i.test(dono.erro || '') && hum.erro === null && (await lc('listar_registros_dia', {})).find((x) => x.dia === hoje).humor === 3, 'migração 19: mover a linha ou trocar o dono é recusado; corrigir o humor direto continua permitido');
+  ok((await lc('listar_registros_dia', {})).length === 3 && (await direto(M, 'select 1 from public.registros_dia')).n === 0 && /row-level|policy/i.test((await direto(M, 'insert into public.registros_dia (dia, humor) values ($1, 3)', [hoje])).erro || ''), 'migração 19: o histórico continua legível e a conta não autorizada nem lê nem grava');
+
+  // ---- upgrade: banco com as migrações 1 a 18, dados fictícios com energia, aplica a 19
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig19-'));
+  for (const f of todas.filter((f) => f < m19)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const a18 = await abrirBancoTeste({ raizMigracoes: pasta });
+  const X = 'a9a9a9a9-9999-4999-8999-a9a9a9a9a9a9';
+  await a18.exec(`insert into auth.users (id, email) values ('${X}', 'ux@teste')`);
+  await a18.exec("insert into dmanda_privado.acesso_autorizado (email) values ('ux@teste')");
+  const ux = (f, a) => chamarComoUsuario(a18, X, f, a);
+  await ux('registrar_dias', { p: [{ dia: hoje, humor: 4, energia: 2 }, { dia: dia(-2), humor: 1, energia: 5 }] });
+  await a18.query('insert into public.registros_dia (user_id, dia, humor, energia) values ($1, $2, 5, 5)', [X, dia(-40)]);   // histórico fora da janela
+  const dm = await ux('criar_demanda', { p: { assunto: 'Fictícia A', prazo: '2027-03-09' } });
+  await ux('adicionar_tarefa', { p_demanda: dm.id, p_texto: 'Tarefa fictícia' });
+  await a18.query("insert into public.entradas (user_id, titulo, texto) values ($1, 'Nota fictícia', 'texto fictício')", [X]);
+  const tabelas = (await a18.query("select table_schema as s, table_name as t from information_schema.tables where table_schema in ('public','dmanda_privado') and table_type = 'BASE TABLE' and table_name <> 'registros_dia' order by 1, 2")).rows;
+  const foto = async () => { const o = {}; for (const { s, t } of tabelas) o[`${s}.${t}`] = (await a18.query(`select coalesce(jsonb_agg(to_jsonb(x) order by to_jsonb(x)::text), '[]'::jsonb) as j from ${s}.${t} x`)).rows[0].j; return JSON.stringify(o); };
+  const humores = async () => JSON.stringify((await a18.query('select dia::text, humor, criado_em::text as c from public.registros_dia where user_id = $1 order by dia', [X])).rows);
+  const acl = async () => JSON.stringify((await a18.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and p.proname not in ('registrar_dias','listar_registros_dia') order by 1")).rows);
+  const aclPerfil = async () => JSON.stringify((await a18.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl from pg_proc p where p.proname in ('registrar_dias','listar_registros_dia') order by 1")).rows);
+  const politicas = async () => JSON.stringify((await a18.query("select policyname, permissive, cmd, roles::text, qual, with_check from pg_policies where tablename = 'registros_dia' order by 1")).rows);
+  const f0 = await foto(), h0 = await humores(), a0 = await acl(), ap0 = await aclPerfil(), p0 = await politicas();
+  ok(JSON.parse(h0).length === 3 && (await a18.query("select count(*)::int as n from information_schema.columns where table_name = 'registros_dia' and column_name = 'energia'")).rows[0].n === 1, 'migração 19 (antes): o banco 1 a 18 tem a coluna energia e três registros fictícios');
+
+  await a18.exec(readFileSync(join('supabase/migrations', m19), 'utf8'));
+
+  ok(await foto() === f0, 'migração 19 (upgrade): demandas, tarefas, anotações e as demais tabelas ficam idênticas');
+  ok(await humores() === h0, 'migração 19 (upgrade): os registros de humor ficam idênticos (dia, humor e data de criação), inclusive o histórico fora da janela');
+  const col = (await a18.query("select column_name from information_schema.columns where table_name = 'registros_dia' order by column_name")).rows.map((r) => r.column_name).join();
+  ok(col === 'atualizado_em,criado_em,dia,humor,user_id', 'migração 19 (upgrade): a coluna energia é removida e as demais permanecem');
+  ok(await politicas() === p0 && await acl() === a0 && await aclPerfil() === ap0, 'migração 19 (upgrade): políticas de RLS, privilégios e SECURITY INVOKER das funções ficam como estavam');
+  const priv18 = async (col, tipo) => (await a18.query("select has_column_privilege('authenticated', 'public.registros_dia', $1, $2) as p", [col, tipo])).rows[0].p;
+  const u18 = {}; for (const c of ['user_id', 'dia', 'humor', 'criado_em', 'atualizado_em']) u18[c] = await priv18(c, 'UPDATE');
+  ok(JSON.stringify(u18) === JSON.stringify(upd) && (await a18.query("select count(*)::int as n from information_schema.role_table_grants where table_name = 'registros_dia' and grantee = 'authenticated' and privilege_type = 'UPDATE'")).rows[0].n === 0, 'migração 19 (upgrade): UPDATE só em humor, igual à instalação limpa');
+  const leitura = await ux('listar_registros_dia', {});
+  const regrava = await ux('registrar_dias', { p: [{ dia: hoje, humor: 3 }] });
+  ok(leitura.length === 3 && leitura.some((x) => x.dia === dia(-40) && x.humor === 5) && regrava[0].humor === 3 && Object.keys(leitura[0]).sort().join() === 'dia,humor', 'migração 19 (upgrade): o histórico segue legível, só com dia e humor, e registrar_dias regrava o dia');
+  const fMeio = await foto(), hMeio = await humores();
+  await a18.exec(readFileSync(join('supabase/migrations', m19), 'utf8'));
+  ok(await foto() === fMeio && await humores() === hMeio, 'migração 19: reaplicar é inofensivo');
+  await a18.close();
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

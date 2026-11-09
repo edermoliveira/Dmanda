@@ -121,19 +121,19 @@ export function validarEvento(entrada: unknown, { criando }: { criando: boolean 
 }
 
 /**
- * Registros diários de humor e energia: de 1 a 6 dias (hoje e os 5 anteriores), cada um com os dois valores de 1 a 5. A janela de datas é conferida no banco, que tem o relógio;
+ * Registros diários de humor: de 1 a 6 dias (hoje e os 5 anteriores), cada um com o humor de 1 a 5. Qualquer outro campo é descartado. A janela de datas é conferida no banco, que tem o relógio;
  * aqui só o formato. As mensagens de erro nunca repetem o que foi digitado.
  */
-export function validarRegistros(entrada: unknown): { dia: string; humor: Nivel; energia: Nivel }[] {
+export function validarRegistros(entrada: unknown): { dia: string; humor: Nivel }[] {
   if (!Array.isArray(entrada) || entrada.length < 1 || entrada.length > DIAS_CORRECAO + 1) throw new ErroDmanda('Informe de 1 a 6 dias para registrar.');
   const vistos = new Set<string>();
   return entrada.map((x) => {
     if (!x || typeof x !== 'object') throw new ErroDmanda('Dia inválido.');
     const r = x as Record<string, unknown>;
     if (typeof r.dia !== 'string' || !DATA.test(r.dia) || !dataExiste(r.dia)) throw new ErroDmanda('Dia inválido.');
-    const nivel = (n: unknown): Nivel => { if (!NIVEIS.includes(n as Nivel)) throw new ErroDmanda('Humor e energia precisam ser escolhidos, de 1 a 5.'); return n as Nivel; };
+    const nivel = (n: unknown): Nivel => { if (!NIVEIS.includes(n as Nivel)) throw new ErroDmanda('O humor precisa ser escolhido, de 1 a 5.'); return n as Nivel; };
     if (vistos.has(r.dia)) throw new ErroDmanda('O mesmo dia aparece mais de uma vez.');
     vistos.add(r.dia);
-    return { dia: r.dia, humor: nivel(r.humor), energia: nivel(r.energia) };
+    return { dia: r.dia, humor: nivel(r.humor) };
   });
 }

@@ -351,3 +351,17 @@ Cada demanda tem uma `versao`. Se a mesma demanda for alterada em outro aparelho
 `20261106000000_registros_dia`: tabela `registros_dia` (usuário e dia, humor e energia de 1 a 5), RLS pela conta autorizada, e as funções `listar_registros_dia` e `registrar_dias` (lote de 1 a 6 dias, hoje e os 5 anteriores, tudo ou nada). Aditiva: nenhuma migração anterior foi reescrita e nenhum dado existente muda. **Aplicada somente no banco local de teste** (309 verificações no `testar:banco`); **não foi aplicada no Supabase real** e depende de autorização (dry-run antes). **A cópia dos dados (versão 4) não inclui humor nem energia** e `restaurar-copia.sql` não os conhece: incluí-los depende de um destino privado para a cópia (decisão do usuário).
 
 `20261107000000_registros_dia_janela`: corrige a migração 16 sem reescrevê-la. A janela de correção (hoje e os 5 dias anteriores) passa a valer também na escrita direta em `registros_dia`, por duas políticas **restritivas** (inserir e atualizar) que usam `public.hoje()`, o dia civil de America/Sao_Paulo. Aditiva: só cria políticas; nenhuma linha, função, privilégio ou política existente muda, e a leitura do histórico não é restringida. Linha fora da janela fica só para leitura (o update a ignora). Vai junto com a 16 na mesma publicação: o `db push --linked --dry-run` deve listar **as duas** e nenhuma outra. **Aplicada somente no banco local de teste** (333 verificações no `testar:banco`).
+
+## Migrações 17 a 19: janela, colunas e só humor (07 a 09/11/2026, só banco de teste)
+
+- `20261107000000_registros_dia_janela` (17): duas políticas RLS restritivas, para inserir e atualizar apenas hoje e os 5 dias anteriores também na escrita direta.
+- `20261108000000_registros_dia_colunas` (18): retira o UPDATE de tabela de `authenticated` em `registros_dia` e concede UPDATE só nas colunas editáveis (a linha não muda de dia nem de dono pela API de dados).
+- `20261109000000_registros_dia_so_humor` (19, decisão 59): remove a coluna `energia` e recria `registrar_dias` (item `{dia, humor}`) e `listar_registros_dia` (`dia` e `humor`). No esquema final, `authenticated` tem SELECT, INSERT e UPDATE somente em `humor`; as 3 políticas de RLS e o SECURITY INVOKER seguem. Aditiva, reaplicável, sem tocar nas demais tabelas.
+- **Nenhuma das migrações 16 a 19 foi aplicada no Supabase real.** O `db push --linked --dry-run` deve listar exatamente essas quatro, na ordem 16, 17, 18, 19.
+
+Conferência de privilégios por coluna depois de aplicar (somente leitura):
+```sql
+select column_name, has_column_privilege('authenticated','public.registros_dia',column_name,'UPDATE') upd
+  from information_schema.columns where table_schema='public' and table_name='registros_dia' order by ordinal_position;
+-- esperado: humor true; user_id, dia, criado_em e atualizado_em false; a coluna energia não existe
+```

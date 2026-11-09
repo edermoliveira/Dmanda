@@ -271,7 +271,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
 // ---------- Perfil: registros, produtividade e lembretes (src/lib/registros.ts e src/lib/lembretes.ts) ----------
 {
   const H = '2026-11-06'; // sexta-feira
-  const reg = (dia, h = 3, e = 3) => ({ dia, humor: h, energia: e });
+  const reg = (dia, h = 3) => ({ dia, humor: h });
   const feriado = (data) => ({ id: 'f' + data, data, descricao: 'Feriado', categoria: 'Feriado' });
   const externo = (data) => ({ id: 'x' + data, data, descricao: 'Congresso', categoria: 'Evento externo' });
   ok(diaDaSemana(H) === 5 && emJanelaDeCorrecao('2026-11-06', H) && emJanelaDeCorrecao('2026-11-01', H) && !emJanelaDeCorrecao('2026-10-31', H) && !emJanelaDeCorrecao('2026-11-07', H), 'perfil: a janela de correção é hoje e os 5 dias anteriores (sexto dia e dia futuro ficam de fora)');
@@ -295,18 +295,18 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(serieDoPeriodo([], [], '2026-03-01', 30)[0].dia === '2026-01-31' && serieDoPeriodo([], [], '2028-03-01', 3).map((p) => p.dia).join() === '2028-02-28,2028-02-29,2028-03-01', 'perfil: o período atravessa meses e ano bissexto sem pular dia');
 
   // textos neutros
-  const t0 = textoDoDia({ dia: H, concluidas: 0, registro: null }, H), t1 = textoDoDia({ dia: '2026-11-05', concluidas: 1, registro: reg('2026-11-05', 5, 1) }, H);
-  ok(/Hoje, sexta-feira, 06\/11: nenhuma demanda finalizada, sem registro de humor e energia\./.test(t0) && /Quinta-feira, 05\/11: 1 demanda finalizada, humor muito bem, energia muito baixa\./.test(t1), 'perfil: o resumo do dia diz zero como zero, "sem registro" como falta, e usa os nomes dos níveis');
+  const t0 = textoDoDia({ dia: H, concluidas: 0, registro: null }, H), t1 = textoDoDia({ dia: '2026-11-05', concluidas: 1, registro: reg('2026-11-05', 5) }, H);
+  ok(/Hoje, sexta-feira, 06\/11: nenhuma demanda finalizada, sem registro de humor\./.test(t0) && /Quinta-feira, 05\/11: 1 demanda finalizada, humor muito bem\./.test(t1), 'perfil: o resumo do dia diz zero como zero, "sem registro" como falta, e usa os nomes dos níveis');
   const frases = [0, 1, 2, 9].map(fraseDoDia).join(' ');
   ok(!/meta|parab|bom trabalho|ruim|péssim|abaixo|acima|sequência|compar/i.test(frases + AVISO_PERFIL) && /zero também acontece/.test(fraseDoDia(0)) && textoConcluidas(2) === '2 demandas finalizadas', 'perfil: frases neutras, sem meta, nota, sequência nem comparação');
-  ok(/privados/.test(AVISO_PERFIL) && /não substitui acompanhamento profissional/.test(AVISO_PERFIL), 'perfil: o aviso previsto (privado e não substitui acompanhamento profissional) está preservado');
+  ok(/privado/.test(AVISO_PERFIL) && /não substitui acompanhamento profissional/.test(AVISO_PERFIL), 'perfil: o aviso previsto (privado e não substitui acompanhamento profissional) está preservado');
 
   // leitura do banco e mescla
-  ok(registrosValidos([reg('2026-11-06', 5, 1), { dia: '2026-11-05', humor: 6, energia: 1 }, { dia: 'x', humor: 1, energia: 1 }, null, { dia: '2026-11-04', humor: '3', energia: 3 }]).length === 1 && registrosValidos({}).length === 0 && registrosValidos(undefined).length === 0, 'perfil: resposta fora do formato vira lista vazia ou descarta só o item ruim');
+  ok(registrosValidos([reg('2026-11-06', 5), { dia: '2026-11-05', humor: 6 }, { dia: 'x', humor: 1 }, null, { dia: '2026-11-04', humor: '3' }]).length === 1 && registrosValidos({}).length === 0 && registrosValidos(undefined).length === 0, 'perfil: resposta fora do formato vira lista vazia ou descarta só o item ruim');
   const mesc = substituirRegistros([reg('2026-11-04', 1, 1), reg('2026-11-06', 2, 2)], [reg('2026-11-06', 5, 5), reg('2026-11-05', 3, 3)]);
   ok(mesc.map((r) => r.dia + ':' + r.humor).join() === '2026-11-04:1,2026-11-05:3,2026-11-06:5', 'perfil: gravar substitui o mesmo dia (sem duplicar) e mantém a ordem');
-  ok(validarRegistros([{ dia: H, humor: 3, energia: 2 }])[0].dia === H, 'perfil: a validação aceita um dia com os dois níveis');
-  const recusas = [[], null, 'x', [{ dia: H, humor: 0, energia: 3 }], [{ dia: H, humor: 3, energia: 6 }], [{ dia: H, humor: '3', energia: 3 }], [{ dia: H, humor: 3 }], [{ dia: '2026-02-30', humor: 3, energia: 3 }], [{ dia: 'ontem', humor: 3, energia: 3 }], [{ dia: H, humor: 3, energia: 3 }, { dia: H, humor: 4, energia: 4 }], Array.from({ length: 7 }, (_, i) => ({ dia: somarDias(H, -i), humor: 3, energia: 3 }))];
+  ok(JSON.stringify(validarRegistros([{ dia: H, humor: 3, energia: 2 }])[0]) === JSON.stringify({ dia: H, humor: 3 }), 'perfil: a validação aceita um dia só com o humor e descarta qualquer outro campo (a energia não é guardada)');
+  const recusas = [[], null, 'x', [{ dia: H, humor: 0 }], [{ dia: H, humor: 6 }], [{ dia: H, humor: '3' }], [{ dia: H }], [{ dia: '2026-02-30', humor: 3 }], [{ dia: 'ontem', humor: 3 }], [{ dia: H, humor: 3 }, { dia: H, humor: 4 }], Array.from({ length: 7 }, (_, i) => ({ dia: somarDias(H, -i), humor: 3 }))];
   let recusadas = 0, vazou = false;
   for (const r of recusas) { try { validarRegistros(r); } catch (e) { recusadas++; if (/[0-9]/.test(String(e.message).replace(/1 a 5|1 a 6/g, ''))) vazou = true; } }
   ok(recusadas === recusas.length && !vazou, 'perfil: a validação recusa lista vazia, dia inexistente, nível fora de 1 a 5, nível ausente e dia repetido, sem repetir os valores na mensagem');
@@ -350,7 +350,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(tique(noite, ent({ agora: T0 + 24 * 3600000, dia: '2026-11-07', ativo: false })).estado.entrada === false, 'lembretes: virar o dia com o aparelho parado não gera lembrete: ele espera o primeiro uso');
   ok(lerEstado({ dia: '2026-11-05', trabalhado: 100, entrada: true }, H, T0).trabalhado === 0 && lerEstado('lixo', H, T0).dia === H && lerEstado({ dia: H, trabalhado: -5, ultimo: 'x', pendente: 'outro', lembretes: 2.7 }, H, T0).pendente === null && lerEstado({ dia: H, trabalhado: -5, lembretes: 2.7 }, H, T0).lembretes === 2, 'lembretes: estado guardado de outro dia, ilegível ou fora do formato volta ao começo, sem quebrar');
   ok(INTERVALO_S === 10800 && OCIOSO_MS === 900000, 'lembretes: o intervalo é de 3 horas e o aparelho conta como parado depois de 15 minutos sem uso');
-  ok(!/humor|energia/i.test(JSON.stringify(r0.estado)), 'lembretes: o estado guardado no aparelho não tem humor nem energia');
+  ok(!/humor/i.test(JSON.stringify(r0.estado)), 'lembretes: o estado guardado no aparelho não tem o humor');
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

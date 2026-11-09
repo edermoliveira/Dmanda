@@ -1,7 +1,7 @@
 'use client';
-// Lembretes discretos de humor e energia: o balão (na entrada do dia e a cada 3 horas de trabalho) e o convite para completar os dias de trabalho sem registro.
+// Lembretes discretos de humor: o balão (na entrada do dia e a cada 3 horas de trabalho) e o convite para completar os dias de trabalho sem registro.
 // As regras do relógio estão em lib/lembretes.ts (puras e testadas); aqui ficam só o tique, o armazenamento no aparelho e a interface.
-// O estado guardado (dmanda:lembretes) tem contagens e datas, nunca humor nem energia. Duas abas do mesmo aparelho dividem o mesmo estado e se revezam por um travamento
+// O estado guardado (dmanda:lembretes) tem contagens e datas, nunca o humor. Duas abas do mesmo aparelho dividem o mesmo estado e se revezam por um travamento
 // do navegador (Web Locks), então um lembrete não aparece duas vezes nem se perde. Cada aparelho tem o seu relógio; o registro do dia, esse sim, vale para todos (está no banco).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApp } from './contexto';
@@ -91,11 +91,11 @@ export function Lembretes({ ocupado }: { ocupado: boolean }) {
   return (
     <>
       {mostrar ? (
-        <aside className="balao lg" aria-label="Registro rápido de humor e energia" data-lembrete={pendente}>
+        <aside className="balao lg" aria-label="Registro rápido de humor" data-lembrete={pendente}>
           <button type="button" className="icbtn-s" aria-label="Fechar o lembrete" onClick={resolverPendente}><Icone nome="x" /></button>
           <b>{pendente === 'entrada' ? 'Como você começa o dia?' : 'Como você está agora?'}</b>
-          <p className="data">Opcional. Só registra quando os dois estiverem escolhidos.</p>
-          <FormularioRegistro key={`${hoje}|${registroHoje?.humor ?? ''}|${registroHoje?.energia ?? ''}`} dia={hoje} inicial={registroHoje} automatico mini idBase="bal" aoGravar={() => { avisar('Humor e energia registrados'); resolverPendente(); }} />
+          <p className="data">Opcional. Escolher um nível já registra.</p>
+          <FormularioRegistro key={`${hoje}|${registroHoje?.humor ?? ''}`} dia={hoje} inicial={registroHoje} automatico mini idBase="bal" aoGravar={() => { avisar('Humor registrado'); resolverPendente(); }} />
         </aside>
       ) : null}
       {completarAberto ? <JanelaCompletar /> : null}
@@ -104,7 +104,7 @@ export function Lembretes({ ocupado }: { ocupado: boolean }) {
 }
 
 // ---------- Completar os últimos dias ----------
-type Escolha = { h?: Nivel; e?: Nivel };
+type Escolha = { h?: Nivel };
 export function JanelaCompletar() {
   const { registros, dias, hoje, fecharCompletar, registrarDias, avisar, erroRegistros } = useApp();
   const lista = diasPendentes(hoje, registros, dias);
@@ -112,13 +112,13 @@ export function JanelaCompletar() {
   const [gravando, setGravando] = useState(false);
   const [erro, setErro] = useState('');
   const trava = useRef(false);
-  const completos = lista.filter((d) => sel[d]?.h && sel[d]?.e);
+  const completos = lista.filter((d) => sel[d]?.h);
   const sujo = Object.keys(sel).length > 0;
-  const escolher = (d: string, k: 'h' | 'e', n: Nivel) => { setSel((s) => ({ ...s, [d]: { ...s[d], [k]: n } })); setErro(''); };
+  const escolher = (d: string, n: Nivel) => { setSel((s) => ({ ...s, [d]: { h: n } })); setErro(''); };
   const salvar = async () => {
     if (trava.current || !completos.length) return;
     trava.current = true; setGravando(true); setErro('');
-    const r = await registrarDias(completos.map((d) => ({ dia: d, humor: sel[d]!.h!, energia: sel[d]!.e! })));
+    const r = await registrarDias(completos.map((d) => ({ dia: d, humor: sel[d]!.h! })));
     trava.current = false; setGravando(false);
     if (!r.ok) { setErro(r.erro); return; }   // as escolhas continuam na tela
     avisar(completos.length === 1 ? 'Dia registrado' : `${completos.length} dias registrados`);
@@ -128,17 +128,14 @@ export function JanelaCompletar() {
   return (
     <Janela titulo="Completar os últimos dias" foco="janela" aoFechar={fecharCompletar} sujo={sujo}
       rodape={<><span className="esp" /><button type="button" className="btn" onClick={fecharCompletar}>Agora não</button><button type="button" className="btn pri" disabled={gravando || !completos.length} onClick={() => void salvar()}>{gravando ? 'Gravando...' : completos.length > 1 ? `Salvar ${completos.length} dias` : 'Salvar'}</button></>}>
-      <p className="data">Opcional. Só aparecem os dias de trabalho dos últimos 5 dias que ainda não têm registro (sábados, domingos e feriados cadastrados ficam de fora). Escolha o humor e a energia de cada dia que quiser.</p>
+      <p className="data">Opcional. Só aparecem os dias de trabalho dos últimos 5 dias que ainda não têm registro (sábados, domingos e feriados cadastrados ficam de fora). Escolha o humor de cada dia que quiser.</p>
       {erroRegistros ? <p className="reg-erro" role="alert">Não foi possível ler os seus registros agora. Os dias abaixo podem já ter registro.</p> : null}
       {lista.length ? lista.map((d) => {
         const s = sel[d] ?? {};
-        const dica = s.h && !s.e ? 'Falta escolher a energia.' : s.e && !s.h ? 'Falta escolher o humor.' : '';
         return (
           <div key={d} className="dia-l" data-dia={d}>
             <b>{diaPorExtenso(d).replace(/^./, (c) => c.toUpperCase())}</b>
-            <div className="reg-l"><span>Humor</span><EscalaCinco tipo="humor" valor={s.h ?? null} aoEscolher={(n) => escolher(d, 'h', n)} rotulo={`Humor de ${diaPorExtenso(d)}`} mini desativada={gravando} /></div>
-            <div className="reg-l"><span>Energia</span><EscalaCinco tipo="energia" valor={s.e ?? null} aoEscolher={(n) => escolher(d, 'e', n)} rotulo={`Energia de ${diaPorExtenso(d)}`} mini desativada={gravando} /></div>
-            {dica ? <span className="data">{dica}</span> : null}
+            <div className="reg-l"><span>Humor</span><EscalaCinco valor={s.h ?? null} aoEscolher={(n) => escolher(d, n)} rotulo={`Humor de ${diaPorExtenso(d)}`} mini desativada={gravando} /></div>
           </div>
         );
       }) : <p className="vazio-c" role="status">Tudo em dia: não há dia de trabalho sem registro nos últimos 5 dias.</p>}

@@ -1,4 +1,4 @@
-// Relógio dos lembretes discretos de humor e energia (DECISOES.md, seção 9): um na entrada do dia e outro a cada 3 horas de trabalho.
+// Relógio dos lembretes discretos de humor (DECISOES.md, seção 9): um na entrada do dia e outro a cada 3 horas de trabalho.
 // Regra pura, sem relógio próprio: quem chama passa o instante, o dia de São Paulo daquele mesmo instante e se o aplicativo está visível.
 //
 // O que é "entrada" e "trabalho" (a sessão é persistente, então não existe um login diário a contar):
@@ -7,7 +7,7 @@
 //     Aba escondida, tela bloqueada, computador dormindo e o aparelho fechado não contam: cada tique conta no máximo PASSO_MAX segundos, então voltar depois de um intervalo longo
 //     não "paga" o intervalo. Com duas abas em uso, o tempo é contado uma só vez (o último tique é compartilhado).
 //   - o expediente do Secretário (decisão 51) ainda não altera nada aqui: a primeira aplicação dele será combinada com o usuário.
-// O estado fica no aparelho (localStorage) e só guarda contagens e datas: nenhum valor de humor ou energia.
+// O estado fica no aparelho (localStorage) e só guarda contagens e datas: nenhum valor de humor.
 
 export const INTERVALO_S = 3 * 60 * 60;
 /** Sem uso por mais que isto (ms), o aparelho conta como parado. */
@@ -55,7 +55,7 @@ export type EntradaTique = {
   ativo: boolean;
   /** Os registros já foram lidos do banco? Sem isso não se sabe se hoje já tem registro, então a entrada espera. */
   carregado: boolean;
-  /** Hoje já tem humor e energia registrados. */
+  /** Hoje já tem humor registrado. */
   registradoHoje: boolean;
   /** Há dias de trabalho pendentes nos últimos 5 dias. */
   temPendencias: boolean;
