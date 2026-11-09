@@ -1,0 +1,30 @@
+/* Dropdown de origem e de tipo de documento (Catalyst): botão com o valor, popover ancorado (reaproveita .mv-menu), lista com a escolhida marcada e rodapé de criação. Só tokens. */
+.app[data-dir="d"] .sel-trig { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--grp-campo); color: var(--text); font: inherit; font-size: max(16px, calc(16px * var(--esc))); text-align: left; cursor: pointer; }
+.app[data-dir="d"] .sel-trig.vazio .sel-v { color: var(--text2); }
+.app[data-dir="d"] .sel-trig .sel-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app[data-dir="d"] .sel-trig .ic { flex: none; width: 16px; height: 16px; color: var(--text2); }
+.app[data-dir="d"] .sel-trig[aria-expanded="true"] .ic { transform: rotate(180deg); }
+.app[data-dir="d"] .sel-trig:focus-visible { outline: 0; box-shadow: 0 0 0 2px var(--acc); }
+.app[data-dir="d"] .sel-pop { z-index: 120; max-height: min(420px, 70vh); display: flex; flex-direction: column; outline: 0; }
+.app[data-dir="d"] .sel-lista { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; }
+.app[data-dir="d"] .sel-op { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: 12px; font-size: calc(15px * var(--esc)); cursor: pointer; color: var(--text); }
+.app[data-dir="d"] .sel-op.sem { color: var(--text2); }
+.app[data-dir="d"] .sel-op[data-ativo="true"] { background: var(--btn-hov); }
+.app[data-dir="d"] .sel-op[aria-selected="true"] { font-weight: 600; }
+.app[data-dir="d"] .sel-ck { flex: none; width: 18px; display: inline-flex; color: var(--acc-text, var(--acc)); }
+.app[data-dir="d"] .sel-ck .ic { width: 16px; height: 16px; }
+.app[data-dir="d"] .sel-rodape { flex: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--card-brd); }
+.app[data-dir="d"] .sel-pop .sel-criar { color: var(--acc-text, var(--acc)); font-weight: 600; }
+.app[data-dir="d"] .sel-novo { display: flex; flex-direction: column; gap: 8px; padding: 6px; }
+.app[data-dir="d"] .sel-novo input { min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: var(--grp-campo); color: var(--text); font: inherit; font-size: max(16px, calc(16px * var(--esc))); }
+.app[data-dir="d"] .sel-novo input:focus { outline: 0; box-shadow: 0 0 0 2px var(--acc); }
+.app[data-dir="d"] .sel-novo input[aria-invalid="true"] { box-shadow: 0 0 0 2px var(--perigo); }
+.app[data-dir="d"] .sel-acoes { display: flex; justify-content: flex-end; gap: 8px; }
+.app[data-dir="d"] .sel-pop .sel-erro { margin: 0; font-size: calc(13px * var(--esc)); color: var(--perigo); }
+.app[data-dir="d"] .chk-l { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px; font-size: calc(15px * var(--esc)); color: var(--text); cursor: pointer; }
+.app[data-dir="d"] .chk-l input { flex: none; }
+/* Para hoje: a urgência nova aparece à parte, sem trocar as vagas (cor de perigo só aqui, por ser atrasada ou vencendo hoje) */
+.app[data-dir="d"] .nova-urgencia { margin-top: 14px; padding: 12px; border-radius: 18px; background: var(--perigo-soft); }
+.app[data-dir="d"] .nova-urgencia h4 { margin: 0 0 8px; font-size: calc(14px * var(--esc)); color: var(--text); }
+.app[data-dir="d"] .nova-urgencia h4 small { font-weight: 400; color: var(--text2); }
+.app[data-dir="d"] .vaga { min-width: 0; }

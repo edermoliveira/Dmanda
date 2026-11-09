@@ -54,6 +54,18 @@ export async function desarquivarDemanda(id: string) {
 export async function excluirDemanda(id: string, confirmado: boolean) {
   return executar(() => op().excluir(id, confirmado));
 }
+export async function listarOpcoes() {
+  return executar(() => op().listarOpcoes());
+}
+export async function criarOpcao(campo: 'origem' | 'tipo', nome: string) {
+  return executar(() => op().criarOpcao(campo, nome));
+}
+export async function listarParaHoje() {
+  return executar(() => op().listarParaHoje());
+}
+export async function atualizarParaHoje(candidatas: string[]) {
+  return executar(() => op().atualizarParaHoje(candidatas));
+}
 export async function listarDias() {
   return executar(() => op().listarDias());
 }

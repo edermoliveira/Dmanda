@@ -6,8 +6,10 @@ import type { DiaIndisponivel } from '@/lib/prazos';
 import type { Entrada } from '@/lib/entradas';
 import type { DadosEvento, Evento } from '@/lib/eventos';
 import { registrosValidos, type RegistroDia } from '@/lib/registros';
-import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
-export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada, validarEvento, validarRegistros };
+import type { Opcao } from '@/lib/documentos';
+import type { Vaga } from '@/lib/para-hoje';
+import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
+export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarRegistros };
 export type { TarefaEdicao };
 
 export type Chamar = (funcao: string, args: Record<string, unknown>) => Promise<unknown>;
@@ -62,6 +64,14 @@ export function criarOperacoes(chamar: Chamar) {
     /** Só os campos enviados mudam; `versao` é a que a janela viu por último (se mudou, o banco recusa com ErroConflito em vez de sobrescrever). */
     salvarEvento: (eventoId: string, dados: DadosEvento, versao: number) => evento('salvar_evento', { p_id: id(eventoId, 'Evento'), p: validarEvento(dados, { criando: false }), p_versao: versaoDe(versao) }),
     excluirEvento: async (eventoId: string, confirmado: boolean) => (await chamar('excluir_evento', { p_id: id(eventoId, 'Evento'), p_confirmado: confirmado === true })) as { id: string; excluido: true },
+    // ---------- Origem, tipo do documento e Para hoje (decisão 60) ----------
+    /** As opções de origem e de tipo de documento (as padrão e as antigas entram sozinhas, sem duplicar). */
+    listarOpcoes: async () => (await chamar('listar_opcoes', {})) as Opcao[],
+    /** Idempotente: o mesmo nome (maiúsculas e espaços não contam) devolve a opção que já existe, com `existente: true`. */
+    criarOpcao: async (campo: unknown, nome: unknown) => { const v = validarOpcao(campo, nome); return (await chamar('criar_opcao', { p_campo: v.campo, p_nome: v.nome })) as Opcao & { existente: boolean }; },
+    listarParaHoje: async () => (await chamar('listar_para_hoje', {})) as Vaga[],
+    /** Libera as vagas de demandas finalizadas ou arquivadas e preenche as livres com as candidatas, na ordem. */
+    atualizarParaHoje: async (candidatas: unknown) => (await chamar('atualizar_para_hoje', { p_candidatas: validarCandidatas(candidatas) })) as Vaga[],
     // ---------- Perfil (humor por dia; a produtividade é derivada das demandas e não tem operação própria) ----------
     /** Os registros dos últimos `dias` dias (62 por padrão: o mês do gráfico e o histórico). */
     listarRegistros: async (dias = 62): Promise<RegistroDia[]> => registrosValidos(await chamar('listar_registros_dia', { p_dias: dias })),

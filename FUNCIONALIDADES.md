@@ -154,3 +154,8 @@ Estão em `DECISOES.md`. Resumo das regras de negócio: Aguardando retorno é um
 - Limites do plano gratuito do Postgres (Supabase) e da IA gratuita.
 - Nomes e textos exatos de botões, ficam para a etapa das telas.
 - Peças com os cinco estados e conferência de contraste no Catalyst, claro e escuro.
+
+## Para hoje, origem e documento (decisão 60, validação local)
+- Para hoje: até 3 vagas persistentes no Início (atrasadas e vencem hoje primeiro; a marca Rápida desempata; sem prazo entra quando há ação possível; terceiros só com cobrança devida). Concluir repõe só a vaga liberada. O grupo de prazo chama-se Vencem hoje.
+- Origem da solicitação e documento associado são campos independentes e opcionais, com dropdown e criação no próprio dropdown.
+- Ano do documento reconhecido pelo número (formato inequívoco) ou confirmado à mão; filtros de origem, tipo e ano combináveis em Demandas.

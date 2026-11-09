@@ -16,7 +16,7 @@ const AREA_NOME = { Geral: 'geral', Pessoal: 'de pessoal', Compras: 'de compras'
 export const OrigemP = ({ d }: { d: Demanda }) => (origemDe(d) ? <span className="origem-p"><i className="pt" style={{ '--h': matiz(origemDe(d)) } as React.CSSProperties} />{origemDe(d)}</span> : <span className="origem-p" />);
 const Numero = ({ d }: { d: Demanda }) => (numeroDe(d) ? <span className="num mono">{numeroDe(d)}</span> : null);
 export const ChipTipo = ({ d }: { d: Demanda }) => (
-  <span className="tag" title={d.tipo === 'Processo' || d.tipo === 'Protocolo' ? `${d.tipo} ${AREA_NOME[d.area]}` : undefined} style={{ '--h': TIPO_COR[d.tipo] ?? 212 } as React.CSSProperties}>{d.tipo}</span>
+  d.tipo ? <span className="tag" title={d.tipo === 'Processo' || d.tipo === 'Protocolo' ? `${d.tipo} ${AREA_NOME[d.area]}` : undefined} style={{ '--h': TIPO_COR[d.tipo] ?? 212 } as React.CSSProperties}>{d.tipo}</span> : <span className="tag" style={{ '--h': 212 } as React.CSSProperties}>Sem documento</span>
 );
 const nivelPrazo = (n: number) => (n <= 1 ? ' n-verm' : n <= 3 ? ' n-lar' : n <= 5 ? ' n-amar' : '');
 // contagem regressiva: neutra até 6 dias; amarela com 5 e 4; laranja com 3 e 2; vermelha com 1 e no dia; vencido em vermelho vivo. Sem prazo não aparece nada.
@@ -170,7 +170,7 @@ export function CardDemanda({ d }: { d: Demanda }) {
           <div className="meta">
             <div>Chegou em<b>{d.chegou_em ? dataCurta(d.chegou_em) : 'não informada'}</b></div>
             <div>{fin && d.chegou_em ? 'Resolvida em' : 'Parada há'}<b>{fin && d.chegou_em && d.concluida_em ? curto(Math.max(0, diasDesde(d.chegou_em, hoje) - diasDesde(d.concluida_em, hoje))) : curto(dias)}</b></div>
-            <div>Tipo<b>{d.tipo}</b></div>
+            <div>Tipo<b>{d.tipo ?? 'Sem documento'}</b></div>
             {d.setor ? <div>Setor<b>{d.setor} · {dias} dias</b></div> : null}
             {d.acompanhar_em ? <div>Acompanhar em<b>{dataCurta(d.acompanhar_em)}</b></div> : null}
           </div>

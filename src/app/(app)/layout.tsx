@@ -11,6 +11,7 @@ import '@/estilos/v5.css';
 import '@/estilos/catalyst.css';
 import '@/estilos/app.css';
 import '@/estilos/agenda.css';
+import '@/estilos/seletor.css';
 import { coresDaBarra } from '@/lib/cores-barra';
 
 const inter = Inter({ subsets: ['latin'], variable: '--f-inter', display: 'swap' });

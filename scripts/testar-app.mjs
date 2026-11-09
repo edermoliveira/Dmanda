@@ -2,6 +2,7 @@
 // Sobe o próprio servidor numa porta separada, com uma pasta de dados nova, e no fim lê direto do banco o que foi gravado.
 // NÃO valida o Supabase real nem o login Google (ainda sem projeto e credenciais). Uso: node scripts/testar-app.mjs
 import { chromium } from 'playwright-core';
+import { escolherOpcao } from './auxiliar-origem.mjs';
 import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync, readFileSync } from 'node:fs';
 import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
@@ -39,7 +40,7 @@ const primario = () => pg.textContent('.modal .m-f .btn.pri');
 // cadastra pelo caminho curto (assunto, pular a chegada e o prazo, pular ou concluir as tarefas) e espera a janela fechar
 const criarRapido = async (page, assunto, { tipo, tarefas = [] } = {}) => {
   await page.click('button[aria-label="Nova demanda"]'); await page.waitForSelector('#n-assunto');
-  if (tipo) await page.click(`.modal .opcoes button:has-text("${tipo}")`);
+  if (tipo) await escolherOpcao(page, 'n', 'tipo', tipo);
   await page.fill('#n-assunto', assunto); await page.click('.modal .btn.pri');
   await page.waitForSelector('#n-chegou'); await page.click('.modal .btn.pri');
   await page.waitForSelector('#n-nt');
@@ -54,7 +55,7 @@ ok((await pg.$$eval('.modal .passos li span', (e) => e.map((x) => x.textContent)
 ok((await pg.$$eval('.modal label', (e) => e.map((x) => x.textContent))).some((t) => /Assunto.*obrigatório/.test(t)) && (await pg.$$eval('.modal label', (e) => e.filter((x) => /opcional/.test(x.textContent)).length)) >= 3, 'passo 1: só o assunto é marcado como obrigatório; número, origem e descrição aparecem como opcionais');
 await pg.click('.modal .btn.pri'); await pg.waitForTimeout(300);
 ok(/Informe o assunto/.test(await pg.textContent('.modal')) && await passoAtual() === 1, 'passo 1: avançar sem assunto mostra a validação e não sai do passo');
-await pg.fill('#n-assunto', 'Resposta ao TCE sobre diárias'); await pg.fill('#n-num', '1842/2026'); await pg.fill('#n-origem', 'TCE-RS'); await pg.fill('#n-descricao', 'Texto da descrição da demanda de teste');
+await pg.fill('#n-assunto', 'Resposta ao TCE sobre diárias'); await pg.fill('#n-num', '1842/2026'); await escolherOpcao(pg, 'n', 'origem', 'TCE-RS'); await pg.fill('#n-descricao', 'Texto da descrição da demanda de teste');
 await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou');
 ok(await passoAtual() === 2 && (await pg.$$('.dcard')).length === 0, 'passo 1 para o 2 não grava nada: ainda não existe nenhum card');
 ok(/Não informada|não informada/.test(await pg.textContent('.modal')) && /sem ela não existe contagem/i.test(await pg.textContent('.modal')), 'passo 2: sem data de chegada, a tela diz que não foi informada e que não há contagem de permanência');
@@ -160,7 +161,7 @@ card = pg.locator('.dcard:has-text("Resposta ao TCE")');
 ok(/1\/3 · 33%/.test(await card.locator('.prog b').textContent()) && /Vistos/.test(await card.locator('.tags .chip').textContent()) && /Conferir com a Contabilidade/.test(await card.locator('.prox-t').textContent()), 'após recarregar: tarefas, progresso, etapa e a próxima tarefa preservados');
 // edição por seção: identificação, chegada e prazo
 await pg.click('.dcard:has-text("Resposta ao TCE") .assunto'); await pg.waitForSelector('.modal .ler');
-await pg.click('[data-lapis="identificacao"]'); await pg.fill('#d-origem', 'TCE-RS (Porto Alegre)'); await pg.click('.modal [data-salvar="identificacao"]'); ok(await avisoRe(/Identificação: alterações salvas/), 'editar a identificação pelo lápis grava só essa seção');
+await pg.click('[data-lapis="identificacao"]'); await escolherOpcao(pg, 'd', 'origem', 'TCE-RS (Porto Alegre)'); await pg.click('.modal [data-salvar="identificacao"]'); ok(await avisoRe(/Identificação: alterações salvas/), 'editar a identificação pelo lápis grava só essa seção');
 await pg.waitForTimeout(500);
 ok(/TCE-RS \(Porto Alegre\)/.test(await pg.textContent('[data-secao="identificacao"]')), 'a seção volta à leitura com o valor novo');
 await pg.click('[data-lapis="chegada"]');

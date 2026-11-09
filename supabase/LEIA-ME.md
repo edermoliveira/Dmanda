@@ -365,3 +365,7 @@ select column_name, has_column_privilege('authenticated','public.registros_dia',
   from information_schema.columns where table_schema='public' and table_name='registros_dia' order by ordinal_position;
 -- esperado: humor true; user_id, dia, criado_em e atualizado_em false; a coluna energia não existe
 ```
+
+## Migração 20: origem, documento associado, Rápida e Para hoje (08/11/2026, só banco de teste)
+
+`20261110000000_origem_documento_para_hoje` (decisão 60), aditiva e reaplicável: `demandas.tipo` passa a aceitar vazio e deixa de ter lista fixa; colunas `rapida` e `documento_ano` (só o ano confirmado à mão); tabelas `opcoes` (origem e tipo, criação idempotente por nome sem diferença de maiúsculas ou espaços) e `para_hoje` (até 3 vagas por usuário), ambas com RLS pela conta autorizada e privilégios mínimos (opções: SELECT e INSERT; vagas: SELECT, INSERT e DELETE); funções `listar_opcoes`, `criar_opcao`, `listar_para_hoje` e `atualizar_para_hoje`, todas SECURITY INVOKER; `criar_demanda` e `atualizar_demanda` recriadas com os campos novos. Nenhuma linha existente é alterada. **Não aplicada no Supabase real.**

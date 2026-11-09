@@ -1,6 +1,6 @@
 // Validação das entradas das operações (puro, sem banco nem alias de importação: roda também nos testes de regras, direto no Node).
 // As regras de negócio ficam no banco (migrações); aqui só se confere o formato e se traduz o erro em mensagem para a pessoa.
-import { AREAS, ETAPAS, PRAZOS, TIPOS } from '../lib/demandas.ts';
+import { AREAS, ETAPAS, PRAZOS } from '../lib/demandas.ts';
 import { BOTOES_PRAZO, CATEGORIAS_DIA, type CategoriaDia } from '../lib/prazos.ts';
 import { COR_MAX_ACEITA, LIMITE_TEXTO, LIMITE_TITULO } from '../lib/entradas.ts';
 import { erroDoEvento, TIPOS_EVENTO, type DadosEvento } from '../lib/eventos.ts';
@@ -35,7 +35,9 @@ export function validarDados(entrada: unknown, { criando, aceitaEtapa = false }:
   if ('numero' in e) s.numero = texto(e.numero, 'Número', 80);
   if ('origem' in e) s.origem = texto(e.origem, 'Origem', 160);
   if ('descricao' in e) s.descricao = texto(e.descricao, 'Descrição', 20_000);
-  if ('tipo' in e) s.tipo = enumerado(e.tipo, TIPOS, 'Tipo');
+  if ('tipo' in e) { if (e.tipo === null || e.tipo === undefined) s.tipo = null; else { const t = texto(e.tipo, 'Tipo do documento', 80).trim(); s.tipo = t || null; } }
+  if ('rapida' in e && e.rapida !== undefined) { if (typeof e.rapida !== 'boolean') throw new ErroDmanda('Marca Rápida inválida.'); s.rapida = e.rapida; }
+  if ('documento_ano' in e) { if (e.documento_ano === null || e.documento_ano === '') s.documento_ano = null; else if (typeof e.documento_ano !== 'number' || !Number.isInteger(e.documento_ano) || e.documento_ano < 1900 || e.documento_ano > 2100) throw new ErroDmanda('Ano do documento inválido. Use um ano de 1900 a 2100.'); else s.documento_ano = e.documento_ano; }
   if ('area' in e) s.area = enumerado(e.area, AREAS, 'Área');
   if ('prazo_tipo' in e) s.prazo_tipo = enumerado(e.prazo_tipo, PRAZOS, 'Tipo de prazo');
   if ('chegou_em' in e) s.chegou_em = dataOuNulo(e.chegou_em, 'Data de chegada');
@@ -136,4 +138,19 @@ export function validarRegistros(entrada: unknown): { dia: string; humor: Nivel 
     vistos.add(r.dia);
     return { dia: r.dia, humor: nivel(r.humor) };
   });
+}
+
+/** Opção cadastrável (origem da solicitação ou tipo do documento): campo conhecido e nome de 1 a 80 caracteres. O banco repete a conferência e trata o mesmo nome como a mesma opção. */
+export function validarOpcao(campo: unknown, nome: unknown): { campo: 'origem' | 'tipo'; nome: string } {
+  const c = enumerado(campo, ['origem', 'tipo'] as const, 'Campo da opção');
+  const n = (typeof nome === 'string' ? nome : '').replace(/\s+/g, ' ').trim();
+  if (!n) throw new ErroDmanda(c === 'origem' ? 'Digite o nome da origem.' : 'Digite o nome do tipo de documento.');
+  if (n.length > 80) throw new ErroDmanda('O nome passa de 80 caracteres.');
+  return { campo: c, nome: n };
+}
+
+/** Candidatas do Para hoje: até 30 identificadores de demanda. */
+export function validarCandidatas(l: unknown): string[] {
+  if (!Array.isArray(l) || l.length > 30) throw new ErroDmanda('Lista de candidatas inválida.');
+  return l.map((x) => id(x, 'Demanda'));
 }

@@ -5,6 +5,7 @@
 //   4) tipografia: escala única de 85% (--esc) aplicada uma só vez, sem zoom nem transform, com as exceções documentadas (piso de 10 px e campos de 16 px no toque).
 // Sobe o próprio servidor numa porta separada, com pasta de dados nova. NÃO valida o Supabase real. Uso: node scripts/testar-interface.mjs
 import { chromium } from 'playwright-core';
+import { escolherOpcao } from './auxiliar-origem.mjs';
 import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
@@ -53,7 +54,7 @@ const colunas = async (pg) => { await pg.waitForSelector('.coluna', { timeout: 1
 // cria pelo botão da barra de ferramentas (Cards, Tabela, Lista) ou pelo "+" do menu, sempre pelo caminho curto
 const cadastrar = async (pg, c, { botao = '.toolbar .btn.escuro' } = {}) => {
   await pg.click(botao); await pg.waitForSelector('#n-assunto');
-  await pg.fill('#n-assunto', c.assunto); if (c.numero) await pg.fill('#n-num', c.numero); if (c.origem) await pg.fill('#n-origem', c.origem); if (c.descricao) await pg.fill('#n-descricao', c.descricao);
+  await pg.fill('#n-assunto', c.assunto); if (c.numero) await pg.fill('#n-num', c.numero); if (c.origem) await escolherOpcao(pg, 'n', 'origem', c.origem); if (c.descricao) await pg.fill('#n-descricao', c.descricao);
   await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou');
   if (c.dias) await pg.click(`.modal .dias-btns button:has-text("${c.dias} dias")`);
   await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt');

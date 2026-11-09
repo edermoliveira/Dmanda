@@ -19,7 +19,7 @@ ok(/Informe o assunto/.test(await erro(A, 'criar_demanda', { p: { assunto: '  ' 
 const d1 = await c(A, 'criar_demanda', { p: { assunto: ' Resposta ao TCE ', tipo: 'Processo', numero: '1842/2026', origem: 'TCE-RS', descricao: 'Texto', prazo_original: '2026-10-16', prazo_tipo: 'Legal' } });
 ok(d1.etapa === 'Cadastro' && d1.assunto === 'Resposta ao TCE' && d1.numero === '1842/2026' && d1.prazo === '2026-10-16' && d1.prazo_original === '2026-10-16' && d1.prazo_legado === false && d1.prazo_tipo === 'Legal' && !('user_id' in d1) && d1.tarefas.length === 0, 'criar grava os campos informados, começa em Cadastro e não expõe user_id');
 const d2 = await c(A, 'criar_demanda', { p: { assunto: 'Só o assunto' } });
-ok(d2.numero === '' && d2.origem === '' && d2.chegou_em === null && d2.prazo === null && d2.prazo_original === null && d2.setor === null && d2.acompanhar_em === null && d2.tipo === 'Processo' && d2.area === 'Geral', 'só o assunto é obrigatório: número, origem e chegada ficam vazios (nada de "s/n", "Não informada" nem data de hoje inventados) e nada de prazo, setor ou acompanhamento é inventado');
+ok(d2.numero === '' && d2.origem === '' && d2.chegou_em === null && d2.prazo === null && d2.prazo_original === null && d2.setor === null && d2.acompanhar_em === null && d2.tipo === null && d2.area === 'Geral' && d2.rapida === false && d2.documento_ano === null, 'só o assunto é obrigatório (o documento é opcional: sem tipo, sem Processo inventado, sem Rápida e sem ano): número, origem e chegada ficam vazios (nada de "s/n", "Não informada" nem data de hoje inventados) e nada de prazo, setor ou acompanhamento é inventado');
 ok(/Protocolo só pode/.test(await erro(A, 'criar_demanda', { p: { assunto: 'x', tipo: 'Protocolo', area: 'Compras' } })), 'Protocolo de Compras é recusado');
 ok(/não nasce finalizada/.test(await erro(A, 'criar_demanda', { p: { assunto: 'x', etapa: 'Finalizado' } })), 'demanda nova não nasce finalizada');
 
@@ -966,7 +966,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const nova8 = todas.find((f) => f.includes('prazos_e_dias_indisponiveis'));
   const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
   const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova15 = todas.find((f) => f.includes('alinha_regras_agenda')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
-  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const nova20 = todas.find((f) => f.includes('origem_documento_para_hoje'));   // depende da migração 8: entra depois dela, não no banco antigo
+  for (const f of todas.filter((f) => f !== nova20 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -1052,6 +1053,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(antes15 === depois15, 'migração 15: demandas (incluindo versão e datas) e tarefas existentes ficam idênticas');
   await antigo.exec(readFileSync(join('supabase/migrations', nova15), 'utf8'));
   ok(await lido15() === depois15, 'migração 15: reaplicar é inofensivo');
+  await antigo.exec(readFileSync(join('supabase/migrations', nova20), 'utf8'));
+  ok(await lido15() === depois15, 'migração 20: aplicada depois das demais sobre os dados antigos, deixa as demandas e as tarefas idênticas');
   await antigo.close();
 }
 
@@ -1359,6 +1362,123 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   await a18.exec(readFileSync(join('supabase/migrations', m19), 'utf8'));
   ok(await foto() === fMeio && await humores() === hMeio, 'migração 19: reaplicar é inofensivo');
   await a18.close();
+}
+
+// ---------- migração 20: origem, documento associado, marca Rápida e Para hoje (decisão 60) ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m20 = todas.find((f) => f.includes('origem_documento_para_hoje'));
+  const m19 = todas.find((f) => f.includes('registros_dia_so_humor'));
+  ok(!!m20 && !!m19 && todas.indexOf(m20) === todas.indexOf(m19) + 1, 'migração 20: existe, vem logo depois da 19 e as anteriores não foram reescritas (arquivo à parte)');
+
+  // ---- upgrade: banco com as migrações 1 a 19 e demandas antigas; aplica a 20
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig20-'));
+  for (const f of todas.filter((f) => f < m20)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const a19 = await abrirBancoTeste({ raizMigracoes: pasta });
+  const U = 'b1b1b1b1-9999-4999-8999-b1b1b1b1b1b1', V = 'b2b2b2b2-9999-4999-8999-b2b2b2b2b2b2', N = 'b3b3b3b3-9999-4999-8999-b3b3b3b3b3b3';
+  await a19.exec(`insert into auth.users (id, email) values ('${U}', 'ox@teste'), ('${V}', 'oy@teste'), ('${N}', 'on@teste')`);
+  await a19.exec("insert into dmanda_privado.acesso_autorizado (email) values ('ox@teste'), ('oy@teste')");
+  const ua = (f, a) => chamarComoUsuario(a19, U, f, a);
+  const antiga1 = await ua('criar_demanda', { p: { assunto: 'Antiga A', tipo: 'Ofício', numero: '32/2026', origem: 'Prefeita' } });
+  const antiga2 = await ua('criar_demanda', { p: { assunto: 'Antiga B', numero: '2024/1250', origem: 'Secretaria de Obras' } });
+  const antiga3 = await ua('criar_demanda', { p: { assunto: 'Antiga C', tipo: 'Memorando', numero: 'sem formato', origem: '  prefeita ' } });
+  const antes = JSON.stringify((await a19.query('select id, tipo, numero, origem, assunto, etapa, prazo, versao, atualizado_em from public.demandas order by assunto')).rows);
+  const tarefasAntes = JSON.stringify((await a19.query('select id, texto, demanda_id from public.tarefas order by id')).rows);
+  const aclAntes = JSON.stringify((await a19.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and p.proname not in ('criar_demanda','atualizar_demanda') order by 1")).rows);
+  ok(antiga1.tipo === 'Ofício' && antiga2.tipo === 'Processo', 'migração 20 (antes): no banco 1 a 19 o tipo ainda é obrigatório (sem tipo vira Processo)');
+  await a19.exec(readFileSync(join('supabase/migrations', m20), 'utf8'));
+  const depois = JSON.stringify((await a19.query('select id, tipo, numero, origem, assunto, etapa, prazo, versao, atualizado_em from public.demandas order by assunto')).rows);
+  ok(depois === antes && JSON.stringify((await a19.query('select id, texto, demanda_id from public.tarefas order by id')).rows) === tarefasAntes, 'migração 20 (upgrade): as demandas e as tarefas antigas ficam idênticas (tipo, número, origem, prazo, versão e carimbo)');
+  const novas = (await a19.query("select rapida, documento_ano from public.demandas")).rows;
+  ok(novas.length === 3 && novas.every((r) => r.rapida === false && r.documento_ano === null), 'migração 20 (upgrade): as demandas antigas ganham Rápida desligada e nenhum ano confirmado');
+  ok(JSON.stringify((await a19.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and p.proname not in ('criar_demanda','atualizar_demanda') order by 1")).rows.filter((r) => !/listar_opcoes|criar_opcao|listar_para_hoje|atualizar_para_hoje/.test(r.f))) === aclAntes, 'migração 20 (upgrade): as demais funções seguem como estavam (definição de segurança e privilégios)');
+  const priv = (await a19.query("select has_table_privilege('authenticated','public.opcoes','SELECT') s, has_table_privilege('authenticated','public.opcoes','INSERT') i, has_table_privilege('authenticated','public.opcoes','UPDATE') u, has_table_privilege('authenticated','public.opcoes','DELETE') d, has_table_privilege('anon','public.opcoes','SELECT') a, has_table_privilege('authenticated','public.para_hoje','DELETE') pd, has_table_privilege('authenticated','public.para_hoje','UPDATE') pu, has_table_privilege('anon','public.para_hoje','SELECT') pa")).rows[0];
+  const inv = (await a19.query("select proname, prosecdef from pg_proc where proname in ('listar_opcoes','criar_opcao','listar_para_hoje','atualizar_para_hoje','criar_demanda','atualizar_demanda') order by 1")).rows;
+  ok(priv.s && priv.i && !priv.u && !priv.d && !priv.a && priv.pd && !priv.pu && !priv.pa && inv.length === 6 && inv.every((p) => p.prosecdef === false), 'migração 20: privilégios mínimos (opções sem UPDATE nem DELETE, vagas sem UPDATE, anon sem acesso) e todas as funções SECURITY INVOKER');
+
+  // ---- opções
+  const o1 = await ua('listar_opcoes', {});
+  const nomes = (l, c) => l.filter((x) => x.campo === c).map((x) => x.nome);
+  ok(['Prefeita', 'Reunião', 'Pedido de colega', 'Iniciativa própria'].every((n) => nomes(o1, 'origem').includes(n)) && nomes(o1, 'origem').includes('Secretaria de Obras') && nomes(o1, 'origem').filter((n) => n.toLowerCase().trim() === 'prefeita').length === 1, 'opções: as origens padrão e as antigas (digitadas nas demandas) aparecem, sem duplicar "Prefeita" escrita de outro jeito');
+  ok(['Protocolo', 'Processo', 'Memorando', 'Ofício', 'Pedido de informação', 'Projeto de lei', 'Portaria', 'Outro documento'].every((n) => nomes(o1, 'tipo').includes(n)), 'opções: os oito tipos de documento de antes continuam como opções');
+  const nOpc = o1.length;
+  const c1 = await ua('criar_opcao', { p_campo: 'origem', p_nome: '  Secretaria   de Educação ' });
+  const c2 = await ua('criar_opcao', { p_campo: 'origem', p_nome: 'secretaria de educação' });
+  ok(c1.existente === false && c1.nome === 'Secretaria de Educação' && c2.existente === true && c2.id === c1.id, 'opções: criar normaliza os espaços e repetir a criação (ou o mesmo nome em outras letras) devolve a mesma opção, sem duplicar');
+  const ps = await Promise.all([ua('criar_opcao', { p_campo: 'tipo', p_nome: 'Certidão' }), ua('criar_opcao', { p_campo: 'tipo', p_nome: 'certidão' })]);
+  ok(ps[0].id === ps[1].id && (await ua('listar_opcoes', {})).length === nOpc + 2, 'opções: duas criações simultâneas do mesmo nome geram uma só opção');
+  const vazio = await ua('criar_opcao', { p_campo: 'origem', p_nome: '   ' }).then(() => null, (e) => e.message);
+  const vazioT = await ua('criar_opcao', { p_campo: 'tipo', p_nome: '' }).then(() => null, (e) => e.message);
+  const longo = await ua('criar_opcao', { p_campo: 'origem', p_nome: 'x'.repeat(81) }).then(() => null, (e) => e.message);
+  const campo = await ua('criar_opcao', { p_campo: 'outro', p_nome: 'a' }).then(() => null, (e) => e.message);
+  ok(/nome da origem/.test(vazio || '') && /nome do tipo/.test(vazioT || '') && /80/.test(longo || '') && /inválido/.test(campo || '') && (await ua('listar_opcoes', {})).length === nOpc + 2, 'opções: nome vazio, longo demais e campo inválido são recusados sem gravar nada');
+  ok((await chamarComoUsuario(a19, V, 'listar_opcoes', {})).every((x) => x.nome !== 'Certidão' && x.nome !== 'Secretaria de Obras'), 'opções: outro usuário autorizado não vê as opções do primeiro');
+  const naoAut = await chamarComoUsuario(a19, N, 'criar_opcao', { p_campo: 'origem', p_nome: 'Qualquer' }).then(() => null, (e) => e.message);
+  ok(/row-level|policy/i.test(naoAut || ''), 'opções: conta não autorizada não grava');
+
+  // ---- demanda sem documento, com origem de reunião, e o documento chegando depois
+  const r1 = await ua('criar_demanda', { p: { id: '10000000-0000-4000-8000-000000000001', assunto: 'Pedido verbal', origem: 'Reunião', rapida: true } });
+  ok(r1.tipo === null && r1.numero === '' && r1.origem === 'Reunião' && r1.rapida === true && r1.documento_ano === null, 'documento opcional: a demanda nasce de uma reunião, sem tipo nem número, e com a marca Rápida');
+  const rep = await ua('criar_demanda', { p: { id: '10000000-0000-4000-8000-000000000001', assunto: 'Pedido verbal', origem: 'Reunião' } });
+  ok(rep.id === r1.id && rep.rapida === true && (await a19.query('select count(*)::int n from public.demandas where assunto = $1', ['Pedido verbal'])).rows[0].n === 1, 'documento opcional: repetir o cadastro com o mesmo identificador devolve a mesma demanda');
+  const r2 = await ua('atualizar_demanda', { p_id: r1.id, p: { tipo: 'Memorando', numero: '45/2026', documento_ano: 2026 } });
+  ok(r2.tipo === 'Memorando' && r2.numero === '45/2026' && r2.origem === 'Reunião' && r2.documento_ano === 2026, 'documento opcional: o memorando chega depois e a origem (reunião) continua');
+  const r3 = await ua('atualizar_demanda', { p_id: r1.id, p: { tipo: null, documento_ano: null, rapida: false } });
+  ok(r3.tipo === null && r3.documento_ano === null && r3.rapida === false && r3.numero === '45/2026', 'documento opcional: tirar o tipo e o ano confirmado volta ao estado sem documento sem apagar o número informado');
+  const r4 = await ua('atualizar_demanda', { p_id: r1.id, p: { tipo: '   ' } });
+  ok(r4.tipo === null, 'documento opcional: tipo só com espaços vale como sem tipo');
+  const proto = await ua('criar_demanda', { p: { assunto: 'Protocolo de compras', tipo: 'Protocolo', area: 'Compras' } }).then(() => null, (e) => e.message);
+  const protoNulo = await ua('criar_demanda', { p: { assunto: 'Sem tipo em compras', area: 'Compras' } }).then((x) => x.area, () => null);
+  ok(/Protocolo só pode/.test(proto || '') && protoNulo === 'Compras', 'documento opcional: a regra Protocolo x Compras continua, e a área vale sem tipo');
+  const ano = await ua('atualizar_demanda', { p_id: antiga1.id, p: { documento_ano: 2025 } });
+  const ano2 = await ua('atualizar_demanda', { p_id: antiga1.id, p: { numero: '99/2027' } });
+  ok(ano.documento_ano === 2025 && ano2.documento_ano === 2025 && ano2.numero === '99/2027', 'ano confirmado à mão: sobrevive a uma troca de número (o número fica como informado)');
+  const anoRuim = await ua('atualizar_demanda', { p_id: antiga1.id, p: { documento_ano: 1800 } }).then(() => null, (e) => e.message);
+  ok(anoRuim !== null && (await ua('buscar_demanda', { p_id: antiga1.id })).documento_ano === 2025, 'ano confirmado à mão: ano fora de 1900 a 2100 é recusado e o anterior fica');
+  const salvo = await ua('salvar_demanda', { p_id: antiga2.id, p: { tipo: 'Certidão', rapida: true, origem: 'Reunião' }, p_tarefas: null, p_versao: (await ua('buscar_demanda', { p_id: antiga2.id })).versao });
+  ok(salvo.tipo === 'Certidão' && salvo.rapida === true && salvo.origem === 'Reunião', 'salvar_demanda: grava o tipo criado, a marca Rápida e a origem na mesma janela');
+
+  // ---- Para hoje
+  const mk = async (u, nome, extra = {}) => (await chamarComoUsuario(a19, u, 'criar_demanda', { p: { assunto: nome, ...extra } })).id;
+  const [d1, d2, d3, d4, d5] = [await mk(U, 'PH 1'), await mk(U, 'PH 2'), await mk(U, 'PH 3'), await mk(U, 'PH 4'), await mk(U, 'PH 5')];
+  const vagas = async (u = U) => (await chamarComoUsuario(a19, u, 'listar_para_hoje', {})).map((v) => `${v.posicao}:${v.demanda_id}`).join();
+  ok(await vagas() === '', 'Para hoje: começa sem vagas');
+  const p1 = await ua('atualizar_para_hoje', { p_candidatas: [d1, d2, d3, d4, d5] });
+  ok(p1.length === 3 && p1.map((v) => v.demanda_id).join() === [d1, d2, d3].join() && p1.map((v) => v.posicao).join() === '1,2,3', 'Para hoje: com cinco candidatas, as três primeiras ocupam as vagas 1, 2 e 3, na ordem');
+  const p2 = await ua('atualizar_para_hoje', { p_candidatas: [d3, d1, d2, d4, d5] });
+  ok(JSON.stringify(p2) === JSON.stringify(p1), 'Para hoje: as vagas persistem (IDs e posições) mesmo que a ordem das candidatas mude');
+  await ua('concluir_demanda', { p_id: d2 });
+  const p3 = await ua('atualizar_para_hoje', { p_candidatas: [d1, d3, d4, d5] });
+  ok(p3.map((v) => `${v.posicao}:${v.demanda_id}`).join() === `1:${d1},2:${d4},3:${d3}`, 'Para hoje: ao concluir uma demanda, só a vaga liberada (2) é reposta; as vagas 1 e 3 ficam');
+  await ua('arquivar_demanda', { p_id: d1 });
+  const p4 = await ua('atualizar_para_hoje', { p_candidatas: [d5] });
+  ok(p4.map((v) => `${v.posicao}:${v.demanda_id}`).join() === `1:${d5},2:${d4},3:${d3}`, 'Para hoje: arquivar libera só a sua vaga (1) e as demais ficam intactas');
+  await ua('excluir_demanda', { p_id: d3, p_confirmado: true });
+  ok((await ua('listar_para_hoje', {})).map((v) => v.posicao).join() === '1,2', 'Para hoje: excluir a demanda remove a sua vaga (3) e não toca nas outras');
+  const p5 = await ua('atualizar_para_hoje', { p_candidatas: [d1, d2, d4, d5] });
+  ok(p5.length === 2 && p5.every((v) => [d4, d5].includes(v.demanda_id)), 'Para hoje: candidata arquivada ou finalizada não ocupa vaga, e uma já presente não duplica');
+  const fora = await ua('atualizar_para_hoje', { p_candidatas: ['nao-e-uuid', '99999999-9999-4999-8999-999999999999'] });
+  ok(fora.length === 2, 'Para hoje: identificador inválido ou de demanda inexistente é ignorado');
+  const novaA = await mk(U, 'PH A'), novaB = await mk(U, 'PH B');
+  const conc = await Promise.all([ua('atualizar_para_hoje', { p_candidatas: [novaA, novaB] }), ua('atualizar_para_hoje', { p_candidatas: [novaB, novaA] }), ua('atualizar_para_hoje', { p_candidatas: [novaA, novaB] })]);
+  const finalV = await ua('listar_para_hoje', {});
+  ok(finalV.length === 3 && new Set(finalV.map((v) => v.demanda_id)).size === 3 && new Set(finalV.map((v) => v.posicao)).size === 3 && conc.every((v) => v.length === 3), 'Para hoje: três sessões simultâneas preenchem a vaga livre uma só vez, sem demanda ou posição duplicada');
+  const dMuitas = await ua('atualizar_para_hoje', { p_candidatas: Array.from({ length: 31 }, () => d4) }).then(() => null, (e) => e.message);
+  ok(/inválida/.test(dMuitas || ''), 'Para hoje: lista de candidatas grande demais é recusada');
+  // viradas de dia: as vagas não dependem do dia
+  const antesDia = await ua('listar_para_hoje', {});
+  await a19.query("update public.para_hoje set desde = desde - 3 where user_id = $1", [U]);
+  ok(JSON.stringify(await ua('listar_para_hoje', {})) === JSON.stringify(antesDia) && JSON.stringify(await ua('atualizar_para_hoje', { p_candidatas: [] })) === JSON.stringify(antesDia), 'Para hoje: dias depois, as mesmas demandas continuam nas mesmas posições (nada é reescolhido na virada do dia)');
+  ok(await vagas(V) === '' && (await chamarComoUsuario(a19, N, 'listar_para_hoje', {})).length === 0, 'Para hoje: outro usuário não vê as vagas do primeiro');
+  const alheio = await chamarComoUsuario(a19, V, 'atualizar_para_hoje', { p_candidatas: [novaA] });
+  ok(alheio.length === 0, 'Para hoje: demanda de outro usuário não entra nas vagas de quem não é dono dela');
+  const fotoMeio = JSON.stringify((await a19.query('select id, tipo, numero, origem, versao from public.demandas order by assunto')).rows);
+  await a19.exec(readFileSync(join('supabase/migrations', m20), 'utf8'));
+  ok(JSON.stringify((await a19.query('select id, tipo, numero, origem, versao from public.demandas order by assunto')).rows) === fotoMeio && (await ua('listar_opcoes', {})).length === nOpc + 2, 'migração 20: reaplicar é inofensivo');
+  await a19.close();
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

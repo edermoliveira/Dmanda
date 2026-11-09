@@ -23,6 +23,7 @@
     "testar:config": "node scripts/testar-config.mjs",
     "testar:busca": "node scripts/testar-busca.mjs",
     "testar:perfil": "node scripts/testar-perfil.mjs",
+    "testar:origem": "node scripts/testar-origem.mjs",
     "testar:resistencia": "node scripts/testar-resistencia.mjs",
     "medir:desempenho": "node scripts/medir-desempenho.mjs",
     "testar:medicao-local": "node scripts/testar-medicao-local.mjs",

@@ -7,6 +7,7 @@
 // Roda no Edge (Chromium) e, quando o WebKit do Playwright abre, também nele (o motor do Safari; NÃO é o Safari do iPhone). Sobe o próprio servidor numa porta separada. NÃO valida o Supabase real.
 // Uso: node scripts/testar-ajustes.mjs   (CAPTURAS=pasta grava imagens para conferência visual)
 import { chromium, webkit, devices } from 'playwright-core';
+import { escolherOpcao } from './auxiliar-origem.mjs';
 import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
 
@@ -60,7 +61,7 @@ const contraste = (pg, sel, fundoSel) => pg.evaluate(([s, f]) => {
 // ---------- cadastro e dados fictícios ----------
 const cadastrar = async (pg, c) => {
   await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#n-assunto');
-  await pg.fill('#n-assunto', c.assunto); if (c.numero) await pg.fill('#n-num', c.numero); if (c.origem) await pg.fill('#n-origem', c.origem);
+  await pg.fill('#n-assunto', c.assunto); if (c.numero) await pg.fill('#n-num', c.numero); if (c.origem) await escolherOpcao(pg, 'n', 'origem', c.origem);
   await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou');
   if (c.dias) await pg.click(`.modal .dias-btns button:has-text("${c.dias} dias")`);
   await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt');

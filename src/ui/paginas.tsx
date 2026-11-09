@@ -1,6 +1,6 @@
 'use client';
 // Telas do aplicativo funcional: Início (resumos e Foco do dia), Demandas (quatro visões), Arquivo, Mais e as áreas ainda não construídas.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Capsula } from './Capsula';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
@@ -10,13 +10,15 @@ import { CardDemanda, ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
 import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
-import { filtrar, focoDoDia, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, TIPOS, titulo, type Demanda, type Tipo } from '@/lib/demandas';
+import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, type Demanda } from '@/lib/demandas';
+import { elegiveisParaHoje, novasUrgencias, precisaCompletar, vagasAbertas } from '@/lib/para-hoje';
+import { anoDoDocumento, chaveOpcao } from '@/lib/documentos';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
 function Carregando() { return <div className="vazio-c" role="status">Carregando as demandas...</div>; }
 
 // ---------- Início ----------
-const GRUPOS_INICIO = [['atrasadas', 'Atrasadas', 'clock', true], ['hoje', 'Para hoje', 'target', false], ['sete', 'Próximos 7 dias', 'calendar', false]] as const;
+const GRUPOS_INICIO = [['atrasadas', 'Atrasadas', 'clock', true], ['hoje', 'Vencem hoje', 'target', false], ['sete', 'Próximos 7 dias', 'calendar', false]] as const;
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 // Os prazos da tela vêm sempre das datas das demandas; esta linha só informa a rotina diária na nuvem.
 function textoRotina(r: EstadoRotina | null) {
@@ -29,7 +31,6 @@ function textoRotina(r: EstadoRotina | null) {
 export function PaginaInicio() {
   const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina, dias } = useApp();
   const [sel, setSel] = useState<'atrasadas' | 'hoje' | 'sete' | null>(null);
-  const foco = focoDoDia(demandas, hoje, dias);
   useAjustar(`${demandas.length}${sel}`);
   return (
     <>
@@ -37,7 +38,7 @@ export function PaginaInicio() {
       <RegistroNoInicio />
       {carregando && !demandas.length ? <Carregando /> : null}
       {!carregando && !erroCarga && !demandas.length ? (
-        <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Foco do dia.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
+        <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Para hoje.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
       ) : null}
       {demandas.length ? (
         <>
@@ -57,14 +58,38 @@ export function PaginaInicio() {
               return <><h3 className="sub-f">{nome} <small>{plural(l.length, 'demanda')}</small></h3>{l.length ? <div className="cards">{l.map((d) => <CardDemanda key={d.id} d={d} />)}</div> : <div className="vazio-c">Nenhuma demanda neste filtro.</div>}</>;
             })() : null}
           </section>
-          <section className="sec">
-            <h3>Foco do dia <small>até 3 demandas: atrasadas, depois hoje, depois os próximos 7 dias</small></h3>
-            {foco.length ? <div className="cards">{foco.map((d) => <CardDemanda key={d.id} d={d} />)}</div> : <div className="vazio-c">Nada urgente por enquanto.</div>}
-          </section>
+          <ParaHoje />
         </>
       ) : null}
       <p className="rotina-estado">{textoRotina(rotina)}</p>
     </>
+  );
+}
+
+// ---------- Para hoje ----------
+// O painel de execução do dia (o antigo Foco do dia): até 3 vagas, guardadas no banco. Ao concluir ou arquivar uma demanda, só a vaga liberada é reposta. Uma urgência que surge depois
+// das vagas escolhidas aparece à parte, sem trocar a seleção. Não é o grupo "Vencem hoje" (que lista tudo o que vence hoje, com ou sem ação).
+function ParaHoje() {
+  const { demandas, hoje, dias, paraHoje, sincronizarParaHoje, carregando } = useApp();
+  const elegiveis = useMemo(() => elegiveisParaHoje(demandas, hoje, dias), [demandas, hoje, dias]);
+  const abertas = vagasAbertas(paraHoje, demandas);
+  const ocupadas = new Set(abertas.map((v) => v.demanda.id));
+  const faltaCompletar = precisaCompletar(paraHoje, demandas, elegiveis);
+  const candidatas = faltaCompletar ? elegiveis.filter((e) => !ocupadas.has(e.demanda.id)).slice(0, 10).map((e) => e.demanda.id).join(',') : '';
+  // preenche (ou repõe) só as vagas livres; a lista só muda quando as candidatas mudam, então uma resposta sem efeito não repete a chamada
+  useEffect(() => { if (!carregando && hoje !== '2000-01-01' && candidatas) void sincronizarParaHoje(candidatas.split(',')); }, [candidatas, carregando, hoje, sincronizarParaHoje]);
+  const urgentes = novasUrgencias(paraHoje, demandas, elegiveis);
+  return (
+    <section className="sec" data-painel="para-hoje" aria-labelledby="ph-t">
+      <h3 id="ph-t">Para hoje <small>até 3 demandas para tocar hoje: atrasadas e as que vencem hoje primeiro</small></h3>
+      {abertas.length ? <div className="cards">{abertas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} /></div>)}</div> : <div className="vazio-c">Nada para tocar hoje por enquanto.</div>}
+      {urgentes.length ? (
+        <div className="nova-urgencia" role="status" data-nova-urgencia>
+          <h4>Nova urgência <small>fora das suas vagas, sem trocar a seleção</small></h4>
+          <div className="cards">{urgentes.slice(0, 3).map((e) => <CardDemanda key={e.demanda.id} d={e.demanda} />)}</div>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -73,8 +98,12 @@ const VISOES = [['cards', 'Cards', 'vis-cards'], ['quadro', 'Quadro', 'columns']
 const PRAZOS_FILTRO = [['', 'Todos'], ['sem', 'Sem prazo'], ['atrasadas', 'Atrasadas'], ['hoje', 'Vencem hoje'], ['sete', 'Próximos 7 dias']] as const;
 
 function PainelFiltros({ pos, fechar }: { pos: { x: number; y: number }; fechar: () => void }) {
-  const { filtro, setFiltro } = useApp();
+  const { filtro, setFiltro, opcoes, demandas } = useApp();
   const ref = useRef<HTMLDivElement>(null);
+  // as opções do cadastro mais o que já existe nas demandas (e o filtro ativo), sem repetir; os anos são os que aparecem nas demandas (confirmados ou reconhecidos pelo número)
+  const juntar = (lista: string[], extra: (string | null)[]) => { const vistos = new Set<string>(), saida: string[] = []; for (const n of [...lista, ...extra]) { const k = chaveOpcao(n); if (n && k && !vistos.has(k)) { vistos.add(k); saida.push(n); } } return saida; };
+  const nomes = { origem: juntar(opcoes.origem.map((o) => o.nome), [filtro.origem]), tipo: juntar(opcoes.tipo.map((o) => o.nome), [filtro.tipo]) };
+  const anos = [...new Set([...demandas.map((d) => anoDoDocumento(d)), filtro.ano ? Number(filtro.ano) : null].filter((a): a is number => !!a))].sort((a, b) => b - a);
   useEffect(() => {
     const m = ref.current; if (!m) return;
     const app = document.querySelector('.app')!.getBoundingClientRect(), w = m.offsetWidth;
@@ -89,9 +118,11 @@ function PainelFiltros({ pos, fechar }: { pos: { x: number; y: number }; fechar:
   if (!alvo) return null;
   return createPortal(
     <div ref={ref} className="mv-menu painel-filtros" role="dialog" aria-label="Filtros de demandas" style={{ padding: 14, minWidth: 260 }}>
-      <div className="fld"><label htmlFor="f-tipo">Tipo de documento</label><select id="f-tipo" value={filtro.tipo} onChange={(e) => setFiltro({ tipo: e.target.value as Tipo | '' })}><option value="">Todos</option>{TIPOS.map((t) => <option key={t}>{t}</option>)}</select></div>
+      <div className="fld"><label htmlFor="f-origem">Origem</label><select id="f-origem" value={filtro.origem} onChange={(e) => setFiltro({ origem: e.target.value })}><option value="">Todas</option>{nomes.origem.map((t) => <option key={t}>{t}</option>)}</select></div>
+      <div className="fld"><label htmlFor="f-tipo">Tipo de documento</label><select id="f-tipo" value={filtro.tipo} onChange={(e) => setFiltro({ tipo: e.target.value })}><option value="">Todos</option>{nomes.tipo.map((t) => <option key={t}>{t}</option>)}</select></div>
+      <div className="fld"><label htmlFor="f-ano">Ano do documento</label><select id="f-ano" value={filtro.ano} onChange={(e) => setFiltro({ ano: e.target.value })}><option value="">Todos</option>{anos.map((a) => <option key={a}>{a}</option>)}</select></div>
       <div className="fld"><label htmlFor="f-prazo">Prazo</label><select id="f-prazo" value={filtro.prazo} onChange={(e) => setFiltro({ prazo: e.target.value as typeof filtro.prazo })}>{PRAZOS_FILTRO.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</select></div>
-      <div className="acoes"><button className="btn mini" onClick={() => setFiltro({ tipo: '', prazo: '' })}>Limpar filtros</button><button className="btn mini pri" onClick={fechar}>Fechar</button></div>
+      <div className="acoes"><button className="btn mini" onClick={() => setFiltro({ tipo: '', origem: '', ano: '', prazo: '' })}>Limpar filtros</button><button className="btn mini pri" onClick={fechar}>Fechar</button></div>
     </div>, alvo);
 }
 
@@ -101,7 +132,7 @@ export function PaginaDemandas() {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const lista = filtrar(demandas, filtro, hoje, dias);
   const nAt = demandas.filter((d) => grupoFiltro(d, hoje, dias) === 'atrasadas').length;
-  const nFiltros = (filtro.tipo ? 1 : 0) + (filtro.prazo ? 1 : 0);
+  const nFiltros = (filtro.tipo ? 1 : 0) + (filtro.origem ? 1 : 0) + (filtro.ano ? 1 : 0) + (filtro.prazo ? 1 : 0);
   const [toque, setToque] = useState(false);
   useEffect(() => { const m = matchMedia('(max-width: 899px)'); const f = () => setToque(m.matches); f(); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, []);
   useAjustar(`${demandas.length}${visao}${lista.length}`);

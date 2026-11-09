@@ -8,7 +8,7 @@ import { gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, vi
 import { googleLigado } from '../src/lib/login.ts';
 import { aparenciaGuardada, APARENCIA_PADRAO, ePadrao, modoGuardado, temaDoModo, variaveisAparencia, CONJUNTOS, FONTES_TITULO, FONTES_TEXTO, FONTES_MONO, PALETAS, TEXTO, ICONE, CARD } from '../src/lib/aparencia.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
-import { esperaPrefeita, dataFiltro, grupoFiltro, porGrupo, focoDoDia, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
+import { esperaPrefeita, dataFiltro, grupoFiltro, porGrupo, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
 import { validarDados, validarDia, validarEntrada, validarRegistros } from '../src/nucleo/validacao.ts';
 import { estadoDe, tagsDe, semTags, resumoDe, temTitulo, contarTags, filtrarEntradas, ordenarEntradas, paraDemanda, diferencas, vazia, camposEmConflito, carimbo, QTD_CORES } from '../src/lib/entradas.ts';
 import { buscar, palavrasDa, simplificar as simplificarBusca, LIMITE_RESULTADOS } from '../src/lib/busca.ts';
@@ -49,7 +49,6 @@ ok(filtrar(lista, { ...FILTRO_VAZIO, prazo: 'atrasadas' }, hoje).length === 2 &&
 ok(porGrupo(lista, 'atrasadas', hoje).map((x) => x.id).join() === 'venc,ag-venc', 'atrasadas, da mais antiga para a mais recente (inclui o acompanhamento vencido)');
 ok(porGrupo(lista, 'hoje', hoje).map((x) => x.id).join() === 'hoje', 'hoje: só o que vence hoje');
 ok(porGrupo(lista, 'sete', hoje).map((x) => x.id).join() === 'ag-longe,ag-sem,ag-ret10,ag-perto,em3', 'próximos 7 dias: de 1 a 7 dias, na ordem de proximidade (em8 fica de fora, hoje não repete)');
-ok(focoDoDia(lista, hoje).map((x) => x.id).join() === 'venc,ag-venc,hoje', 'Foco do dia: no máximo 3, atrasadas antes de hoje');
 // sessão (decisão 27): a sessão persiste; nada de encerramento por inatividade. A regra só classifica o resultado da conferência no Auth.
 ok(situacaoDoErroAuth(null) === 'ok' && situacaoDoErroAuth(undefined) === 'ok', 'sessão: sem erro, a conferência está ok');
 ok(situacaoDoErroAuth({ name: 'AuthSessionMissingError' }) === 'sem-sessao', 'sessão: a falta de sessão é reconhecida (primeira visita ou sessão removida)');
@@ -353,5 +352,49 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(!/humor/i.test(JSON.stringify(r0.estado)), 'lembretes: o estado guardado no aparelho não tem o humor');
 }
 
+
+// ---------- Para hoje, ano do documento e filtros (decisão 60) ----------
+{
+  const { anoReconhecido, anoDoDocumento, chaveOpcao } = await import('../src/lib/documentos.ts');
+  const { elegiveisParaHoje, vagasAbertas, precisaCompletar, novasUrgencias, ehUrgente } = await import('../src/lib/para-hoje.ts');
+  ok(anoReconhecido('32/2026') === 2026 && anoReconhecido('2024/1250') === 2024 && anoReconhecido(' 1842 / 2026 ') === 2026 && anoReconhecido('45/2026') === 2026, 'ano do documento: reconhece formatos inequívocos ("32/2026", "2024/1250", com espaços)');
+  ok(anoReconhecido('2024/2025') === null && anoReconhecido('') === null && anoReconhecido('s/n') === null && anoReconhecido('12/34') === null && anoReconhecido('Proc. 12/2026') === null && anoReconhecido('1/2/2026') === null && anoReconhecido('1250/1990') === 1990 && anoReconhecido('12/1800') === null, 'ano do documento: ausente, ambíguo ("2024/2025"), fora de formato ou fora de 1990 a 2100 fica sem ano');
+  ok(anoDoDocumento({ numero: '32/2026', documento_ano: 2025 }) === 2025 && anoDoDocumento({ numero: '32/2026', documento_ano: null }) === 2026 && anoDoDocumento({ numero: '', documento_ano: 2023 }) === 2023, 'ano do documento: o ano confirmado à mão vale mais que o reconhecido');
+  ok(chaveOpcao('  Secretaria   de OBRAS ') === 'secretaria de obras' && chaveOpcao(null) === '', 'opções: a chave de comparação ignora maiúsculas e espaços repetidos');
+  const base = { tipo: null, area: 'Geral', numero: '', assunto: 'x', descricao: '', origem: '', etapa: 'Fazendo', etapa_desde: '2026-11-01T12:00:00Z', chegou_em: null, prazo: null, prazo_original: null, prazo_dias: null, prazo_base_em: null, prazo_ajuste: null, prazo_legado: false, prazo_tipo: 'Próprio', rapida: false, documento_ano: null, setor: null, acompanhar_em: null, encaminhada_em: null, reiterada_em: null, concluida_em: null, arquivada_em: null, criado_em: '2026-11-01T12:00:00Z', atualizado_em: '2026-11-01T12:00:00Z', entrada_id: null, versao: 1, tarefas: [] };
+  const D = (id, o = {}) => ({ ...base, id, criado_em: `2026-11-01T12:00:${String(id.length).padStart(2, '0')}Z`, ...o });
+  const H = '2026-11-10';
+  const lista2 = [
+    D('lenta', { prazo: '2026-11-05' }), D('rapida', { prazo: '2026-11-08', rapida: true }), D('hoje', { prazo: H }), D('hojeR', { prazo: H, rapida: true }), D('prox', { prazo: '2026-11-13' }), D('longe', { prazo: '2026-12-30' }),
+    D('semR', { rapida: true, criado_em: '2026-11-02T00:00:00Z' }), D('sem', { criado_em: '2026-11-01T00:00:00Z' }),
+    D('fin', { etapa: 'Finalizado', concluida_em: '2026-11-09', prazo: '2026-11-01' }), D('arq', { arquivada_em: '2026-11-09T00:00:00Z', prazo: '2026-11-01' }),
+    D('espera', { etapa: 'Aguardando retorno', etapa_desde: '2026-11-09T12:00:00Z' }), D('esperaVenc', { etapa: 'Aguardando retorno', etapa_desde: '2026-10-01T12:00:00Z' }),
+    D('cobr', { etapa: 'Aguardando retorno', etapa_desde: '2026-11-09T12:00:00Z', acompanhar_em: '2026-11-09' }),
+    D('pref', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-11-09T12:00:00Z' }), D('prefLonga', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-10-20T12:00:00Z' }),
+  ];
+  const e = elegiveisParaHoje(lista2, H, []);
+  const ids = e.map((x) => x.demanda.id);
+  ok(ids.join() === 'rapida,esperaVenc,lenta,cobr,hojeR,hoje,prefLonga,prox,semR,sem', 'Para hoje: ordem completa (atrasadas com a Rápida à frente, depois as que vencem hoje, até 7 dias e sem prazo)');
+  const classe = (id) => e.find((x) => x.demanda.id === id)?.classe;
+  ok(classe('lenta') === 'atrasada' && classe('hoje') === 'hoje' && classe('prox') === 'proxima' && classe('sem') === 'sem-prazo', 'Para hoje: classes atrasada, hoje, até 7 dias e sem prazo');
+  ok(!ids.includes('longe') && !ids.includes('fin') && !ids.includes('arq') && !ids.includes('espera') && !ids.includes('pref'), 'Para hoje: não entram prazo distante, finalizada, arquivada, nem quem aguarda terceiros sem cobrança devida');
+  ok(ids.includes('cobr') && ids.includes('esperaVenc') && ids.includes('prefLonga') && e.find((x) => x.demanda.id === 'cobr').cobranca && ehUrgente(classe('cobr')), 'Para hoje: cobranças devidas a terceiros (acompanhar vencido, retorno de 10 dias vencido, espera da Prefeita acima do limite) contam como urgência');
+  const ordem = (a, b) => ids.indexOf(a) < ids.indexOf(b);
+  ok(ordem('rapida', 'lenta') && ordem('hojeR', 'hoje') && ordem('lenta', 'hojeR') && ordem('semR', 'sem') && ordem('prox', 'semR'), 'Para hoje: a marca Rápida desempata dentro do mesmo grupo (atrasadas antes de hoje, hoje antes de 7 dias, e sem prazo por último)');
+  const comPrazoUsuario = elegiveisParaHoje([D('a', { prazo: '2026-11-09' })], H, []);
+  ok(comPrazoUsuario.length === 1 && comPrazoUsuario[0].cobranca === false, 'Para hoje: demanda dependente do usuário não é marcada como cobrança');
+  // vagas
+  const vg = [{ posicao: 1, demanda_id: 'rapida' }, { posicao: 2, demanda_id: 'fin' }, { posicao: 3, demanda_id: 'sumiu' }];
+  ok(vagasAbertas(vg, lista2).map((v) => `${v.posicao}:${v.demanda.id}`).join() === '1:rapida', 'vagas: as de demanda finalizada, arquivada ou inexistente ficam livres e as outras continuam nas suas posições');
+  ok(precisaCompletar(vg, lista2, e) === true && precisaCompletar([1, 2, 3].map((p, i) => ({ posicao: p, demanda_id: ['rapida', 'lenta', 'hojeR'][i] })), lista2, e) === false && precisaCompletar(vg, lista2, []) === false, 'vagas: só chama o banco quando há vaga livre e candidata');
+  const nu = novasUrgencias([{ posicao: 1, demanda_id: 'rapida' }, { posicao: 2, demanda_id: 'lenta' }, { posicao: 3, demanda_id: 'hojeR' }], lista2, e).map((x) => x.demanda.id);
+  ok(nu.includes('hoje') && nu.includes('cobr') && !nu.includes('rapida') && !nu.includes('prox') && !nu.includes('sem'), 'nova urgência: só atrasadas e as que vencem hoje fora das vagas aparecem à parte');
+  // filtros
+  const fl = [D('a', { tipo: 'Ofício', numero: '32/2026', origem: 'Prefeita' }), D('b', { tipo: 'Memorando', numero: '2024/1250', origem: ' prefeita ' }), D('c', { tipo: null, numero: '2024/2025', origem: 'Reunião' }), D('d', { tipo: 'ofício', numero: 'sem', documento_ano: 2023 }), D('e2')];
+  const f = (o) => filtrar(fl, { ...FILTRO_VAZIO, ...o }, H, []).map((x) => x.id).join();
+  ok(f({}) === 'a,b,c,d,e2' && f({ origem: 'Prefeita' }) === 'a,b' && f({ tipo: 'Ofício' }) === 'a,d' && f({ ano: '2024' }) === 'b' && f({ ano: '2026' }) === 'a' && f({ ano: '2023' }) === 'd', 'filtros: origem, tipo e ano (reconhecido ou confirmado), ignorando maiúsculas e espaços; ambíguos e vazios só em Todos');
+  ok(f({ origem: 'Prefeita', tipo: 'Memorando', ano: '2024' }) === 'b' && f({ origem: 'Prefeita', ano: '2023' }) === '' && f({ origem: 'Reunião', tipo: 'Ofício' }) === '', 'filtros: combinam origem, tipo e ano (E lógico)');
+  ok(titulo({ tipo: null, numero: '' }) === 'Sem documento' && titulo({ tipo: null, numero: '45/2026' }) === '45/2026' && titulo({ tipo: 'Ofício', numero: '' }) === 'Ofício', 'título: sem tipo mostra só o número e, sem nada, "Sem documento" (nunca um título vazio)');
+}
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);

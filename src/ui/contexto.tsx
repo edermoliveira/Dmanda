@@ -12,6 +12,8 @@ import { APARENCIA_PADRAO, aparenciaGuardada, CONJUNTOS, PALETAS, temaDoModo, ty
 import { eObjeto, gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada } from '@/lib/armazenamento';
 import { avisosDeHoje, compararEventos, minutosAgora, type AvisoEvento, type DadosEvento, type Evento } from '@/lib/eventos';
 import type { Entrada } from '@/lib/entradas';
+import type { Opcao } from '@/lib/documentos';
+import type { Vaga } from '@/lib/para-hoje';
 import { substituirRegistros, type RegistroDia } from '@/lib/registros';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';
@@ -80,6 +82,12 @@ type Ctx = {
   avisosEventos: AvisoEvento[];
   dispensarAviso: (e: Evento) => void;
   /** Humor por dia (privado: só o Perfil e o lembrete os usam). Gravar devolve o resultado para a janela mostrar o próprio estado e manter a escolha se falhar. */
+  /** Opções de origem e de tipo de documento (as padrão, as antigas e as criadas). Criar é idempotente: o mesmo nome devolve a opção que já existe. */
+  opcoes: Record<'origem' | 'tipo', Opcao[]>;
+  criarOpcao: (campo: 'origem' | 'tipo', nome: string) => Promise<{ ok: true; opcao: Opcao; existente: boolean } | { ok: false; erro: string }>;
+  /** As vagas do Para hoje (posição e demanda), guardadas no banco; `sincronizarParaHoje` libera as vagas indisponíveis e preenche só as livres com as candidatas. */
+  paraHoje: Vaga[];
+  sincronizarParaHoje: (candidatas: string[]) => Promise<void>;
   registros: RegistroDia[];
   carregandoRegistros: boolean;
   erroRegistros: string | null;
@@ -183,6 +191,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [carregandoEventos, setCarregandoEventos] = useState(true);
   const [erroEventos, setErroEventos] = useState<string | null>(null);
+  const [opcoes, setOpcoes] = useState<Record<'origem' | 'tipo', Opcao[]>>({ origem: [], tipo: [] });
+  const [paraHoje, setParaHoje] = useState<Vaga[]>([]);
   const [registros, setRegistros] = useState<RegistroDia[]>([]);
   const [carregandoRegistros, setCarregandoRegistros] = useState(true);
   const [erroRegistros, setErroRegistros] = useState<string | null>(null);
@@ -330,6 +340,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       if (c.registros.ok) { setRegistros(c.registros.dados); setErroRegistros(null); } else setErroRegistros(c.registros.erro);
       setCarregandoRegistros(false);
       if (c.dias.ok) setDias(c.dias.dados);
+      if (c.opcoes.ok) setOpcoes(agruparOpcoes(c.opcoes.dados));
+      if (c.paraHoje.ok) setParaHoje(c.paraHoje.dados);
       if (c.rotina?.ok) setRotina(c.rotina.dados);
       if (c.ambiente) setAmbiente(c.ambiente);
     });
@@ -351,12 +363,14 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       const antes = gravacoes.current;
       const c = await protegido(() => cargaInicial(false)); // uma só chamada, sem o estado da rotina nem o ambiente
       if (!c.ok) return; // sem rede agora: o que está na tela continua
-      const { demandas: r, dias: d, entradas: en, eventos: evs, registros: rg } = c.dados;
+      const { demandas: r, dias: d, entradas: en, eventos: evs, registros: rg, opcoes: op, paraHoje: ph } = c.dados;
       if (gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) {
         if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) setDias(d.dados); }
         if (en.ok) { setEntradas(en.dados); setErroEntradas(null); }
         if (evs.ok) { setEventos(evs.dados); setErroEventos(null); }
         if (rg.ok) { setRegistros(rg.dados); setErroRegistros(null); }
+        if (op.ok) setOpcoes(agruparOpcoes(op.dados));
+        if (ph.ok) setParaHoje(ph.dados);
         setAgoraMin(minutosAgora());
       }
     };
@@ -429,7 +443,20 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const abrirPerfil = useCallback(() => setPerfilAberto(true), []);
   const fecharPerfil = useCallback(() => setPerfilAberto(false), []);
 
+  const criarOpcao = useCallback(async (campo: 'origem' | 'tipo', nome: string) => {
+    const r = await gravando(() => protegido(() => srv.criarOpcao(campo, nome)));
+    if (!r.ok) return { ok: false as const, erro: r.erro };
+    const { existente, ...opcao } = r.dados;
+    setOpcoes((m) => (m[campo].some((o) => o.id === opcao.id) ? m : { ...m, [campo]: [...m[campo], opcao] }));
+    return { ok: true as const, opcao, existente };
+  }, [gravando]);
+  const sincronizarParaHoje = useCallback(async (candidatas: string[]) => {
+    const r = await protegido(() => srv.atualizarParaHoje(candidatas));
+    if (r.ok) setParaHoje(r.dados);
+  }, []);
+
   const valor = useMemo<Ctx>(() => ({
+    opcoes, criarOpcao, paraHoje, sincronizarParaHoje,
     registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar,
     demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, setAbaArquivo,
     criarEntrada: (dados) => rodarEntrada(() => srvE.criarEntrada(dados)),
@@ -527,7 +554,9 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
+  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }
+
+const agruparOpcoes = (l: Opcao[]): Record<'origem' | 'tipo', Opcao[]> => ({ origem: l.filter((o) => o.campo === 'origem'), tipo: l.filter((o) => o.campo === 'tipo') });
