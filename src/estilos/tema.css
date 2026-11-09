@@ -1,6 +1,6 @@
 /* =====================================================================
    Camada final do protótipo: fontes em três papéis, vidro líquido em todo
-   o desenho, menu recolhido, janelas, energia, Perfil e Configurações.
+   o desenho, menu recolhido, janelas, Perfil e Configurações.
    ===================================================================== */
 
 /* ---------- fontes: principal (títulos), secundária (subtítulos e textos), mono (detalhes) ---------- */
@@ -53,9 +53,8 @@ h3, h4 { font-weight: 700; }
 @container tela (max-width: 1099px) { .col-b { display: none; } }
 @container tela (max-width: 899px) { .col-b { display: none; } }
 
-/* ---------- registro de humor e energia ---------- */
+/* ---------- registro de humor ---------- */
 .emo-img { width: 30px; height: 30px; }
-.emo.en { border-radius: 14px; }
 .registro { display: grid; gap: 10px; margin-bottom: 16px; padding: 14px 16px; }
 .reg-l { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .reg-l > span { color: var(--text2); font-size: calc(14px * var(--esc)); min-width: 170px; }

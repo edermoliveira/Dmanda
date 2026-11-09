@@ -4,27 +4,29 @@
 import { useState, type ReactNode } from 'react';
 import { Icone } from './Icone';
 import { Opcoes } from './janela-base';
+import { SeletorOpcao } from './seletor';
+import { anoReconhecido } from '@/lib/documentos';
 import {
-  areasDoTipo, dataBR, diasAte, numeroDe, origemDe, permanencia, plural, PRAZOS, TEM_AREA, TIPOS, type Area, type DadosDemanda, type Demanda, type PrazoTipo, type Tipo,
+  areasDoTipo, dataBR, diasAte, numeroDe, origemDe, permanencia, plural, PRAZOS, temArea, type Area, type DadosDemanda, type Demanda, type PrazoTipo,
 } from '@/lib/demandas';
 import { ajustarPrazo, BOTOES_PRAZO, dataComSemana, prazoPorDias, type DiaIndisponivel } from '@/lib/prazos';
 import type { TarefaEdicao } from '@/nucleo/operacoes';
 
 export type Campos = {
-  assunto: string; numero: string; origem: string; descricao: string; tipo: Tipo; area: Area;
+  assunto: string; numero: string; origem: string; descricao: string; tipo: string; area: Area; rapida: boolean; ano_documento: string;
   chegou_em: string; prazo_original: string; prazo_dias: number | null; prazo_tipo: PrazoTipo;
   setor: string; acompanhar_em: string; encaminhada_em: string; reiterada_em: string;
 };
-export const CAMPOS_VAZIOS: Campos = { assunto: '', numero: '', origem: '', descricao: '', tipo: 'Processo', area: 'Geral', chegou_em: '', prazo_original: '', prazo_dias: null, prazo_tipo: 'Próprio', setor: '', acompanhar_em: '', encaminhada_em: '', reiterada_em: '' };
+export const CAMPOS_VAZIOS: Campos = { assunto: '', numero: '', origem: '', descricao: '', tipo: '', area: 'Geral', rapida: false, ano_documento: '', chegou_em: '', prazo_original: '', prazo_dias: null, prazo_tipo: 'Próprio', setor: '', acompanhar_em: '', encaminhada_em: '', reiterada_em: '' };
 
 export const doCampos = (d: Demanda): Campos => ({
-  assunto: d.assunto, numero: numeroDe(d), origem: origemDe(d), descricao: d.descricao, tipo: d.tipo, area: d.area,
+  assunto: d.assunto, numero: numeroDe(d), origem: origemDe(d), descricao: d.descricao, tipo: d.tipo ?? '', area: d.area, rapida: d.rapida, ano_documento: d.documento_ano ? String(d.documento_ano) : '',
   chegou_em: d.chegou_em ?? '', prazo_original: d.prazo_original ?? '', prazo_dias: d.prazo_dias, prazo_tipo: d.prazo_tipo, setor: d.setor ?? '', acompanhar_em: d.acompanhar_em ?? '', encaminhada_em: d.encaminhada_em ?? '', reiterada_em: d.reiterada_em ?? '',
 });
 
 export type Secao = 'identificacao' | 'descricao' | 'chegada' | 'andamento' | 'tarefas';
 export const CAMPOS_DA_SECAO: Record<Exclude<Secao, 'tarefas'>, (keyof Campos)[]> = {
-  identificacao: ['assunto', 'numero', 'origem', 'tipo', 'area'],
+  identificacao: ['assunto', 'numero', 'origem', 'tipo', 'area', 'rapida', 'ano_documento'],
   descricao: ['descricao'],
   chegada: ['chegou_em', 'prazo_tipo', 'prazo_original', 'prazo_dias'],
   andamento: ['setor', 'acompanhar_em', 'encaminhada_em', 'reiterada_em'],
@@ -34,6 +36,8 @@ export const CAMPOS_DA_SECAO: Record<Exclude<Secao, 'tarefas'>, (keyof Campos)[]
  * O que enviar ao servidor sobre o prazo. Vai sempre a data original (vazia = sem prazo). Os dias do botão só vão quando acabaram de ser escolhidos
  * (o banco parte de hoje ao receber os dias): regravar o mesmo prazo não muda a referência da contagem.
  */
+/** O ano confirmado à mão: vazio ou inválido vira nulo (então vale o ano reconhecido no número). */
+const anoDeCampo = (v: string): number | null => { const n = Number(v.trim()); return v.trim() && Number.isInteger(n) && n >= 1900 && n <= 2100 ? n : null; };
 function dadosDoPrazo(c: Campos, base: Demanda | null): DadosDemanda {
   const dias = c.prazo_dias !== null && c.prazo_original && (!base || c.prazo_original !== base.prazo_original || c.prazo_dias !== base.prazo_dias);
   return { prazo_original: c.prazo_original || null, ...(dias ? { prazo_dias: c.prazo_dias } : {}) };
@@ -42,14 +46,14 @@ function dadosDoPrazo(c: Campos, base: Demanda | null): DadosDemanda {
 /** Todos os campos do cadastro guiado (nada de valor padrão inventado: número, origem, chegada e prazo vazios seguem vazios). Com a demanda já criada, "base" evita refazer a contagem dos dias. */
 export function paraDadosNovos(c: Campos, base: Demanda | null = null): DadosDemanda {
   return {
-    assunto: c.assunto, numero: c.numero, origem: c.origem, descricao: c.descricao, tipo: c.tipo, area: c.area,
+    assunto: c.assunto, numero: c.numero, origem: c.origem, descricao: c.descricao, tipo: c.tipo.trim() || null, area: c.area, rapida: c.rapida, documento_ano: anoDeCampo(c.ano_documento),
     chegou_em: c.chegou_em || null, prazo_tipo: c.prazo_tipo, ...dadosDoPrazo(c, base),
   };
 }
 
 /** Só os campos de uma seção (o salvamento por seção nunca regrava o que não foi editado). */
 export function paraDadosSecao(secao: Exclude<Secao, 'tarefas'>, c: Campos, base: Demanda | null): DadosDemanda {
-  if (secao === 'identificacao') return { assunto: c.assunto, numero: c.numero, origem: c.origem, tipo: c.tipo, area: c.area };
+  if (secao === 'identificacao') return { assunto: c.assunto, numero: c.numero, origem: c.origem, tipo: c.tipo.trim() || null, area: c.area, rapida: c.rapida, documento_ano: anoDeCampo(c.ano_documento) };
   if (secao === 'descricao') return { descricao: c.descricao };
   if (secao === 'chegada') return { chegou_em: c.chegou_em || null, prazo_tipo: c.prazo_tipo, ...dadosDoPrazo(c, base) };
   return { setor: c.setor.trim() || null, acompanhar_em: c.acompanhar_em || null, encaminhada_em: c.encaminhada_em || null, reiterada_em: c.reiterada_em || null };
@@ -78,20 +82,29 @@ export const useTentativa = () => useState(novaTentativa)[0];
 
 // ---------- identificação ----------
 export function CamposIdentificacao({ c, mudar, prefixo, comDescricao, nota }: { c: Campos; mudar: (p: Partial<Campos>) => void; prefixo: string; comDescricao?: boolean; nota?: boolean }) {
-  const temArea = TEM_AREA.includes(c.tipo), areas = areasDoTipo(c.tipo);
+  const area = temArea(c.tipo), areas = areasDoTipo(c.tipo || null), reconhecido = anoReconhecido(c.numero);
   return (
     <>
-      <div className="fld"><label>Tipo de processo ou documento</label><Opcoes lista={TIPOS} valor={c.tipo} rotulo="Tipo de documento" aoEscolher={(v) => mudar({ tipo: v, area: v === 'Protocolo' && c.area === 'Compras' ? 'Geral' : c.area })} /></div>
-      {temArea ? (
+      <div className="fld"><label htmlFor={`${prefixo}-assunto`}>Assunto <small className="data">(obrigatório)</small></label><input id={`${prefixo}-assunto`} value={c.assunto} placeholder="Do que se trata?" maxLength={300} autoComplete="off" onChange={(e) => mudar({ assunto: e.target.value })} /></div>
+      <div className="fld"><label htmlFor={`${prefixo}-origem`}>Origem da solicitação <small className="data">(opcional)</small></label>
+        <SeletorOpcao campo="origem" id={`${prefixo}-origem`} rotulo="Origem da solicitação" valor={c.origem} aoEscolher={(v) => mudar({ origem: v })} />
+      </div>
+      <div className="fld"><label htmlFor={`${prefixo}-tipo`}>Documento associado <small className="data">(opcional: pode chegar depois)</small></label>
+        <SeletorOpcao campo="tipo" id={`${prefixo}-tipo`} rotulo="Tipo do documento" valor={c.tipo} aoEscolher={(v) => mudar({ tipo: v, area: v === 'Protocolo' && c.area === 'Compras' ? 'Geral' : c.area })} />
+      </div>
+      {area ? (
         <div className="fld"><label>Área (define a cor do card)</label><Opcoes lista={areas} valor={areas.includes(c.area) ? c.area : 'Geral'} rotulo="Área" aoEscolher={(v) => mudar({ area: v })} />
           {nota ? <span className="data">{c.tipo === 'Protocolo' ? 'Protocolo geral é azul e de pessoal é verde. Amarelo (compras) só em processo aberto pelo setor de compras.' : 'Azul: geral. Verde: pessoal. Amarelo: compras.'}</span> : null}
         </div>
       ) : null}
       <div className="dois">
-        <div className="fld"><label htmlFor={`${prefixo}-num`}>Número ou identificação <small className="data">(opcional)</small></label><input id={`${prefixo}-num`} value={c.numero} placeholder="Ex.: 2310/2026" maxLength={80} autoComplete="off" onChange={(e) => mudar({ numero: e.target.value })} /></div>
-        <div className="fld"><label htmlFor={`${prefixo}-origem`}>Origem <small className="data">(opcional)</small></label><input id={`${prefixo}-origem`} value={c.origem} placeholder="Quem pediu ou de onde veio" maxLength={160} autoComplete="off" onChange={(e) => mudar({ origem: e.target.value })} /></div>
+        <div className="fld"><label htmlFor={`${prefixo}-num`}>Número ou identificação <small className="data">(opcional)</small></label><input id={`${prefixo}-num`} value={c.numero} placeholder="Ex.: 32/2026 ou 2024/1250" maxLength={80} autoComplete="off" onChange={(e) => mudar({ numero: e.target.value })} /></div>
+        <div className="fld"><label htmlFor={`${prefixo}-ano`}>Ano do documento <small className="data">(opcional)</small></label>
+          <input id={`${prefixo}-ano`} inputMode="numeric" value={c.ano_documento} placeholder={reconhecido ? `${reconhecido} (reconhecido pelo número)` : 'Ex.: 2026'} maxLength={4} autoComplete="off" onChange={(e) => mudar({ ano_documento: e.target.value.replace(/\D/g, '') })} />
+          <span className="data">{c.ano_documento ? 'Ano confirmado por você; apague para voltar a reconhecer pelo número.' : reconhecido ? `Reconhecido pelo número: ${reconhecido}.` : 'Sem ano confirmado. A demanda continua aparecendo em Todos.'}</span>
+        </div>
       </div>
-      <div className="fld"><label htmlFor={`${prefixo}-assunto`}>Assunto <small className="data">(obrigatório)</small></label><input id={`${prefixo}-assunto`} value={c.assunto} placeholder="Do que se trata?" maxLength={300} autoComplete="off" aria-required="true" onChange={(e) => mudar({ assunto: e.target.value })} /></div>
+      <label className="chk-l"><input type="checkbox" checked={c.rapida} onChange={(e) => mudar({ rapida: e.target.checked })} /> <span>Rápida <small className="data">(resolve em pouco tempo; ajuda a escolher o Para hoje)</small></span></label>
       {comDescricao ? <Descricao c={c} mudar={mudar} prefixo={prefixo} /> : null}
     </>
   );

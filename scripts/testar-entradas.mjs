@@ -8,7 +8,7 @@ import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
 
 const PORTA = process.env.PORTA_TESTE_ENTRADAS || '7105', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/entradas';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
+const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
 const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
 process.on('exit', parar);
 let falhas = 0, total = 0;
@@ -429,7 +429,7 @@ const aviso = (pg) => pg.waitForFunction(() => document.querySelector('#toast')?
   // preenchimento do cadastro: sem título, com título, com a primeira linha só de tags
   await virarCard(pg, 'Linha útil da conversão');
   ok((await pg.inputValue('#n-assunto')) === 'Linha útil da conversão' && (await pg.inputValue('#n-descricao')) === 'Segunda linha com detalhe #conv\nTerceira linha', 'sem título: a primeira linha útil vira o assunto e o resto (com as tags) vai para a descrição');
-  ok((await pg.inputValue('#n-num')) === '' && (await pg.inputValue('#n-origem')) === '' && /Nova demanda/.test(await pg.textContent('.modal')) && /vieram da entrada/.test(await pg.textContent('.modal')), 'não inventa número nem origem e o cadastro avisa que os dados vieram da entrada');
+  ok((await pg.inputValue('#n-num')) === '' && (await pg.textContent('#n-origem .sel-v')) === 'Sem origem' && /Nova demanda/.test(await pg.textContent('.modal')) && /vieram da entrada/.test(await pg.textContent('.modal')), 'não inventa número nem origem e o cadastro avisa que os dados vieram da entrada');
   await pg.click('.modal .btn:has-text("Cancelar")'); await janelaFechada(pg);
   ok(await contar(pg, 'Linha útil da conversão') === 1 && !(await rascunhos(pg))['nova'], 'cancelar antes de criar a demanda: a entrada continua ativa em Entradas e não sobra rascunho');
   await virarCard(pg, 'Título explícito da conversão');

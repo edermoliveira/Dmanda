@@ -345,3 +345,27 @@ Cada demanda tem uma `versao`. Se a mesma demanda for alterada em outro aparelho
 ## Migração 13: tarefa com a identidade da tentativa (30/10/2026)
 
 `20261030000300_tarefa_idempotente.sql`: `adicionar_tarefa(p_demanda, p_texto, p_id default null)`. O aplicativo gera o identificador ao começar a tentativa e o reaproveita enquanto o texto digitado for o mesmo; se a tarefa foi gravada mas a resposta se perdeu, repetir devolve a tarefa que já existe em vez de criar outra. O banco **nunca** deduplica pelo conteúdo (tarefas diferentes podem ter o mesmo texto) e a mesma identidade em outra demanda é recusada. Remove a assinatura antiga de duas entradas (duas assinaturas com parâmetro opcional deixariam a chamada ambígua para a API), refaz os privilégios (só o usuário logado) e não toca em dados. **Aplicada no Supabase real em 30/10/2026**, junto com a 12 e antes da publicação do código (o código novo sempre envia `p_id`; o aplicativo anterior, que chama sem `p_id`, continua funcionando porque o parâmetro é opcional). Conferido no real: uma única assinatura `(p_demanda, p_texto, p_id)`, execução só para `authenticated` (nem `anon` nem `public`), e uma prova em transação desfeita como o usuário autorizado: sem identidade +1 tarefa, com identidade +1, repetição com a mesma identidade não duplica; depois da prova, 10 tarefas como antes.
+
+## Migração 16: registros diários de humor e energia (06/11/2026, só banco de teste)
+
+`20261106000000_registros_dia`: tabela `registros_dia` (usuário e dia, humor e energia de 1 a 5), RLS pela conta autorizada, e as funções `listar_registros_dia` e `registrar_dias` (lote de 1 a 6 dias, hoje e os 5 anteriores, tudo ou nada). Aditiva: nenhuma migração anterior foi reescrita e nenhum dado existente muda. **Aplicada somente no banco local de teste** (309 verificações no `testar:banco`); **não foi aplicada no Supabase real** e depende de autorização (dry-run antes). **A cópia dos dados (versão 4) não inclui humor nem energia** e `restaurar-copia.sql` não os conhece: incluí-los depende de um destino privado para a cópia (decisão do usuário).
+
+`20261107000000_registros_dia_janela`: corrige a migração 16 sem reescrevê-la. A janela de correção (hoje e os 5 dias anteriores) passa a valer também na escrita direta em `registros_dia`, por duas políticas **restritivas** (inserir e atualizar) que usam `public.hoje()`, o dia civil de America/Sao_Paulo. Aditiva: só cria políticas; nenhuma linha, função, privilégio ou política existente muda, e a leitura do histórico não é restringida. Linha fora da janela fica só para leitura (o update a ignora). Vai junto com a 16 na mesma publicação: o `db push --linked --dry-run` deve listar **as duas** e nenhuma outra. **Aplicada somente no banco local de teste** (333 verificações no `testar:banco`).
+
+## Migrações 17 a 19: janela, colunas e só humor (07 a 09/11/2026, só banco de teste)
+
+- `20261107000000_registros_dia_janela` (17): duas políticas RLS restritivas, para inserir e atualizar apenas hoje e os 5 dias anteriores também na escrita direta.
+- `20261108000000_registros_dia_colunas` (18): retira o UPDATE de tabela de `authenticated` em `registros_dia` e concede UPDATE só nas colunas editáveis (a linha não muda de dia nem de dono pela API de dados).
+- `20261109000000_registros_dia_so_humor` (19, decisão 59): remove a coluna `energia` e recria `registrar_dias` (item `{dia, humor}`) e `listar_registros_dia` (`dia` e `humor`). No esquema final, `authenticated` tem SELECT, INSERT e UPDATE somente em `humor`; as 3 políticas de RLS e o SECURITY INVOKER seguem. Aditiva, reaplicável, sem tocar nas demais tabelas.
+- **Nenhuma das migrações 16 a 19 foi aplicada no Supabase real.** O `db push --linked --dry-run` deve listar exatamente essas quatro, na ordem 16, 17, 18, 19.
+
+Conferência de privilégios por coluna depois de aplicar (somente leitura):
+```sql
+select column_name, has_column_privilege('authenticated','public.registros_dia',column_name,'UPDATE') upd
+  from information_schema.columns where table_schema='public' and table_name='registros_dia' order by ordinal_position;
+-- esperado: humor true; user_id, dia, criado_em e atualizado_em false; a coluna energia não existe
+```
+
+## Migração 20: origem, documento associado, Rápida e Para hoje (08/11/2026, só banco de teste)
+
+`20261110000000_origem_documento_para_hoje` (decisão 60), aditiva e reaplicável: `demandas.tipo` passa a aceitar vazio e deixa de ter lista fixa; colunas `rapida` e `documento_ano` (só o ano confirmado à mão); tabelas `opcoes` (origem e tipo, criação idempotente por nome sem diferença de maiúsculas ou espaços) e `para_hoje` (até 3 vagas por usuário), ambas com RLS pela conta autorizada e privilégios mínimos (opções: SELECT e INSERT; vagas: SELECT, INSERT e DELETE); funções `listar_opcoes`, `criar_opcao`, `listar_para_hoje` e `atualizar_para_hoje`, todas SECURITY INVOKER; `criar_demanda` e `atualizar_demanda` recriadas com os campos novos. Nenhuma linha existente é alterada. **Não aplicada no Supabase real.**

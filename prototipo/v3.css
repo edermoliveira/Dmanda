@@ -95,7 +95,7 @@
 .app .w-c { position: absolute; top: calc(100% + 8px); left: 0; z-index: 12; width: max-content; min-width: 260px; max-width: min(380px, 86vw); display: none; padding: 14px 16px; background: var(--solido); border: 1px solid var(--solido-brd); box-shadow: 0 18px 50px var(--lg-sh); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .w-c::before { content: ""; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }
 .w:hover .w-c, .w:focus-within .w-c { display: block; }
-.w-humor .w-c, .w-energia .w-c { min-width: 300px; }
+.w-humor .w-c { min-width: 300px; }
 .w-c .frase { font-size: 19px; margin: 4px 0 0; line-height: 1.35; }
 .w-c .emos { margin: 8px 0; }
 .w-c .pend { width: 100%; }

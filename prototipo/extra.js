@@ -1,4 +1,4 @@
-// Segunda camada do protótipo: temas definitivos, fontes em três papéis, energia, janelas de cadastro,
+// Segunda camada do protótipo: temas definitivos, fontes em três papéis, janelas de cadastro,
 // demanda aberta, Perfil e Configurações completas. Recebe o objeto DM exposto pelo app.js.
 window.DM_EXTRA = function (DM) {
   var E = DM.estado, ic = DM.ic, esc = DM.esc, $ = DM.$, $$ = DM.$$, DEM = DM.DEMANDAS, TELAS = DM.TELAS_FN;
@@ -19,7 +19,7 @@ window.DM_EXTRA = function (DM) {
   var PADRAO = { fT: 8, fS: 0, fM: 0, iconeEstilo: 'fino' };
   function base() { return Object.assign({ pal: null, fT: 0, fS: 0, fM: 0, iconeEstilo: '', lib: 'iconoir', fs: 16, ico: 20, cardh: 340 }, PADRAO); }
   function snap() { var o = {}; KEYS.forEach(function (k) { o[k] = E[k]; }); return o; }
-  E.perfilV = 'semana'; E.cidade = 'Taquara/RS'; E.sugestaoPrazo = 30; E.bH = null; E.bE = null; E.alertaParado = 7; E.baloes = 3; E.reduzir = false; E.modal = null; E.rascunho = {}; E.energia = 2; E.col = true; E.balaoAb = false; E.balaoVisto = false;
+  E.perfilV = 'semana'; E.cidade = 'Taquara/RS'; E.sugestaoPrazo = 30; E.bH = null; E.alertaParado = 7; E.baloes = 3; E.reduzir = false; E.modal = null; E.rascunho = {}; E.col = true; E.balaoAb = false; E.balaoVisto = false;
   E.nome = 'Secretário'; E.cargo = 'Secretário de Administração'; E.orgao = 'Prefeitura de Taquara/RS'; E.expIni = '08:00'; E.expFim = '17:00'; E.lapso = 7; E.ultimo = 8; E.avisos = []; E.perfilNovo = false;
   // "Mostrar menu" é preferência da interface: vale ao navegar e ao recarregar (guardada só no navegador; sem armazenamento, começa recolhido)
   var MENU_CHAVE = 'dmanda:menu-aberto';
@@ -135,12 +135,11 @@ window.DM_EXTRA = function (DM) {
     }
   });
 
-  // ---------- emojis: humor em PNG e energia em SVG colorido, do usuário (sem reserva: se faltar, o erro aparece) ----------
-  var EMO_TXT = ['🥴', '🫠', '🙂', '😄', '🥰'], ROT_H = ['Muito mal', 'Mal', 'Neutro', 'Bem', 'Muito bem'], ROT_E = ['Muito baixa', 'Baixa', 'Média', 'Alta', 'Muito alta'];
-  // energia: SVG usado direto em <img> (cores e transparência originais, sem currentColor); humor: PNG
-  function img(tipo, i, alt) { return '<img class="emo-img" src="emojis/' + tipo + '-' + (i + 1) + (tipo === 'energia' ? '.svg' : '.png') + '" alt="' + (alt || '') + '"' + (tipo === 'humor' ? ' data-e="' + EMO_TXT[i] + '"' : '') + '>'; }
+  // ---------- emojis do humor em PNG, do usuário (sem reserva: se faltar, o erro aparece; o indicador de energia foi retirado, decisão 59) ----------
+  var EMO_TXT = ['🥴', '🫠', '🙂', '😄', '🥰'], ROT_H = ['Muito mal', 'Mal', 'Neutro', 'Bem', 'Muito bem'];
+  function img(tipo, i, alt) { return '<img class="emo-img" src="emojis/' + tipo + '-' + (i + 1) + '.png" alt="' + (alt || '') + '"' + (tipo === 'humor' ? ' data-e="' + EMO_TXT[i] + '"' : '') + '>'; }
   function seletor(tipo, atual, act, rot) {
-    return rot.map(function (r, i) { return '<button class="emo' + (tipo === 'energia' ? ' en' : '') + '" data-act="' + act + '" data-i="' + i + '" aria-pressed="' + (atual === i) + '" aria-label="' + r + '" title="' + r + '">' + img(tipo, i) + '</button>'; }).join('');
+    return rot.map(function (r, i) { return '<button class="emo" data-act="' + act + '" data-i="' + i + '" aria-pressed="' + (atual === i) + '" aria-label="' + r + '" title="' + r + '">' + img(tipo, i) + '</button>'; }).join('');
   }
 
   // ---------- Entradas: post-its ----------
@@ -201,7 +200,6 @@ window.DM_EXTRA = function (DM) {
       widget('w-clima', ic('cloud-sun', 'duo') + '<b class="mono">24°</b>', '<div class="data">' + esc(E.cidade) + '</div><b>24°, parcialmente nublado</b>') +
       widget('w-humor', img('humor', E.humor) + '<span class="w-t">Humor</span>', '<div class="data">Como você está agora?</div><div class="emos" role="group" aria-label="Humor">' + seletor('humor', E.humor, 'humor', ROT_H) + '</div>' +
         '<button class="pend" data-act="completar">' + ic('clock') + '<span>Há 2 dias sem registro. Completar (opcional)</span>' + ic('right') + '</button>') +
-      widget('w-energia', img('energia', E.energia, 'Energia: ' + ROT_E[E.energia]) + '<span class="w-t">Energia</span>', '<div class="data">E a energia?</div><div class="emos" role="group" aria-label="Energia">' + seletor('energia', E.energia, 'energia', ROT_E) + '</div>') +
       '</div>';
 
     var ev = DM.EVENTOS.filter(function (x) { return x[0] >= 21; }).sort(function (a, b) { return a[0] - b[0] || (a[1] < b[1] ? -1 : 1); }).slice(0, 6);
@@ -230,25 +228,24 @@ window.DM_EXTRA = function (DM) {
   };
 
   // ---------- Perfil ----------
-  function dadosDia(i) { return { h: (i * 3 + 1) % 5, e: (i * 2 + 1) % 5, c: (i * 5) % 4, sem: i % 7 === 0 || i % 7 === 6 }; }
+  function dadosDia(i) { return { h: (i * 3 + 1) % 5, c: (i * 5) % 4, sem: i % 7 === 0 || i % 7 === 6 }; }
   var DIAS7 = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
-  // Histórico dos últimos 28 dias: uma coluna por dia (data no cabeçalho) e uma linha para Humor e outra para Energia, com rolagem só dentro do histórico.
+  // Histórico dos últimos 28 dias: uma coluna por dia (data no cabeçalho) e uma linha para o Humor, com rolagem só dentro do histórico.
   // Os valores continuam os de dadosDia (dados do protótipo); a data de cada coluna conta de hoje (21/10/2026) para trás. Dia sem registro aparece discreto.
   var SEM_ABR = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'], SEM_COMPLETO = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
   var MES_COMPLETO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   function diaHist(j) { var d = new Date(2026, 9, 21 - (27 - j)), x = dadosDia(j + 1); return { d: d, x: x, curto: ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2), abr: SEM_ABR[d.getDay()], completo: SEM_COMPLETO[d.getDay()] + ', ' + d.getDate() + ' de ' + MES_COMPLETO[d.getMonth()] }; }
-  function textoDiaHist(h) { return h.completo + (h.x.sem ? ': sem registro' : ': humor ' + ROT_H[h.x.h].toLowerCase() + ', energia ' + ROT_E[h.x.e].toLowerCase()); }
+  function textoDiaHist(h) { return h.completo + (h.x.sem ? ': sem registro' : ': humor ' + ROT_H[h.x.h].toLowerCase()); }
   function historicoHTML() {
-    var th = '', lh = '', le = '';
+    var th = '', lh = '';
     for (var j = 0; j < 28; j++) {
       var h = diaHist(j), hoje = j === 27;
       th += '<th scope="col"' + (hoje ? ' class="hoje"' : '') + '><button type="button" class="hd" tabindex="' + (hoje ? 0 : -1) + '" data-act="hist-dia" data-i="' + j + '" aria-pressed="' + hoje + '" aria-label="' + textoDiaHist(h) + '" title="' + textoDiaHist(h) + '"><b>' + (hoje ? 'hoje' : h.abr) + '</b><span>' + h.curto + '</span></button></th>';
       lh += '<td class="hc2' + (h.x.sem ? ' vazio' : '') + '">' + (h.x.sem ? '<span title="Sem registro" aria-label="Sem registro">—</span>' : img('humor', h.x.h, 'Humor: ' + ROT_H[h.x.h])) + '</td>';
-      le += '<td class="hc2' + (h.x.sem ? ' vazio' : '') + '">' + (h.x.sem ? '<span title="Sem registro" aria-label="Sem registro">—</span>' : img('energia', h.x.e, 'Energia: ' + ROT_E[h.x.e])) + '</td>';
     }
     // os nomes das linhas ficam numa coluna fixa ao lado (visual) e como cabeçalhos de linha ocultos na tabela (leitores de tela)
-    return '<div class="hist-w"><div class="hist-lab" aria-hidden="true"><i></i><b>Humor</b><b>Energia</b></div><div class="hist-rol" role="region" aria-label="Histórico dos últimos 28 dias; role para os lados para ver os dias anteriores"><table class="hist-t"><thead><tr><td class="sr">Registro</td>' + th + '</tr></thead>' +
-      '<tbody><tr><th scope="row" class="sr">Humor</th>' + lh + '</tr><tr><th scope="row" class="sr">Energia</th>' + le + '</tr></tbody></table></div></div>' +
+    return '<div class="hist-w"><div class="hist-lab" aria-hidden="true"><i></i><b>Humor</b></div><div class="hist-rol" role="region" aria-label="Histórico dos últimos 28 dias; role para os lados para ver os dias anteriores"><table class="hist-t"><thead><tr><td class="sr">Registro</td>' + th + '</tr></thead>' +
+      '<tbody><tr><th scope="row" class="sr">Humor</th>' + lh + '</tr></tbody></table></div></div>' +
       '<p class="data" id="hist-det" role="status" aria-live="polite">' + textoDiaHist(diaHist(27)) + '</p>';
   }
   DM.acoes['hist-dia'] = function (b) {
@@ -266,11 +263,10 @@ window.DM_EXTRA = function (DM) {
     var mes = E.perfilV === 'mes', n = mes ? 30 : 7, cols = '';
     for (var i = 0; i < n; i++) {
       var d = dadosDia(i + 3);
-      cols += '<div class="gcol' + (mes ? ' fina' : '') + '" tabindex="0"><span class="tip">' + (mes ? 'dia ' + (i + 1) : DIAS7[i]) + ': ' + d.c + ' finalizadas' + (d.sem ? '' : ', humor ' + ROT_H[d.h].toLowerCase() + ', energia ' + ROT_E[d.e].toLowerCase()) + '</span><i style="height:' + (8 + d.c * 26) + 'px"></i>' + (mes ? '' : '<span>' + DIAS7[i] + '</span>') + '</div>';
+      cols += '<div class="gcol' + (mes ? ' fina' : '') + '" tabindex="0"><span class="tip">' + (mes ? 'dia ' + (i + 1) : DIAS7[i]) + ': ' + d.c + ' finalizadas' + (d.sem ? '' : ', humor ' + ROT_H[d.h].toLowerCase()) + '</span><i style="height:' + (8 + d.c * 26) + 'px"></i>' + (mes ? '' : '<span>' + DIAS7[i] + '</span>') + '</div>';
     }
     return '<div class="ind3">' +
       '<section class="painel ind"><h3>Humor</h3><div class="ind-v">' + img('humor', E.humor) + '<b>' + ROT_H[E.humor] + '</b></div><p class="data">Último registro de hoje. Só seu.</p></section>' +
-      '<section class="painel ind"><h3>Energia</h3><div class="ind-v">' + img('energia', E.energia) + '<b>' + ROT_E[E.energia] + '</b></div><p class="data">Último registro de hoje. Só seu.</p></section>' +
       '<section class="painel ind"><h3>Produtividade</h3><div class="ind-v"><b class="grande-n">1</b><b>demanda finalizada hoje</b></div><p class="data">Calculada pelas demandas finalizadas no dia.</p></section></div>' +
       '<section class="painel"><div class="ph"><h3>Seu ritmo</h3><div class="tabs" role="group" aria-label="Período">' +
       '<button data-act="perfilv" data-v="semana" aria-pressed="' + !mes + '">Semana</button><button data-act="perfilv" data-v="mes" aria-pressed="' + mes + '">Mês</button></div></div>' +
@@ -278,7 +274,7 @@ window.DM_EXTRA = function (DM) {
       '<section class="painel"><h3>Histórico dos últimos dias</h3><p class="data">Dados de exemplo do protótipo: as datas são demonstrativas.</p>' + historicoHTML() +
       '<div class="acoes"><button class="btn mini" data-act="completar">' + ic('clock') + 'Completar últimos dias</button></div></section>' +
       '<section class="painel"><p class="frase">Hoje: 1 demanda finalizada. Dia com zero também acontece e não desfaz o resto da semana.</p>' +
-      '<p class="data">Humor e energia são privados e nunca vão para a IA sem a sua permissão. Este espaço não substitui acompanhamento profissional.</p></section>';
+      '<p class="data">O humor é privado e nunca vai para a IA sem a sua permissão. Este espaço não substitui acompanhamento profissional.</p></section>';
   }
   function campoPf(rot, k, tipo, extra) { return '<div class="fld"><label for="pf-' + k + '">' + rot + '</label><input id="pf-' + k + '" data-pref="' + k + '" type="' + (tipo || 'text') + '" value="' + esc(E[k]) + '" ' + (extra || '') + ' autocomplete="off"></div>'; }
   // Perfil abre numa gaveta à direita, com o resto da tela desfocado
@@ -290,7 +286,7 @@ window.DM_EXTRA = function (DM) {
       '<section class="painel"><h3>Edição rápida</h3>' + campoPf('Nome', 'nome') + campoPf('Cargo', 'cargo') + campoPf('Órgão', 'orgao') +
       '<div class="dois">' + campoPf('Expediente: início', 'expIni', 'time') + campoPf('Expediente: fim', 'expFim', 'time') + '</div>' +
       campoPf('Cidade do clima', 'cidade') + campoPf('Avisar após quantos dias sem uso', 'lapso', 'number', 'min="2" max="60"') +
-      '<label class="fld"><span>Balão de humor e energia a cada</span><select data-pref="baloes"><option value="2"' + (E.baloes == 2 ? ' selected' : '') + '>2 horas</option><option value="3"' + (E.baloes == 3 ? ' selected' : '') + '>3 horas</option><option value="4"' + (E.baloes == 4 ? ' selected' : '') + '>4 horas</option></select></label>' +
+      '<label class="fld"><span>Balão de humor a cada</span><select data-pref="baloes"><option value="2"' + (E.baloes == 2 ? ' selected' : '') + '>2 horas</option><option value="3"' + (E.baloes == 3 ? ' selected' : '') + '>3 horas</option><option value="4"' + (E.baloes == 4 ? ' selected' : '') + '>4 horas</option></select></label>' +
       '<p class="data">Salvo automaticamente. Só você vê isto.</p></section>' +
       corpoPerfil() + '<div class="acoes"><button class="btn mini" data-act="perfil-cfg">' + ic('settings') + 'Abrir configurações</button></div></aside></div>';
   };
@@ -325,7 +321,7 @@ window.DM_EXTRA = function (DM) {
       '<label class="fld"><span>Cidade do clima</span><input data-pref="cidade" value="' + esc(E.cidade) + '"></label>' +
       '<label class="fld"><span>Prazo sugerido, em dias (só sugere, nunca preenche sozinho)</span><input data-pref="sugestaoPrazo" type="number" min="1" max="120" value="' + E.sugestaoPrazo + '"></label>' +
       '<label class="fld"><span>Alerta de parado há quantos dias</span><input data-pref="alertaParado" type="number" min="1" max="60" value="' + E.alertaParado + '"></label>' +
-      '<label class="fld"><span>Balão de humor e energia a cada</span><select data-pref="baloes"><option value="2"' + (E.baloes == 2 ? ' selected' : '') + '>2 horas</option><option value="3"' + (E.baloes == 3 ? ' selected' : '') + '>3 horas</option><option value="4"' + (E.baloes == 4 ? ' selected' : '') + '>4 horas</option></select></label></section>' +
+      '<label class="fld"><span>Balão de humor a cada</span><select data-pref="baloes"><option value="2"' + (E.baloes == 2 ? ' selected' : '') + '>2 horas</option><option value="3"' + (E.baloes == 3 ? ' selected' : '') + '>3 horas</option><option value="4"' + (E.baloes == 4 ? ' selected' : '') + '>4 horas</option></select></label></section>' +
       '<section class="painel"><h3>Dados e conteúdo</h3><div class="acoes">' +
       '<button class="btn mini" data-act="msg" data-m="Exportar todos os dados">' + ic('export') + 'Exportar dados</button><button class="btn mini" data-act="msg" data-m="Importar dados">' + ic('import') + 'Importar dados</button>' +
       '<button class="btn mini" data-act="msg" data-m="Banco de 500 frases">' + ic('message-circle') + 'Banco de frases (0 de 500)</button>' +
@@ -439,13 +435,13 @@ window.DM_EXTRA = function (DM) {
   function mDias() {
     var dias = [['Terça, 20', 'ter'], ['Segunda, 19', 'seg']];
     return cab('Completar os últimos dias') + '<p class="data">Opcional. Só aparecem dias úteis sem registro (fins de semana e feriados ficam de fora).</p>' +
-      dias.map(function (d) { return '<div class="dia-l"><b>' + d[0] + '</b><div class="emos">' + seletor('humor', -1, 'noop', ROT_H) + '</div><div class="emos">' + seletor('energia', -1, 'noop', ROT_E) + '</div></div>'; }).join('') +
+      dias.map(function (d) { return '<div class="dia-l"><b>' + d[0] + '</b><div class="emos">' + seletor('humor', -1, 'noop', ROT_H) + '</div></div>'; }).join('') +
       '<footer class="m-f"><span class="esp"></span><button class="btn" data-act="cancelar-modal">Agora não</button><button class="btn pri" data-act="fechar-modal">Salvar</button></footer>';
   }
   function balao() {
-    var falta = E.bH === null && E.bE === null ? 'Escolha o humor e a energia para registrar.' : E.bH === null ? 'Falta escolher o humor.' : E.bE === null ? 'Falta escolher a energia.' : '';
-    return '<div class="balao lg" role="status"><button class="icbtn-s" data-act="fechar-balao" aria-label="Fechar">' + ic('x') + '</button><b>Um registro rápido?</b><p class="data">Opcional. Só registra quando os dois estiverem escolhidos.</p>' +
-      '<div class="emos mini">' + seletor('humor', E.bH, 'humor-b', ROT_H) + '</div><div class="emos mini">' + seletor('energia', E.bE, 'energia-b', ROT_E) + '</div><p class="data balao-f">' + falta + '</p></div>';
+    var falta = E.bH === null ? 'Escolha o humor para registrar.' : '';
+    return '<div class="balao lg" role="status"><button class="icbtn-s" data-act="fechar-balao" aria-label="Fechar">' + ic('x') + '</button><b>Um registro rápido?</b><p class="data">Opcional. Escolher um nível já registra.</p>' +
+      '<div class="emos mini">' + seletor('humor', E.bH, 'humor-b', ROT_H) + '</div><p class="data balao-f">' + falta + '</p></div>';
   }
   DM.modalHTML = function () {
     var out = '', m = E.modal;
@@ -462,14 +458,12 @@ window.DM_EXTRA = function (DM) {
   A.surpreenda = function () { var c = CONJUNTOS[Math.floor(Math.random() * CONJUNTOS.length)]; DM.trocar({ pal: Math.floor(Math.random() * DM.PALETAS.length), fT: c[1], fS: c[2], fM: c[3] }); };
   A.restaurar = function () { DM.trocar(base()); };
   A.conjunto = function (b) { var c = CONJUNTOS[+b.dataset.i]; DM.trocar({ fT: c[1], fS: c[2], fM: c[3] }); };
-  A.energia = function (b) { DM.trocar({ energia: +b.dataset.i }); };
   function registrar() {
-    if (E.bH !== null && E.bE !== null) { DM.trocar({ humor: E.bH, energia: E.bE, balaoAb: false, bH: null, bE: null }); DM.toast('Humor e energia registrados'); }
+    if (E.bH !== null) { DM.trocar({ humor: E.bH, balaoAb: false, bH: null }); DM.toast('Humor registrado'); }
     else DM.trocar({});
   }
   A['humor-b'] = function (b) { E.bH = +b.dataset.i; registrar(); };
-  A['energia-b'] = function (b) { E.bE = +b.dataset.i; registrar(); };
-  A['fechar-balao'] = function () { DM.trocar({ balaoAb: false, bH: null, bE: null }); };
+  A['fechar-balao'] = function () { DM.trocar({ balaoAb: false, bH: null }); };
   A['filtro-ini'] = function (b) { DM.trocar({ filtroIni: E.filtroIni === b.dataset.g ? null : b.dataset.g }); };
   A['filtro-tag'] = function (b) { DM.trocar({ tagSel: b.dataset.t || null }); };
   A.noop = function () {};

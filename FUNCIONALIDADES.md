@@ -20,7 +20,7 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Alertas ao abrir: atrasadas (vermelho), vencendo hoje, compromissos de hoje, aguardando retorno parado há mais de 7 dias (ajustável) [substituído em 02/11/2026: vale o retorno do setor em 10 dias corridos e a etapa Aguardando Prefeita, decisões 45 e 46].
 - "Foco do dia": até 3 demandas sugeridas (prazo legal primeiro, depois próprio, depois mais tempo parada). O usuário pode trocar.
 - Widget de clima da cidade (configurável).
-- Acesso rápido para registrar humor e energia.
+- Acesso rápido para registrar o humor.
 - Abrir uma demanda a partir da lista. Marcar como concluída.
 
 ### Entradas
@@ -94,11 +94,11 @@ Atualizado em 22/10/2026. Base: `PRODUTO.md`, `PESQUISA.md`, `REFERENCIAS.md` e 
 - Tipos de documento (adicionar, renomear, ocultar). Feriados.
 
 ### Perfil (avatar no topo)
-- Registro de **humor** (emojis), **energia** e **produtividade** (demandas finalizadas no dia, calculada).
+- Registro de **humor** (emojis; a energia foi retirada pela decisão 59) e **produtividade** (demandas finalizadas no dia, calculada).
 - Balões discretos a cada 3 horas de trabalho desde o login (cerca de 4 por dia, incluindo o primeiro do dia). Só o último registro de cada indicador fica no dia.
 - Correção até 5 dias depois. Janela antes do Início para completar pendências (ignora fins de semana e feriados, só o que falta, rápida, opcional). Dias sem registro ficam "Sem registro".
 - Painel: resumo do dia, gráfico interativo (semana e mês) com resumo ao passar o mouse, histórico visual compacto e os três indicadores juntos. Frase sempre neutra e acolhedora. Gráficos podem ser coloridos, animados e elegantes, desde que as cores não classifiquem a produtividade como boa ou ruim.
-- Humor e energia privados. Sem metas nem cobrança. Aviso de que não substitui acompanhamento profissional.
+- O humor é privado. Sem metas nem cobrança. Aviso de que não substitui acompanhamento profissional.
 
 ### Busca global (lupa)
 - Procura em tudo: demandas (número, assunto, origem), tarefas, entradas, documentos, eventos.
@@ -135,7 +135,7 @@ Situação: **concluída e verificada**, **implementada, a validar**, **em andam
 4. **Demandas completas:** implementada, a validar no Supabase real. Quatro visões (Cards, Quadro, Tabela, Lista), Arquivo, edição de qualquer campo, mover por menu e arraste, rascunhos, busca, filtros e ordenação. Pendente dentro desta etapa: campo para cadastrar o selo MP, tipos de documento opcionais além dos atuais, se o usuário quiser.
 5. **Entradas** e virar demanda: **implementada em 30/10/2026**, testada no banco de teste e com a migração 10 aplicada no Supabase real; **a validar** (avaliação do usuário na PWA, Issue #5). Fora do bloco: voz, foto, envelhecimento das notas, IA.
 6. **Agenda local** (Hoje, semana, mês, eventos, avisos dentro do aplicativo): implementada em 02/11/2026 e aprovada em 04/11/2026 (feriados e eventos externos seguem em Configurações).
-7. **Configurações** (paletas, fontes, tamanhos, fundo): não iniciada na aplicação funcional (existe no protótipo).
+7. **Configurações, aparência** (modo Claro, Escuro e Sistema, dez destaques, três papéis de fonte, tamanhos de texto, ícones e cards, fundo e movimento, restaurar padrão): implementada em 06/11/2026 (decisão 53), **a validar** pelo usuário. Dias indisponíveis seguem na mesma tela. Ícones (Iconoir e Lucide), widgets do Início, preferências (cidade, prazo sugerido, alerta de parado, balões), dados (exportar e importar), fundo em cor ou imagem e as demais seções continuam só no protótipo.
 8. **Busca global e botão "+":** botão "+" funcional para nova demanda; busca global desativada com aviso. Busca e filtros de Demandas funcionam.
 9. **Perfil: humor, energia, produtividade, clima e mensagem do dia:** não iniciada na aplicação funcional (existe no protótipo). Cada registro de Humor e Energia terá a sua própria data.
 10. **Google Calendar e Drive:** não iniciada.
@@ -154,3 +154,8 @@ Estão em `DECISOES.md`. Resumo das regras de negócio: Aguardando retorno é um
 - Limites do plano gratuito do Postgres (Supabase) e da IA gratuita.
 - Nomes e textos exatos de botões, ficam para a etapa das telas.
 - Peças com os cinco estados e conferência de contraste no Catalyst, claro e escuro.
+
+## Para hoje, origem e documento (decisão 60, validação local)
+- Para hoje: até 3 vagas persistentes no Início (atrasadas e vencem hoje primeiro; a marca Rápida desempata; sem prazo entra quando há ação possível; terceiros só com cobrança devida). Concluir repõe só a vaga liberada. O grupo de prazo chama-se Vencem hoje.
+- Origem da solicitação e documento associado são campos independentes e opcionais, com dropdown e criação no próprio dropdown.
+- Ano do documento reconhecido pelo número (formato inequívoco) ou confirmado à mão; filtros de origem, tipo e ano combináveis em Demandas.

@@ -16,7 +16,7 @@ const AREA_NOME = { Geral: 'geral', Pessoal: 'de pessoal', Compras: 'de compras'
 export const OrigemP = ({ d }: { d: Demanda }) => (origemDe(d) ? <span className="origem-p"><i className="pt" style={{ '--h': matiz(origemDe(d)) } as React.CSSProperties} />{origemDe(d)}</span> : <span className="origem-p" />);
 const Numero = ({ d }: { d: Demanda }) => (numeroDe(d) ? <span className="num mono">{numeroDe(d)}</span> : null);
 export const ChipTipo = ({ d }: { d: Demanda }) => (
-  <span className="tag" title={d.tipo === 'Processo' || d.tipo === 'Protocolo' ? `${d.tipo} ${AREA_NOME[d.area]}` : undefined} style={{ '--h': TIPO_COR[d.tipo] ?? 212 } as React.CSSProperties}>{d.tipo}</span>
+  d.tipo ? <span className="tag" title={d.tipo === 'Processo' || d.tipo === 'Protocolo' ? `${d.tipo} ${AREA_NOME[d.area]}` : undefined} style={{ '--h': TIPO_COR[d.tipo] ?? 212 } as React.CSSProperties}>{d.tipo}</span> : <span className="tag" style={{ '--h': 212 } as React.CSSProperties}>Sem documento</span>
 );
 const nivelPrazo = (n: number) => (n <= 1 ? ' n-verm' : n <= 3 ? ' n-lar' : n <= 5 ? ' n-amar' : '');
 // contagem regressiva: neutra até 6 dias; amarela com 5 e 4; laranja com 3 e 2; vermelha com 1 e no dia; vencido em vermelho vivo. Sem prazo não aparece nada.
@@ -137,7 +137,8 @@ export function AcaoCard({ d }: { d: Demanda }) {
 
 const Desc = ({ d }: { d: Demanda }) => (d.descricao.trim() ? <div className="desc">{d.descricao.trim()}</div> : null);
 
-export function CardDemanda({ d }: { d: Demanda }) {
+/** `mostrarRapida`: o painel Para hoje mostra a marca Rápida (só quando está ativa) no card; nas demais telas o card segue como era. */
+export function CardDemanda({ d, mostrarRapida = false }: { d: Demanda; mostrarRapida?: boolean }) {
   const { abrirJanela, arquivar, mover, abrirMenuMover, hoje } = useApp();
   const [fixo, setFixo] = useState<'frente' | 'verso' | undefined>();
   const fin = d.etapa === 'Finalizado';
@@ -156,6 +157,7 @@ export function CardDemanda({ d }: { d: Demanda }) {
           <div className="tags">
             <ChipTipo d={d} /><Numero d={d} />
             {fin ? <span className="chip">Finalizada</span> : <span className="chip neutro">{d.etapa}{d.etapa === 'Aguardando retorno' && d.setor ? ` · ${d.setor} ${curto(dias)}` : ''}</span>}
+            {mostrarRapida && d.rapida ? <span className="chip rapida" data-rapida title="Marcada como rápida: ajuda a escolher o Para hoje">Rápida</span> : null}
           </div>
           <div className="assunto fit" role="link" tabIndex={0} title={d.assunto} onClick={abrirEd} onKeyDown={teclaAbrir}>{d.assunto}</div>
           <Desc d={d} />
@@ -170,7 +172,7 @@ export function CardDemanda({ d }: { d: Demanda }) {
           <div className="meta">
             <div>Chegou em<b>{d.chegou_em ? dataCurta(d.chegou_em) : 'não informada'}</b></div>
             <div>{fin && d.chegou_em ? 'Resolvida em' : 'Parada há'}<b>{fin && d.chegou_em && d.concluida_em ? curto(Math.max(0, diasDesde(d.chegou_em, hoje) - diasDesde(d.concluida_em, hoje))) : curto(dias)}</b></div>
-            <div>Tipo<b>{d.tipo}</b></div>
+            <div>Tipo<b>{d.tipo ?? 'Sem documento'}</b></div>
             {d.setor ? <div>Setor<b>{d.setor} · {dias} dias</b></div> : null}
             {d.acompanhar_em ? <div>Acompanhar em<b>{dataCurta(d.acompanhar_em)}</b></div> : null}
           </div>

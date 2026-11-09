@@ -28,8 +28,8 @@ Mais: **Arquivo** (página à parte), **Perfil** (avatar no topo), **botão "+"*
 - Remover uma demanda: **arquivar** (vai para o Arquivo) ou **excluir definitivamente** (segunda confirmação). Arquivar é sempre manual.
 - O que está sendo digitado é guardado sozinho.
 
-## Humor, energia e produtividade (Perfil)
-Registro leve de humor e energia (balões discretos, cerca de 4 por dia, correção até 5 dias depois) e produtividade calculada pelas demandas finalizadas. Sem metas, sem cobrança, sem classificar dia como bom ou ruim. É uma ferramenta de autoconhecimento, não um tratamento. Dado de humor é privado e nunca vai para a IA sem permissão.
+## Humor e produtividade (Perfil)
+Registro leve de humor (a energia foi retirada, decisão 59) (balões discretos, cerca de 4 por dia, correção até 5 dias depois) e produtividade calculada pelas demandas finalizadas. Sem metas, sem cobrança, sem classificar dia como bom ou ruim. É uma ferramenta de autoconhecimento, não um tratamento. Dado de humor é privado e nunca vai para a IA sem permissão.
 
 ## Onde vai morar
 Desenvolvido local e publicado na **Vercel com login Google** assim que existir a versão mínima de Demandas. Instalável no iPhone e iPad como **PWA**. O app nativo da App Store fica para depois.

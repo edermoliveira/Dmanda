@@ -1,10 +1,12 @@
 // Tipos e regras de apresentação de demandas e tarefas, usados pela interface e pelas operações. Sem acesso a banco.
 import { ajustarPrazo, somarDias, type DiaIndisponivel } from './prazos.ts';
+import { anoDoDocumento, chaveOpcao } from './documentos.ts';
 
 export const ETAPAS = ['Cadastro', 'Vistos', 'Fazendo', 'Aguardando retorno', 'Aguardando Prefeita', 'Finalizado'] as const;
 export type Etapa = (typeof ETAPAS)[number];
 export const TIPOS = ['Protocolo', 'Processo', 'Memorando', 'Ofício', 'Pedido de informação', 'Projeto de lei', 'Portaria', 'Outro documento'] as const;
-export type Tipo = (typeof TIPOS)[number];
+/** Os tipos de documento de antes (opções iniciais). O tipo agora é um texto livre cadastrável (vem de `opcoes`) e pode faltar: demanda sem documento associado. */
+export type Tipo = string;
 export const AREAS = ['Geral', 'Pessoal', 'Compras'] as const;
 export type Area = (typeof AREAS)[number];
 export const PRAZOS = ['Legal', 'Próprio'] as const;
@@ -13,7 +15,8 @@ export type PrazoTipo = (typeof PRAZOS)[number];
 export type Tarefa = { id: string; texto: string; concluida: boolean; posicao: number };
 export type Demanda = {
   id: string;
-  tipo: Tipo;
+  /** Tipo do documento associado, ou nulo quando a demanda não tem documento (nasceu de uma reunião ou de um pedido verbal, por exemplo). */
+  tipo: Tipo | null;
   area: Area;
   numero: string;
   assunto: string;
@@ -35,6 +38,10 @@ export type Demanda = {
   /** Prazo que já existia antes da regra do prazo original: o prazo de então virou a referência original. */
   prazo_legado: boolean;
   prazo_tipo: PrazoTipo;
+  /** Marca opcional: demanda que se resolve em pouco tempo (desempata o Para hoje). */
+  rapida: boolean;
+  /** Ano do documento confirmado à mão, ou nulo (então o ano é o reconhecido no número, quando inequívoco). */
+  documento_ano: number | null;
   setor: string | null;
   acompanhar_em: string | null;
   /** Quando a demanda foi efetivamente encaminhada ao outro setor (AAAA-MM-DD). Opcional: sem ela, a contagem de retorno parte do dia em que entrou em Aguardando retorno. */
@@ -53,16 +60,17 @@ export type Demanda = {
 };
 
 /** Campos que o formulário pode gravar (a etapa, as tarefas e o arquivamento têm operações próprias). */
-export type DadosDemanda = Partial<Pick<Demanda, 'tipo' | 'area' | 'numero' | 'assunto' | 'descricao' | 'origem' | 'chegou_em' | 'prazo_original' | 'prazo_dias' | 'prazo_tipo' | 'setor' | 'acompanhar_em' | 'encaminhada_em' | 'reiterada_em'>> & { etapa?: Etapa };
+export type DadosDemanda = Partial<Pick<Demanda, 'tipo' | 'area' | 'numero' | 'assunto' | 'descricao' | 'origem' | 'chegou_em' | 'prazo_original' | 'prazo_dias' | 'prazo_tipo' | 'rapida' | 'documento_ano' | 'setor' | 'acompanhar_em' | 'encaminhada_em' | 'reiterada_em'>> & { etapa?: Etapa };
 
 /** Número e origem são opcionais: vazio (ou os marcadores antigos "s/n" e "Não informada", gravados antes do cadastro guiado) significa que não foram informados. */
 export const numeroDe = (d: Pick<Demanda, 'numero'>) => (d.numero.trim() === '' || d.numero === 's/n' ? '' : d.numero);
 export const origemDe = (d: Pick<Demanda, 'origem'>) => (d.origem.trim() === '' || d.origem === 'Não informada' ? '' : d.origem);
-/** Identificação curta da demanda para títulos e listas: "Processo 1842/2026", ou só o tipo quando não há número. */
-export const titulo = (d: Pick<Demanda, 'tipo' | 'numero'>) => [d.tipo, numeroDe(d)].filter(Boolean).join(' ');
+/** Identificação curta da demanda para títulos e listas: "Processo 1842/2026", ou só o tipo quando não há número; sem tipo nem número (demanda sem documento associado), "Sem documento". */
+export const titulo = (d: Pick<Demanda, 'tipo' | 'numero'>) => [d.tipo, numeroDe(d)].filter(Boolean).join(' ') || 'Sem documento';
 
-export const TEM_AREA: readonly Tipo[] = ['Processo', 'Protocolo'];
-export const areasDoTipo = (tipo: Tipo): readonly Area[] => (tipo === 'Protocolo' ? ['Geral', 'Pessoal'] : AREAS);
+export const TEM_AREA: readonly string[] = ['Processo', 'Protocolo'];
+export const temArea = (tipo: string | null | undefined) => !!tipo && TEM_AREA.includes(tipo);
+export const areasDoTipo = (tipo: Tipo | null): readonly Area[] => (tipo === 'Protocolo' ? ['Geral', 'Pessoal'] : AREAS);
 
 // Nenhuma função de data aqui lê o relógio sozinha: a data de hoje vem sempre de fora (contexto da tela), para a renderização do servidor não depender do horário.
 const MS_DIA = 86_400_000;
@@ -90,23 +98,26 @@ export const plural = (n: number, u: string) => `${n} ${u}${n === 1 ? '' : 's'}`
 
 /** Cor de classificação do card: Processo e Protocolo ganham tom pelo área; os demais documentos são neutros. */
 const AREA_COR: Record<Area, string> = { Geral: 'azul', Pessoal: 'verde', Compras: 'amar' };
-export const corCard = (d: Demanda) => (TEM_AREA.includes(d.tipo) ? ` cat-${AREA_COR[d.area]}` : '');
+export const corCard = (d: Demanda) => (temArea(d.tipo) ? ` cat-${AREA_COR[d.area]}` : '');
 export const ETAPA_COR: Record<Etapa, number> = { Cadastro: 48, Vistos: 205, Fazendo: 262, 'Aguardando retorno': 330, 'Aguardando Prefeita': 295, Finalizado: 150 };
 export const TIPO_COR: Record<string, number> = { Processo: 262, Protocolo: 262, Memorando: 212, 'Ofício': 28, Portaria: 150, 'Pedido de informação': 190, 'Projeto de lei': 340 };
 
-export type Filtro = { texto: string; soAtrasadas: boolean; tipo: Tipo | ''; prazo: '' | 'sem' | 'atrasadas' | 'hoje' | 'sete' };
-export const FILTRO_VAZIO: Filtro = { texto: '', soAtrasadas: false, tipo: '', prazo: '' };
+/** Filtros combináveis: texto, só atrasadas, tipo do documento, origem, ano do documento e prazo. Vazio = Todos (demandas sem origem, sem documento ou sem ano continuam em Todos). */
+export type Filtro = { texto: string; soAtrasadas: boolean; tipo: string; origem: string; ano: string; prazo: '' | 'sem' | 'atrasadas' | 'hoje' | 'sete' };
+export const FILTRO_VAZIO: Filtro = { texto: '', soAtrasadas: false, tipo: '', origem: '', ano: '', prazo: '' };
 export function filtrar(lista: Demanda[], f: Filtro, hoje: string, dias: readonly DiaIndisponivel[] = []): Demanda[] {
   const q = f.texto.trim().toLowerCase();
   return lista.filter((d) => {
     if (f.soAtrasadas && grupoFiltro(d, hoje, dias) !== 'atrasadas') return false;
-    if (f.tipo && d.tipo !== f.tipo) return false;
+    if (f.tipo && chaveOpcao(d.tipo) !== chaveOpcao(f.tipo)) return false;
+    if (f.origem && chaveOpcao(origemDe(d)) !== chaveOpcao(f.origem)) return false;
+    if (f.ano && String(anoDoDocumento(d) ?? '') !== f.ano) return false;
     if (f.prazo === 'sem' && d.prazo) return false;
     if (f.prazo === 'atrasadas' || f.prazo === 'hoje' || f.prazo === 'sete') {
       const data = dataFiltro(d, hoje, dias), n = data ? diasAte(data, hoje) : null;
       if (n === null || (f.prazo === 'atrasadas' ? n >= 0 : f.prazo === 'hoje' ? n !== 0 : n < 0 || n > 7)) return false;
     }
-    return !q || `${d.tipo} ${d.numero} ${d.assunto} ${d.origem} ${d.descricao}`.toLowerCase().includes(q);
+    return !q || `${d.tipo ?? ''} ${d.numero} ${d.assunto} ${d.origem} ${d.descricao}`.toLowerCase().includes(q);
   });
 }
 
@@ -168,10 +179,6 @@ export const porGrupo = (lista: Demanda[], grupo: GrupoInicio, hoje: string, dia
   lista
     .filter((d) => grupoFiltro(d, hoje, dias) === grupo)
     .sort((a, b) => diasAte(dataFiltro(a, hoje, dias)!, hoje) - diasAte(dataFiltro(b, hoje, dias)!, hoje) || (permanencia(b, hoje) ?? -1) - (permanencia(a, hoje) ?? -1));
-
-/** Foco do dia: até 3 demandas, atrasadas primeiro, depois hoje, depois os próximos 7 dias. */
-export const focoDoDia = (lista: Demanda[], hoje: string, dias: readonly DiaIndisponivel[] = []): Demanda[] =>
-  (['atrasadas', 'hoje', 'sete'] as const).flatMap((g) => porGrupo(lista, g, hoje, dias)).slice(0, 3);
 
 // ---------- Aguardando Prefeita (decisão 46) ----------
 /** A espera passa a ser destacada como alerta de espera a partir do 11º dia (mais de 10 dias corridos na etapa). Não é prazo nem vencimento: não cria data, não muda o prazo da demanda e não entra em "atrasadas". */

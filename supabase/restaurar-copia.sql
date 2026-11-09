@@ -15,6 +15,8 @@
 --   - Se o projeto não tiver exatamente 1 usuário, nada é gravado. A conta, a senha, a lista de acesso e as migrações NÃO fazem parte da cópia e precisam existir antes.
 --   - Exige o dono da tabela (no SQL Editor do Supabase você já é): o script desliga e religa um gatilho dentro da própria transação.
 --   - Não restaura: preferências do navegador (tema, visão, rascunhos), resumos e registros da rotina diária (a rotina recalcula), nem a data de criação de cada tarefa.
+--   - Também fica fora do JSON: o humor do dia (tabela registros_dia, dado pessoal e privado), as opções de origem e de tipo cadastradas e ainda não usadas por nenhuma demanda (tabela opcoes; a origem e o tipo de cada demanda restaurada voltam no texto da própria demanda)
+--     e as vagas de Para hoje (tabela para_hoje; o painel recompõe as vagas a partir das demandas abertas). Cópia anterior à migração 20 não traz a marca Rápida: as demandas voltam com Rápida desligada.
 --   - Rodar duas vezes com o mesmo arquivo não duplica nada.
 do $restaurar$
 declare
@@ -44,7 +46,9 @@ begin
     insert into public.demandas
     select r.*
     from jsonb_populate_recordset(null::public.demandas,
-      (select coalesce(jsonb_agg(x || jsonb_build_object('user_id', dono, 'versao', coalesce(x -> 'versao', '1'::jsonb), 'prazo_legado', coalesce(x -> 'prazo_legado', 'false'::jsonb))
+      (select coalesce(jsonb_agg(x || jsonb_build_object('user_id', dono, 'versao', coalesce(x -> 'versao', '1'::jsonb), 'prazo_legado', coalesce(x -> 'prazo_legado', 'false'::jsonb),
+        -- cópia anterior à migração 20 não tem a marca Rápida (coluna NOT NULL): ausente ou nula vira false; true e false presentes são preservados
+        'rapida', case when jsonb_typeof(x -> 'rapida') = 'boolean' then x -> 'rapida' else 'false'::jsonb end)
         -- cópia antiga (sem prazo original): o prazo que ela tinha vira a referência original, marcada como legado
         || case when x ? 'prazo_original' or x ->> 'prazo' is null then '{}'::jsonb else jsonb_build_object('prazo_original', x -> 'prazo', 'prazo_legado', true) end), '[]'::jsonb) from jsonb_array_elements(todas) x)) r
     on conflict (id) do nothing

@@ -203,3 +203,169 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
   .app .lista-dem .ld-abrir .tx { display: none; }
   .app .lista-dem .linha-d { padding-left: 14px; }
 }
+
+/* ---------- Configurações > Aparência (decisões 11 e 35) ---------- */
+.app[data-dir="d"] .cfg .cfg-bloco { max-width: none; }
+.app[data-dir="d"] .cfg .data { margin: 6px 0 0; }
+.app[data-dir="d"] .cfg .seg-p { flex-wrap: wrap; }
+.app[data-dir="d"] .cfg .seg-p button { min-height: 40px; padding: 0 16px; }
+.app[data-dir="d"][data-dev="toque"] .cfg .seg-p button { min-height: 44px; }
+.app[data-dir="d"] .cfg .sw { min-height: 64px; }
+.app[data-dir="d"] .cfg .sw.padrao i { background: linear-gradient(90deg, var(--padrao-sw1) 0 55%, var(--padrao-sw2) 55%); }
+.app[data-dir="d"][data-tema="claro"] .cfg .sw.padrao { --padrao-sw1: #0071E3; --padrao-sw2: #0062C4; }
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw.padrao { --padrao-sw1: #3D9BFF; --padrao-sw2: #6DB3FF; }
+.app[data-dir="d"] .cfg .rng input[type="range"] { min-height: 44px; }
+/* Fundo animado (opcional): véu de destaque que deriva devagar atrás de tudo. Parado com movimento reduzido (sistema ou escolha). */
+.app[data-dir="d"][data-fundo="animado"] .bg { display: block; overflow: hidden; background: var(--bgbase); }
+.app[data-dir="d"][data-fundo="animado"] :is(.bg, .previa-fundo)::before {
+  content: ""; position: absolute; inset: -30%;
+  background:
+    radial-gradient(38% 38% at 20% 25%, color-mix(in srgb, var(--acc) 34%, transparent), transparent 70%),
+    radial-gradient(34% 34% at 80% 30%, color-mix(in srgb, var(--acc-text) 24%, transparent), transparent 70%),
+    radial-gradient(40% 40% at 55% 85%, color-mix(in srgb, var(--acc) 26%, transparent), transparent 70%);
+  animation: fundo-deriva 48s ease-in-out infinite alternate;
+}
+@keyframes fundo-deriva { from { transform: translate3d(-4%, -3%, 0) rotate(0deg) scale(1); } to { transform: translate3d(5%, 4%, 0) rotate(14deg) scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .app[data-dir="d"][data-fundo="animado"] :is(.bg, .previa-fundo)::before { animation: none; } }
+.app[data-dir="d"][data-reduzir="true"][data-fundo="animado"] :is(.bg, .previa-fundo)::before { animation: none !important; }
+
+/* o atalho da busca respeita o piso de 10 px mesmo com o texto no mínimo */
+.app .buscabtn kbd { font-size: max(10px, calc(12px * var(--esc))); }
+
+/* ---------- Configurações: prévia do card e das fontes ---------- */
+/* Composição da aparência: controles de um lado, prévia do outro (fixa enquanto se percorrem os blocos). Largura menor: uma coluna, prévia primeiro. */
+.app[data-dir="d"] .cfg-apar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 20px; align-items: start; margin-bottom: 4px; }
+.app[data-dir="d"] .cfg-controles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.app[data-dir="d"] .cfg-controles > section { margin: 0; min-width: 0; }
+.app[data-dir="d"] .cfg-lado { margin-bottom: 16px; }
+.app[data-dir="d"] .cfg .cfg-topo .pal { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+@container tela (min-width: 760px) {
+  .app[data-dir="d"] .cfg-apar { grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); }
+  .app[data-dir="d"] .cfg-controles { grid-column: 1; grid-row: 1; }
+  .app[data-dir="d"] .cfg-lado { grid-column: 2; grid-row: 1; margin: 0; position: sticky; top: 4px; }
+}
+/* janela larga: Fontes de um lado, Tamanhos e Fundo do outro (ocupa a largura em vez de deixar a direita vazia) */
+@container tela (min-width: 1280px) {
+  .app[data-dir="d"] .cfg-controles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app[data-dir="d"] .cfg-controles > .cfg-topo { grid-column: 1 / -1; }
+  .app[data-dir="d"] .cfg-controles > section:nth-of-type(2) { grid-row: span 2; }
+}
+@media (max-height: 640px) { .app[data-dir="d"] .cfg-lado { position: static; } }
+.app[data-dir="d"] .cfg .cfg-nota { margin: 12px 0 16px; }
+.app[data-dir="d"] .previa-aparencia > .data { margin: 8px 0 0; }
+/* caixa que faz o papel do fundo do aplicativo: liso no padrão, com o gradiente (parado ou animado) na opção animada */
+.app[data-dir="d"] .previa-fundo { position: relative; overflow: hidden; padding: 14px; border-radius: var(--r-card); background: var(--bgbase); box-shadow: 0 0 0 1px var(--card-brd); pointer-events: none; }
+.app[data-dir="d"] .previa-fundo > .dcard { position: relative; z-index: 1; }
+.app[data-dir="d"] .previa-icones { position: relative; z-index: 1; display: flex; align-items: center; gap: 14px; margin-top: 10px; padding: 6px 14px; width: max-content; max-width: 100%; border-radius: 999px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); color: var(--acc-text); }
+.app[data-dir="d"][data-fundo="animado"] .previa-fundo::before { inset: -30%; }
+.app[data-dir="d"] .fonte-grupo { margin-top: 6px; }
+.app[data-dir="d"] .fonte-lista { display: grid; gap: 6px; }
+.app[data-dir="d"] .fonte-op { display: grid; gap: 2px; min-height: 44px; padding: 8px 14px; text-align: left; border: 0; border-radius: var(--r-field); background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--card-brd); cursor: pointer; font: inherit; }
+.app[data-dir="d"] .fonte-op[aria-checked="true"] { box-shadow: 0 0 0 2.5px var(--acc); }
+.app[data-dir="d"] .fonte-op:focus-visible { outline: 3px solid color-mix(in srgb, var(--acc) 55%, transparent); outline-offset: 2px; }
+.app[data-dir="d"] .fonte-nome { font-size: max(10px, calc(12px * var(--esc))); font-weight: 700; color: var(--text2); }
+.app[data-dir="d"] .fonte-amostra { overflow-wrap: anywhere; line-height: 1.35; }
+.app[data-dir="d"] .fonte-amostra.titulo { font-size: calc(17px * var(--esc)); font-weight: 700; }
+.app[data-dir="d"] .fonte-amostra.texto { font-size: calc(14px * var(--esc)); }
+.app[data-dir="d"] .fonte-amostra.mono { font-size: calc(13px * var(--esc)); font-variant-numeric: tabular-nums; }
+.app[data-dir="d"] .fonte-previa { display: grid; gap: 10px; margin: 10px 0 4px; padding: 14px; border-radius: var(--r-card); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
+.app[data-dir="d"] .fonte-previa small { display: block; margin-bottom: 2px; font-family: var(--font); font-size: max(10px, calc(12px * var(--esc))); font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .fonte-previa p { margin: 0; overflow-wrap: anywhere; line-height: 1.35; }
+.app[data-dir="d"] .fonte-previa .p-titulo { font-size: calc(19px * var(--esc)); font-weight: 800; }
+.app[data-dir="d"] .fonte-previa .p-texto { font-size: calc(15px * var(--esc)); }
+.app[data-dir="d"] .fonte-previa .p-mono { font-size: calc(13px * var(--esc)); }
+
+/* PALETAS: gerado por scripts/gerar-paletas.mjs (não editar à mão). Contraste conferido nos dois modos. */
+.app[data-dir="d"][data-tema="claro"][data-paleta="0"] { --acc: hsl(170 72% 37%); --acc-ink: hsl(170 90% 9%); --acc-soft: hsl(170 72% 37% / 0.18); --acc-text: hsl(170 80% 24%); --foco: hsl(170 72% 37%); } /* Água-marinha */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="0"] i { background: linear-gradient(90deg, hsl(170 72% 37%) 0 55%, hsl(170 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="1"] { --acc: hsl(200 72% 48%); --acc-ink: hsl(200 90% 9%); --acc-soft: hsl(200 72% 48% / 0.18); --acc-text: hsl(200 80% 24%); --foco: hsl(200 72% 48%); } /* Céu */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="1"] i { background: linear-gradient(90deg, hsl(200 72% 48%) 0 55%, hsl(200 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="2"] { --acc: hsl(220 72% 48%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(220 72% 48% / 0.18); --acc-text: hsl(220 80% 24%); --foco: hsl(220 72% 48%); } /* Oceano */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="2"] i { background: linear-gradient(90deg, hsl(220 72% 48%) 0 55%, hsl(220 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="3"] { --acc: hsl(245 72% 48%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(245 72% 48% / 0.18); --acc-text: hsl(245 80% 24%); --foco: hsl(245 72% 48%); } /* Índigo */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="3"] i { background: linear-gradient(90deg, hsl(245 72% 48%) 0 55%, hsl(245 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="4"] { --acc: hsl(270 72% 48%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(270 72% 48% / 0.18); --acc-text: hsl(270 80% 24%); --foco: hsl(270 72% 48%); } /* Violeta */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="4"] i { background: linear-gradient(90deg, hsl(270 72% 48%) 0 55%, hsl(270 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="5"] { --acc: hsl(300 72% 44%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(300 72% 44% / 0.18); --acc-text: hsl(300 80% 24%); --foco: hsl(300 72% 44%); } /* Orquídea */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="5"] i { background: linear-gradient(90deg, hsl(300 72% 44%) 0 55%, hsl(300 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="6"] { --acc: hsl(330 72% 48%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(330 72% 48% / 0.18); --acc-text: hsl(330 80% 24%); --foco: hsl(330 72% 48%); } /* Rosa */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="6"] i { background: linear-gradient(90deg, hsl(330 72% 48%) 0 55%, hsl(330 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="7"] { --acc: hsl(42 72% 41%); --acc-ink: hsl(42 90% 9%); --acc-soft: hsl(42 72% 41% / 0.18); --acc-text: hsl(42 80% 24%); --foco: hsl(42 72% 41%); } /* Âmbar */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="7"] i { background: linear-gradient(90deg, hsl(42 72% 41%) 0 55%, hsl(42 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="8"] { --acc: hsl(90 72% 29%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(90 72% 29% / 0.18); --acc-text: hsl(90 80% 24%); --foco: hsl(90 72% 29%); } /* Oliva */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="8"] i { background: linear-gradient(90deg, hsl(90 72% 29%) 0 55%, hsl(90 80% 24%) 55%); }
+.app[data-dir="d"][data-tema="claro"][data-paleta="9"] { --acc: hsl(220 7% 45%); --acc-ink: hsl(0 0% 98.8%); --acc-soft: hsl(220 7% 45% / 0.18); --acc-text: hsl(220 8% 24%); --foco: hsl(220 7% 45%); } /* Grafite */
+.app[data-dir="d"][data-tema="claro"] .cfg .sw[data-paleta="9"] i { background: linear-gradient(90deg, hsl(220 7% 45%) 0 55%, hsl(220 8% 24%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="0"] { --acc: hsl(170 78% 58%); --acc-ink: hsl(170 90% 8%); --acc-soft: hsl(170 78% 58% / 0.16); --acc-text: hsl(170 85% 68%); --foco: hsl(170 85% 68%); } /* Água-marinha */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="0"] i { background: linear-gradient(90deg, hsl(170 78% 58%) 0 55%, hsl(170 85% 68%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="1"] { --acc: hsl(200 78% 58%); --acc-ink: hsl(200 90% 8%); --acc-soft: hsl(200 78% 58% / 0.16); --acc-text: hsl(200 85% 68%); --foco: hsl(200 85% 68%); } /* Céu */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="1"] i { background: linear-gradient(90deg, hsl(200 78% 58%) 0 55%, hsl(200 85% 68%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="2"] { --acc: hsl(220 78% 59%); --acc-ink: hsl(220 90% 8%); --acc-soft: hsl(220 78% 59% / 0.16); --acc-text: hsl(220 85% 72%); --foco: hsl(220 85% 72%); } /* Oceano */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="2"] i { background: linear-gradient(90deg, hsl(220 78% 59%) 0 55%, hsl(220 85% 72%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="3"] { --acc: hsl(245 78% 67%); --acc-ink: hsl(245 90% 8%); --acc-soft: hsl(245 78% 67% / 0.16); --acc-text: hsl(245 85% 79%); --foco: hsl(245 85% 79%); } /* Índigo */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="3"] i { background: linear-gradient(90deg, hsl(245 78% 67%) 0 55%, hsl(245 85% 79%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="4"] { --acc: hsl(270 78% 63%); --acc-ink: hsl(270 90% 8%); --acc-soft: hsl(270 78% 63% / 0.16); --acc-text: hsl(270 85% 76%); --foco: hsl(270 85% 76%); } /* Violeta */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="4"] i { background: linear-gradient(90deg, hsl(270 78% 63%) 0 55%, hsl(270 85% 76%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="5"] { --acc: hsl(300 78% 58%); --acc-ink: hsl(300 90% 8%); --acc-soft: hsl(300 78% 58% / 0.16); --acc-text: hsl(300 85% 70%); --foco: hsl(300 85% 70%); } /* Orquídea */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="5"] i { background: linear-gradient(90deg, hsl(300 78% 58%) 0 55%, hsl(300 85% 70%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="6"] { --acc: hsl(330 78% 58%); --acc-ink: hsl(330 90% 8%); --acc-soft: hsl(330 78% 58% / 0.16); --acc-text: hsl(330 85% 72%); --foco: hsl(330 85% 72%); } /* Rosa */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="6"] i { background: linear-gradient(90deg, hsl(330 78% 58%) 0 55%, hsl(330 85% 72%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="7"] { --acc: hsl(42 78% 58%); --acc-ink: hsl(42 90% 8%); --acc-soft: hsl(42 78% 58% / 0.16); --acc-text: hsl(42 85% 68%); --foco: hsl(42 85% 68%); } /* Âmbar */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="7"] i { background: linear-gradient(90deg, hsl(42 78% 58%) 0 55%, hsl(42 85% 68%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="8"] { --acc: hsl(90 78% 58%); --acc-ink: hsl(90 90% 8%); --acc-soft: hsl(90 78% 58% / 0.16); --acc-text: hsl(90 85% 68%); --foco: hsl(90 85% 68%); } /* Oliva */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="8"] i { background: linear-gradient(90deg, hsl(90 78% 58%) 0 55%, hsl(90 85% 68%) 55%); }
+.app[data-dir="d"][data-tema="escuro"][data-paleta="9"] { --acc: hsl(220 8% 58%); --acc-ink: hsl(220 9% 8%); --acc-soft: hsl(220 8% 58% / 0.16); --acc-text: hsl(220 9% 68%); --foco: hsl(220 9% 68%); } /* Grafite */
+.app[data-dir="d"][data-tema="escuro"] .cfg .sw[data-paleta="9"] i { background: linear-gradient(90deg, hsl(220 8% 58%) 0 55%, hsl(220 9% 68%) 55%); }
+/* FIM PALETAS */
+
+/* ---------- busca global ---------- */
+.app .busca-ov { z-index: 40; padding-top: max(16px, 8%); }
+.app .busca-box { max-height: min(80%, 640px); display: flex; flex-direction: column; overflow: hidden; }
+.app .busca-campo { display: flex; align-items: center; gap: 8px; }
+.app .busca-campo input { flex: 1; min-width: 0; }
+.app .busca-box [role="listbox"] { overflow-y: auto; margin-top: 8px; min-height: 0; }
+.app .busca-box .res { min-height: 52px; padding: 6px 10px; }
+.app .busca-box .res[data-ativo="sim"], .app .busca-box .res:focus-visible { background: var(--acc-soft); }
+.app .res-tipo { flex: none; min-width: 64px; font-family: var(--font-n); font-size: max(10px, calc(12px * var(--esc))); color: var(--text2); }
+.app .res-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.app .res-t { font-weight: 600; font-size: calc(14px * var(--esc)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app .res-d { font-size: max(10px, calc(12px * var(--esc))); color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app .res-estado { flex: none; font-size: max(10px, calc(12px * var(--esc))); font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--brd); color: var(--text2); }
+.app .busca-aviso { margin: 10px 6px 2px; font-size: calc(13px * var(--esc)); color: var(--text2); }
+.app .busca-aviso.erro { color: var(--text); background: var(--cat-venc); padding: 8px 12px; border-radius: 12px; margin: 10px 0 0; }
+@media (max-width: 640px) { .app .res-tipo { min-width: 0; } .app .busca-box .res { flex-wrap: wrap; } }
+
+/* ---------- Perfil: humor e produtividade (decisões 56 e 59) ---------- */
+/* gráfico "Seu ritmo": cada coluna é um botão (leitura por mouse, toque e teclado); as cores são só o destaque, nunca uma nota de bom ou ruim */
+.app .grafico { touch-action: pan-y; }
+.app .grafico .gcol { appearance: none; background: transparent; border: 0; padding: 0; font: inherit; color: var(--text2); cursor: pointer; min-width: 0; align-self: stretch; border-radius: 10px; }
+.app .grafico .gcol:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.app .grafico .gcol i { min-height: 8px; }
+.app .grafico .gcol.zero i { background: var(--track); box-shadow: inset 0 0 0 1px var(--card-brd); }
+.app .grafico .gcol.sel { color: var(--text); font-weight: 600; }
+.app .grafico .gcol.sel i { box-shadow: 0 0 0 2px var(--acc); }
+.app .grafico .gcol.zero.sel i { background: var(--track); box-shadow: 0 0 0 2px var(--acc); }
+.app .grafico .tip { z-index: 5; pointer-events: none; }
+.app .pf-det { margin: 0 0 10px; color: var(--text); font-size: calc(14px * var(--esc)); }
+.app .pf-sub { margin: 4px 0 8px; font-size: calc(14px * var(--esc)); }
+.app .pf-aviso { margin: 8px 0 0; }
+.app .reg-form { display: grid; gap: 10px; }
+.app .reg-form .reg-l > span { min-width: 64px; font-weight: 600; }
+.app .reg-dica { margin: 0; min-height: calc(18px * var(--esc)); }
+.app .reg-erro { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--cat-venc); color: var(--text); font-size: calc(13px * var(--esc)); }
+.app .balao .reg-form { margin-top: 6px; }
+.app .balao .reg-l { flex-wrap: wrap; gap: 4px 8px; }
+.app .balao .reg-l > span { flex-basis: 100%; min-width: 0; font-size: max(10px, calc(12px * var(--esc))); }
+.app .balao .emo { width: 44px; height: 44px; }
+.app .ini-reg { display: grid; gap: 10px; }
+.app .ini-reg-v { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; font-size: calc(14px * var(--esc)); }
+.app .ini-reg-i { display: inline-flex; align-items: center; gap: 8px; }
+.app .ini-reg-i .emo-img { width: 32px; height: 32px; }
+.app .dia-l .emos { margin: 0; }
+.app .dia-l > b { font-size: calc(14px * var(--esc)); }
+@media (prefers-reduced-motion: reduce) { .app .grafico .gcol i { transition: none; } }
+/* gaveta do Perfil: humor e produtividade lado a lado, sem margem dobrada entre os quadros (a gaveta já tem espaçamento próprio) */
+.app .dr .ind3 { grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 0; }
+.app .dr .ind-v { flex-wrap: wrap; }
+.app .dr .painel + .painel, .app .dr .ind3 + .painel { margin-top: 0; }
+.app .dr .ind .data { margin: 0; }

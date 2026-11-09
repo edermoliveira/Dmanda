@@ -19,7 +19,7 @@ ok(/Informe o assunto/.test(await erro(A, 'criar_demanda', { p: { assunto: '  ' 
 const d1 = await c(A, 'criar_demanda', { p: { assunto: ' Resposta ao TCE ', tipo: 'Processo', numero: '1842/2026', origem: 'TCE-RS', descricao: 'Texto', prazo_original: '2026-10-16', prazo_tipo: 'Legal' } });
 ok(d1.etapa === 'Cadastro' && d1.assunto === 'Resposta ao TCE' && d1.numero === '1842/2026' && d1.prazo === '2026-10-16' && d1.prazo_original === '2026-10-16' && d1.prazo_legado === false && d1.prazo_tipo === 'Legal' && !('user_id' in d1) && d1.tarefas.length === 0, 'criar grava os campos informados, começa em Cadastro e não expõe user_id');
 const d2 = await c(A, 'criar_demanda', { p: { assunto: 'Só o assunto' } });
-ok(d2.numero === '' && d2.origem === '' && d2.chegou_em === null && d2.prazo === null && d2.prazo_original === null && d2.setor === null && d2.acompanhar_em === null && d2.tipo === 'Processo' && d2.area === 'Geral', 'só o assunto é obrigatório: número, origem e chegada ficam vazios (nada de "s/n", "Não informada" nem data de hoje inventados) e nada de prazo, setor ou acompanhamento é inventado');
+ok(d2.numero === '' && d2.origem === '' && d2.chegou_em === null && d2.prazo === null && d2.prazo_original === null && d2.setor === null && d2.acompanhar_em === null && d2.tipo === null && d2.area === 'Geral' && d2.rapida === false && d2.documento_ano === null, 'só o assunto é obrigatório (o documento é opcional: sem tipo, sem Processo inventado, sem Rápida e sem ano): número, origem e chegada ficam vazios (nada de "s/n", "Não informada" nem data de hoje inventados) e nada de prazo, setor ou acompanhamento é inventado');
 ok(/Protocolo só pode/.test(await erro(A, 'criar_demanda', { p: { assunto: 'x', tipo: 'Protocolo', area: 'Compras' } })), 'Protocolo de Compras é recusado');
 ok(/não nasce finalizada/.test(await erro(A, 'criar_demanda', { p: { assunto: 'x', etapa: 'Finalizado' } })), 'demanda nova não nasce finalizada');
 
@@ -883,6 +883,79 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(/permission denied/i.test(await erro(T, 'retorno_setor_data', { p_user: T, p_encaminhada: '2026-11-02', p_reiterada: null, p_etapa_desde: agora })), 'rotina 15: a função interna do retorno não é chamável por usuário logado');
 }
 
+// ---------- Perfil: registros diários de humor (migrações 16 e 19: a energia foi retirada) ----------
+{
+  const P = '9e9e9e9e-9999-4999-8999-9e9e9e9e9e9e', Q = '9f9f9f9f-9999-4999-8999-9f9f9f9f9f9f', R = 'a0a0a0a0-9999-4999-8999-a0a0a0a0a0a0';
+  await db.exec(`insert into auth.users (id, email) values ('${P}', 'pp@teste'), ('${Q}', 'pq@teste'), ('${R}', 'pr@teste')`);
+  await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('pp@teste'), ('pq@teste')");   // pr não é autorizado
+  const pc = (u, f, a) => chamarComoUsuario(db, u, f, a);
+  const pm = async (u, f, a) => { try { await pc(u, f, a); return null; } catch (e) { return e.message; } };
+  const hoje = (await db.query('select public.hoje()::text as h')).rows[0].h;
+  const dia = (n) => { const [a, m, d] = hoje.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
+  const linhas = async (u) => (await db.query('select count(*)::int as n from public.registros_dia where user_id = $1', [u])).rows[0].n;
+
+  const r1 = await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 4 }] });
+  ok(r1.length === 1 && r1[0].dia === hoje && r1[0].humor === 4 && Object.keys(r1[0]).sort().join() === 'dia,humor', 'perfil: registrar hoje grava só o humor e devolve o dia e o humor');
+  const r2 = await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 5 }] });
+  const l2 = await pc(P, 'listar_registros_dia', {});
+  ok(r2[0].humor === 5 && l2.length === 1 && l2[0].humor === 5 && await linhas(P) === 1, 'perfil: gravar de novo no mesmo dia substitui o registro (só o último vale) e continua uma única linha');
+  await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 5 }] }); await pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 5 }] });
+  ok(await linhas(P) === 1, 'perfil: repetir a mesma gravação (clique duplo, resposta perdida, duas abas) nunca duplica o dia');
+  const par = await Promise.all([pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 1 }] }), pc(P, 'registrar_dias', { p: [{ dia: hoje, humor: 2 }] })]);
+  ok(par.length === 2 && await linhas(P) === 1, 'perfil: duas gravações simultâneas do mesmo dia deixam uma só linha');
+
+  // janela de correção: hoje e os 5 dias anteriores
+  const lote = await pc(P, 'registrar_dias', { p: [{ dia: dia(-5), humor: 3 }, { dia: dia(-3), humor: 2 }, { dia: dia(-1), humor: 1 }] });
+  ok(lote.map((x) => x.dia).join() === [dia(-5), dia(-3), dia(-1)].join() && await linhas(P) === 4, 'perfil: vários dias de uma vez (até 5 dias atrás) são gravados juntos, em ordem de data');
+  ok(/5 dias/.test(await pm(P, 'registrar_dias', { p: [{ dia: dia(-6), humor: 3 }] })) && /ainda não chegou/.test(await pm(P, 'registrar_dias', { p: [{ dia: dia(1), humor: 3 }] })), 'perfil: o sexto dia anterior e o dia futuro são recusados no banco');
+  // tudo ou nada
+  const antes = JSON.stringify(await pc(P, 'listar_registros_dia', {}));
+  const msgLote = await pm(P, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(-4), humor: 9 }] });
+  ok(msgLote !== null && JSON.stringify(await pc(P, 'listar_registros_dia', {})) === antes, 'perfil: se um item do lote é inválido, nenhum é gravado (tudo ou nada)');
+  // validação e privacidade das mensagens
+  const invalidos = [{ dia: hoje, humor: 0 }, { dia: hoje, humor: 6 }, { dia: hoje, humor: 'a' }, { dia: hoje }, { dia: hoje, humor: null }, { dia: hoje, humor: 3.5 }, { dia: 'ontem', humor: 3 }, { dia: '2026-02-30', humor: 3 }, { humor: 3 }];
+  let recusados = 0; for (const x of invalidos) if (await pm(P, 'registrar_dias', { p: [x] }) !== null) recusados++;
+  ok(recusados === invalidos.length && await linhas(P) === 4, 'perfil: humor fora de 1 a 5, ausente, não inteiro e dia inválido são recusados sem gravar nada');
+  ok(await pm(P, 'registrar_dias', { p: [] }) !== null && await pm(P, 'registrar_dias', { p: null }) !== null && await pm(P, 'registrar_dias', { p: { dia: hoje } }) !== null && await pm(P, 'registrar_dias', { p: Array.from({ length: 7 }, (_, i) => ({ dia: dia(-i), humor: 3 })) }) !== null, 'perfil: lista vazia, nula, fora do formato ou com mais de 6 dias é recusada');
+  ok(/repetid|mais de uma vez/.test(await pm(P, 'registrar_dias', { p: [{ dia: hoje, humor: 3 }, { dia: hoje, humor: 4 }] })), 'perfil: o mesmo dia duas vezes no mesmo lote é recusado');
+  const msgs = [await pm(P, 'registrar_dias', { p: [{ dia: hoje, humor: 7 }] }), await pm(P, 'registrar_dias', { p: [{ dia: dia(-9), humor: 4 }] })].join(' ');
+  ok(!/[78]/.test(msgs) && !msgs.includes(dia(-9)), 'perfil: as mensagens de erro nunca repetem os valores nem a data informada (nada de humor em log)');
+  const restr = await db.transaction(async (tx) => { try { await entrarComo(tx, P); await tx.query('update public.registros_dia set humor = 9 where dia = $1', [hoje]); return null; } catch (e) { return e.message; } });
+  ok(/check|constraint|violates/i.test(restr || ''), 'perfil: a restrição da tabela também recusa humor fora de 1 a 5');
+  const semAcertoDir = await db.transaction(async (tx) => { try { await entrarComo(tx, P); await tx.query('delete from public.registros_dia'); return null; } catch (e) { return e.message; } });
+  ok(/permission denied/i.test(semAcertoDir || ''), 'perfil: o usuário não apaga registros direto na tabela (só substitui pelo caminho validado)');
+
+  // listagem e janela do histórico
+  const so1 = await pc(P, 'listar_registros_dia', { p_dias: 1 });
+  ok(so1.every((x) => x.dia >= dia(-1)) && so1.length === 2, 'perfil: a listagem respeita o número de dias pedido (hoje e ontem)');
+  const antigo = await db.query("insert into public.registros_dia (user_id, dia, humor) values ($1, $2, 3) returning dia::text", [P, dia(-40)]);
+  const l62 = await pc(P, 'listar_registros_dia', {});
+  ok(antigo.rows.length === 1 && l62.some((x) => x.dia === dia(-40)) && l62.map((x) => x.dia).join() === [...l62.map((x) => x.dia)].sort().join() && (await pc(P, 'listar_registros_dia', { p_dias: 30 })).every((x) => x.dia >= dia(-30)), 'perfil: a listagem sai em ordem de data e o padrão de 62 dias alcança o histórico do mês');
+  ok(Object.keys(l62[0]).sort().join() === 'dia,humor', 'perfil: a leitura devolve só dia e humor (nem identificador do usuário nem carimbos)');
+
+  // isolamento e acesso
+  ok((await pc(Q, 'listar_registros_dia', {})).length === 0, 'perfil: outro usuário autorizado não vê os registros');
+  const q1 = await pc(Q, 'registrar_dias', { p: [{ dia: hoje, humor: 1 }] });
+  ok(q1[0].humor === 1 && (await pc(P, 'listar_registros_dia', {})).find((x) => x.dia === hoje).humor !== 1 && await linhas(Q) === 1, 'perfil: o mesmo dia de outro usuário é outra linha e não mexe nos registros do primeiro');
+  const naoAut = await db.transaction(async (tx) => { await entrarComo(tx, R); try { return (await tx.query('select count(*)::int as n from public.registros_dia')).rows[0].n; } catch (e) { return e.message; } });
+  ok(naoAut === 0, 'perfil: conta não autorizada (fora da lista) não lê registro nenhum');
+  ok((await pc(R, 'listar_registros_dia', {})).length === 0 && /row-level|policy/i.test(await pm(R, 'registrar_dias', { p: [{ dia: hoje, humor: 3 }] }) || ''), 'perfil: conta não autorizada não grava (RLS com conta autorizada) e a listagem vem vazia');
+  const anonP = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_registros_dia()'); return null; } catch (e) { return e.message; } });
+  const anonG = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query("select public.registrar_dias('[]'::jsonb)"); return null; } catch (e) { return e.message; } });
+  const anonT = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select count(*) from public.registros_dia'); return null; } catch (e) { return e.message; } });
+  ok(/permission denied/i.test(anonP || '') && /permission denied/i.test(anonG || '') && /permission denied/i.test(anonT || ''), 'perfil: sem login (papel anon) não executa as funções nem lê a tabela');
+  // produtividade não tem tabela própria: vem de concluida_em
+  const dq = await pc(Q, 'criar_demanda', { p: { assunto: 'Produtividade derivada' } });
+  const fq = await pc(Q, 'concluir_demanda', { p_id: dq.id });
+  ok(fq.concluida_em === hoje, 'perfil: a data de conclusão (fonte da produtividade) é o dia de hoje em São Paulo ao concluir');
+  const rq = await pc(Q, 'reabrir_demanda', { p_id: dq.id });
+  const fq2 = await pc(Q, 'concluir_demanda', { p_id: dq.id });
+  ok(rq.concluida_em === null && fq2.concluida_em === hoje, 'perfil: reabrir limpa a data de conclusão e concluir de novo grava a nova (o histórico guarda só a última conclusão)');
+  // a rotina diária e os resumos não carregam o humor
+  const fonte = (await db.query("select string_agg(pg_get_functiondef(p.oid), ' ') as s from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and p.proname not in ('registrar_dias','listar_registros_dia')")).rows[0].s;
+  ok(!/registros_dia/.test(fonte), 'perfil: nenhuma outra função do banco (rotina diária, resumos, buscas, exportação) lê os registros de humor');
+}
+
 // ---------- migração sobre dados antigos: nada se perde ----------
 {
   const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
@@ -893,7 +966,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const nova8 = todas.find((f) => f.includes('prazos_e_dias_indisponiveis'));
   const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
   const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova15 = todas.find((f) => f.includes('alinha_regras_agenda')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
-  for (const f of todas.filter((f) => f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const nova20 = todas.find((f) => f.includes('origem_documento_para_hoje'));   // depende da migração 8: entra depois dela, não no banco antigo
+  for (const f of todas.filter((f) => f !== nova20 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -979,7 +1053,517 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(antes15 === depois15, 'migração 15: demandas (incluindo versão e datas) e tarefas existentes ficam idênticas');
   await antigo.exec(readFileSync(join('supabase/migrations', nova15), 'utf8'));
   ok(await lido15() === depois15, 'migração 15: reaplicar é inofensivo');
+  await antigo.exec(readFileSync(join('supabase/migrations', nova20), 'utf8'));
+  ok(await lido15() === depois15, 'migração 20: aplicada depois das demais sobre os dados antigos, deixa as demandas e as tarefas idênticas');
   await antigo.close();
+}
+
+// ---------- Perfil: a janela de correção (hoje e 5 dias) vale também na escrita direta (migração 17) ----------
+{
+  const S = 'a2a2a2a2-9999-4999-8999-a2a2a2a2a2a2', W = 'a3a3a3a3-9999-4999-8999-a3a3a3a3a3a3', V = 'a4a4a4a4-9999-4999-8999-a4a4a4a4a4a4';
+  await db.exec(`insert into auth.users (id, email) values ('${S}', 'js@teste'), ('${W}', 'jw@teste'), ('${V}', 'jv@teste')`);
+  await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('js@teste'), ('jw@teste')");   // jv não é autorizado
+  const pc = (u, f, a) => chamarComoUsuario(db, u, f, a);
+  const pm = async (u, f, a) => { try { await pc(u, f, a); return null; } catch (e) { return e.message; } };
+  const hoje = (await db.query('select public.hoje()::text as h')).rows[0].h;
+  const dia = (n) => { const [a, m, d] = hoje.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
+  // escrita direta na tabela com a conta logada (o que a API de dados permite), devolvendo o erro e quantas linhas foram afetadas
+  const direto = (u, sql, par = []) => db.transaction(async (tx) => { try { await entrarComo(tx, u); const r = await tx.query(sql, par); return { erro: null, n: r.rows.length || (r.affectedRows ?? 0) }; } catch (e) { return { erro: e.message, n: 0 }; } });
+  const estado = async (u) => JSON.stringify((await db.query('select dia::text, humor from public.registros_dia where user_id = $1 order by dia', [u])).rows);
+  const ins = (d, h = 3) => ['insert into public.registros_dia (dia, humor) values ($1, $2)', [d, h]];
+
+  // limites: hoje e o quinto dia anterior entram; o dia seguinte e o sexto dia anterior não
+  const iHoje = await direto(S, ...ins(hoje, 4, 2)), iQuinto = await direto(S, ...ins(dia(-5), 2, 4));
+  ok(iHoje.erro === null && iHoje.n === 1 && iQuinto.erro === null && iQuinto.n === 1, 'janela 17: a escrita direta de hoje e do quinto dia anterior funciona');
+  const antesRecusas = await estado(S);
+  const rFut = await direto(S, ...ins(dia(1))), rSexto = await direto(S, ...ins(dia(-6))), rMuito = await direto(S, ...ins(dia(-400))), rAno = await direto(S, ...ins(dia(365)));
+  ok([rFut, rSexto, rMuito, rAno].every((r) => /row-level|policy/i.test(r.erro || '') && r.n === 0) && await estado(S) === antesRecusas, 'janela 17: a escrita direta de dia futuro, do sexto dia anterior ou de dia muito antigo é recusada e nada é gravado');
+  ok([rFut, rSexto, rMuito].every((r) => r.erro && !r.erro.includes(dia(1)) && !r.erro.includes(dia(-6)) && !r.erro.includes(dia(-400))), 'janela 17: a mensagem de recusa não repete a data informada');
+
+  // atualização: dentro da janela vale; levar a linha para fora da janela (inclusive alterando a data) é recusado
+  const uOk = await direto(S, 'update public.registros_dia set humor = 5 where dia = $1', [hoje]);
+  ok(uOk.erro === null && uOk.n === 1 && JSON.parse(await estado(S)).find((x) => x.dia === hoje).humor === 5, 'janela 17: corrigir o humor de hoje (mesmo dia) direto na tabela segue funcionando');
+  const antesUp = await estado(S);
+  const uFut = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [hoje, dia(1)]);
+  const uSexto = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [hoje, dia(-6)]);
+  const uQuintoFora = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [dia(-5), dia(-7)]);
+  ok([uFut, uSexto, uQuintoFora].every((r) => /row-level|policy|permission denied/i.test(r.erro || '')) && await estado(S) === antesUp, 'janela 17: alterar a data de uma linha para o futuro ou para além do quinto dia anterior é recusado e a linha não muda (desde a migração 18 a recusa vem já do privilégio de coluna; a política da 17 continua como segunda camada)');
+
+  // registros antigos (já existentes, fora da janela) continuam legíveis, mas não são alterados nem movidos
+  await db.query("insert into public.registros_dia (user_id, dia, humor) values ($1, $2, 1), ($1, $3, 2), ($1, $4, 3)", [S, dia(-6), dia(-40), dia(3)]);   // como administrador: sexto dia, histórico e uma linha futura de antes da correção
+  const antes = await estado(S);
+  const aSexto = await direto(S, 'update public.registros_dia set humor = 5 where dia = $1', [dia(-6)]);
+  const aHist = await direto(S, 'update public.registros_dia set humor = 4 where dia = $1', [dia(-40)]);
+  const aMover = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [dia(-40), dia(-2)]);
+  const aFut = await direto(S, 'update public.registros_dia set humor = 5 where dia = $1', [dia(3)]);
+  const aFutPraHoje = await direto(S, 'update public.registros_dia set dia = $2 where dia = $1', [dia(3), dia(-1)]);
+  ok([aSexto, aHist, aMover, aFut, aFutPraHoje].every((r) => r.n === 0) && await estado(S) === antes, 'janela 17: linha fora da janela (sexto dia, histórico, futura) não é alterada nem movida para dentro da janela pela escrita direta');
+  const lerDireto = await direto(S, 'select dia::text from public.registros_dia order by dia');
+  const lista = await pc(S, 'listar_registros_dia', {});
+  ok(lerDireto.n === 5 && lista.some((x) => x.dia === dia(-40)) && lista.some((x) => x.dia === dia(-6)) && lista.map((x) => x.dia).join() === [...lista.map((x) => x.dia)].sort().join(), 'janela 17: a leitura histórica (direta e pela listagem de 62 dias) continua devolvendo todos os registros, em ordem');
+
+  // regravação do mesmo dia (função e escrita direta com conflito)
+  const rg = await pc(S, 'registrar_dias', { p: [{ dia: hoje, humor: 1 }, { dia: dia(-5), humor: 5 }] });
+  ok(rg.length === 2 && rg.find((x) => x.dia === hoje).humor === 1 && rg.find((x) => x.dia === dia(-5)).humor === 5, 'janela 17: registrar_dias continua regravando hoje e o quinto dia anterior no mesmo lote');
+  const up1 = await direto(S, 'insert into public.registros_dia (dia, humor) values ($1, 2) on conflict (user_id, dia) do update set humor = excluded.humor', [hoje]);
+  const up2 = await direto(S, 'insert into public.registros_dia (dia, humor) values ($1, 2) on conflict (user_id, dia) do update set humor = excluded.humor', [dia(-6)]);
+  const up3 = await direto(S, 'insert into public.registros_dia (dia, humor) values ($1, 5) on conflict (user_id, dia) do update set humor = excluded.humor', [dia(-40)]);
+  const lidos = JSON.parse(await estado(S));
+  ok(up1.erro === null && lidos.find((x) => x.dia === hoje).humor === 2 && /row-level|policy/i.test(up2.erro || '') && /row-level|policy/i.test(up3.erro || '') && lidos.find((x) => x.dia === dia(-6)).humor === 1 && lidos.find((x) => x.dia === dia(-40)).humor === 2, 'janela 17: o upsert direto regrava hoje, mas não regrava o sexto dia anterior nem o histórico');
+
+  // lote inválido não grava nada (a função continua tudo ou nada)
+  const antesLote = await estado(S);
+  const mLote = [
+    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(-6), humor: 3 }] }),
+    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(1), humor: 3 }] }),
+    await pm(S, 'registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(-3), humor: 9 }] }),
+  ];
+  ok(mLote.every((m) => m !== null) && await estado(S) === antesLote, 'janela 17: lote com item fora da janela ou inválido não grava nenhum dos itens');
+
+  // acesso: só a conta autorizada, só os próprios registros
+  const nA = await direto(V, ...ins(hoje));
+  const outro = await direto(S, 'insert into public.registros_dia (user_id, dia, humor) values ($1, $2, 3)', [W, hoje]);
+  const alheio = await direto(W, 'update public.registros_dia set humor = 1 where user_id = $1', [S]);
+  ok(/row-level|policy/i.test(nA.erro || '') && /row-level|policy/i.test(outro.erro || '') && alheio.n === 0, 'janela 17: conta não autorizada não grava, e ninguém grava ou altera registro de outro usuário');
+  const wLeitura = await direto(W, 'select 1 from public.registros_dia');
+  ok(wLeitura.n === 0 && (await direto(W, ...ins(hoje))).erro === null, 'janela 17: outro usuário autorizado grava o próprio hoje e não enxerga os registros do primeiro');
+
+  // a regra vem do banco, pela data civil de São Paulo, e as funções seguem SECURITY INVOKER
+  const pol = (await db.query("select policyname, permissive, cmd, roles::text as roles, coalesce(qual, '') as qual, coalesce(with_check, '') as wc from pg_policies where schemaname = 'public' and tablename = 'registros_dia' order by policyname")).rows;
+  const dono = pol.find((p) => p.policyname === 'registros_dia_dono'), restritivas = pol.filter((p) => p.permissive === 'RESTRICTIVE');
+  ok(dono && dono.permissive === 'PERMISSIVE' && dono.cmd === 'ALL' && /conta_autorizada/.test(dono.qual) && /conta_autorizada/.test(dono.wc), 'janela 17: a política da conta autorizada continua como era (permissiva, para todos os comandos)');
+  ok(restritivas.length === 2 && restritivas.every((p) => /hoje\(\)/.test(p.qual + p.wc) && !/current_date|now\(\)|timezone/i.test(p.qual + p.wc) && p.roles.includes('authenticated')) && restritivas.map((p) => p.cmd).sort().join() === 'INSERT,UPDATE', 'janela 17: as políticas da janela são restritivas, para inserir e atualizar, e usam public.hoje() (dia civil de São Paulo)');
+  const inv = (await db.query("select proname, prosecdef from pg_proc where proname in ('registrar_dias','listar_registros_dia') order by 1")).rows;
+  ok(inv.length === 2 && inv.every((p) => p.prosecdef === false), 'janela 17: registrar_dias e listar_registros_dia seguem SECURITY INVOKER');
+}
+
+// ---------- migração 17 sobre dados da migração 16: o que existe fica idêntico e a falha de antes deixa de se repetir ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m17 = todas.find((f) => f.includes('registros_dia_janela'));
+  const m16 = todas.find((f) => f.endsWith('_registros_dia.sql'));
+  ok(!!m17 && !!m16 && todas.indexOf(m17) === todas.indexOf(m16) + 1, 'migração 17: existe, vem logo depois da 16 e a 16 não foi reescrita (arquivo à parte)');
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig17-'));
+  for (const f of todas.filter((f) => f < m17)) copyFileSync(join('supabase/migrations', f), join(pasta, f));   // só as migrações 1 a 16: uma futura 18 não entra no banco "antigo"
+  const a16 = await abrirBancoTeste({ raizMigracoes: pasta });   // schema com as migrações 1 a 16
+  const X = 'a5a5a5a5-9999-4999-8999-a5a5a5a5a5a5';
+  await a16.exec(`insert into auth.users (id, email) values ('${X}', 'jx@teste')`);
+  await a16.exec("insert into dmanda_privado.acesso_autorizado (email) values ('jx@teste')");
+  const cx = (f, a) => chamarComoUsuario(a16, X, f, a);
+  const hoje = (await a16.query('select public.hoje()::text as h')).rows[0].h;
+  const dia = (n) => { const [a, m, d] = hoje.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
+  const direto = (sql, par = []) => a16.transaction(async (tx) => { try { await entrarComo(tx, X); const r = await tx.query(sql, par); return { erro: null, n: r.rows.length || (r.affectedRows ?? 0) }; } catch (e) { return { erro: e.message, n: 0 }; } });
+  const ins = (d) => ['insert into public.registros_dia (dia, humor, energia) values ($1, 3, 3)', [d]];
+
+  // dados fictícios preexistentes: demandas, tarefa, anotação e registros (hoje, quinto dia, histórico e uma linha futura gravada pela falha)
+  const d1 = await cx('criar_demanda', { p: { assunto: 'Fictícia A', prazo: '2027-03-09', numero: '1/2026', origem: 'Origem fictícia', chegou_em: '2026-09-01' } });
+  await cx('criar_demanda', { p: { assunto: 'Fictícia B' } });
+  await cx('adicionar_tarefa', { p_demanda: d1.id, p_texto: 'Tarefa fictícia' });
+  await a16.query("insert into public.entradas (user_id, titulo, texto) values ($1, 'Nota fictícia', 'texto fictício')", [X]);
+  await cx('registrar_dias', { p: [{ dia: hoje, humor: 4, energia: 2 }, { dia: dia(-5), humor: 2, energia: 4 }] });
+  await a16.query("insert into public.registros_dia (user_id, dia, humor, energia) values ($1, $2, 1, 1), ($1, $3, 5, 5)", [X, dia(-6), dia(-40)]);
+
+  // a falha reproduzida na 16: a conta autorizada grava direto fora da janela
+  const falhaFut = await direto(...ins(dia(2))), falhaAntigo = await direto(...ins(dia(-20)));
+  ok(falhaFut.erro === null && falhaAntigo.erro === null, 'migração 17 (antes): na migração 16 a escrita direta de dia futuro e de dia antigo é aceita (falha reproduzida)');
+
+  const tabelas = (await a16.query("select table_schema as s, table_name as t from information_schema.tables where table_schema in ('public','dmanda_privado') and table_type = 'BASE TABLE' order by 1, 2")).rows;
+  const foto = async () => { const o = {}; for (const { s, t } of tabelas) o[`${s}.${t}`] = (await a16.query(`select coalesce(jsonb_agg(to_jsonb(x) order by to_jsonb(x)::text), '[]'::jsonb) as j from ${s}.${t} x`)).rows[0].j; return JSON.stringify(o); };
+  const funcoes = async () => JSON.stringify((await a16.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl, md5(pg_get_functiondef(p.oid)) as def from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') order by 1")).rows);
+  const donoAntes = JSON.stringify((await a16.query("select * from pg_policies where tablename = 'registros_dia' and policyname = 'registros_dia_dono'")).rows);
+  const privAntes = JSON.stringify((await a16.query("select grantee, privilege_type from information_schema.role_table_grants where table_name = 'registros_dia' order by 1, 2")).rows);
+  const listaAntes = JSON.stringify(await cx('listar_registros_dia', {}));
+  const fotoAntes = await foto(), funcoesAntes = await funcoes();
+
+  await a16.exec(readFileSync(join('supabase/migrations', m17), 'utf8'));
+
+  ok(await foto() === fotoAntes, 'migração 17: todas as linhas de todas as tabelas (demandas, tarefas, anotações, registros de humor e energia) ficam idênticas');
+  ok(await funcoes() === funcoesAntes, 'migração 17: nenhuma função muda (definição, SECURITY INVOKER e privilégios), inclusive registrar_dias e listar_registros_dia');
+  ok(JSON.stringify((await a16.query("select * from pg_policies where tablename = 'registros_dia' and policyname = 'registros_dia_dono'")).rows) === donoAntes && JSON.stringify((await a16.query("select grantee, privilege_type from information_schema.role_table_grants where table_name = 'registros_dia' order by 1, 2")).rows) === privAntes, 'migração 17: a política da conta autorizada e os privilégios da tabela não mudam (a janela é acrescentada por políticas restritivas)');
+  const listaDepois = await cx('listar_registros_dia', {});
+  ok(JSON.stringify(listaDepois) === listaAntes && listaDepois.some((x) => x.dia === dia(-40)) && listaDepois.some((x) => x.dia === dia(-6)) && listaDepois.some((x) => x.dia === dia(2)), 'migração 17: a leitura histórica devolve o mesmo, incluindo o registro antigo, o do sexto dia e a linha futura que a falha deixou');
+
+  const depoisFut = await direto(...ins(dia(3))), depoisSexto = await direto(...ins(dia(-7))), depoisHoje = await direto('insert into public.registros_dia (dia, humor, energia) values ($1, 5, 5) on conflict (user_id, dia) do update set humor = excluded.humor', [hoje]);
+  ok(/row-level|policy/i.test(depoisFut.erro || '') && /row-level|policy/i.test(depoisSexto.erro || '') && depoisHoje.erro === null, 'migração 17 (depois): futuro e além do quinto dia anterior passam a ser recusados na escrita direta; hoje continua regravável');
+  const reg = await cx('registrar_dias', { p: [{ dia: hoje, humor: 2, energia: 2 }, { dia: dia(-5), humor: 3, energia: 3 }] });
+  let loteRuim = null;
+  try { await cx('registrar_dias', { p: [{ dia: dia(-1), humor: 3, energia: 3 }, { dia: dia(-6), humor: 3, energia: 3 }] }); } catch (e) { loteRuim = e.message; }
+  ok(reg.length === 2 && loteRuim !== null && !(await cx('listar_registros_dia', {})).some((x) => x.dia === dia(-1)), 'migração 17: registrar_dias continua gravando o lote válido e recusando o inválido por inteiro');
+
+  const fotoMeio = await foto();
+  await a16.exec(readFileSync(join('supabase/migrations', m17), 'utf8'));
+  ok(await foto() === fotoMeio && (await a16.query("select count(*)::int as n from pg_policies where tablename = 'registros_dia'")).rows[0].n === 3, 'migração 17: reaplicar é inofensivo (continuam as 3 políticas e nenhuma linha muda)');
+  await a16.close();
+}
+
+// ---------- migração 18 sobre dados das migrações 16 e 17: o UPDATE direto passa a valer só para humor e energia ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m18 = todas.find((f) => f.includes('registros_dia_colunas'));
+  const m17 = todas.find((f) => f.includes('registros_dia_janela'));
+  ok(!!m18 && !!m17 && todas.indexOf(m18) === todas.indexOf(m17) + 1, 'migração 18: existe, vem logo depois da 17 e a 16 e a 17 não foram reescritas (arquivo à parte)');
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig18-'));
+  for (const f of todas.filter((f) => f < m18)) copyFileSync(join('supabase/migrations', f), join(pasta, f));   // só as migrações 1 a 17
+  const a17 = await abrirBancoTeste({ raizMigracoes: pasta });
+  const X = 'a6a6a6a6-9999-4999-8999-a6a6a6a6a6a6';
+  await a17.exec(`insert into auth.users (id, email) values ('${X}', 'kx@teste')`);
+  await a17.exec("insert into dmanda_privado.acesso_autorizado (email) values ('kx@teste')");
+  const cx = (f, a) => chamarComoUsuario(a17, X, f, a);
+  const hoje = (await a17.query('select public.hoje()::text as h')).rows[0].h;
+  const dia = (n) => { const [a, m, d] = hoje.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
+  const direto = (sql, par = []) => a17.transaction(async (tx) => { try { await entrarComo(tx, X); const r = await tx.query(sql, par); return { erro: null, n: r.affectedRows ?? r.rows.length }; } catch (e) { return { erro: e.message, n: 0 }; } });
+  const lido = async () => JSON.stringify((await a17.query('select dia::text, humor, energia from public.registros_dia where user_id = $1 order by dia', [X])).rows);
+
+  await cx('registrar_dias', { p: [{ dia: hoje, humor: 4, energia: 2 }, { dia: dia(-2), humor: 1, energia: 5 }] });
+  await a17.query('insert into public.registros_dia (user_id, dia, humor, energia) values ($1, $2, 5, 5)', [X, dia(-40)]);
+  const mover17 = await direto('update public.registros_dia set dia = $1 where dia = $2', [dia(-1), hoje]);
+  ok(mover17.erro === null && mover17.n === 1, 'migração 18 (antes): na migração 17 mover a linha para outro dia válido da janela é aceito (falha reproduzida)');
+  await a17.query('update public.registros_dia set dia = $1 where user_id = $2 and dia = $3', [hoje, X, dia(-1)]);   // desfaz a movimentação para seguir com os mesmos dados
+
+  const tabelas = (await a17.query("select table_schema as s, table_name as t from information_schema.tables where table_schema in ('public','dmanda_privado') and table_type = 'BASE TABLE' order by 1, 2")).rows;
+  const foto = async () => { const o = {}; for (const { s, t } of tabelas) o[`${s}.${t}`] = (await a17.query(`select coalesce(jsonb_agg(to_jsonb(x) - 'atualizado_em' order by to_jsonb(x)::text), '[]'::jsonb) as j from ${s}.${t} x`)).rows[0].j; return JSON.stringify(o); };
+  const funcoes = async () => JSON.stringify((await a17.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl, md5(pg_get_functiondef(p.oid)) as def from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') order by 1")).rows);
+  const politicas = async () => JSON.stringify((await a17.query("select policyname, permissive, cmd, roles::text, qual, with_check from pg_policies where tablename = 'registros_dia' order by 1")).rows);
+  const fotoAntes = await foto(), funcoesAntes = await funcoes(), politicasAntes = await politicas(), listaAntes = JSON.stringify(await cx('listar_registros_dia', {})), dadosAntes = await lido();
+
+  await a17.exec(readFileSync(join('supabase/migrations', m18), 'utf8'));
+
+  ok(await foto() === fotoAntes && await lido() === dadosAntes, 'migração 18: todas as linhas de todas as tabelas ficam idênticas');
+  ok(await funcoes() === funcoesAntes, 'migração 18: nenhuma função muda (definição, SECURITY INVOKER e privilégios)');
+  ok(await politicas() === politicasAntes && (await a17.query("select count(*)::int as n from pg_policies where tablename = 'registros_dia'")).rows[0].n === 3, 'migração 18: as 3 políticas de RLS continuam idênticas');
+  ok(JSON.stringify(await cx('listar_registros_dia', {})) === listaAntes && (await cx('listar_registros_dia', { p_dias: 62 })).some((x) => x.dia === dia(-40)), 'migração 18: o histórico segue legível, inclusive o registro antigo');
+
+  // privilégios efetivos por coluna
+  const priv = async (col, tipo) => (await a17.query("select has_column_privilege('authenticated', 'public.registros_dia', $1, $2) as p", [col, tipo])).rows[0].p;
+  const atualiza = {}; for (const c of ['user_id', 'dia', 'humor', 'energia', 'criado_em', 'atualizado_em']) atualiza[c] = await priv(c, 'UPDATE');
+  ok(JSON.stringify(atualiza) === JSON.stringify({ user_id: false, dia: false, humor: true, energia: true, criado_em: false, atualizado_em: false }), 'migração 18: authenticated tem UPDATE somente em humor e energia (efetivo, por coluna)');
+  const tp = (await a17.query("select has_table_privilege('authenticated','public.registros_dia','SELECT') as s, has_table_privilege('authenticated','public.registros_dia','INSERT') as i, has_table_privilege('authenticated','public.registros_dia','DELETE') as d, has_table_privilege('anon','public.registros_dia','SELECT') as a")).rows[0];
+  ok(tp.s && tp.i && !tp.d && !tp.a, 'migração 18: SELECT e INSERT de authenticated permanecem; sem DELETE; anon sem acesso');
+  const resto = (await a17.query("select count(*)::int as n from information_schema.role_table_grants where table_name = 'registros_dia' and grantee = 'authenticated' and privilege_type = 'UPDATE'")).rows[0].n;
+  ok(resto === 0, 'migração 18: não resta UPDATE de tabela inteira para authenticated no catálogo');
+
+  // mover a linha é recusado e o registro permanece no dia original
+  const mover = await direto('update public.registros_dia set dia = $1 where dia = $2', [dia(-1), hoje]);
+  const moverOcupado = await direto('update public.registros_dia set dia = $1 where dia = $2', [dia(-2), hoje]);
+  const trocarDono = await direto('update public.registros_dia set user_id = $1 where dia = $2', ['00000000-0000-4000-8000-000000000000', hoje]);
+  ok(/permission denied/i.test(mover.erro || '') && /permission denied/i.test(moverOcupado.erro || '') && /permission denied/i.test(trocarDono.erro || ''), 'migração 18: mover a linha para outro dia (livre ou ocupado) e trocar o dono são recusados por falta de privilégio');
+  ok(await lido() === dadosAntes, 'migração 18: depois das tentativas de mover, o registro permanece no dia original e nenhum outro mudou');
+
+  // UPDATE direto de humor e energia continua possível; registrar_dias insere e atualiza o mesmo dia
+  const dir = await direto('update public.registros_dia set humor = 3, energia = 3 where dia = $1', [hoje]);
+  ok(dir.erro === null && dir.n === 1, 'migração 18: o UPDATE direto de humor e energia (dentro da janela) continua permitido');
+  const g1 = await cx('registrar_dias', { p: [{ dia: dia(-3), humor: 2, energia: 2 }] });
+  const g2 = await cx('registrar_dias', { p: [{ dia: dia(-3), humor: 5, energia: 1 }] });
+  const g3 = await cx('registrar_dias', { p: [{ dia: hoje, humor: 1, energia: 1 }, { dia: dia(-2), humor: 4, energia: 4 }] });
+  const l = await cx('listar_registros_dia', {});
+  ok(g1[0].humor === 2 && g2[0].humor === 5 && g2[0].energia === 1 && g3.length === 2 && l.filter((x) => x.dia === dia(-3)).length === 1 && l.find((x) => x.dia === dia(-3)).humor === 5 && l.find((x) => x.dia === hoje).humor === 1, 'migração 18: registrar_dias insere e atualiza o mesmo dia (inclusive na segunda gravação) e continua uma linha por dia');
+  ok((await a17.query('select count(*)::int as n from public.registros_dia where user_id = $1', [X])).rows[0].n === 4 && l.some((x) => x.dia === dia(-40)), 'migração 18: o histórico continua legível e sem linhas duplicadas');
+  const fora = await cx('registrar_dias', { p: [{ dia: dia(-6), humor: 3, energia: 3 }] }).then(() => null, (e) => e.message);
+  ok(/5 dias/.test(fora || ''), 'migração 18: a janela de hoje e 5 dias continua valendo em registrar_dias');
+  const fut = await direto('insert into public.registros_dia (dia, humor, energia) values ($1, 3, 3)', [dia(2)]);
+  ok(/row-level|policy/i.test(fut.erro || ''), 'migração 18: a política de janela da migração 17 segue valendo na escrita direta');
+
+  const fotoMeio = await foto();
+  await a17.exec(readFileSync(join('supabase/migrations', m18), 'utf8'));
+  ok(await foto() === fotoMeio && (await priv('dia', 'UPDATE')) === false && (await priv('humor', 'UPDATE')) === true, 'migração 18: reaplicar é inofensivo');
+  await a17.close();
+}
+
+// ---------- migração 19: o indicador de energia saiu; instalação limpa e upgrade sobre dados das migrações 16 a 18 ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m19 = todas.find((f) => f.includes('registros_dia_so_humor'));
+  const m18 = todas.find((f) => f.includes('registros_dia_colunas'));
+  ok(!!m19 && !!m18 && todas.indexOf(m19) === todas.indexOf(m18) + 1, 'migração 19: existe, vem logo depois da 18 e as migrações 16 a 18 não foram reescritas (arquivo à parte)');
+
+  // ---- instalação limpa: o esquema final
+  const L = 'a7a7a7a7-9999-4999-8999-a7a7a7a7a7a7', M = 'a8a8a8a8-9999-4999-8999-a8a8a8a8a8a8';
+  await db.exec(`insert into auth.users (id, email) values ('${L}', 'lx@teste'), ('${M}', 'mx@teste')`);
+  await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('lx@teste')");   // mx não é autorizado
+  const lc = (f, a) => chamarComoUsuario(db, L, f, a);
+  const hoje = (await db.query('select public.hoje()::text as h')).rows[0].h;
+  const dia = (n) => { const [a, m, d] = hoje.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
+  const direto = (u, sql, par = []) => db.transaction(async (tx) => { try { await entrarComo(tx, u); const r = await tx.query(sql, par); return { erro: null, n: r.affectedRows ?? r.rows.length }; } catch (e) { return { erro: e.message, n: 0 }; } });
+  const colunas = (await db.query("select column_name from information_schema.columns where table_schema = 'public' and table_name = 'registros_dia' order by column_name")).rows.map((r) => r.column_name).join();
+  ok(colunas === 'atualizado_em,criado_em,dia,humor,user_id', 'migração 19 (instalação limpa): a tabela tem só usuário, dia, humor e os dois carimbos (a coluna energia não existe)');
+  const priv = async (col, tipo) => (await db.query("select has_column_privilege('authenticated', 'public.registros_dia', $1, $2) as p", [col, tipo])).rows[0].p;
+  const upd = {}; for (const c of ['user_id', 'dia', 'humor', 'criado_em', 'atualizado_em']) upd[c] = await priv(c, 'UPDATE');
+  ok(JSON.stringify(upd) === JSON.stringify({ user_id: false, dia: false, humor: true, criado_em: false, atualizado_em: false }), 'migração 19 (instalação limpa): authenticated tem UPDATE somente em humor; dia, user_id, criado_em e atualizado_em ficam protegidos');
+  const tp = (await db.query("select has_table_privilege('authenticated','public.registros_dia','SELECT') as s, has_table_privilege('authenticated','public.registros_dia','INSERT') as i, has_table_privilege('authenticated','public.registros_dia','DELETE') as d, has_table_privilege('anon','public.registros_dia','SELECT') as a")).rows[0];
+  const upT = (await db.query("select count(*)::int as n from information_schema.role_table_grants where table_name = 'registros_dia' and grantee = 'authenticated' and privilege_type = 'UPDATE'")).rows[0].n;
+  ok(tp.s && tp.i && !tp.d && !tp.a && upT === 0, 'migração 19 (instalação limpa): SELECT e INSERT preservados, sem DELETE, sem UPDATE de tabela inteira e sem acesso de anon');
+  const pol = (await db.query("select policyname, permissive, cmd from pg_policies where tablename = 'registros_dia' order by policyname")).rows.map((p) => `${p.policyname}:${p.permissive}:${p.cmd}`).join();
+  const fn = (await db.query("select proname, prosecdef from pg_proc where proname in ('registrar_dias','listar_registros_dia') order by 1")).rows;
+  ok(pol === 'registros_dia_dono:PERMISSIVE:ALL,registros_dia_janela_atualizar:RESTRICTIVE:UPDATE,registros_dia_janela_inserir:RESTRICTIVE:INSERT' && fn.length === 2 && fn.every((p) => p.prosecdef === false), 'migração 19 (instalação limpa): as 3 políticas de RLS e o SECURITY INVOKER das duas funções estão preservados');
+
+  // ---- comportamento: humor sozinho, opcional, um por dia, janela, lote atômico, histórico
+  const g1 = await lc('registrar_dias', { p: [{ dia: hoje, humor: 4 }] });
+  ok(g1.length === 1 && g1[0].humor === 4 && Object.keys(g1[0]).sort().join() === 'dia,humor', 'migração 19: o humor é gravado sozinho, sem energia');
+  const g2 = await lc('registrar_dias', { p: [{ dia: hoje, humor: 2, energia: 5 }] });
+  ok(g2[0].humor === 2 && !('energia' in g2[0]) && (await lc('listar_registros_dia', {})).every((x) => !('energia' in x)), 'migração 19: um campo energia enviado por um aparelho antigo é ignorado, nunca guardado nem devolvido');
+  ok((await db.query('select count(*)::int as n from public.registros_dia where user_id = $1 and dia = $2', [L, hoje])).rows[0].n === 1, 'migração 19: gravar o mesmo dia de novo substitui (uma linha por dia)');
+  await lc('registrar_dias', { p: [{ dia: dia(-5), humor: 1 }, { dia: dia(-3), humor: 5 }] });
+  const antes = JSON.stringify(await lc('listar_registros_dia', {}));
+  const ruim = await lc('registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(-6), humor: 3 }] }).then(() => null, (e) => e.message);
+  const ruim2 = await lc('registrar_dias', { p: [{ dia: dia(-2), humor: 3 }, { dia: dia(-1) }] }).then(() => null, (e) => e.message);
+  ok(/5 dias/.test(ruim || '') && /humor/i.test(ruim2 || '') && JSON.stringify(await lc('listar_registros_dia', {})) === antes, 'migração 19: o lote continua tudo ou nada, com a janela de hoje e 5 dias; humor ausente é recusado');
+  ok(/ainda não chegou/.test(await lc('registrar_dias', { p: [{ dia: dia(1), humor: 3 }] }).then(() => '', (e) => e.message)), 'migração 19: dia futuro continua recusado');
+  const mover = await direto(L, 'update public.registros_dia set dia = $1 where dia = $2', [dia(-1), hoje]);
+  const dono = await direto(L, 'update public.registros_dia set user_id = $1 where dia = $2', [M, hoje]);
+  const hum = await direto(L, 'update public.registros_dia set humor = 3 where dia = $1', [hoje]);
+  ok(/permission denied/i.test(mover.erro || '') && /permission denied/i.test(dono.erro || '') && hum.erro === null && (await lc('listar_registros_dia', {})).find((x) => x.dia === hoje).humor === 3, 'migração 19: mover a linha ou trocar o dono é recusado; corrigir o humor direto continua permitido');
+  ok((await lc('listar_registros_dia', {})).length === 3 && (await direto(M, 'select 1 from public.registros_dia')).n === 0 && /row-level|policy/i.test((await direto(M, 'insert into public.registros_dia (dia, humor) values ($1, 3)', [hoje])).erro || ''), 'migração 19: o histórico continua legível e a conta não autorizada nem lê nem grava');
+
+  // ---- upgrade: banco com as migrações 1 a 18, dados fictícios com energia, aplica a 19
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig19-'));
+  for (const f of todas.filter((f) => f < m19)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const a18 = await abrirBancoTeste({ raizMigracoes: pasta });
+  const X = 'a9a9a9a9-9999-4999-8999-a9a9a9a9a9a9';
+  await a18.exec(`insert into auth.users (id, email) values ('${X}', 'ux@teste')`);
+  await a18.exec("insert into dmanda_privado.acesso_autorizado (email) values ('ux@teste')");
+  const ux = (f, a) => chamarComoUsuario(a18, X, f, a);
+  await ux('registrar_dias', { p: [{ dia: hoje, humor: 4, energia: 2 }, { dia: dia(-2), humor: 1, energia: 5 }] });
+  await a18.query('insert into public.registros_dia (user_id, dia, humor, energia) values ($1, $2, 5, 5)', [X, dia(-40)]);   // histórico fora da janela
+  const dm = await ux('criar_demanda', { p: { assunto: 'Fictícia A', prazo: '2027-03-09' } });
+  await ux('adicionar_tarefa', { p_demanda: dm.id, p_texto: 'Tarefa fictícia' });
+  await a18.query("insert into public.entradas (user_id, titulo, texto) values ($1, 'Nota fictícia', 'texto fictício')", [X]);
+  const tabelas = (await a18.query("select table_schema as s, table_name as t from information_schema.tables where table_schema in ('public','dmanda_privado') and table_type = 'BASE TABLE' and table_name <> 'registros_dia' order by 1, 2")).rows;
+  const foto = async () => { const o = {}; for (const { s, t } of tabelas) o[`${s}.${t}`] = (await a18.query(`select coalesce(jsonb_agg(to_jsonb(x) order by to_jsonb(x)::text), '[]'::jsonb) as j from ${s}.${t} x`)).rows[0].j; return JSON.stringify(o); };
+  const humores = async () => JSON.stringify((await a18.query('select dia::text, humor, criado_em::text as c from public.registros_dia where user_id = $1 order by dia', [X])).rows);
+  const acl = async () => JSON.stringify((await a18.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and p.proname not in ('registrar_dias','listar_registros_dia') order by 1")).rows);
+  const aclPerfil = async () => JSON.stringify((await a18.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl from pg_proc p where p.proname in ('registrar_dias','listar_registros_dia') order by 1")).rows);
+  const politicas = async () => JSON.stringify((await a18.query("select policyname, permissive, cmd, roles::text, qual, with_check from pg_policies where tablename = 'registros_dia' order by 1")).rows);
+  const f0 = await foto(), h0 = await humores(), a0 = await acl(), ap0 = await aclPerfil(), p0 = await politicas();
+  ok(JSON.parse(h0).length === 3 && (await a18.query("select count(*)::int as n from information_schema.columns where table_name = 'registros_dia' and column_name = 'energia'")).rows[0].n === 1, 'migração 19 (antes): o banco 1 a 18 tem a coluna energia e três registros fictícios');
+
+  await a18.exec(readFileSync(join('supabase/migrations', m19), 'utf8'));
+
+  ok(await foto() === f0, 'migração 19 (upgrade): demandas, tarefas, anotações e as demais tabelas ficam idênticas');
+  ok(await humores() === h0, 'migração 19 (upgrade): os registros de humor ficam idênticos (dia, humor e data de criação), inclusive o histórico fora da janela');
+  const col = (await a18.query("select column_name from information_schema.columns where table_name = 'registros_dia' order by column_name")).rows.map((r) => r.column_name).join();
+  ok(col === 'atualizado_em,criado_em,dia,humor,user_id', 'migração 19 (upgrade): a coluna energia é removida e as demais permanecem');
+  ok(await politicas() === p0 && await acl() === a0 && await aclPerfil() === ap0, 'migração 19 (upgrade): políticas de RLS, privilégios e SECURITY INVOKER das funções ficam como estavam');
+  const priv18 = async (col, tipo) => (await a18.query("select has_column_privilege('authenticated', 'public.registros_dia', $1, $2) as p", [col, tipo])).rows[0].p;
+  const u18 = {}; for (const c of ['user_id', 'dia', 'humor', 'criado_em', 'atualizado_em']) u18[c] = await priv18(c, 'UPDATE');
+  ok(JSON.stringify(u18) === JSON.stringify(upd) && (await a18.query("select count(*)::int as n from information_schema.role_table_grants where table_name = 'registros_dia' and grantee = 'authenticated' and privilege_type = 'UPDATE'")).rows[0].n === 0, 'migração 19 (upgrade): UPDATE só em humor, igual à instalação limpa');
+  const leitura = await ux('listar_registros_dia', {});
+  const regrava = await ux('registrar_dias', { p: [{ dia: hoje, humor: 3 }] });
+  ok(leitura.length === 3 && leitura.some((x) => x.dia === dia(-40) && x.humor === 5) && regrava[0].humor === 3 && Object.keys(leitura[0]).sort().join() === 'dia,humor', 'migração 19 (upgrade): o histórico segue legível, só com dia e humor, e registrar_dias regrava o dia');
+  const fMeio = await foto(), hMeio = await humores();
+  await a18.exec(readFileSync(join('supabase/migrations', m19), 'utf8'));
+  ok(await foto() === fMeio && await humores() === hMeio, 'migração 19: reaplicar é inofensivo');
+  await a18.close();
+}
+
+// ---------- migração 20: origem, documento associado, marca Rápida e Para hoje (decisão 60) ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m20 = todas.find((f) => f.includes('origem_documento_para_hoje'));
+  const m19 = todas.find((f) => f.includes('registros_dia_so_humor'));
+  ok(!!m20 && !!m19 && todas.indexOf(m20) === todas.indexOf(m19) + 1, 'migração 20: existe, vem logo depois da 19 e as anteriores não foram reescritas (arquivo à parte)');
+
+  // ---- upgrade: banco com as migrações 1 a 19 e demandas antigas; aplica a 20
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig20-'));
+  for (const f of todas.filter((f) => f < m20)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const a19 = await abrirBancoTeste({ raizMigracoes: pasta });
+  const U = 'b1b1b1b1-9999-4999-8999-b1b1b1b1b1b1', V = 'b2b2b2b2-9999-4999-8999-b2b2b2b2b2b2', N = 'b3b3b3b3-9999-4999-8999-b3b3b3b3b3b3';
+  await a19.exec(`insert into auth.users (id, email) values ('${U}', 'ox@teste'), ('${V}', 'oy@teste'), ('${N}', 'on@teste')`);
+  await a19.exec("insert into dmanda_privado.acesso_autorizado (email) values ('ox@teste'), ('oy@teste')");
+  const ua = (f, a) => chamarComoUsuario(a19, U, f, a);
+  const antiga1 = await ua('criar_demanda', { p: { assunto: 'Antiga A', tipo: 'Ofício', numero: '32/2026', origem: 'Prefeita' } });
+  const antiga2 = await ua('criar_demanda', { p: { assunto: 'Antiga B', numero: '2024/1250', origem: 'Secretaria de Obras' } });
+  const antiga3 = await ua('criar_demanda', { p: { assunto: 'Antiga C', tipo: 'Memorando', numero: 'sem formato', origem: '  prefeita ' } });
+  const antes = JSON.stringify((await a19.query('select id, tipo, numero, origem, assunto, etapa, prazo, versao, atualizado_em from public.demandas order by assunto')).rows);
+  const tarefasAntes = JSON.stringify((await a19.query('select id, texto, demanda_id from public.tarefas order by id')).rows);
+  const aclAntes = JSON.stringify((await a19.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and p.proname not in ('criar_demanda','atualizar_demanda') order by 1")).rows);
+  ok(antiga1.tipo === 'Ofício' && antiga2.tipo === 'Processo', 'migração 20 (antes): no banco 1 a 19 o tipo ainda é obrigatório (sem tipo vira Processo)');
+  await a19.exec(readFileSync(join('supabase/migrations', m20), 'utf8'));
+  const depois = JSON.stringify((await a19.query('select id, tipo, numero, origem, assunto, etapa, prazo, versao, atualizado_em from public.demandas order by assunto')).rows);
+  ok(depois === antes && JSON.stringify((await a19.query('select id, texto, demanda_id from public.tarefas order by id')).rows) === tarefasAntes, 'migração 20 (upgrade): as demandas e as tarefas antigas ficam idênticas (tipo, número, origem, prazo, versão e carimbo)');
+  const novas = (await a19.query("select rapida, documento_ano from public.demandas")).rows;
+  ok(novas.length === 3 && novas.every((r) => r.rapida === false && r.documento_ano === null), 'migração 20 (upgrade): as demandas antigas ganham Rápida desligada e nenhum ano confirmado');
+  ok(JSON.stringify((await a19.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and p.proname not in ('criar_demanda','atualizar_demanda') order by 1")).rows.filter((r) => !/listar_opcoes|criar_opcao|listar_para_hoje|atualizar_para_hoje/.test(r.f))) === aclAntes, 'migração 20 (upgrade): as demais funções seguem como estavam (definição de segurança e privilégios)');
+  const priv = (await a19.query("select has_table_privilege('authenticated','public.opcoes','SELECT') s, has_table_privilege('authenticated','public.opcoes','INSERT') i, has_table_privilege('authenticated','public.opcoes','UPDATE') u, has_table_privilege('authenticated','public.opcoes','DELETE') d, has_table_privilege('anon','public.opcoes','SELECT') a, has_table_privilege('authenticated','public.para_hoje','DELETE') pd, has_table_privilege('authenticated','public.para_hoje','UPDATE') pu, has_table_privilege('anon','public.para_hoje','SELECT') pa")).rows[0];
+  const inv = (await a19.query("select proname, prosecdef from pg_proc where proname in ('listar_opcoes','criar_opcao','listar_para_hoje','atualizar_para_hoje','criar_demanda','atualizar_demanda') order by 1")).rows;
+  ok(priv.s && priv.i && !priv.u && !priv.d && !priv.a && priv.pd && !priv.pu && !priv.pa && inv.length === 6 && inv.every((p) => p.prosecdef === false), 'migração 20: privilégios mínimos (opções sem UPDATE nem DELETE, vagas sem UPDATE, anon sem acesso) e todas as funções SECURITY INVOKER');
+
+  // ---- opções
+  const o1 = await ua('listar_opcoes', {});
+  const nomes = (l, c) => l.filter((x) => x.campo === c).map((x) => x.nome);
+  ok(['Prefeita', 'Reunião', 'Pedido de colega', 'Iniciativa própria'].every((n) => nomes(o1, 'origem').includes(n)) && nomes(o1, 'origem').includes('Secretaria de Obras') && nomes(o1, 'origem').filter((n) => n.toLowerCase().trim() === 'prefeita').length === 1, 'opções: as origens padrão e as antigas (digitadas nas demandas) aparecem, sem duplicar "Prefeita" escrita de outro jeito');
+  ok(['Protocolo', 'Processo', 'Memorando', 'Ofício', 'Pedido de informação', 'Projeto de lei', 'Portaria', 'Outro documento'].every((n) => nomes(o1, 'tipo').includes(n)), 'opções: os oito tipos de documento de antes continuam como opções');
+  const nOpc = o1.length;
+  const c1 = await ua('criar_opcao', { p_campo: 'origem', p_nome: '  Secretaria   de Educação ' });
+  const c2 = await ua('criar_opcao', { p_campo: 'origem', p_nome: 'secretaria de educação' });
+  ok(c1.existente === false && c1.nome === 'Secretaria de Educação' && c2.existente === true && c2.id === c1.id, 'opções: criar normaliza os espaços e repetir a criação (ou o mesmo nome em outras letras) devolve a mesma opção, sem duplicar');
+  const ps = await Promise.all([ua('criar_opcao', { p_campo: 'tipo', p_nome: 'Certidão' }), ua('criar_opcao', { p_campo: 'tipo', p_nome: 'certidão' })]);
+  ok(ps[0].id === ps[1].id && (await ua('listar_opcoes', {})).length === nOpc + 2, 'opções: duas criações simultâneas do mesmo nome geram uma só opção');
+  const vazio = await ua('criar_opcao', { p_campo: 'origem', p_nome: '   ' }).then(() => null, (e) => e.message);
+  const vazioT = await ua('criar_opcao', { p_campo: 'tipo', p_nome: '' }).then(() => null, (e) => e.message);
+  const longo = await ua('criar_opcao', { p_campo: 'origem', p_nome: 'x'.repeat(81) }).then(() => null, (e) => e.message);
+  const campo = await ua('criar_opcao', { p_campo: 'outro', p_nome: 'a' }).then(() => null, (e) => e.message);
+  ok(/nome da origem/.test(vazio || '') && /nome do tipo/.test(vazioT || '') && /80/.test(longo || '') && /inválido/.test(campo || '') && (await ua('listar_opcoes', {})).length === nOpc + 2, 'opções: nome vazio, longo demais e campo inválido são recusados sem gravar nada');
+  ok((await chamarComoUsuario(a19, V, 'listar_opcoes', {})).every((x) => x.nome !== 'Certidão' && x.nome !== 'Secretaria de Obras'), 'opções: outro usuário autorizado não vê as opções do primeiro');
+  const naoAut = await chamarComoUsuario(a19, N, 'criar_opcao', { p_campo: 'origem', p_nome: 'Qualquer' }).then(() => null, (e) => e.message);
+  ok(/row-level|policy/i.test(naoAut || ''), 'opções: conta não autorizada não grava');
+
+  // ---- demanda sem documento, com origem de reunião, e o documento chegando depois
+  const r1 = await ua('criar_demanda', { p: { id: '10000000-0000-4000-8000-000000000001', assunto: 'Pedido verbal', origem: 'Reunião', rapida: true } });
+  ok(r1.tipo === null && r1.numero === '' && r1.origem === 'Reunião' && r1.rapida === true && r1.documento_ano === null, 'documento opcional: a demanda nasce de uma reunião, sem tipo nem número, e com a marca Rápida');
+  const rep = await ua('criar_demanda', { p: { id: '10000000-0000-4000-8000-000000000001', assunto: 'Pedido verbal', origem: 'Reunião' } });
+  ok(rep.id === r1.id && rep.rapida === true && (await a19.query('select count(*)::int n from public.demandas where assunto = $1', ['Pedido verbal'])).rows[0].n === 1, 'documento opcional: repetir o cadastro com o mesmo identificador devolve a mesma demanda');
+  const r2 = await ua('atualizar_demanda', { p_id: r1.id, p: { tipo: 'Memorando', numero: '45/2026', documento_ano: 2026 } });
+  ok(r2.tipo === 'Memorando' && r2.numero === '45/2026' && r2.origem === 'Reunião' && r2.documento_ano === 2026, 'documento opcional: o memorando chega depois e a origem (reunião) continua');
+  const r3 = await ua('atualizar_demanda', { p_id: r1.id, p: { tipo: null, documento_ano: null, rapida: false } });
+  ok(r3.tipo === null && r3.documento_ano === null && r3.rapida === false && r3.numero === '45/2026', 'documento opcional: tirar o tipo e o ano confirmado volta ao estado sem documento sem apagar o número informado');
+  const r4 = await ua('atualizar_demanda', { p_id: r1.id, p: { tipo: '   ' } });
+  ok(r4.tipo === null, 'documento opcional: tipo só com espaços vale como sem tipo');
+  const proto = await ua('criar_demanda', { p: { assunto: 'Protocolo de compras', tipo: 'Protocolo', area: 'Compras' } }).then(() => null, (e) => e.message);
+  const protoNulo = await ua('criar_demanda', { p: { assunto: 'Sem tipo em compras', area: 'Compras' } }).then((x) => x.area, () => null);
+  ok(/Protocolo só pode/.test(proto || '') && protoNulo === 'Compras', 'documento opcional: a regra Protocolo x Compras continua, e a área vale sem tipo');
+  const ano = await ua('atualizar_demanda', { p_id: antiga1.id, p: { documento_ano: 2025 } });
+  const ano2 = await ua('atualizar_demanda', { p_id: antiga1.id, p: { numero: '99/2027' } });
+  ok(ano.documento_ano === 2025 && ano2.documento_ano === 2025 && ano2.numero === '99/2027', 'ano confirmado à mão: sobrevive a uma troca de número (o número fica como informado)');
+  const anoRuim = await ua('atualizar_demanda', { p_id: antiga1.id, p: { documento_ano: 1800 } }).then(() => null, (e) => e.message);
+  ok(anoRuim !== null && (await ua('buscar_demanda', { p_id: antiga1.id })).documento_ano === 2025, 'ano confirmado à mão: ano fora de 1900 a 2100 é recusado e o anterior fica');
+  const salvo = await ua('salvar_demanda', { p_id: antiga2.id, p: { tipo: 'Certidão', rapida: true, origem: 'Reunião' }, p_tarefas: null, p_versao: (await ua('buscar_demanda', { p_id: antiga2.id })).versao });
+  ok(salvo.tipo === 'Certidão' && salvo.rapida === true && salvo.origem === 'Reunião', 'salvar_demanda: grava o tipo criado, a marca Rápida e a origem na mesma janela');
+
+  // ---- Para hoje
+  const mk = async (u, nome, extra = {}) => (await chamarComoUsuario(a19, u, 'criar_demanda', { p: { assunto: nome, ...extra } })).id;
+  const [d1, d2, d3, d4, d5] = [await mk(U, 'PH 1'), await mk(U, 'PH 2'), await mk(U, 'PH 3'), await mk(U, 'PH 4'), await mk(U, 'PH 5')];
+  const vagas = async (u = U) => (await chamarComoUsuario(a19, u, 'listar_para_hoje', {})).map((v) => `${v.posicao}:${v.demanda_id}`).join();
+  ok(await vagas() === '', 'Para hoje: começa sem vagas');
+  const p1 = await ua('atualizar_para_hoje', { p_candidatas: [d1, d2, d3, d4, d5] });
+  ok(p1.length === 3 && p1.map((v) => v.demanda_id).join() === [d1, d2, d3].join() && p1.map((v) => v.posicao).join() === '1,2,3', 'Para hoje: com cinco candidatas, as três primeiras ocupam as vagas 1, 2 e 3, na ordem');
+  const p2 = await ua('atualizar_para_hoje', { p_candidatas: [d3, d1, d2, d4, d5] });
+  ok(JSON.stringify(p2) === JSON.stringify(p1), 'Para hoje: as vagas persistem (IDs e posições) mesmo que a ordem das candidatas mude');
+  await ua('concluir_demanda', { p_id: d2 });
+  const p3 = await ua('atualizar_para_hoje', { p_candidatas: [d1, d3, d4, d5] });
+  ok(p3.map((v) => `${v.posicao}:${v.demanda_id}`).join() === `1:${d1},2:${d4},3:${d3}`, 'Para hoje: ao concluir uma demanda, só a vaga liberada (2) é reposta; as vagas 1 e 3 ficam');
+  await ua('arquivar_demanda', { p_id: d1 });
+  const p4 = await ua('atualizar_para_hoje', { p_candidatas: [d5] });
+  ok(p4.map((v) => `${v.posicao}:${v.demanda_id}`).join() === `1:${d5},2:${d4},3:${d3}`, 'Para hoje: arquivar libera só a sua vaga (1) e as demais ficam intactas');
+  await ua('excluir_demanda', { p_id: d3, p_confirmado: true });
+  ok((await ua('listar_para_hoje', {})).map((v) => v.posicao).join() === '1,2', 'Para hoje: excluir a demanda remove a sua vaga (3) e não toca nas outras');
+  const p5 = await ua('atualizar_para_hoje', { p_candidatas: [d1, d2, d4, d5] });
+  ok(p5.length === 2 && p5.every((v) => [d4, d5].includes(v.demanda_id)), 'Para hoje: candidata arquivada ou finalizada não ocupa vaga, e uma já presente não duplica');
+  const fora = await ua('atualizar_para_hoje', { p_candidatas: ['nao-e-uuid', '99999999-9999-4999-8999-999999999999'] });
+  ok(fora.length === 2, 'Para hoje: identificador inválido ou de demanda inexistente é ignorado');
+  const novaA = await mk(U, 'PH A'), novaB = await mk(U, 'PH B');
+  const conc = await Promise.all([ua('atualizar_para_hoje', { p_candidatas: [novaA, novaB] }), ua('atualizar_para_hoje', { p_candidatas: [novaB, novaA] }), ua('atualizar_para_hoje', { p_candidatas: [novaA, novaB] })]);
+  const finalV = await ua('listar_para_hoje', {});
+  ok(finalV.length === 3 && new Set(finalV.map((v) => v.demanda_id)).size === 3 && new Set(finalV.map((v) => v.posicao)).size === 3 && conc.every((v) => v.length === 3), 'Para hoje: três sessões simultâneas preenchem a vaga livre uma só vez, sem demanda ou posição duplicada');
+  const dMuitas = await ua('atualizar_para_hoje', { p_candidatas: Array.from({ length: 31 }, () => d4) }).then(() => null, (e) => e.message);
+  ok(/inválida/.test(dMuitas || ''), 'Para hoje: lista de candidatas grande demais é recusada');
+  // viradas de dia: as vagas não dependem do dia
+  const antesDia = await ua('listar_para_hoje', {});
+  await a19.query("update public.para_hoje set desde = desde - 3 where user_id = $1", [U]);
+  ok(JSON.stringify(await ua('listar_para_hoje', {})) === JSON.stringify(antesDia) && JSON.stringify(await ua('atualizar_para_hoje', { p_candidatas: [] })) === JSON.stringify(antesDia), 'Para hoje: dias depois, as mesmas demandas continuam nas mesmas posições (nada é reescolhido na virada do dia)');
+  ok(await vagas(V) === '' && (await chamarComoUsuario(a19, N, 'listar_para_hoje', {})).length === 0, 'Para hoje: outro usuário não vê as vagas do primeiro');
+  const alheio = await chamarComoUsuario(a19, V, 'atualizar_para_hoje', { p_candidatas: [novaA] });
+  ok(alheio.length === 0, 'Para hoje: demanda de outro usuário não entra nas vagas de quem não é dono dela');
+  const fotoMeio = JSON.stringify((await a19.query('select id, tipo, numero, origem, versao from public.demandas order by assunto')).rows);
+  await a19.exec(readFileSync(join('supabase/migrations', m20), 'utf8'));
+  ok(JSON.stringify((await a19.query('select id, tipo, numero, origem, versao from public.demandas order by assunto')).rows) === fotoMeio && (await ua('listar_opcoes', {})).length === nOpc + 2, 'migração 20: reaplicar é inofensivo');
+  await a19.close();
+}
+
+// ---------- restauração (restaurar-copia.sql) com o schema da migração 20: cópia v4 gerada ANTES dela e cópia atual ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const SQL = readFileSync('supabase/restaurar-copia.sql', 'utf8');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m20 = todas.find((f) => f.includes('origem_documento_para_hoje'));
+  const O = 'c1c1c1c1-8888-4888-8888-c1c1c1c1c1c1', N = 'c2c2c2c2-8888-4888-8888-c2c2c2c2c2c2';
+  const preparar = async (d, id, email) => { await d.query('insert into auth.users (id, email) values ($1, $2)', [id, email]); await d.query('insert into dmanda_privado.acesso_autorizado (email) values ($1) on conflict do nothing', [email]); return d; };
+  const rodar = async (d, json) => { try { await d.exec(SQL.replace('__COLE_AQUI_O_JSON__', () => JSON.stringify(json))); return null; } catch (e) { return e.message || String(e); } };
+  const exportar = async (d, u) => JSON.parse(JSON.stringify({ formato: 'dmanda-exportacao', versao: 4, exportado_em: new Date().toISOString(), fuso: 'America/Sao_Paulo',
+    demandas: await chamarComoUsuario(d, u, 'listar_demandas', { p_arquivadas: false }), arquivadas: await chamarComoUsuario(d, u, 'listar_demandas', { p_arquivadas: true }),
+    dias_indisponiveis: await chamarComoUsuario(d, u, 'listar_dias_indisponiveis', {}), entradas: await chamarComoUsuario(d, u, 'listar_entradas', { p_arquivadas: false }),
+    entradas_arquivadas: await chamarComoUsuario(d, u, 'listar_entradas', { p_arquivadas: true }), eventos: await chamarComoUsuario(d, u, 'listar_eventos', {}) }));
+  const conteudo = async (d) => JSON.stringify({
+    dem: (await d.query('select id, assunto, tipo, numero, origem, etapa, prazo, prazo_original, rapida, documento_ano, versao from public.demandas order by id')).rows,
+    tar: (await d.query('select id, demanda_id, texto, concluida, posicao from public.tarefas order by id')).rows,
+    ent: (await d.query('select id, titulo, texto, cor, fixada, arquivada_em, demanda_id, versao from public.entradas order by id')).rows,
+    eve: (await d.query('select id, titulo, tipo, data, dia_inteiro, versao from public.eventos order by id')).rows,
+    dia: (await d.query('select id, data, descricao from public.dias_indisponiveis order by id')).rows });
+
+  // cópia v4 realmente gerada por um banco com as migrações 1 a 19 (sem a coluna rapida)
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-rest19-'));
+  for (const f of todas.filter((f) => f < m20)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const velho = await preparar(await abrirBancoTeste({ raizMigracoes: pasta }), O, 'rv@teste');
+  const cv = (f, a) => chamarComoUsuario(velho, O, f, a);
+  const v1 = await cv('criar_demanda', { p: { assunto: 'Antiga com tipo "á"', tipo: 'Processo', numero: '12/2026', origem: 'TCE-RS', prazo_original: '2026-12-10' } });
+  await cv('adicionar_tarefa', { p_demanda: v1.id, p_texto: 'Primeira' }); await cv('adicionar_tarefa', { p_demanda: v1.id, p_texto: 'Segunda' });
+  const v2 = await cv('criar_demanda', { p: { assunto: 'Antiga arquivada', tipo: 'Ofício' } }); await cv('arquivar_demanda', { p_id: v2.id });
+  await cv('criar_evento', { p: { titulo: 'Reunião antiga', tipo: 'Reunião', data: '2026-12-01', inicio: '09:00' } });
+  const en = await cv('criar_entrada', { p: { titulo: 'Virou', texto: 'Conteúdo', cor: 2 } });
+  const demEn = await cv('criar_demanda_de_entrada', { p_entrada: en.id, p: { id: 'c3c3c3c3-8888-4888-8888-c3c3c3c3c3c3', assunto: 'Da entrada' } });
+  await cv('salvar_dia_indisponivel', { p: { data: '2026-12-25', descricao: 'Natal', categoria: 'Feriado' } });
+  const antiga = await exportar(velho, O);
+  ok(antiga.demandas.concat(antiga.arquivadas).length === 3 && antiga.demandas.concat(antiga.arquivadas).every((d) => !('rapida' in d)) && antiga.versao === 4, 'restauração 1 a 20: a cópia v4 de teste foi gerada antes da migração 20 e não tem o campo rapida');
+  await velho.close();
+
+  const destino = await preparar(await abrirBancoTeste(), N, 'rn@teste');   // schema completo, migrações 1 a 20
+  ok(await rodar(destino, antiga) === null, 'restauração 1 a 20: a cópia v4 anterior à migração 20 restaura sem erro no schema com Rápida NOT NULL');
+  const r = (await destino.query('select count(*)::int n, count(*) filter (where rapida = false)::int f, count(*) filter (where documento_ano is null)::int a from public.demandas')).rows[0];
+  ok(r.n === 3 && r.f === 3 && r.a === 3, 'restauração 1 a 20: as demandas voltam com Rápida desligada e sem ano confirmado');
+  const dep = (await destino.query('select (select count(*) from public.tarefas)::int t, (select count(*) from public.entradas)::int e, (select count(*) from public.eventos)::int v, (select count(*) from public.dias_indisponiveis)::int d, (select demanda_id from public.entradas where id = $1) vinc', [en.id])).rows[0];
+  ok(dep.t === 2 && dep.e === 1 && dep.v === 1 && dep.d === 1 && dep.vinc === demEn.id, 'restauração 1 a 20: tarefas, entrada com vínculo, evento e dia indisponível voltam');
+  ok((await destino.query('select tipo from public.demandas where id = $1', [v1.id])).rows[0].tipo === 'Processo', 'restauração 1 a 20: o tipo e a origem de cada demanda voltam no texto da própria demanda');
+  const foto = await conteudo(destino);
+  ok(await rodar(destino, antiga) === null && await conteudo(destino) === foto, 'restauração 1 a 20: repetir a restauração não duplica nem altera nada');
+
+  // Rápida presente (true e false), nula e ausente; leitura dos formatos v1 a v3
+  const mista = JSON.parse(JSON.stringify(antiga)); mista.demandas[0].rapida = true; mista.arquivadas[0].rapida = false; mista.demandas[1].rapida = null;
+  const d2 = await preparar(await abrirBancoTeste(), N, 'rm@teste');
+  ok(await rodar(d2, mista) === null, 'restauração 1 a 20: cópia com Rápida true, false, nula e ausente restaura sem erro');
+  const m = Object.fromEntries((await d2.query('select id, rapida from public.demandas')).rows.map((x) => [x.id, x.rapida]));
+  ok(m[mista.demandas[0].id] === true && m[mista.arquivadas[0].id] === false && m[mista.demandas[1].id] === false, 'restauração 1 a 20: Rápida true é preservada, false e nula viram false');
+  const c3 = JSON.parse(JSON.stringify(antiga)); c3.versao = 3; delete c3.eventos; for (const x of c3.demandas.concat(c3.arquivadas)) { delete x.encaminhada_em; delete x.reiterada_em; }
+  const c2 = JSON.parse(JSON.stringify(c3)); c2.versao = 2; delete c2.entradas; delete c2.entradas_arquivadas;
+  const c1 = JSON.parse(JSON.stringify(c2)); c1.versao = 1; delete c1.dias_indisponiveis; for (const x of c1.demandas.concat(c1.arquivadas)) { delete x.prazo_original; delete x.prazo_ajuste; delete x.prazo_legado; delete x.versao; }
+  for (const [vv, cop] of [[3, c3], [2, c2], [1, c1]]) { const dv = await preparar(await abrirBancoTeste(), N, 'rv' + vv + '@teste'); ok(await rodar(dv, cop) === null && (await dv.query('select count(*)::int n from public.demandas')).rows[0].n === 3, 'restauração 1 a 20: o formato v' + vv + ' continua sendo lido'); await dv.close(); }
+
+  // cópia atual (gerada com o schema completo: Rápida, origem e documento associado)
+  const atual = await preparar(await abrirBancoTeste(), O, 'ra@teste');
+  const ca = (f, a) => chamarComoUsuario(atual, O, f, a);
+  const a1 = await ca('criar_demanda', { p: { assunto: 'Rápida sem documento', origem: 'Reunião', rapida: true } });
+  const a2 = await ca('criar_demanda', { p: { assunto: 'Tipo personalizado', tipo: 'Certidão', numero: '5/2026', documento_ano: 2026 } });
+  await ca('adicionar_tarefa', { p_demanda: a2.id, p_texto: 'Tarefa atual' });
+  const cop = await exportar(atual, O);
+  ok(cop.demandas.find((x) => x.id === a1.id).rapida === true && cop.demandas.find((x) => x.id === a2.id).documento_ano === 2026, 'restauração 1 a 20: a cópia atual traz Rápida e o ano do documento');
+  const dest2 = await preparar(await abrirBancoTeste(), N, 'rb@teste');
+  ok(await rodar(dest2, cop) === null, 'restauração 1 a 20: a cópia atual restaura sem erro');
+  const q = (await dest2.query('select id, rapida, documento_ano, tipo from public.demandas')).rows;
+  ok(q.find((x) => x.id === a1.id).rapida === true && q.find((x) => x.id === a2.id).documento_ano === 2026 && q.find((x) => x.id === a2.id).tipo === 'Certidão', 'restauração 1 a 20: Rápida true, ano do documento e tipo personalizado são preservados');
+  const f2 = await conteudo(dest2);
+  ok(await rodar(dest2, cop) === null && await conteudo(dest2) === f2, 'restauração 1 a 20: repetir a cópia atual não duplica nem sobrescreve');
+  await dest2.query("update public.demandas set assunto = 'ALTERADA DEPOIS', rapida = false where id = $1", [a1.id]);
+  ok(await rodar(dest2, cop) === null && (await dest2.query('select assunto, rapida from public.demandas where id = $1', [a1.id])).rows[0].assunto === 'ALTERADA DEPOIS', 'restauração 1 a 20: demanda que já existe não é sobrescrita pela cópia');
+
+  // falha no meio: nada fica gravado
+  const quebrada = JSON.parse(JSON.stringify(antiga)); quebrada.eventos[0].data = 'não é data';
+  const dq = await preparar(await abrirBancoTeste(), N, 'rq@teste');
+  const antesQ = (await dq.query('select (select count(*) from public.demandas)::int d, (select count(*) from public.tarefas)::int t, (select count(*) from public.entradas)::int e')).rows[0];
+  ok(await rodar(dq, quebrada) !== null && JSON.stringify((await dq.query('select (select count(*) from public.demandas)::int d, (select count(*) from public.tarefas)::int t, (select count(*) from public.entradas)::int e')).rows[0]) === JSON.stringify(antesQ), 'restauração 1 a 20: falha no meio desfaz tudo (transação única), inclusive demandas e tarefas');
+  ok((await dq.query("select tgenabled from pg_trigger where tgname = 'tarefas_versao'")).rows[0].tgenabled === 'O', 'restauração 1 a 20: o gatilho de versão das tarefas continua ligado depois da falha');
+  for (const d of [destino, d2, atual, dest2, dq]) await d.close();
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

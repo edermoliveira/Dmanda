@@ -11,14 +11,17 @@ import { cookies } from 'next/headers';
 
 const op = () => criarOperacoes(chamar);
 
+// Só para os testes automatizados: sem lembretes de humor (o convite da entrada é uma janela e atrapalharia os testes de outras telas). Nunca vale em produção.
+const semLembretes = () => process.env.DMANDA_SEM_LEMBRETES === 'sim' && (modoTeste() || process.env.NODE_ENV !== 'production');
+
 export async function ambiente() {
-  if (modoTeste()) return { teste: true, nome: 'Teste' };
+  if (modoTeste()) return { teste: true, nome: 'Teste', semLembretes: semLembretes() };
   try {
     const sb = await criarClienteServidor();
     const { data: { user } } = await sb.auth.getUser();
-    return { teste: false, nome: String(user?.user_metadata?.full_name ?? user?.email ?? '') };
+    return { teste: false, nome: String(user?.user_metadata?.full_name ?? user?.email ?? ''), semLembretes: semLembretes() };
   } catch {
-    return { teste: false, nome: '' };
+    return { teste: false, nome: '', semLembretes: semLembretes() };
   }
 }
 export async function listarDemandas(arquivadas = false) {
@@ -50,6 +53,18 @@ export async function desarquivarDemanda(id: string) {
 }
 export async function excluirDemanda(id: string, confirmado: boolean) {
   return executar(() => op().excluir(id, confirmado));
+}
+export async function listarOpcoes() {
+  return executar(() => op().listarOpcoes());
+}
+export async function criarOpcao(campo: 'origem' | 'tipo', nome: string) {
+  return executar(() => op().criarOpcao(campo, nome));
+}
+export async function listarParaHoje() {
+  return executar(() => op().listarParaHoje());
+}
+export async function atualizarParaHoje(candidatas: string[]) {
+  return executar(() => op().atualizarParaHoje(candidatas));
 }
 export async function listarDias() {
   return executar(() => op().listarDias());
