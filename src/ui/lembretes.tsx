@@ -9,7 +9,7 @@ import { Icone } from './Icone';
 import { Janela } from './janela-base';
 import { EscalaCinco, FormularioRegistro } from './escala';
 import { hojeISO } from '@/lib/demandas';
-import { estadoInicial, lerEstado, OCIOSO_MS, resolver, tique, type EstadoLembretes, type Pendente } from '@/lib/lembretes';
+import { estadoInicial, intervaloEmSegundos, lerEstado, OCIOSO_MS, resolver, tique, type EstadoLembretes, type Pendente } from '@/lib/lembretes';
 import { diasPendentes, diaPorExtenso, type Nivel } from '@/lib/registros';
 
 const CHAVE = 'dmanda:lembretes';
@@ -20,13 +20,13 @@ const gravarNoAparelho = (s: EstadoLembretes) => { try { localStorage.setItem(CH
 const exclusivo = async (f: () => void) => { if (typeof navigator !== 'undefined' && navigator.locks?.request) await navigator.locks.request('dmanda-lembretes', f); else f(); };
 
 export function Lembretes({ ocupado }: { ocupado: boolean }) {
-  const { registros, carregandoRegistros, erroRegistros, dias, janela, perfilAberto, completarAberto, abrirCompletar, hoje, avisar, ambiente } = useApp();
+  const { registros, carregandoRegistros, erroRegistros, dias, janela, perfilAberto, completarAberto, abrirCompletar, hoje, avisar, ambiente, prefsPerfil } = useApp();
   const [pendente, setPendente] = useState<Pendente>(null);
   const [convidar, setConvidar] = useState(false);
   const atividade = useRef(0);
   // o tique lê sempre o que há de mais novo sem recriar o relógio
-  const dados = useRef({ registros, dias, carregado: false });
-  useEffect(() => { dados.current = { registros, dias, carregado: !carregandoRegistros && !erroRegistros && !!ambiente && ambiente.semLembretes !== true }; });
+  const dados = useRef({ registros, dias, carregado: false, intervaloS: intervaloEmSegundos(prefsPerfil.balaoH) });
+  useEffect(() => { dados.current = { registros, dias, intervaloS: intervaloEmSegundos(prefsPerfil.balaoH), carregado: !carregandoRegistros && !erroRegistros && !!ambiente && ambiente.semLembretes !== true }; });
 
   const rodar = useCallback(() => exclusivo(() => {
     const d = dados.current;
@@ -34,7 +34,7 @@ export function Lembretes({ ocupado }: { ocupado: boolean }) {
     const agora = Date.now(), dia = hojeISO(new Date(agora));
     const out = tique(lerDoAparelho(dia, agora), {
       agora, dia, visivel: document.visibilityState === 'visible', ativo: agora - atividade.current <= OCIOSO_MS, carregado: true,
-      registradoHoje: d.registros.some((r) => r.dia === dia), temPendencias: diasPendentes(dia, d.registros, d.dias).length > 0,
+      registradoHoje: d.registros.some((r) => r.dia === dia), temPendencias: diasPendentes(dia, d.registros, d.dias).length > 0, intervaloS: d.intervaloS,
     });
     if (out.mudou) gravarNoAparelho(out.estado);
     setPendente(out.estado.pendente);

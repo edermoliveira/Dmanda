@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { EmojiNivel, FormularioRegistro } from './escala';
+import { BALAO_OPCOES, balaoValido } from '@/lib/preferencias';
 import { AVISO_PERFIL, ROTULO_HUMOR, dataCurta, diasPendentes, emJanelaDeCorrecao, fraseDoDia, semanaAbreviada, serieDoPeriodo, textoConcluidas, textoDoDia, DIAS_CORRECAO, type PontoDia } from '@/lib/registros';
 
 export function PerfilGaveta() {
@@ -119,7 +120,7 @@ function Gaveta() {
           <section className="painel ind" data-indicador="produtividade">
             <h3>Produtividade</h3>
             <div className="ind-v"><b className="grande-n">{hojePt.concluidas}</b>{' '}<b>{hojePt.concluidas === 1 ? 'demanda finalizada' : 'demandas finalizadas'} hoje</b></div>
-            <p className="data">Calculada pelas demandas finalizadas no dia, independentemente do prazo.</p>
+            <p className="data">Calculada pelas demandas finalizadas no dia, independentemente do prazo. Cada demanda conta no dia da sua última conclusão: reabrir ou excluir uma demanda muda os dias passados.</p>
           </section>
         </div>
 
@@ -198,11 +199,16 @@ function Gaveta() {
 
 /** O cartão de Configurações > Perfil: leva à mesma gaveta do avatar. */
 export function SecaoPerfilConfig() {
-  const { abrirPerfil } = useApp();
+  const { abrirPerfil, prefsPerfil, mudarPrefsPerfil } = useApp();
   return (
     <section className="cfg-bloco painel" aria-labelledby="cfg-perfil-t" data-secao="perfil">
       <h2 id="cfg-perfil-t" style={{ fontSize: 'calc(17px * var(--esc))', margin: '0 0 6px' }}>Perfil</h2>
       <p className="data">Humor e produtividade dos seus dias, com o gráfico semanal e mensal, o histórico e a correção dos últimos 5 dias. É privado: nada disso vai para a busca, a IA nem a cópia dos dados.</p>
+      <div className="fld" style={{ maxWidth: 360, marginTop: 12 }}>
+        <label htmlFor="cfg-balao">Balão de humor a cada</label>
+        <select id="cfg-balao" value={prefsPerfil.balaoH} onChange={(e) => { const h = Number(e.target.value); if (balaoValido(h)) mudarPrefsPerfil({ balaoH: h }); }}>{BALAO_OPCOES.map((h) => <option key={h} value={h}>{h} horas de trabalho</option>)}</select>
+        <p className="data" style={{ margin: '6px 0 0' }}>Conta só o tempo com o aplicativo aberto e em uso, neste aparelho. O padrão é 3 horas. O X do balão o fecha até o próximo intervalo.</p>
+      </div>
       <div className="acoes"><button type="button" className="btn pri" onClick={abrirPerfil}>Abrir o Perfil</button></div>
     </section>
   );

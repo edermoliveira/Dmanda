@@ -13,7 +13,8 @@ import { validarDados, validarDia, validarEntrada, validarRegistros } from '../s
 import { estadoDe, tagsDe, semTags, resumoDe, temTitulo, contarTags, filtrarEntradas, ordenarEntradas, paraDemanda, diferencas, vazia, camposEmConflito, carimbo, QTD_CORES } from '../src/lib/entradas.ts';
 import { buscar, palavrasDa, simplificar as simplificarBusca, LIMITE_RESULTADOS } from '../src/lib/busca.ts';
 import { diasPendentes, diaDeTrabalho, emJanelaDeCorrecao, serieDoPeriodo, textoDoDia, fraseDoDia, registrosValidos, substituirRegistros, textoConcluidas, AVISO_PERFIL } from '../src/lib/registros.ts';
-import { estadoInicial, lerEstado, tique, resolver, INTERVALO_S, PASSO_MAX, OCIOSO_MS } from '../src/lib/lembretes.ts';
+import { estadoInicial, lerEstado, tique, resolver, INTERVALO_S, PASSO_MAX, OCIOSO_MS, intervaloEmSegundos } from '../src/lib/lembretes.ts';
+import { BALAO_OPCOES, BALAO_PADRAO, preferenciasGuardadas } from '../src/lib/preferencias.ts';
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const hoje = '2026-10-25';
@@ -348,6 +349,18 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(amanha.estado.dia === '2026-11-07' && amanha.estado.trabalhado === 0 && amanha.estado.lembretes === 0 && amanha.estado.pendente === 'entrada' && amanha.convidar === true, 'lembretes: no dia seguinte o contador recomeça, a entrada e o convite voltam e o pendente de ontem não é carregado');
   ok(tique(noite, ent({ agora: T0 + 24 * 3600000, dia: '2026-11-07', ativo: false })).estado.entrada === false, 'lembretes: virar o dia com o aparelho parado não gera lembrete: ele espera o primeiro uso');
   ok(lerEstado({ dia: '2026-11-05', trabalhado: 100, entrada: true }, H, T0).trabalhado === 0 && lerEstado('lixo', H, T0).dia === H && lerEstado({ dia: H, trabalhado: -5, ultimo: 'x', pendente: 'outro', lembretes: 2.7 }, H, T0).pendente === null && lerEstado({ dia: H, trabalhado: -5, lembretes: 2.7 }, H, T0).lembretes === 2, 'lembretes: estado guardado de outro dia, ilegível ou fora do formato volta ao começo, sem quebrar');
+  // intervalo do balão (2, 3 ou 4 horas): cadência em horas de trabalho, sem soneca, e a troca no meio do dia não gera lembrete na hora
+  const marcosCom = (horas, durH) => { let s = tique(estadoInicial(H, T0), ent({ registradoHoje: true, intervaloS: intervaloEmSegundos(horas) })).estado, t = T0, m = []; for (let i = 0; i < durH * 120; i++) { t += 30000; const a = s.lembretes; s = tique(s, ent({ agora: t, registradoHoje: true, intervaloS: intervaloEmSegundos(horas) })).estado; if (s.lembretes > a) { m.push(Math.round((t - T0) / 360000) / 10); s = resolver(s); } } return m.join(); };
+  ok(marcosCom(2, 5) === '2,4' && marcosCom(3, 7) === '3,6' && marcosCom(4, 9) === '4,8', 'lembretes: o intervalo de 2, 3 ou 4 horas de trabalho gera os marcos esperados (2 e 4; 3 e 6; 4 e 8)');
+  let troca = tique(estadoInicial(H, T0), ent({ registradoHoje: true })).estado;
+  for (let i = 1; i <= 2.5 * 120; i++) troca = tique(troca, ent({ agora: T0 + i * 30000, registradoHoje: true })).estado;
+  const trocada = tique(troca, ent({ agora: T0 + 2.5 * 3600000 + 30000, registradoHoje: true, intervaloS: intervaloEmSegundos(2) })).estado;
+  ok(troca.lembretes === 0 && trocada.pendente === null && trocada.lembretes === 1 && trocada.intervalo === 7200, 'lembretes: trocar de 3 para 2 horas com 2 h 30 de trabalho não cria lembrete na hora (o marco de 2 h já é reconhecido)');
+  let seguinte = trocada, tt = T0 + 2.5 * 3600000 + 30000, gerou = null;
+  for (let i = 0; i < 3 * 120 && gerou === null; i++) { tt += 30000; seguinte = tique(seguinte, ent({ agora: tt, registradoHoje: true, intervaloS: intervaloEmSegundos(2) })).estado; if (seguinte.pendente === 'horas') gerou = Math.round((tt - T0) / 360000) / 10; }
+  ok(gerou === 4, 'lembretes: depois da troca, o próximo lembrete vem no próximo múltiplo do novo intervalo (4 h de trabalho)');
+  ok(lerEstado({ dia: H, trabalhado: 100, ultimo: T0, lembretes: 0, entrada: true, convite: true, pendente: null }, H, T0).intervalo === INTERVALO_S && lerEstado({ dia: H, trabalhado: 1, ultimo: T0, lembretes: 0, intervalo: -5, entrada: true }, H, T0).intervalo === INTERVALO_S && lerEstado({ dia: H, trabalhado: 1, ultimo: T0, lembretes: 0, intervalo: 7200 }, H, T0).intervalo === 7200, 'lembretes: estado guardado sem intervalo (versão anterior) ou com valor inválido volta a 3 horas, sem apagar o resto');
+  ok(preferenciasGuardadas(null).balaoH === BALAO_PADRAO && preferenciasGuardadas({ balaoH: 2 }).balaoH === 2 && preferenciasGuardadas({ balaoH: 7 }).balaoH === 3 && preferenciasGuardadas({ balaoH: '4' }).balaoH === 3 && preferenciasGuardadas([1]).balaoH === 3 && BALAO_OPCOES.join() === '2,3,4' && BALAO_PADRAO === 3, 'preferências do Perfil: o intervalo do balão só aceita 2, 3 ou 4 (padrão 3) e qualquer valor corrompido volta ao padrão');
   ok(INTERVALO_S === 10800 && OCIOSO_MS === 900000, 'lembretes: o intervalo é de 3 horas e o aparelho conta como parado depois de 15 minutos sem uso');
   ok(!/humor/i.test(JSON.stringify(r0.estado)), 'lembretes: o estado guardado no aparelho não tem o humor');
 }

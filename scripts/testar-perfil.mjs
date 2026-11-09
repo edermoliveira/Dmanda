@@ -411,6 +411,31 @@ const T = await novo({ viewport: { width: 1360, height: 900 } });
   await ctx.close();
 }
 
+// ================= 3b) intervalo do balão: escolha em Configurações, guardada no aparelho, sem lembrete na hora da troca =================
+{
+  const { ctx, pg } = await novo({ viewport: { width: 1280, height: 800 } });
+  await abrir(pg, '/');
+  if (await pg.$('.modal-ov')) await pg.keyboard.press('Escape');
+  await avancar(pg, 150);   // 2 h 30 de uso com o intervalo padrão (3 h)
+  ok((await pg.$$('.balao')).length === 0, 'intervalo do balão: com o padrão de 3 horas e 2 h 30 de trabalho ainda não há lembrete');
+  await abrir(pg, '/config');
+  ok((await pg.inputValue('#cfg-balao')) === '3' && (await pg.$$eval('#cfg-balao option', (l) => l.map((o) => o.value).join())) === '2,3,4', 'intervalo do balão: Configurações > Perfil oferece 2, 3 e 4 horas, com 3 como padrão');
+  await pg.selectOption('#cfg-balao', '2'); await pg.waitForTimeout(500);
+  ok(JSON.parse(await pg.evaluate(() => localStorage.getItem('dmanda:perfil'))).balaoH === 2, 'intervalo do balão: a escolha fica guardada neste aparelho');
+  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.app .main'); await hidratada(pg); await pg.waitForTimeout(1800);
+  ok((await pg.inputValue('#cfg-balao')) === '2' && (await pg.$$('.balao')).length === 0, 'intervalo do balão: depois de recarregar a escolha continua e a troca não gerou lembrete na hora (o marco de 2 h já tinha passado)');
+  await abrir(pg, '/');
+  await avancar(pg, 70);    // 3 h 40 de trabalho no total: ainda antes do marco de 4 h
+  ok((await pg.$$('.balao')).length === 0, 'intervalo do balão: com 2 horas, o lembrete seguinte só vem no próximo múltiplo (4 h), não antes');
+  await avancar(pg, 40);    // 4 h 20
+  await pg.waitForSelector('.balao[data-lembrete="horas"]', { timeout: 10000 });
+  ok(true, 'intervalo do balão: com 2 horas, o lembrete vem no marco de 4 h de trabalho');
+  await pg.evaluate(() => localStorage.setItem('dmanda:perfil', JSON.stringify({ balaoH: 7 })));
+  await abrir(pg, '/config');
+  ok((await pg.inputValue('#cfg-balao')) === '3', 'intervalo do balão: valor guardado corrompido volta ao padrão de 3 horas, sem derrubar a tela');
+  await ctx.close();
+}
+
 // ================= 4) virada do dia com o aplicativo aberto =================
 {
   const { ctx, pg } = await novo({ viewport: { width: 1360, height: 900 } }, { instante: new Date(`${HOJE}T23:40:00-03:00`) });

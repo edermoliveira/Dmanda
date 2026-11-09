@@ -64,6 +64,10 @@ let m = await c(A, 'mover_etapa', { p_id: d1.id, p_etapa: 'Aguardando retorno' }
 ok(m.etapa === 'Aguardando retorno' && m.setor === null && m.acompanhar_em === null && m.prazo === '2026-10-16', 'mover para Aguardando retorno não inventa setor, acompanhamento nem prazo');
 m = await c(A, 'mover_etapa', { p_id: d1.id, p_etapa: 'Finalizado' });
 ok(m.etapa === 'Finalizado' && /^\d{4}-/.test(m.concluida_em) && m.tarefas.every((x) => x.concluida), 'concluir marca todas as tarefas e registra a data de conclusão');
+// histórico de conclusões (produtividade do Perfil): a data persistida é a da última conclusão; só reabrir e concluir de novo a move
+await db.exec(`update public.demandas set concluida_em = '2026-10-01' where id = '${d1.id}'`);
+ok((await c(A, 'concluir_demanda', { p_id: d1.id })).concluida_em === '2026-10-01' && (await c(A, 'mover_etapa', { p_id: d1.id, p_etapa: 'Finalizado' })).concluida_em === '2026-10-01', 'conclusões: concluir de novo uma demanda já finalizada não move a data de conclusão');
+ok((await c(A, 'salvar_demanda', { p_versao: (await c(A, 'buscar_demanda', { p_id: d1.id })).versao, p_id: d1.id, p: { etapa: 'Finalizado' }, p_tarefas: null })).concluida_em === '2026-10-01', 'conclusões: salvar uma demanda finalizada reenviando a mesma etapa não move a data de conclusão');
 m = await c(A, 'reabrir_demanda', { p_id: d1.id });
 ok(m.etapa === 'Fazendo' && m.concluida_em === null && m.tarefas.every((x) => x.concluida) && m.tarefas.length === 2, 'reabrir volta para Fazendo, mantém as tarefas cumpridas e limpa a conclusão');
 await c(A, 'concluir_demanda', { p_id: d1.id });

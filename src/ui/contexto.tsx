@@ -15,6 +15,7 @@ import type { Entrada } from '@/lib/entradas';
 import type { Opcao } from '@/lib/documentos';
 import type { Vaga } from '@/lib/para-hoje';
 import { substituirRegistros, type RegistroDia } from '@/lib/registros';
+import { CHAVE_PREFERENCIAS, preferenciasGuardadas, PREFERENCIAS_PADRAO, type PreferenciasPerfil } from '@/lib/preferencias';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';
 
@@ -113,6 +114,9 @@ type Ctx = {
   setModo: (m: Modo) => void;
   aparencia: Aparencia;
   mudarAparencia: (p: Partial<Aparencia>) => void;
+  /** Preferências do Perfil, só neste aparelho (intervalo do balão): a fonte única, lida e gravada aqui. */
+  prefsPerfil: PreferenciasPerfil;
+  mudarPrefsPerfil: (p: Partial<PreferenciasPerfil>) => void;
   restaurarAparencia: () => void;
   surpreenda: () => void;
   menuAberto: boolean;
@@ -211,6 +215,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [modo, setModo] = useState<Modo>('sistema');
   const [sistemaEscuro, setSistemaEscuro] = useState(false);
   const [aparencia, setAparencia] = useState<Aparencia>(APARENCIA_PADRAO);
+  const [prefsPerfil, setPrefsPerfil] = useState<PreferenciasPerfil>(PREFERENCIAS_PADRAO);
   const tema = temaDoModo(modo, sistemaEscuro);
   const [menuAberto, setMenuAberto] = useState(false);
   const [visao, setVisaoE] = useState<Visao>('cards');
@@ -244,6 +249,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setModo(t === 'escuro' || t === 'claro' ? t : 'sistema');
     setSistemaEscuro(matchMedia('(prefers-color-scheme: dark)').matches);
     setAparencia(aparenciaGuardada(lerLS<unknown>('dmanda:aparencia', null)));
+    setPrefsPerfil(preferenciasGuardadas(lerLS<unknown>(CHAVE_PREFERENCIAS, null)));
     setMenuAberto(lerLS<unknown>('dmanda:menu-aberto', false) === true);
     // o que está guardado pode estar corrompido ou ser de outra versão: só entra o que tem a forma esperada (ver lib/armazenamento.ts)
     const ui = lerLS<Record<string, unknown> | null>('dmanda:ui', null) ?? {};
@@ -263,6 +269,13 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (modo === 'sistema') { try { localStorage.removeItem('dmanda-tema'); } catch { /* sem armazenamento: vale só nesta visita */ } } else gravarLS('dmanda-tema', modo);
   }, [pronto, modo]);
   useEffect(() => { if (pronto) gravarLS('dmanda:aparencia', aparencia); }, [pronto, aparencia]);
+  useEffect(() => { if (pronto) gravarLS(CHAVE_PREFERENCIAS, prefsPerfil); }, [pronto, prefsPerfil]);
+  // outra aba trocou uma preferência do Perfil: esta acompanha
+  useEffect(() => {
+    const f = (e: StorageEvent) => { if (e.key !== CHAVE_PREFERENCIAS) return; try { setPrefsPerfil(preferenciasGuardadas(JSON.parse(e.newValue ?? 'null'))); } catch { /* ignora */ } };
+    addEventListener('storage', f);
+    return () => removeEventListener('storage', f);
+  }, []);
   // no modo Sistema, acompanha o aparelho enquanto o aplicativo está aberto
   useEffect(() => {
     const mq = matchMedia('(prefers-color-scheme: dark)');
@@ -503,6 +516,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     alternarTema: () => setModo(tema === 'claro' ? 'escuro' : 'claro'),
     modo, setModo, aparencia,
     mudarAparencia: (p) => setAparencia((a) => aparenciaGuardada({ ...a, ...p })),
+    prefsPerfil, mudarPrefsPerfil: (p) => setPrefsPerfil((a) => preferenciasGuardadas({ ...a, ...p })),
     restaurarAparencia: () => setAparencia(APARENCIA_PADRAO),
     surpreenda: () => {
       const c = CONJUNTOS[Math.floor(Math.random() * CONJUNTOS.length)];
@@ -568,7 +582,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
+  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, prefsPerfil, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

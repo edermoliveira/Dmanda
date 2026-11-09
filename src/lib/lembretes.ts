@@ -1,4 +1,4 @@
-// Relógio dos lembretes discretos de humor (DECISOES.md, seção 9): um na entrada do dia e outro a cada 3 horas de trabalho.
+// Relógio dos lembretes discretos de humor (DECISOES.md, seção 9): um na entrada do dia e outro a cada 3 horas de trabalho (2, 3 ou 4, à escolha em Configurações).
 // Regra pura, sem relógio próprio: quem chama passa o instante, o dia de São Paulo daquele mesmo instante e se o aplicativo está visível.
 //
 // O que é "entrada" e "trabalho" (a sessão é persistente, então não existe um login diário a contar):
@@ -7,9 +7,18 @@
 //     Aba escondida, tela bloqueada, computador dormindo e o aparelho fechado não contam: cada tique conta no máximo PASSO_MAX segundos, então voltar depois de um intervalo longo
 //     não "paga" o intervalo. Com duas abas em uso, o tempo é contado uma só vez (o último tique é compartilhado).
 //   - o expediente do Secretário (decisão 51) ainda não altera nada aqui: a primeira aplicação dele será combinada com o usuário.
+//
+// Quatro coisas diferentes, que não se misturam:
+//   - intervalo (cadência): quantas horas de trabalho separam um lembrete do próximo; vem da preferência (padrão 3 h) e vale como múltiplo do trabalho do dia (3 h, 6 h, 9 h...);
+//   - tempo contado: só o trabalho visível e em uso (ver acima); relógio de parede, aba escondida e aparelho parado não contam;
+//   - dispensar (X): fecha o balão e ele só volta no próximo marco; não adia nem reagenda nada;
+//   - adiar (soneca): não existe. Não há botão nem regra de "lembrar daqui a pouco".
+// Trocar o intervalo no meio do dia não gera lembrete na hora: a contagem de marcos passa a valer para o novo intervalo a partir do trabalho já feito.
 // O estado fica no aparelho (localStorage) e só guarda contagens e datas: nenhum valor de humor.
 
 export const INTERVALO_S = 3 * 60 * 60;
+/** Segundos de trabalho entre dois lembretes para um intervalo em horas. */
+export const intervaloEmSegundos = (horas: number) => horas * 60 * 60;
 /** Sem uso por mais que isto (ms), o aparelho conta como parado. */
 export const OCIOSO_MS = 15 * 60 * 1000;
 /** Cada tique conta, no máximo, este tanto de segundos de trabalho (o tique normal é de 30 s). */
@@ -23,8 +32,10 @@ export type EstadoLembretes = {
   trabalhado: number;
   /** Instante (ms) do último tique que contou. */
   ultimo: number;
-  /** Quantos lembretes por horas já foram gerados no dia. */
+  /** Quantos lembretes por horas já foram gerados no dia (marcos já atingidos, no intervalo abaixo). */
   lembretes: number;
+  /** Intervalo (segundos de trabalho) a que `lembretes` se refere. */
+  intervalo: number;
   /** O lembrete de entrada do dia já foi tratado (mostrado ou dispensado por já haver registro). */
   entrada: boolean;
   /** O convite para completar dias pendentes já foi feito hoje. */
@@ -33,7 +44,7 @@ export type EstadoLembretes = {
   pendente: Pendente;
 };
 
-export const estadoInicial = (dia: string, agora: number): EstadoLembretes => ({ dia, trabalhado: 0, ultimo: agora, lembretes: 0, entrada: false, convite: false, pendente: null });
+export const estadoInicial = (dia: string, agora: number): EstadoLembretes => ({ dia, trabalhado: 0, ultimo: agora, lembretes: 0, intervalo: INTERVALO_S, entrada: false, convite: false, pendente: null });
 
 /** Lê o estado guardado; qualquer coisa fora do formato volta ao começo do dia (nunca quebra a tela). */
 export function lerEstado(bruto: unknown, dia: string, agora: number): EstadoLembretes {
@@ -41,7 +52,7 @@ export function lerEstado(bruto: unknown, dia: string, agora: number): EstadoLem
   if (!o || typeof o !== 'object' || o.dia !== dia) return estadoInicial(dia, agora);
   const n = (v: unknown, padrao: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : padrao);
   return {
-    dia, trabalhado: n(o.trabalhado, 0), ultimo: n(o.ultimo, agora), lembretes: Math.floor(n(o.lembretes, 0)),
+    dia, trabalhado: n(o.trabalhado, 0), ultimo: n(o.ultimo, agora), lembretes: Math.floor(n(o.lembretes, 0)), intervalo: n(o.intervalo, INTERVALO_S) >= 60 ? n(o.intervalo, INTERVALO_S) : INTERVALO_S,
     entrada: o.entrada === true, convite: o.convite === true, pendente: o.pendente === 'entrada' || o.pendente === 'horas' ? o.pendente : null,
   };
 }
@@ -59,6 +70,8 @@ export type EntradaTique = {
   registradoHoje: boolean;
   /** Há dias de trabalho pendentes nos últimos 5 dias. */
   temPendencias: boolean;
+  /** Intervalo escolhido, em segundos de trabalho (padrão: 3 horas). */
+  intervaloS?: number;
 };
 export type Saida = { estado: EstadoLembretes; /** Abrir o convite para completar os dias pendentes agora. */ convidar: boolean; mudou: boolean };
 
@@ -70,10 +83,13 @@ export function tique(atual: EstadoLembretes, e: EntradaTique): Saida {
   const s: EstadoLembretes = { ...base };
   s.trabalhado += Math.min(Math.max(0, (e.agora - base.ultimo) / 1000), PASSO_MAX);
   s.ultimo = e.agora;
+  const iv = e.intervaloS && e.intervaloS >= 60 ? e.intervaloS : INTERVALO_S;
+  // intervalo trocado: os marcos já atingidos são reconhecidos no novo intervalo, para não nascer um lembrete só por causa da troca
+  if (s.intervalo !== iv) { s.lembretes = Math.floor(s.trabalhado / iv); s.intervalo = iv; }
   let convidar = false;
   if (!s.entrada) { s.entrada = true; if (!e.registradoHoje) s.pendente = 'entrada'; }
   if (!s.convite) { s.convite = true; convidar = e.temPendencias; }
-  const devidos = Math.floor(s.trabalhado / INTERVALO_S);
+  const devidos = Math.floor(s.trabalhado / iv);
   if (devidos > s.lembretes) { s.lembretes = devidos; s.pendente = s.pendente ?? 'horas'; }
   return { estado: s, convidar, mudou: true };
 }
