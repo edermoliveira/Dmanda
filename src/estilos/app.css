@@ -369,3 +369,30 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .dr .ind-v { flex-wrap: wrap; }
 .app .dr .painel + .painel, .app .dr .ind3 + .painel { margin-top: 0; }
 .app .dr .ind .data { margin: 0; }
+
+
+/* ---------- Clima do Início (decisão 58): widget retangular 2:1 do kit de widgets + janela de cidade ---------- */
+.app .wg-clima { gap: 8px; }
+.app .wg-clima .wg-cl-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.app .wg-cid-b { display: inline-flex; flex-wrap: wrap; align-items: baseline; column-gap: 6px; min-height: 44px; min-width: 0; max-width: 100%; padding: 4px 6px 4px 0; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.app .wg-cid-b .wg-cid-n { font-size: calc(14px * var(--esc)); font-weight: 700; }
+.app .wg-cid-b .wg-cid-l { font-size: max(10px, calc(11px * var(--esc))); font-weight: 500; color: var(--text2); }
+.app .wg-cid-b .ic { align-self: center; width: 16px; height: 16px; flex: none; color: var(--text2); }
+.app .wg-cid-b:hover .wg-cid-n { color: var(--acc-text); }
+.app .wg-cid-b:focus-visible, .app .wg-cl-cred:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.app .wg-cl-corpo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 18px; align-items: start; }
+.app .wg-cl-agora, .app .wg-cl-hoje { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.app .wg-cl-rot { font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--acc-text); }
+.app .wg-clima .wg-ceu { margin-top: 2px; }
+.app .wg-cl-cond { font-size: calc(12px * var(--esc)); font-weight: 600; line-height: 1.3; }
+.app .wg-cl-hora, .app .wg-cl-vazio { margin: 0; }
+.app .wg-cl-falha { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: calc(12px * var(--esc)); line-height: 1.35; color: var(--text2); }
+.app .wg-cl-cred { align-self: flex-start; margin: 0; padding-block: 12px; margin-block: -12px; color: var(--text2); text-decoration: underline; font-size: max(10px, calc(11px * var(--esc))); }
+@media (max-width: 380px) { .app .wg-clima { grid-column: 1 / -1; } }
+.app .cid-lista { list-style: none; margin: 4px 0 10px; padding: 0; display: grid; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.app .cid-op { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 12px; background: color-mix(in srgb, var(--text) 5%, transparent); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.app .cid-op b { font-size: calc(14px * var(--esc)); font-weight: 600; }
+.app .cid-op span { font-size: calc(12px * var(--esc)); color: var(--text2); overflow-wrap: anywhere; }
+.app .cid-op:hover, .app .cid-op:focus-visible { background: color-mix(in srgb, var(--acc) 14%, transparent); outline: none; }
+.app .cid-op:focus-visible { box-shadow: 0 0 0 2px var(--acc); }
+.app .cid-op[aria-current="true"] { box-shadow: inset 3px 0 0 var(--acc); }

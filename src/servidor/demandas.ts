@@ -14,14 +14,17 @@ const op = () => criarOperacoes(chamar);
 // Só para os testes automatizados: sem lembretes de humor (o convite da entrada é uma janela e atrapalharia os testes de outras telas). Nunca vale em produção.
 const semLembretes = () => process.env.DMANDA_SEM_LEMBRETES === 'sim' && (modoTeste() || process.env.NODE_ENV !== 'production');
 
+// Só para os testes automatizados: sem o widget de Clima (ele consulta o Open-Meteo, fora do computador, e os testes de outras telas não podem depender da internet). Nunca vale em produção.
+const semClima = () => process.env.DMANDA_SEM_CLIMA === 'sim' && (modoTeste() || process.env.NODE_ENV !== 'production');
+
 export async function ambiente() {
-  if (modoTeste()) return { teste: true, nome: 'Teste', semLembretes: semLembretes() };
+  if (modoTeste()) return { teste: true, nome: 'Teste', semLembretes: semLembretes(), semClima: semClima() };
   try {
     const sb = await criarClienteServidor();
     const { data: { user } } = await sb.auth.getUser();
-    return { teste: false, nome: String(user?.user_metadata?.full_name ?? user?.email ?? ''), semLembretes: semLembretes() };
+    return { teste: false, nome: String(user?.user_metadata?.full_name ?? user?.email ?? ''), semLembretes: semLembretes(), semClima: semClima() };
   } catch {
-    return { teste: false, nome: '', semLembretes: semLembretes() };
+    return { teste: false, nome: '', semLembretes: semLembretes(), semClima: semClima() };
   }
 }
 export async function listarDemandas(arquivadas = false) {

@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { EmojiNivel, FormularioRegistro } from './escala';
+import { JanelaCidade } from './clima';
+import { localDaCidade } from '@/lib/clima';
 import { BALAO_OPCOES, balaoValido } from '@/lib/preferencias';
 import { AVISO_PERFIL, ROTULO_HUMOR, dataCurta, diasPendentes, emJanelaDeCorrecao, fraseDoDia, semanaAbreviada, serieDoPeriodo, textoConcluidas, textoDoDia, DIAS_CORRECAO, type PontoDia } from '@/lib/registros';
 
@@ -200,6 +202,7 @@ function Gaveta() {
 /** O cartão de Configurações > Perfil: leva à mesma gaveta do avatar. */
 export function SecaoPerfilConfig() {
   const { abrirPerfil, prefsPerfil, mudarPrefsPerfil } = useApp();
+  const [trocandoCidade, setTrocandoCidade] = useState(false);
   return (
     <section className="cfg-bloco painel" aria-labelledby="cfg-perfil-t" data-secao="perfil">
       <h2 id="cfg-perfil-t" style={{ fontSize: 'calc(17px * var(--esc))', margin: '0 0 6px' }}>Perfil</h2>
@@ -209,7 +212,13 @@ export function SecaoPerfilConfig() {
         <select id="cfg-balao" value={prefsPerfil.balaoH} onChange={(e) => { const h = Number(e.target.value); if (balaoValido(h)) mudarPrefsPerfil({ balaoH: h }); }}>{BALAO_OPCOES.map((h) => <option key={h} value={h}>{h} horas de trabalho</option>)}</select>
         <p className="data" style={{ margin: '6px 0 0' }}>Conta só o tempo com o aplicativo aberto e em uso, neste aparelho. O padrão é 3 horas. O X do balão o fecha até o próximo intervalo.</p>
       </div>
+      <div className="fld" style={{ maxWidth: 360, marginTop: 12 }}>
+        <span id="cfg-cidade-r" className="lbl" style={{ fontSize: 'calc(12px * var(--esc))', fontWeight: 600 }}>Cidade do clima</span>
+        <p className="data" style={{ margin: '4px 0 8px' }} data-cidade-cfg aria-labelledby="cfg-cidade-r">{prefsPerfil.cidade.nome}, {localDaCidade(prefsPerfil.cidade)}. Aparece no widget de Clima do Início.</p>
+        <button type="button" className="btn mini" data-trocar-cidade onClick={() => setTrocandoCidade(true)}>Trocar a cidade</button>
+      </div>
       <div className="acoes"><button type="button" className="btn pri" onClick={abrirPerfil}>Abrir o Perfil</button></div>
+      {trocandoCidade ? <JanelaCidade aoFechar={() => setTrocandoCidade(false)} /> : null}
     </section>
   );
 }

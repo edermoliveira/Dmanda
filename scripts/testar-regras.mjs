@@ -409,5 +409,97 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(f({ origem: 'Prefeita', tipo: 'Memorando', ano: '2024' }) === 'b' && f({ origem: 'Prefeita', ano: '2023' }) === '' && f({ origem: 'Reunião', tipo: 'Ofício' }) === '', 'filtros: combinam origem, tipo e ano (E lógico)');
   ok(titulo({ tipo: null, numero: '' }) === 'Sem documento' && titulo({ tipo: null, numero: '45/2026' }) === '45/2026' && titulo({ tipo: 'Ofício', numero: '' }) === 'Ofício', 'título: sem tipo mostra só o número e, sem nada, "Sem documento" (nunca um título vazio)');
 }
+// ---------- Clima do Início (Open-Meteo): endereços fixos, validação, cache, corrida entre consultas, textos ----------
+{
+  const L = await import('../src/lib/clima.ts');
+  const F = await import('./clima-fixtures.mjs');
+  const { previsao, resultados, comoCidade } = F;
+  const TAQ = L.CIDADE_PADRAO;
+  const q = (u) => Object.fromEntries(new URL(u).searchParams);
+
+  // endereços e parâmetros
+  const up = urlDe(L.urlPrevisao(TAQ));
+  ok(up.origin === 'https://api.open-meteo.com' && up.pathname === '/v1/forecast' && JSON.stringify(q(L.urlPrevisao(TAQ))) === JSON.stringify({ latitude: '-29.6506', longitude: '-50.7806', current: 'temperature_2m,weather_code,is_day', daily: 'temperature_2m_max,temperature_2m_min,weather_code', timezone: 'auto', forecast_days: '1' }), 'clima: o pedido da previsão usa o endereço fixo e só latitude, longitude, as variáveis de agora e do dia, fuso automático e 1 dia');
+  const uc = urlDe(L.urlCidades('  Porto   Alegre '));
+  ok(uc.origin === 'https://geocoding-api.open-meteo.com' && uc.pathname === '/v1/search' && JSON.stringify(q(L.urlCidades('Porto Alegre'))) === JSON.stringify({ name: 'Porto Alegre', count: '8', language: 'pt', format: 'json' }) && q(L.urlCidades('  Porto   Alegre ')).name === 'Porto Alegre', 'clima: o pedido de cidades usa o endereço fixo, nome limpo, 8 resultados, português e JSON');
+  const recusasUrl = [{ ...TAQ, lat: 91 }, { ...TAQ, lon: -181 }, { ...TAQ, lat: Number.NaN }, { ...TAQ, id: 0 }, { ...TAQ, nome: '' }, null, 'x'];
+  let nRec = 0; for (const c of recusasUrl) { try { L.urlPrevisao(c); } catch (e) { if (e instanceof L.ErroParametro) nRec++; } }
+  ok(nRec === recusasUrl.length, 'clima: coordenadas fora do mundo, nulas ou cidade malformada não geram pedido');
+  ok(L.termoDeBusca('a') === null && L.termoDeBusca('  ') === null && L.termoDeBusca('x'.repeat(81)) === null && L.termoDeBusca('Taquara') === 'Taquara' && L.termoDeBusca('Foz do Iguaçu') === 'Foz do Iguaçu' && L.termoDeBusca("Sant'Ana, Rio Grande do Sul") !== null && L.termoDeBusca('a&b=c') === null && L.termoDeBusca('<script>') === null && L.termoDeBusca('x\u0000y') === null, 'clima: a busca pede 2 a 80 caracteres e recusa símbolos que não fazem parte de um nome');
+  let urlRecusada = 0; for (const t of ['a', '', 'a&b']) { try { L.urlCidades(t); } catch (e) { if (e instanceof L.ErroParametro) urlRecusada++; } }
+  ok(urlRecusada === 3, 'clima: texto inválido não vira pedido de cidades');
+
+  // endereços arbitrários nunca saem (pedirJson só fala com os dois endereços fixos)
+  let chamadas = 0; const fake = (resp) => async (u, init) => { chamadas++; fake.ultimo = { u, init }; return typeof resp === 'function' ? resp(u, init) : resp; };
+  const json = (corpo, status = 200) => new Response(JSON.stringify(corpo), { status, headers: { 'content-type': 'application/json' } });
+  const tipo = async (p) => { try { await p; return 'ok'; } catch (e) { return e instanceof L.FalhaClima ? e.tipo : 'outro:' + e.message; } };
+  const alvos = ['https://exemplo.com/v1/forecast', 'http://api.open-meteo.com/v1/forecast', 'https://api.open-meteo.com.exemplo.com/v1/forecast', 'https://api.open-meteo.com/v1/outra', 'https://geocoding-api.open-meteo.com/v1/forecast', 'file:///etc/passwd', 'https://usuario:senha@api.open-meteo.com/v1/forecast'];
+  const bloqueadas = []; for (const a of alvos) bloqueadas.push(await tipo(L.pedirJson(a, { fetcher: fake(json({})) })));
+  ok(bloqueadas.every((t) => t === 'invalido') && chamadas === 0, 'clima: qualquer endereço fora dos dois fixos é recusado antes de qualquer pedido (não vira proxy aberto)');
+  await L.pedirJson(L.urlPrevisao(TAQ), { fetcher: fake(json(previsao())) });
+  ok(chamadas === 1 && fake.ultimo.init.credentials === 'omit' && fake.ultimo.init.referrerPolicy === 'no-referrer' && fake.ultimo.init.redirect === 'error' && !fake.ultimo.init.body && !fake.ultimo.init.method && !('cookie' in (fake.ultimo.init.headers ?? {})), 'clima: o pedido sai sem cookie, sem referência, sem corpo e sem seguir redirecionamento');
+
+  // falhas do provedor
+  ok(await tipo(L.pedirJson(L.urlPrevisao(TAQ), { fetcher: fake(json({}, 429)) })) === 'limite' && await tipo(L.pedirJson(L.urlPrevisao(TAQ), { fetcher: fake(json({}, 500)) })) === 'servidor' && await tipo(L.pedirJson(L.urlPrevisao(TAQ), { fetcher: fake(json({}, 503)) })) === 'servidor' && await tipo(L.pedirJson(L.urlPrevisao(TAQ), { fetcher: fake(json({ error: true, reason: 'x' }, 400)) })) === 'invalido' && await tipo(L.pedirJson(L.urlPrevisao(TAQ), { fetcher: fake(new Response('<html>', { status: 200 })) })) === 'invalido', 'clima: HTTP 429 vira "limite", 5xx "servidor", 4xx e corpo que não é JSON "invalido"');
+  ok(await tipo(L.pedirJson(L.urlPrevisao(TAQ), { fetcher: async () => { throw new TypeError('Failed to fetch'); } })) === 'rede', 'clima: sem conexão vira "rede"');
+  const lento = (_u, init) => new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new DOMException('abortado', 'AbortError'))));
+  const t0 = Date.now();
+  ok(await tipo(L.pedirJson(L.urlPrevisao(TAQ), { fetcher: lento, timeoutMs: 80 })) === 'timeout' && Date.now() - t0 < 2000, 'clima: resposta que não vem dentro do limite de tempo vira "timeout"');
+  const ctl = new AbortController(); const pend = tipo(L.pedirJson(L.urlPrevisao(TAQ), { fetcher: lento, sinal: ctl.signal, timeoutMs: 5000 })); ctl.abort();
+  ok(await pend === 'cancelado' && await tipo(L.pedirJson(L.urlPrevisao(TAQ), { fetcher: lento, sinal: ctl.signal })) === 'cancelado', 'clima: consulta cancelada (por uma mais nova) vira "cancelado", nunca erro na tela');
+  ok(Object.values(L.TEXTO_FALHA).every((t) => !/culp|erro seu|você errou|falhou por/i.test(t)) && Object.keys(L.TEXTO_FALHA).sort().join() === 'invalido,limite,rede,servidor,timeout', 'clima: os textos de falha são neutros e cobrem os cinco casos');
+
+  // leitura da previsão
+  const p0 = L.lerPrevisao(previsao());
+  ok(p0 && p0.atual.temperatura === 16.9 && p0.atual.codigo === 80 && p0.atual.diurno === false && p0.atual.observadoEm === '2026-11-07T08:15' && p0.hoje.max === 24.7 && p0.hoje.min === 15.3 && p0.hoje.codigo === 81 && p0.hoje.data === '2026-11-07', 'clima: a resposta normal é lida, com agora (current) e previsão do dia (daily) separados');
+  const quebrar = (f) => { const x = previsao(); f(x); return L.lerPrevisao(x); };
+  const invalidas = [
+    quebrar((x) => { x.current.temperature_2m = '17'; }), quebrar((x) => { x.current.temperature_2m = 400; }), quebrar((x) => { x.current.temperature_2m = null; }),
+    quebrar((x) => { x.current.weather_code = 1234; }), quebrar((x) => { x.current.weather_code = 80.5; }), quebrar((x) => { x.current.is_day = 2; }),
+    quebrar((x) => { x.current.time = 'ontem'; }), quebrar((x) => { x.current_units.temperature_2m = '°F'; }), quebrar((x) => { x.daily_units.temperature_2m_max = 'K'; }),
+    quebrar((x) => { x.daily.temperature_2m_max = []; }), quebrar((x) => { x.daily.temperature_2m_min = [30]; }), quebrar((x) => { x.daily.time = ['x']; }), quebrar((x) => { x.daily.weather_code = [null]; }),
+    quebrar((x) => { delete x.current; }), quebrar((x) => { delete x.daily; }), L.lerPrevisao(null), L.lerPrevisao('x'), L.lerPrevisao([]), L.lerPrevisao({}), L.lerPrevisao({ error: true, reason: 'Parameter latitude' }),
+  ];
+  ok(invalidas.every((x) => x === null), `clima: ${invalidas.length} respostas fora do combinado (tipo, faixa, código, unidade, lista vazia, campo ausente) são recusadas, nunca viram número na tela`);
+  ok(L.lerPrevisao(previsao({ temp: -3.4, min: -5, max: 2 }))?.atual.temperatura === -3.4 && L.lerPrevisao(previsao({ temp: 0, codigo: 0, dia: 1 }))?.atual.diurno === true, 'clima: temperatura negativa e zero são valores válidos');
+
+  // leitura das cidades
+  const lc = L.lerCidades(resultados(F.TAQUARA_RS, F.TAQUARA_AL, F.TAQUARA_PB));
+  ok(lc.length === 3 && lc[0].nome === 'Taquara' && lc[0].estado === 'Rio Grande do Sul' && lc[0].pais === 'Brasil' && lc[1].estado === 'Alagoas' && lc[0].id !== lc[1].id && JSON.stringify(lc[0]) === JSON.stringify(comoCidade(F.TAQUARA_RS)), 'clima: cidades de mesmo nome vêm com estado e país, para distinguir');
+  ok(L.lerCidades(F.SEM_RESULTADO).length === 0 && L.lerCidades({ results: [] }).length === 0 && L.lerCidades(null).length === 0 && L.lerCidades({ results: 'x' }).length === 0, 'clima: sem resultado (a chave "results" ausente), lista vazia ou resposta inesperada dão lista vazia');
+  const mista = L.lerCidades({ results: [F.TAQUARA_RS, { id: 'x', name: 'Ruim', latitude: 1, longitude: 1 }, { id: 5, name: '', latitude: 1, longitude: 1 }, { id: 6, name: 'Longe', latitude: 99, longitude: 1 }, null, 7, F.TAQUARA_RS, F.SEM_REGIAO] });
+  ok(mista.length === 2 && mista[0].id === F.TAQUARA_RS.id && mista[1].estado === '' && mista[1].pais === '', 'clima: resultado malformado, fora do mundo ou repetido é descartado sem derrubar os outros');
+  ok(L.lerCidades(resultados(...Array.from({ length: 30 }, (_, i) => ({ ...F.TAQUARA_RS, id: 100 + i })))).length === 8, 'clima: no máximo 8 cidades por busca');
+  ok(L.localDaCidade(comoCidade(F.PORTO_PT)) === 'Porto, Portugal' && L.localDaCidade(comoCidade(F.SEM_REGIAO)) === '' && L.cidadeGuardada({ ...TAQ, extra: 'lixo' }).extra === undefined && L.cidadeGuardada({ id: 'x' }).id === TAQ.id && L.cidadeGuardada(null).nome === 'Taquara', 'clima: a cidade guardada só leva os campos conhecidos e, corrompida, volta à cidade padrão (Taquara)');
+  ok(preferenciasGuardadas({ balaoH: 2, cidade: comoCidade(F.PORTO_ALEGRE) }).cidade.nome === 'Porto Alegre' && preferenciasGuardadas({ cidade: { id: 1 } }).cidade.id === L.CIDADE_PADRAO.id && preferenciasGuardadas({ balaoH: 4 }).cidade.id === L.CIDADE_PADRAO.id, 'preferências do Perfil: a cidade do clima é guardada junto do intervalo do balão e, corrompida, volta a Taquara');
+
+  // cache e TTL
+  const agora = Date.UTC(2026, 10, 7, 11, 0, 0);
+  const guardada = { cidade: TAQ, previsao: p0, buscadoEm: agora };
+  ok(L.cacheGuardado(JSON.parse(JSON.stringify(guardada)))?.previsao.atual.temperatura === 16.9 && L.cacheGuardado(null) === null && L.cacheGuardado({ ...guardada, buscadoEm: 0 }) === null && L.cacheGuardado({ ...guardada, cidade: { id: 1 } }) === null && L.cacheGuardado({ ...guardada, previsao: { atual: {}, hoje: {} } }) === null && L.cacheGuardado({ ...guardada, previsao: { ...p0, atual: { ...p0.atual, temperatura: 900 } } }) === null, 'clima: o clima guardado no aparelho passa pela mesma conferência de uma resposta nova (corrompido é ignorado)');
+  const est = (d, c = TAQ) => L.estadoDoCache(guardada, c, agora + d);
+  ok(est(0) === 'fresco' && est(14 * 60000) === 'fresco' && est(15 * 60000) === 'fresco' && est(15 * 60000 + 1) === 'velho' && est(11 * 3600000) === 'velho' && est(12 * 3600000) === 'velho' && est(12 * 3600000 + 1) === 'expirado' && est(-5000) === 'velho' && L.estadoDoCache(null, TAQ, agora) === 'nenhum', 'clima: o clima guardado vale 15 minutos como atual, depois só é mostrado como desatualizado até 12 horas, e relógio que voltou não passa por novo');
+  ok(est(0, comoCidade(F.PORTO_ALEGRE)) === 'outra-cidade', 'clima: o clima guardado de uma cidade nunca vale para outra');
+
+  // corrida entre consultas: só a mais recente vale
+  const u = L.criarUltimaConsulta(); const a = u.iniciar(); const b = u.iniciar();
+  ok(a.sinal.aborted && !b.sinal.aborted && !u.vale(a.id) && u.vale(b.id), 'clima: iniciar uma consulta nova cancela a anterior e a resposta da anterior deixa de valer');
+  u.cancelar(); ok(b.sinal.aborted && !u.vale(b.id), 'clima: cancelar invalida a consulta em andamento (troca de cidade, janela fechada)');
+  let ordem = []; const U = L.criarUltimaConsulta();
+  const resp = async (nome, ms) => { const { id } = U.iniciar(); await new Promise((r) => setTimeout(r, ms)); if (U.vale(id)) ordem.push(nome); };
+  await Promise.all([resp('antiga', 60), resp('nova', 10)]);
+  ok(ordem.join() === 'nova', 'clima: com respostas fora de ordem (a antiga demora mais), só a da consulta mais recente é aplicada');
+
+  // textos e ícones
+  const codigos = [0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 97, 99];
+  ok(codigos.every((c) => L.codigoValido(c) && L.descricaoDoTempo(c).length > 3 && !/[a-z]\b.*\b(rain|snow|clear|cloud)/i.test(L.descricaoDoTempo(c))) && [4, 10, 44, 100, -1, 80.5, '80', null].every((c) => !L.codigoValido(c)) && L.descricaoDoTempo(1234) === 'Condição não identificada', 'clima: todos os códigos de tempo documentados têm descrição em português; código desconhecido não é aceito');
+  ok(L.descricaoDoTempo(0) === 'Céu limpo' && L.descricaoDoTempo(3) === 'Nublado' && L.descricaoDoTempo(65) === 'Chuva forte' && L.descricaoDoTempo(95) === 'Trovoada' && L.descricaoDoTempo(75) === 'Neve forte' && L.descricaoDoTempo(82) === 'Pancadas de chuva violentas', 'clima: descrições conferidas contra a tabela do Open-Meteo');
+  ok(L.iconeDoTempo(0, true) === 'sun' && L.iconeDoTempo(0, false) === 'moon' && L.iconeDoTempo(1, true) === 'sun' && L.iconeDoTempo(2, true) === 'cloud-sun' && L.iconeDoTempo(65, false) === 'cloud-sun' && L.iconeDoTempo(95, true) === 'cloud-sun', 'clima: só ícones que o aplicativo já tem (sol, lua e nuvem com sol)');
+  ok(L.graus(16.9) === '17°' && L.graus(-0.4) === '0°' && L.graus(-3.5) === '-3°' && L.horaDoMomento('2026-11-07T08:15') === '08:15' && L.horaDeBrasilia(Date.UTC(2026, 10, 7, 11, 5, 0)) === '08:05', 'clima: temperatura em graus Celsius arredondada, hora do momento e hora de Brasília');
+  ok(/Taquara: agora 17 graus, pancadas de chuva fracas\. Previsão de hoje: máxima de 25 graus e mínima de 15 graus\./.test(L.resumoDoClima(TAQ, p0)) && /1 grau negativo/.test(L.resumoDoClima(TAQ, { ...p0, atual: { ...p0.atual, temperatura: -1 } })), 'clima: a frase para leitores de tela diz agora e previsão do dia, com unidades por extenso');
+  ok(L.ATRIBUICAO.texto === 'Weather data by Open-Meteo.com' && L.ATRIBUICAO.url === 'https://open-meteo.com/' && L.TTL_FRESCO_MS === 900000 && L.TIMEOUT_MS === 8000 && L.DEBOUNCE_MS >= 250 && L.MAX_RESULTADOS === 8, 'clima: atribuição exigida pela licença, TTL de 15 minutos, limite de tempo de 8 s e espera da busca');
+}
+function urlDe(u) { return new URL(u); }
+
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);

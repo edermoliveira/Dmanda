@@ -35,7 +35,7 @@ const v2 = await ev({ titulo: 'Audiência pública de março', tipo: 'Compromiss
 const v3 = await ev({ titulo: 'Seminário antigo', tipo: 'Compromisso', data: '2026-01-12', dia_inteiro: true });
 await db.close();
 
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
+const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_SEM_CLIMA: 'sim', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
 const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
 process.on('exit', parar);
 let falhas = 0, total = 0;

@@ -20,7 +20,7 @@ const gravarNoAparelho = (s: EstadoLembretes) => { try { localStorage.setItem(CH
 const exclusivo = async (f: () => void) => { if (typeof navigator !== 'undefined' && navigator.locks?.request) await navigator.locks.request('dmanda-lembretes', f); else f(); };
 
 export function Lembretes({ ocupado }: { ocupado: boolean }) {
-  const { registros, carregandoRegistros, erroRegistros, dias, janela, perfilAberto, completarAberto, abrirCompletar, hoje, avisar, ambiente, prefsPerfil } = useApp();
+  const { registros, carregandoRegistros, erroRegistros, dias, janela, perfilAberto, completarAberto, abrirCompletar, hoje, avisar, ambiente, prefsPerfil, prefsProntas } = useApp();
   const [pendente, setPendente] = useState<Pendente>(null);
   const [convidar, setConvidar] = useState(false);
   const atividade = useRef(0);
@@ -52,7 +52,7 @@ export function Lembretes({ ocupado }: { ocupado: boolean }) {
 
   // o relógio: um tique ao abrir (assim que os registros foram lidos), a cada 30 s e ao voltar para a aba
   // `semLembretes` só existe em teste automatizado (ver servidor/demandas.ts); sem o ambiente lido, o relógio espera
-  const carregado = !carregandoRegistros && !erroRegistros && !!ambiente && ambiente.semLembretes !== true;
+  const carregado = !carregandoRegistros && !erroRegistros && !!ambiente && ambiente.semLembretes !== true && prefsProntas;
   useEffect(() => {
     if (!carregado) return;
     void rodar();

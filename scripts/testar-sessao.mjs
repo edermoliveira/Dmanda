@@ -75,7 +75,7 @@ const auth = http.createServer(async (req, res) => {
 await new Promise((r) => auth.listen(PORTA_AUTH, '127.0.0.1', r));
 
 // ---- aplicação real (modo real, apontada para o Auth falso) ----
-const env = { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${PORTA_AUTH}`, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_falsa_para_teste', DMANDA_EMAIL_AUTORIZADO: EMAIL, SUPABASE_SERVICE_ROLE_KEY: '', CRON_SECRET: 'segredo-de-teste-1234567890', DMANDA_BANCO: '', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_LOGIN_GOOGLE: '' };
+const env = { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${PORTA_AUTH}`, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_falsa_para_teste', DMANDA_EMAIL_AUTORIZADO: EMAIL, SUPABASE_SERVICE_ROLE_KEY: '', CRON_SECRET: 'segredo-de-teste-1234567890', DMANDA_BANCO: '', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_SEM_CLIMA: 'sim', DMANDA_LOGIN_GOOGLE: '' };
 const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env, stdio: 'ignore' });
 const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } auth.close(); };
 process.on('exit', parar);

@@ -105,7 +105,7 @@ type Ctx = {
   fecharCompletar: () => void;
   aviso: Aviso;
   avisar: (msg: string, erro?: boolean) => void;
-  ambiente: { teste: boolean; nome: string; semLembretes?: boolean } | null;
+  ambiente: { teste: boolean; nome: string; semLembretes?: boolean; semClima?: boolean } | null;
   rotina: EstadoRotina | null;
   tema: 'claro' | 'escuro';
   alternarTema: () => void;
@@ -116,6 +116,8 @@ type Ctx = {
   mudarAparencia: (p: Partial<Aparencia>) => void;
   /** Preferências do Perfil, só neste aparelho (intervalo do balão): a fonte única, lida e gravada aqui. */
   prefsPerfil: PreferenciasPerfil;
+  /** As preferências do aparelho já foram lidas (antes disso `prefsPerfil` é o padrão e nada que dependa dela deve começar). */
+  prefsProntas: boolean;
   mudarPrefsPerfil: (p: Partial<PreferenciasPerfil>) => void;
   restaurarAparencia: () => void;
   surpreenda: () => void;
@@ -516,7 +518,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     alternarTema: () => setModo(tema === 'claro' ? 'escuro' : 'claro'),
     modo, setModo, aparencia,
     mudarAparencia: (p) => setAparencia((a) => aparenciaGuardada({ ...a, ...p })),
-    prefsPerfil, mudarPrefsPerfil: (p) => setPrefsPerfil((a) => preferenciasGuardadas({ ...a, ...p })),
+    prefsPerfil, prefsProntas: pronto, mudarPrefsPerfil: (p) => setPrefsPerfil((a) => preferenciasGuardadas({ ...a, ...p })),
     restaurarAparencia: () => setAparencia(APARENCIA_PADRAO),
     surpreenda: () => {
       const c = CONJUNTOS[Math.floor(Math.random() * CONJUNTOS.length)];
@@ -582,7 +584,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, prefsPerfil, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
+  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, prefsPerfil, pronto, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

@@ -13,6 +13,7 @@ import { RegistroNoInicio } from './perfil';
 import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, type Demanda } from '@/lib/demandas';
 import { elegiveisParaHoje, novasUrgencias, precisaCompletar, vagasAbertas } from '@/lib/para-hoje';
 import { anoDoDocumento, chaveOpcao } from '@/lib/documentos';
+import { WidgetClima } from './clima';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
 function Carregando() { return <div className="vazio-c" role="status">Carregando as demandas...</div>; }
@@ -28,6 +29,13 @@ function textoRotina(r: EstadoRotina | null) {
   return r.ultima_ok ? `Rotina diária na nuvem: última execução em ${quando(r.ultima_ok)}.` : 'A rotina diária na nuvem ainda não rodou. Os prazos acima já são calculados pelas datas das demandas.';
 }
 
+/** O Clima só aparece com o ambiente e as preferências do aparelho lidos (assim nenhuma consulta sai antes de saber a cidade escolhida ou se é um teste sem clima) e nunca no servidor. */
+function ClimaNoInicio() {
+  const { ambiente, prefsProntas } = useApp();
+  if (!ambiente || ambiente.semClima || !prefsProntas) return null;
+  return <section className="widgets" aria-label="Widgets do Início"><WidgetClima /></section>;
+}
+
 export function PaginaInicio() {
   const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina, dias } = useApp();
   const [sel, setSel] = useState<'atrasadas' | 'hoje' | 'sete' | null>(null);
@@ -36,6 +44,7 @@ export function PaginaInicio() {
     <>
       <CabecaPagina titulo="Início" sub="Seu dia em um só lugar." />
       <RegistroNoInicio />
+      <ClimaNoInicio />
       {carregando && !demandas.length ? <Carregando /> : null}
       {!carregando && !erroCarga && !demandas.length ? (
         <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Para hoje.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
