@@ -88,6 +88,8 @@ const [vA, vB] = [await vagas(A.pg), await vagas(B.pg)];
 ok(vA.join('|') === '1:Atrasada rapida|2:Atrasada lenta|3:Vence hoje', `Para hoje: três vagas, atrasadas primeiro e a Rápida à frente da mais atrasada (${vA.join(' | ')})`);
 ok(vA.join() === vB.join(), 'duas sessões abrindo ao mesmo tempo mostram as mesmas três vagas (nenhuma demanda repetida)');
 {
+  const rapidas = await A.pg.$$eval('[data-painel="para-hoje"] [data-vaga]', (l) => l.map((e) => !!e.querySelector('[data-rapida]')));
+  ok(rapidas.join() === 'true,false,false' && (await A.pg.$$('.dcard [data-rapida]')).length === 1, 'a marca Rápida aparece no card de Para hoje só nas demandas marcadas (vaga 1) e não nas outras');
   const stats = (await A.pg.textContent('.stats')) ?? '';
   ok(/Vencem hoje/.test(stats) && !/Para hoje/.test(stats) && /Para hoje/.test((await A.pg.textContent('[data-painel="para-hoje"] h3')) ?? ''), 'Para hoje é o painel de execução; o grupo de prazo chama-se Vencem hoje (os dois não se confundem)');
   ok(!vA.some((x) => /Aguardando sem cobranca/.test(x)), 'Para hoje: demanda que aguarda terceiros, sem cobrança devida, não entra');

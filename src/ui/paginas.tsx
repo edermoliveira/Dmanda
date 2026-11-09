@@ -82,11 +82,11 @@ function ParaHoje() {
   return (
     <section className="sec" data-painel="para-hoje" aria-labelledby="ph-t">
       <h3 id="ph-t">Para hoje <small>até 3 demandas para tocar hoje: atrasadas e as que vencem hoje primeiro</small></h3>
-      {abertas.length ? <div className="cards">{abertas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} /></div>)}</div> : <div className="vazio-c">Nada para tocar hoje por enquanto.</div>}
+      {abertas.length ? <div className="cards">{abertas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}</div> : <div className="vazio-c">Nada para tocar hoje por enquanto.</div>}
       {urgentes.length ? (
         <div className="nova-urgencia" role="status" data-nova-urgencia>
           <h4>Nova urgência <small>fora das suas vagas, sem trocar a seleção</small></h4>
-          <div className="cards">{urgentes.slice(0, 3).map((e) => <CardDemanda key={e.demanda.id} d={e.demanda} />)}</div>
+          <div className="cards">{urgentes.slice(0, 3).map((e) => <CardDemanda key={e.demanda.id} d={e.demanda} mostrarRapida />)}</div>
         </div>
       ) : null}
     </section>

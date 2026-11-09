@@ -299,17 +299,17 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
   // busca global: com a sessão da conta autorizada ela abre e lê os arquivados; sem sessão, com cookie adulterado ou com conta não autorizada, nem abre nem recebe resultado
   {
     await p0.waitForFunction(() => { const a = document.querySelector('.app'); return !!a && Object.keys(a).some((k) => k.startsWith('__reactProps')); }, null, { timeout: 60000 });
-    // espera o painel assentar (nenhuma ação nova do servidor em dois olhares seguidos e a tela já carregada) antes de contar o que a busca chama
-    for (let i = 0, n = -1, quietos = 0; i < 100 && quietos < 2; i++) { await new Promise((r) => setTimeout(r, 400)); const carregando = await p0.evaluate(() => /Carregando/.test(document.querySelector('.main')?.innerText ?? '')); quietos = !carregando && capturadas.length === n ? quietos + 1 : 0; n = capturadas.length; }
+    // espera o painel assentar (a tela carregada e nenhuma ação nova do servidor em dois olhares seguidos) antes de contar o que a busca chama
+    const assentar = async () => { for (let i = 0, n = -1, quietos = 0; i < 100 && quietos < 2; i++) { await new Promise((r) => setTimeout(r, 400)); const carregando = await p0.evaluate(() => /Carregando/.test(document.querySelector('.main')?.innerText ?? '')); quietos = !carregando && capturadas.length === n ? quietos + 1 : 0; n = capturadas.length; } };
+    await assentar();
     const antes = capturadas.length;
     await p0.keyboard.press('Control+k');
     const abriu = await p0.waitForSelector('.busca-box input', { timeout: 20000 }).then(() => true, () => false);
     ok(abriu, 'busca: com a sessão da conta autorizada, Ctrl+K abre a busca');
     for (let i = 0; i < 50 && capturadas.slice(antes).filter((x) => x.corpo === '[true]' && /"dados"/.test(x.texto)).length < 2; i++) await new Promise((r) => setTimeout(r, 200));
-    const arquivosBrutos = capturadas.slice(antes).filter((x) => x.corpo === '[true]' && /"ok":true/.test(x.texto));
-    const arquivos = [...new Map(arquivosBrutos.map((x) => [x.id, x])).values()];   // uma ação por tipo (a releitura ao voltar à aba pode repetir uma delas)
-    // duas ações DISTINTAS (demandas e entradas arquivadas); uma releitura do painel ao voltar à aba pode repetir uma delas, o que não é falha
-    ok(arquivos.length === 2, `busca: ao abrir, lê as demandas e as entradas arquivadas (duas ações do servidor distintas, ${arquivosBrutos.length} chamadas) e recebe os dados com a sessão válida`);
+    await assentar();   // uma leitura repetida na mesma abertura chegaria depois das duas primeiras: conta só depois de a tela assentar de novo
+    const arquivos = capturadas.slice(antes).filter((x) => x.corpo === '[true]' && /"ok":true/.test(x.texto));
+    ok(arquivos.length === 2, `busca: ao abrir, lê as demandas e as entradas arquivadas (duas ações do servidor, ${arquivos.length} vistas) e recebe os dados com a sessão válida`);
     ok(!(await p0.$('.busca-aviso.erro')), 'busca: com a sessão válida não há aviso de leitura incompleta');
     await p0.keyboard.press('Escape');
     const repetir = async (ctx, a) => { const r = await ctx.request.post(a.url, { headers: { 'next-action': a.id, 'content-type': a.tipo, accept: 'text/x-component' }, data: a.corpo, maxRedirects: 0, failOnStatusCode: false }); return { status: r.status(), local: r.headers()['location'] ?? '', texto: await r.text().catch(() => '') }; };

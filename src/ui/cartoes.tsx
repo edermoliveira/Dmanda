@@ -137,7 +137,8 @@ export function AcaoCard({ d }: { d: Demanda }) {
 
 const Desc = ({ d }: { d: Demanda }) => (d.descricao.trim() ? <div className="desc">{d.descricao.trim()}</div> : null);
 
-export function CardDemanda({ d }: { d: Demanda }) {
+/** `mostrarRapida`: o painel Para hoje mostra a marca Rápida (só quando está ativa) no card; nas demais telas o card segue como era. */
+export function CardDemanda({ d, mostrarRapida = false }: { d: Demanda; mostrarRapida?: boolean }) {
   const { abrirJanela, arquivar, mover, abrirMenuMover, hoje } = useApp();
   const [fixo, setFixo] = useState<'frente' | 'verso' | undefined>();
   const fin = d.etapa === 'Finalizado';
@@ -156,6 +157,7 @@ export function CardDemanda({ d }: { d: Demanda }) {
           <div className="tags">
             <ChipTipo d={d} /><Numero d={d} />
             {fin ? <span className="chip">Finalizada</span> : <span className="chip neutro">{d.etapa}{d.etapa === 'Aguardando retorno' && d.setor ? ` · ${d.setor} ${curto(dias)}` : ''}</span>}
+            {mostrarRapida && d.rapida ? <span className="chip rapida" data-rapida title="Marcada como rápida: ajuda a escolher o Para hoje">Rápida</span> : null}
           </div>
           <div className="assunto fit" role="link" tabIndex={0} title={d.assunto} onClick={abrirEd} onKeyDown={teclaAbrir}>{d.assunto}</div>
           <Desc d={d} />

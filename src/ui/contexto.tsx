@@ -288,11 +288,19 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); } else setErroCarga(r.erro);
     setCarregando(false);
   }, []);
-  const carregarArquivadas = useCallback(async (silencioso = false) => {
-    const r = await protegido(() => srv.listarDemandas(true));
-    if (r.ok) { setArquivadas(r.dados); return true; }
-    if (!silencioso) avisar(r.erro, true);
-    return false;
+  // Uma leitura por vez: se já há uma em andamento, quem pede de novo recebe a mesma (a busca e o Perfil abrem e pedem os arquivados; em desenvolvimento o React ainda repete o efeito da montagem,
+  // e sem isto cada abertura mandava duas leituras iguais ao servidor).
+  const lendoArquivadas = useRef<Promise<boolean> | null>(null);
+  const carregarArquivadas = useCallback((silencioso = false) => {
+    if (lendoArquivadas.current) return lendoArquivadas.current;
+    const p = (async () => {
+      const r = await protegido(() => srv.listarDemandas(true));
+      if (r.ok) { setArquivadas(r.dados); return true; }
+      if (!silencioso) avisar(r.erro, true);
+      return false;
+    })().finally(() => { lendoArquivadas.current = null; });
+    lendoArquivadas.current = p;
+    return p;
   }, [avisar]);
   // Entradas: as ativas carregam junto com as demandas; as arquivadas (e as que viraram demanda) só ao abrir o Arquivo.
   const recarregarEntradas = useCallback(async () => {
@@ -306,11 +314,17 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setCarregandoEventos(false);
   }, []);
   const aplicarEvento = useCallback((e: Evento) => setEventos((l) => ordenarEventosPorData([...l.filter((x) => x.id !== e.id), e])), []);
-  const carregarEntradasArquivadas = useCallback(async (silencioso = false) => {
-    const r = await protegido(() => srvE.listarEntradas(true));
-    if (r.ok) { setEntradasArquivadas(r.dados); return true; }
-    if (!silencioso) avisar(r.erro, true);
-    return false;
+  const lendoEntradasArquivadas = useRef<Promise<boolean> | null>(null);
+  const carregarEntradasArquivadas = useCallback((silencioso = false) => {
+    if (lendoEntradasArquivadas.current) return lendoEntradasArquivadas.current;
+    const p = (async () => {
+      const r = await protegido(() => srvE.listarEntradas(true));
+      if (r.ok) { setEntradasArquivadas(r.dados); return true; }
+      if (!silencioso) avisar(r.erro, true);
+      return false;
+    })().finally(() => { lendoEntradasArquivadas.current = null; });
+    lendoEntradasArquivadas.current = p;
+    return p;
   }, [avisar]);
   // Uma anotação gravada entra na lista certa: ativa em Entradas; arquivada ou convertida no Arquivo.
   const aplicarEntrada = useCallback((e: Entrada) => {
