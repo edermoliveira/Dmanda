@@ -314,7 +314,8 @@ for (const [modo, esperado, rotulo] of [['429', /pediu uma pausa/, 'HTTP 429'], 
   await abrir(pg); await esperarW(pg, 'ok');
   ok(previsoes(e).length === 1 && (await texto(pg, '[data-clima-temp]')) === '17°' && /Observado às 07:45/.test(await texto(pg, '.wg-cl-hora')), 'virada do dia: às 23:50 o widget mostra a previsão do dia 07');
   e.modo = 'virada';
-  await pg.clock.runFor(10 * 60000 + 30000);   // 00:00:30 do dia 08: a virada (aos 10 min) vem antes do fim dos 15 minutos do dado
+  // avança o relógio da página só até 00:00:03 do dia 08 (a virada vem antes do fim dos 15 minutos do dado; passar muito além estoura o limite de 8 s da consulta)
+  await pg.clock.runFor(new Date('2026-11-08T00:00:03-03:00').getTime() - await pg.evaluate(() => Date.now()));
   await pg.waitForFunction(() => document.querySelector('[data-clima-temp]')?.textContent === '15°', null, { timeout: 10000 });
   ok(previsoes(e).length === 2 && /^Observado às 00:15 · consultado às 00:0\d \(Brasília\)$/.test(await texto(pg, '.wg-cl-hora')) && (await texto(pg, '[data-clima-mm]')) === 'máx. 21° · mín. 14°', 'virada do dia: na meia-noite o widget consulta de novo (antes dos 15 minutos) e passa a mostrar a previsão do dia 08');
   ok((await guardado(pg, 'dmanda:clima')).previsao.hoje.data === '2026-11-08', 'virada do dia: o guardado no aparelho passa a ser o do dia 08');
@@ -331,6 +332,22 @@ for (const [modo, esperado, rotulo] of [['429', /pediu uma pausa/, 'HTTP 429'], 
   e.modo = 'virada';
   await pg.click('.wg-cl-falha .btn'); await pg.waitForFunction(() => document.querySelector('[data-clima-temp]')?.textContent === '15°', null, { timeout: 10000 });
   ok((await guardado(pg, 'dmanda:clima')).previsao.hoje.data === '2026-11-08', 'virada do dia: "Tentar de novo" traz o dia 08');
+  await ctx.close();
+}
+
+{
+  // renovação falha antes da meia-noite (fica "Desatualizado") e o dia vira com o aplicativo aberto: a previsão de ontem não pode continuar como "de hoje"
+  const { ctx, pg, e } = await novo({ viewport: { width: 1280, height: 800 } }, { instante: new Date('2026-11-07T23:20:00-03:00') });
+  await abrir(pg); await esperarW(pg, 'ok');
+  e.modo = '503'; await pg.clock.runFor(16 * 60000); await pg.waitForSelector('.wg-cl-falha', { timeout: 10000 });
+  ok(await estadoW(pg) === 'desatualizado' && (await texto(pg, '[data-clima-temp]')) === '17°', 'virada do dia com falha: antes da meia-noite o clima guardado segue na tela, marcado como desatualizado');
+  const n = previsoes(e).length;
+  await pg.clock.runFor(30 * 60000); await pg.waitForTimeout(800);
+  const t = await texto(pg, 'section.wg-clima');
+  ok(await estadoW(pg) === 'sem-dados' && !(await pg.$('[data-clima-temp]')) && !/Previsão de hoje|17°/.test(t) && previsoes(e).length > n, 'virada do dia com falha: depois da meia-noite a previsão de ontem sai da tela e uma consulta nova é feita (nunca fica como "previsão de hoje")');
+  e.modo = 'virada'; await pg.click('.wg-cl-falha .btn');
+  await pg.waitForFunction(() => document.querySelector('[data-clima-temp]')?.textContent === '15°', null, { timeout: 10000 });
+  ok(await estadoW(pg) === 'ok', 'virada do dia com falha: "Tentar de novo" traz o dia 08');
   await ctx.close();
 }
 

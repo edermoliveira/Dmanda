@@ -74,20 +74,26 @@ function useClima(cidade: Cidade) {
       if (!forcar && Date.now() - ultimaFalha.current < ESPERA_APOS_FALHA_MS) return;
       void buscar();
     };
-    // +1 s: no instante exato dos 15 minutos (ou da virada do dia) o dado ainda conta como fresco, e a consulta não sairia
-    const restante = cache ? Math.max(1000, Math.min(cache.buscadoEm + TTL_FRESCO_MS - Date.now(), msAteVirarODia(Date.now())) + 1000) : null;
-    const renovar = () => {
-      // virou o dia em Brasília: a "previsão de hoje" guardada é de ontem, então sai da tela antes da nova consulta
-      if (estadoDoCache(cache, atual.current, Date.now()) === 'expirado') setCache(null);
-      tentar(false);
-    };
-    const t = restante !== null && !falha ? setTimeout(renovar, restante) : null;
+    // +1 s: no instante exato dos 15 minutos o dado ainda conta como fresco, e a consulta não sairia
+    const restante = cache ? Math.max(1000, cache.buscadoEm + TTL_FRESCO_MS - Date.now() + 1000) : null;
+    const t = restante !== null && !falha ? setTimeout(() => tentar(false), restante) : null;
     const voltou = () => tentar(false);
     const rede = () => tentar(true);
     document.addEventListener('visibilitychange', voltou);
     addEventListener('online', rede);
     return () => { if (t) clearTimeout(t); document.removeEventListener('visibilitychange', voltou); removeEventListener('online', rede); };
   }, [cache, falha, buscar]);
+
+  // virada do dia em Brasília, com ou sem falha: a "previsão de hoje" guardada é de ontem, então sai da tela e uma consulta nova entra (+1 s: na meia-noite exata o dia ainda é o anterior)
+  const [dia, setDia] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setCache((c) => (estadoDoCache(c, atual.current, Date.now()) === 'expirado' ? null : c));
+      if (document.visibilityState === 'visible' && navigator.onLine && !ultima.current.emAndamento()) void buscar();
+      setDia((d) => d + 1);
+    }, msAteVirarODia(Date.now()) + 1000);
+    return () => clearTimeout(t);
+  }, [dia, buscar]);
 
   return { dados: cache && cache.cidade.id === cidade.id ? cache : null, lido, carregando, falha, tentarDeNovo: () => void buscar() };
 }
