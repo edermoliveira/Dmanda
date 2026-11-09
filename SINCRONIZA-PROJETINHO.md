@@ -2,13 +2,84 @@
 
 Guia para continuar o Dmanda em outro computador a partir do ponto exato em que paramos. Contém: onde estamos, histórico das sessões, o que depende de **você** (nada foi decidido pelo Claude em seu lugar), o plano do Figma (só o que faltou), a avaliação das ferramentas, o plano de blocos de trabalho maiores com modelo e effort sugeridos, como sincronizar e o prompt para retomar.
 
-**Última atualização:** 30/10/2026 (ajustes depois da aprovação funcional de Entradas: ver o bloco "AJUSTES DE 30/10/2026" logo abaixo; e antes, o bloco de Entradas); antes, 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos); antes, 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
+**Última atualização:** 09/11/2026 (retomada em casa, bloco logo abaixo); antes, 30/10/2026 (ajustes depois da aprovação funcional de Entradas: ver o bloco "AJUSTES DE 30/10/2026" logo abaixo; e antes, o bloco de Entradas); antes, 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos); antes, 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 45%** (cálculo item a item em `ANDAMENTO.md`, reavaliado em 04/11/2026 com a aprovação da Agenda; era 37%, 33%, 29% e 18% antes).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
 ---
 
-## PONTO DE RETOMADA ATUAL (04/11/2026, leia primeiro)
+## RETOMADA EM CASA, A PARTIR DE 09/11/2026 (leia primeiro)
+
+**Base de código:** a `main` publicada (`5ad1d56`, com as migrações 1 a 20 aplicadas no Supabase real). **Fonte da documentação:** a branch `checkpoint/retomada-casa-2026-11-09` (só `CONTINUIDADE-DMANDA.md`, com a nova seção 0, e este arquivo). **Próximo bloco único: Início + Perfil + Clima.** O que foi entregue, verificado e ainda pendente está em `CONTINUIDADE-DMANDA.md`, **seção 0**.
+
+**1. Antes de tudo, preserve o trabalho de Clima (PowerShell, na pasta do projeto em casa).** Ainda não faça `pull`, `checkout` forçado, `reset` nem `stash drop`.
+
+```powershell
+cd C:\Users\SEU_USUARIO\Desktop\Dmanda
+git status --short
+git branch --show-current
+git rev-parse --short bloco/inicio-clima    # último SHA reportado: 2fc246c
+git stash list
+git diff -- CLAUDE.md                        # edição local de CLAUDE.md
+git branch backup/inicio-clima-antes-da-main bloco/inicio-clima   # marcador local, não altera nada
+```
+
+Se o SHA não for `2fc246c`, não siga: anote o que apareceu. Se houver alterações não commitadas, guarde-as num commit da própria `bloco/inicio-clima` ou com `git stash push -u -m "clima antes da main"`. A edição local de `CLAUDE.md` continua como está; só use `git stash push -m "claude.md local" -- CLAUDE.md` se ela atrapalhar uma troca de branch.
+
+**2. Busque o checkpoint e leia a documentação (não muda o seu checkout).**
+
+```powershell
+git fetch origin --prune
+git ls-remote origin refs/heads/main refs/heads/checkpoint/retomada-casa-2026-11-09    # main deve ser 5ad1d56
+git show origin/checkpoint/retomada-casa-2026-11-09:CONTINUIDADE-DMANDA.md | more     # leia a seção 0
+git show origin/checkpoint/retomada-casa-2026-11-09:SINCRONIZA-PROJETINHO.md | more
+```
+
+**3. Compare o Clima com a `main` publicada, para não trazer mudanças antigas em duplicidade.**
+
+```powershell
+git merge-base bloco/inicio-clima origin/main
+git log --oneline origin/main..bloco/inicio-clima          # o que a branch tem e a main não tem
+git log --oneline bloco/inicio-clima..origin/main | more   # o que a main ganhou (inclui as entregas A e B)
+git diff --stat origin/main...bloco/inicio-clima
+```
+
+Na lista de `origin/main..bloco/inicio-clima`, separe: (a) os **commits de Clima** e os do **intervalo do balão**, que ainda precisam ser reaproveitados; (b) commits que já chegaram à `main` por outro caminho (Configurações, Busca, Perfil, Para hoje; reconheça pelo assunto, porque o SHA pode ter mudado) e que **não devem ser trazidos de novo**. Em vez de mesclar a branch inteira, leve só o que sobra para uma branch nova:
+
+```powershell
+git switch -c bloco/inicio-perfil-clima origin/main
+git cherry-pick <sha-de-clima-1> <sha-de-clima-2>    # só os commits de Clima e do balão, em ordem
+```
+
+Em conflito, vale a `main`: o Perfil agora **não tem Energia** (decisão 59) e as migrações 16 a 20 já estão no banco real. Não crie migração nova sem avisar o titular.
+
+**4. Se o checkout de casa estiver ocupado ou com alterações, use um checkout limpo ou um worktree** (não mexe na pasta atual):
+
+```powershell
+git worktree add ..\Dmanda-main-limpa origin/main
+cd ..\Dmanda-main-limpa
+npm ci
+```
+
+Ou uma cópia independente: `git clone https://github.com/edermoliveira/Dmanda.git Dmanda-limpa`.
+
+**5. Sincronizar a `main`.** Rode `git pull --ff-only origin main` **somente em checkout limpo que já esteja na `main`**. **Nunca rode esse pull com a branch de Clima (ou qualquer outra) ativa.**
+
+```powershell
+git branch --show-current                  # deve mostrar: main
+git status --short                         # deve ficar vazio
+git pull --ff-only origin main
+git ls-remote origin refs/heads/main       # deve bater com: git rev-parse HEAD
+npm ci
+```
+
+`.env.local` e `.claude/settings.local.json` não vão pelo Git. O banco de teste local (`npm run dev:teste`) basta para desenvolver. Aplicar migração no Supabase real continua exigindo dry-run e autorização do titular.
+
+**6. Fica só no computador do trabalho, fora da `main` e do checkpoint:** o `stash@{0}` e a branch `visual/apple-design` da pasta principal (trabalho antigo e não aprovado, da etapa visual encerrada). Nada aprovado depende deles.
+
+---
+
+## PONTO DE RETOMADA ANTERIOR (04/11/2026; vale a retomada de 09/11/2026 acima)
 
 **Atualização de 05/11/2026 (Issue #7):** o bloco de resistência e desempenho foi publicado na `main` (`7504f1d`), com deploy concluído na Vercel; a etapa visual Apple foi encerrada (Catalyst mantido). Estado e comandos para continuar em casa: seção S de `CONTINUIDADE-DMANDA.md`. As seções R e R2 têm os testes e as medições.
 
