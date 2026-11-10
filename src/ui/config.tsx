@@ -29,7 +29,9 @@ export function PaginaConfig() {
     trava.current = true; setSalvando(true); setErro('');
     const ok = await salvarDia({ ...(f.id ? { id: f.id } : {}), data: f.data, descricao: f.descricao.trim(), categoria: f.categoria });
     trava.current = false; setSalvando(false);
-    if (ok) setF(VAZIO); // se falhou, o aviso já explicou e o que foi digitado continua nos campos
+    // se falhou, o aviso já explicou e o que foi digitado continua nos campos.
+    // O dia entra na lista antes de o recálculo dos prazos terminar: quem já clicou em Editar (ou voltou a digitar) nesse intervalo não perde o que está nos campos.
+    if (ok) setF((atual) => (atual.id === f.id && atual.data === f.data && atual.descricao === f.descricao && atual.categoria === f.categoria ? VAZIO : atual));
   };
   const editar = (x: DiaIndisponivel) => { setF({ id: x.id, data: x.data, descricao: x.descricao, categoria: x.categoria }); setErro(''); formRef.current?.scrollIntoView({ block: 'nearest' }); document.getElementById('cfg-desc')?.focus(); };
 

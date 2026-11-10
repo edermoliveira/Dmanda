@@ -25,16 +25,23 @@ const PERFIS = {
 };
 const novo = async (perfil = 'computador', { esquema = 'light', movimento = 'no-preference', antes, arg } = {}) => {
   const ctx = await nav.newContext({ ...PERFIS[perfil], colorScheme: esquema, reducedMotion: movimento });
+  await ctx.addInitScript(MARCA_PRONTA);
   if (antes) await ctx.addInitScript(antes, arg);
   const pg = await ctx.newPage();
   pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
   pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) erros.push('console: ' + m.text().slice(0, 300)); });
   return { ctx, pg };
 };
+// A página vem do servidor com a aparência padrão e sem manipuladores; o tema e a aparência guardados só entram num efeito depois da hidratação (contexto.tsx, estado "pronto").
+// Só então o aplicativo grava 'dmanda:ui', e é isso que se espera (o script de início marca o primeiro setItem em cada carregamento), no lugar de uma espera fixa que falhava com a máquina ocupada.
+const MARCA_PRONTA = () => { const o = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k === 'dmanda:ui') window.__dmandaPronta = true; return o.call(this, k, v); }; };
+const pronta = (pg) => pg.waitForFunction(() => window.__dmandaPronta === true, null, { timeout: 30000 });
+// As entradas de tela e de card (Catalyst) escalam o card por alguns instantes: quem mede altura espera as animações finitas terminarem, em vez de um tempo fixo.
+const assentada = (pg) => pg.waitForFunction(() => document.getAnimations().every((a) => a.playState === 'finished' || a.effect?.getComputedTiming().iterations === Infinity), null, { timeout: 30000 });
 const ir = async (pg, rota = '/config') => {
   await pg.goto(BASE + rota, { waitUntil: 'load', timeout: 120000 }); await pg.waitForSelector('.app .main', { timeout: 120000 });
   await pg.waitForFunction(() => !document.body.innerText.includes('Carregando'), null, { timeout: 60000 }).catch(() => {});
-  await pg.waitForTimeout(400);
+  await pronta(pg); await assentada(pg);
 };
 const app = (pg, nome) => pg.evaluate((n) => getComputedStyle(document.querySelector('.app')).getPropertyValue(n).trim(), nome);
 const guardado = (pg, chave) => pg.evaluate((c) => localStorage.getItem(c), chave);
@@ -82,7 +89,7 @@ const CONTRASTE = `(() => {
   await pg.click('[data-modo="escuro"]');
   ok((await pg.$eval('.app', (a) => a.dataset.tema)) === 'escuro' && (await pg.evaluate(() => document.documentElement.dataset.tema)) === 'escuro', 'Escuro aplica na hora no aplicativo e na página');
   ok((await guardado(pg, 'dmanda-tema')) === '"escuro"', 'Escuro fica guardado na mesma chave de antes (dmanda-tema)');
-  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(400);
+  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pronta(pg);
   ok((await modo(pg)) === 'escuro' && (await pg.$eval('.app', (a) => a.dataset.tema)) === 'escuro', 'Escuro sobrevive à recarga');
   await pg.click('[data-modo="claro"]');
   ok((await pg.$eval('.app', (a) => a.dataset.tema)) === 'claro' && (await guardado(pg, 'dmanda-tema')) === '"claro"', 'Claro aplica e guarda');
@@ -91,7 +98,7 @@ const CONTRASTE = `(() => {
   ok((await pg.$eval('.app', (a) => a.dataset.tema)) === 'claro', 'Sistema com o aparelho claro mostra claro');
   await pg.emulateMedia({ colorScheme: 'dark' }); await pg.waitForTimeout(300);
   ok((await pg.$eval('.app', (a) => a.dataset.tema)) === 'escuro' && (await modo(pg)) === 'sistema', 'Sistema acompanha o aparelho ao vivo (claro para escuro)');
-  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(400);
+  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pronta(pg);
   ok((await modo(pg)) === 'sistema' && (await pg.$eval('.app', (a) => a.dataset.tema)) === 'escuro', 'Sistema sobrevive à recarga e segue o aparelho');
   await pg.emulateMedia({ colorScheme: 'light' }); await pg.waitForTimeout(300);
   ok((await pg.$eval('.app', (a) => a.dataset.tema)) === 'claro', 'Sistema volta ao claro quando o aparelho volta');
@@ -120,11 +127,11 @@ const CONTRASTE = `(() => {
   const corBtn = await pg.$eval('.cfg .btn.pri', (b) => getComputedStyle(b).backgroundColor);
   ok(corBtn !== 'rgb(0, 113, 227)', 'o botão principal usa o destaque novo (' + corBtn + ')');
   ok((await apar(pg)).paleta === 7, 'destaque guardado');
-  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(400);
+  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pronta(pg);
   ok((await pg.$eval('.app', (a) => a.dataset.paleta)) === '7', 'destaque sobrevive à recarga');
-  await pg.goto(BASE + '/demandas'); await pg.waitForSelector('.app .main'); await pg.waitForTimeout(500);
+  await pg.goto(BASE + '/demandas'); await pg.waitForSelector('.app .main'); await pronta(pg);
   ok((await pg.$eval('.app', (a) => a.dataset.paleta)) === '7', 'destaque vale em outra tela');
-  await pg.goto(BASE + '/config'); await pg.waitForSelector('.cfg');
+  await pg.goto(BASE + '/config'); await pg.waitForSelector('.cfg'); await pronta(pg);
   await pg.click('.cfg .sw[data-paleta="padrao"]');
   ok(!(await pg.$eval('.app', (a) => a.hasAttribute('data-paleta'))) && (await app(pg, '--acc')).toLowerCase() === '#0071e3', 'Padrão do Catalyst volta ao azul original');
   await pg.click('.cfg button:has-text("Surpreenda-me")');
@@ -148,7 +155,7 @@ const CONTRASTE = `(() => {
   await pg.click('.cfg [data-conjunto="4"]');
   ok(/dm.?serif/i.test(await fam('.pagehead h1')), 'o conjunto DM Serif, DM Sans e DM Mono aplica os três papéis');
   const a = await apar(pg); ok(a.titulo === 'dmserif' && a.texto === 'dmsans' && a.mono === 'dmmono', 'fontes guardadas');
-  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(500);
+  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pronta(pg);
   ok(/dm.?serif/i.test(await fam('.pagehead h1')), 'fontes sobrevivem à recarga');
   // todas as fontes carregam sem erro
   for (const papel of ['titulo', 'texto', 'mono']) for (const v of await pg.$$eval(`#cfg-f-${papel} [data-fonte]`, (o) => o.map((x) => x.dataset.fonte))) await escolher(pg, papel, v);
@@ -174,7 +181,7 @@ const faixa = (pg, id, valor) => pg.$eval('#' + id, (el, v) => { const s = Objec
   ok((await app(pg, '--cardh')) === '420px', 'altura dos cards a 420 px aplica');
   const prev = await pg.$eval('.previa-aparencia .assunto', (e) => parseFloat(getComputedStyle(e).fontSize));
   ok(prev > 17 * 0.85 * 1.2 && await pg.$eval('.previa-aparencia .previa-icones .ic', (e) => e.getBoundingClientRect().width) === 28 && Math.round(await pg.$eval('.previa-aparencia .dcard', (e) => e.getBoundingClientRect().height)) === 420, 'o card de prévia reflete texto, ícone e altura novos');
-  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(400);
+  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pronta(pg);
   ok((await app(pg, '--esc')) === '1.0625' && (await app(pg, '--icn')) === '28px' && (await app(pg, '--cardh')) === '420px', 'tamanhos sobrevivem à recarga');
   // limites
   await faixa(pg, 'cfg-t-texto', 50);
@@ -265,7 +272,7 @@ const faixa = (pg, id, valor) => pg.$eval('#' + id, (el, v) => { const s = Objec
   await faixa(pg, 'cfg-t-card', 300); await pg.waitForTimeout(300);
   r = await est();
   ok(!r.sobra, 'altura mínima (300 px), texto padrão: nada passa do card' + (r.oculta ? ' (descrição cedeu)' : ''));
-  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(800);
+  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pronta(pg); await assentada(pg);
   ok((await app(pg, '--cardh')) === '300px' && !(await est()).sobra, 'depois de recarregar a prévia mantém o ajuste e a preferência');
   await pg.click('.cfg-cab button:has-text("Restaurar padrão")'); await pg.waitForTimeout(300);
   r = await est(); ok(!r.oculta && !r.sobra && (await app(pg, '--cardh')) === '340px', 'Restaurar padrão traz a descrição de volta');
@@ -275,6 +282,7 @@ const faixa = (pg, id, valor) => pg.$eval('#' + id, (el, v) => { const s = Objec
 // ================= 5d) composição em janela larga, intermediária e estreita =================
 for (const [nome, w, h] of [['larga', 1800, 1000], ['intermediária', 1100, 900], ['estreita', 700, 900]]) {
   const ctx = await nav.newContext({ viewport: { width: w, height: h } });
+  await ctx.addInitScript(MARCA_PRONTA);
   const pg = await ctx.newPage();
   pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
   await ir(pg);
@@ -322,7 +330,7 @@ for (const [nome, w, h] of [['larga', 1800, 1000], ['intermediária', 1100, 900]
   r = await anim();
   ok(r.nome === 'none', 'Reduzir movimento ligado para a animação');
   ok((await apar(pg)).fundo === 'animado' && (await apar(pg)).movimento === 'reduzido', 'fundo e movimento guardados');
-  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(400);
+  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pronta(pg);
   r = await anim(); ok(r.display === 'block' && r.nome === 'none', 'depois da recarga: fundo animado continua, parado');
   await pg.click('.cfg [data-movimento]'); r = await anim(); ok(r.nome === 'fundo-deriva', 'desligar Reduzir movimento retoma');
   await ctx.close();
@@ -348,7 +356,7 @@ for (const [nome, w, h] of [['larga', 1800, 1000], ['intermediária', 1100, 900]
   ok((await app(pg, '--esc')) === '0.85' && (await app(pg, '--cardh')) === '340px' && !(await pg.$eval('.app', (e) => e.hasAttribute('data-paleta') || e.hasAttribute('data-fundo'))), 'e a tela volta na hora');
   ok((await modo(pg)) === 'escuro', 'o modo escolhido não é desfeito pela restauração');
   ok(await pg.$eval('.cfg-cab button:has-text("Restaurar padrão")', (b) => b.disabled), 'o botão se desliga de novo');
-  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pg.waitForTimeout(400);
+  await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pronta(pg);
   ok((await app(pg, '--esc')) === '0.85' && !(await pg.$eval('.app', (e) => e.hasAttribute('data-paleta'))), 'o padrão sobrevive à recarga');
   await ctx.close();
 }
@@ -439,7 +447,7 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
   await pg.waitForSelector('.cards .dcard');
   for (const [c, t] of [[300, 125], [420, 100], [340, 100]]) {
     await pg.evaluate(([c, t]) => localStorage.setItem('dmanda:aparencia', JSON.stringify({ card: c, textoPct: t })), [c, t]);
-    await pg.goto(BASE + '/demandas'); await pg.waitForSelector('.cards .dcard'); await pg.waitForTimeout(500);
+    await pg.goto(BASE + '/demandas'); await pg.waitForSelector('.cards .dcard'); await pronta(pg); await assentada(pg);
     const r = await pg.evaluate(() => { const d = document.querySelector('.cards .dcard'); const pesos = [...d.querySelectorAll('*')].filter((e) => e.scrollHeight > e.clientHeight + 1 && ['auto', 'scroll'].includes(getComputedStyle(e).overflowY)); const tit = d.querySelector('h3, .titulo, .assunto'); return { h: Math.round(d.getBoundingClientRect().height), rolagem: pesos.length, tit: !!tit && tit.getBoundingClientRect().height > 0 }; });
     ok(Math.abs(r.h - c) <= 1 && r.rolagem === 0 && r.tit, `card a ${c} px com texto a ${t}%: altura certa, sem barra de rolagem e com título visível (${r.h} px)`);
   }
@@ -459,6 +467,21 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
   await pg.click('button[aria-label="Excluir Natal editado"]'); await pg.click('button:has-text("Confirmar exclusão")');
   await pg.waitForFunction(() => !document.querySelector('.cfg-lista'), null, { timeout: 15000 });
   ok(true, 'Dias indisponíveis: excluir continua funcionando');
+  // corrida: o dia entra na lista antes de o servidor terminar de recalcular os prazos (segunda chamada, atrasada aqui de propósito);
+  // quem clica em Editar nesse intervalo não pode ter a edição apagada quando o cadastro anterior terminar
+  let chamadas = 0;
+  await pg.route('**/*', async (rota) => { if (rota.request().method() === 'POST' && ++chamadas >= 2) await new Promise((r) => setTimeout(r, 2000)); await rota.continue(); });
+  await pg.fill('#cfg-data', '2026-12-31'); await pg.fill('#cfg-desc', 'Ano novo (teste)');
+  await pg.click('button:has-text("Cadastrar dia")'); await pg.waitForSelector('.cfg-lista li', { timeout: 20000 });
+  await pg.click('button[aria-label="Editar Ano novo (teste)"]'); await pg.fill('#cfg-desc', 'Ano novo editado');
+  // enquanto o cadastro termina o botão diz "Salvando..."; quando termina, ele vira "Salvar alteração" (edição mantida) ou "Cadastrar dia" (edição apagada)
+  const mantida = await pg.waitForSelector('button:has-text("Salvar alteração")', { timeout: 8000 }).then(() => true, () => false);
+  ok(chamadas >= 2 && mantida && (await pg.inputValue('#cfg-desc')) === 'Ano novo editado', 'Dias indisponíveis: editar logo depois de cadastrar não perde a edição quando o recálculo termina');
+  await pg.unroute('**/*');
+  await pg.click('button:has-text("Salvar alteração")');
+  await pg.waitForFunction(() => document.querySelector('.cfg-lista li')?.textContent.includes('Ano novo editado'), null, { timeout: 15000 });
+  await pg.click('button[aria-label="Excluir Ano novo editado"]'); await pg.click('button:has-text("Confirmar exclusão")');
+  await pg.waitForFunction(() => !document.querySelector('.cfg-lista'), null, { timeout: 15000 });
   await ctx.close();
 }
 
