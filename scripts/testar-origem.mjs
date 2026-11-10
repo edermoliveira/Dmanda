@@ -218,12 +218,10 @@ await ir(C.pg, '/demandas');
   await pg.click('[data-lapis="identificacao"]'); await pg.waitForSelector('#d-assunto');
   ok((await valorDoSeletor(pg, 'd', 'tipo')) === 'Sem documento' && (await valorDoSeletor(pg, 'd', 'origem')) === 'Reunião', 'consulta: a demanda sem documento mostra a origem (Reunião) e "Sem documento"');
   await escolherOpcao(pg, 'd', 'tipo', 'Memorando'); await pg.fill('#d-num', '45/2026');
-  ok(/Reconhecido pelo número: 2026/.test((await pg.textContent('.modal')) ?? ''), 'o memorando chega depois: o ano 2026 é reconhecido pelo número "45/2026", que fica como foi informado');
+  ok(!(await pg.$('#d-ano')) && !/Ano do documento/.test((await pg.textContent('.modal')) ?? ''), 'o memorando chega depois: não existe campo Ano do documento (decisão 62); o número "45/2026" fica como foi informado');
   await pg.click('.modal [data-salvar="identificacao"]'); await toast(pg, /alterações salvas|Identificação/);
   ok(/Memorando/.test((await pg.textContent('.modal .ler')) ?? '') && /45\/2026/.test((await pg.textContent('.modal .ler')) ?? '') && /Reunião/.test((await pg.textContent('.modal .ler')) ?? '') && /Rápida/.test((await pg.textContent('.modal .ler')) ?? ''), 'consulta: o tipo, o número, a origem e a marca Rápida aparecem depois de salvar');
-  await pg.click('[data-lapis="identificacao"]'); await pg.fill('#d-ano', '2025');
-  await pg.click('.modal [data-salvar="identificacao"]'); await pg.waitForFunction(() => /2025/.test(document.querySelector('.modal .ler')?.textContent ?? ''), null, { timeout: 15000 }).catch(() => {});
-  ok(/2025/.test((await pg.textContent('.modal .ler')) ?? '') && /45\/2026/.test((await pg.textContent('.modal .ler')) ?? '') && !/reconhecido pelo número/.test((await pg.textContent('.modal .ler')) ?? ''), 'o ano confirmado à mão (2025) vale no lugar do reconhecido, e o número continua "45/2026"');
+  ok(!/Ano do documento/.test((await pg.textContent('.modal .ler')) ?? ''), 'consulta: não há linha Ano do documento depois de salvar');
   await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 });
 }
 
@@ -255,6 +253,25 @@ await ir(C.pg, '/demandas');
   ok(obras.includes('Numero ambiguo'), 'origem antiga digitada "  secretaria de obras " aparece sob a opção "Secretaria de Obras", sem duplicar');
   await filtrar({});
   ok((await assuntos(pg)).length === todos.length, 'limpar os filtros volta a todas as demandas');
+  // busca textual por "2026" (decisão 62): acha o número com o ano em qualquer posição, com o filtro de ano em Todos e com 2026 ligado; o ano confirmado antigo também é pesquisável
+  const texto = async (t) => { await pg.fill('#fq', t); await estavel(pg, '.main'); return assuntos(pg); };
+  const t2026 = await texto('2026');
+  ok(t2026.includes('Atrasada lenta') && t2026.includes('Proxima em tres dias') && !t2026.includes('Numero ambiguo'), 'busca de texto "2026" com o filtro de ano em Todos: acha "1/2026" e "32/2026"');
+  const t2026f = await filtrar({ ano: '2026' });
+  ok(t2026f.includes('Atrasada lenta') && t2026f.includes('Proxima em tres dias'), 'busca de texto "2026" com o filtro de ano 2026: continua achando, e a combinação filtra');
+  const comTipo = await filtrar({ ano: '2026', tipo: 'Memorando' });
+  ok(comTipo.includes('Proxima em tres dias') && comTipo.includes('Pedido verbal da reuniao') && !comTipo.includes('Atrasada lenta'), 'busca "2026" combinada com ano e tipo: só os memorandos de 2026 (o ofício sai)');
+  await filtrar({});
+  ok((await texto('2023')).join() === 'Ano manual', 'busca de texto "2023": o ano confirmado à mão de um registro antigo continua pesquisável');
+  await texto('');
+  // registro antigo com ano confirmado: a linha não aparece na consulta nem o campo na edição, e salvar a identificação não zera o ano
+  await pg.click('.dcard:has-text("Ano manual") .assunto'); await pg.waitForSelector('.modal .ler');
+  ok(!/Ano do documento/.test((await pg.textContent('.modal')) ?? ''), 'registro antigo com ano confirmado: a consulta não mostra o ano');
+  await pg.click('[data-lapis="identificacao"]'); await pg.waitForSelector('#d-assunto');
+  ok(!(await pg.$('#d-ano')), 'registro antigo com ano confirmado: a edição da identificação não tem o campo Ano do documento');
+  await pg.fill('#d-num', 'sem formato revisado');
+  await pg.click('.modal [data-salvar="identificacao"]'); await toast(pg, /alterações salvas|Identificação/);
+  await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 });
 }
 await C.ctx.close();
 
@@ -280,7 +297,9 @@ db = await abrirBancoTeste({ pasta: PASTA });
   const vg = await q('select p.posicao, d.assunto from public.para_hoje p join public.demandas d on d.id = p.demanda_id order by p.posicao');
   ok(vg.length === 3 && vg.map((v) => v.posicao).join() === '1,2,3', `banco: exatamente três vagas, uma por posição (${vg.map((v) => v.assunto).join(' | ')})`);
   const [pv] = await q("select tipo, origem, numero, rapida, documento_ano from public.demandas where assunto = 'Pedido verbal da reuniao'");
-  ok(pv.tipo === 'Memorando' && pv.origem === 'Reunião' && pv.numero === '45/2026' && pv.rapida === true && pv.documento_ano === 2025, 'banco: a demanda de reunião ficou com o memorando, o número como informado, a marca Rápida e o ano confirmado');
+  ok(pv.tipo === 'Memorando' && pv.origem === 'Reunião' && pv.numero === '45/2026' && pv.rapida === true && pv.documento_ano === null, 'banco: a demanda de reunião ficou com o memorando, o número como informado e a marca Rápida; nenhum ano é gravado pelo cadastro');
+  const [am] = await q("select numero, documento_ano from public.demandas where assunto = 'Ano manual'");
+  ok(am.numero === 'sem formato revisado' && am.documento_ano === 2023, 'banco: salvar a identificação de um registro antigo não zera o ano confirmado (2023)');
   const [un] = await q("select tipo, origem from public.demandas where assunto = 'Urgencia nova'");
   ok(un.tipo === null && un.origem === 'Reunião', 'banco: a demanda criada sem documento tem tipo nulo (nada inventado)');
   const ops = await q("select campo, nome from public.opcoes where chave in ('secretaria de obras', 'secretaria de educação', 'certidão', 'origem sem rede') order by nome");

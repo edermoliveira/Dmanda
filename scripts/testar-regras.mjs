@@ -407,6 +407,13 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   const f = (o) => filtrar(fl, { ...FILTRO_VAZIO, ...o }, H, []).map((x) => x.id).join();
   ok(f({}) === 'a,b,c,d,e2' && f({ origem: 'Prefeita' }) === 'a,b' && f({ tipo: 'Ofício' }) === 'a,d' && f({ ano: '2024' }) === 'b' && f({ ano: '2026' }) === 'a' && f({ ano: '2023' }) === 'd', 'filtros: origem, tipo e ano (reconhecido ou confirmado), ignorando maiúsculas e espaços; ambíguos e vazios só em Todos');
   ok(f({ origem: 'Prefeita', tipo: 'Memorando', ano: '2024' }) === 'b' && f({ origem: 'Prefeita', ano: '2023' }) === '' && f({ origem: 'Reunião', tipo: 'Ofício' }) === '', 'filtros: combinam origem, tipo e ano (E lógico)');
+  // busca textual por ano (decisão 62): o ano em qualquer posição do número, com o filtro de ano em Todos ou ligado; o ano confirmado antigo também é pesquisável
+  const fa = [D('p', { tipo: 'Ofício', numero: '250/2026', assunto: 'Alvara um' }), D('q', { tipo: 'Ofício', numero: '2026/250', assunto: 'Alvara dois' }), D('r', { tipo: 'Memorando', numero: '2024/2025', assunto: 'Ambiguo' }), D('s', { tipo: 'Ofício', numero: 'sem formato', documento_ano: 2026, assunto: 'Legado' }), D('t', { tipo: 'Ofício', numero: '15/2025', assunto: 'Outro ano' })];
+  const g = (o) => filtrar(fa, { ...FILTRO_VAZIO, ...o }, H, []).map((x) => x.id).join();
+  ok(g({ texto: '2026' }) === 'p,q,s' && g({ texto: '250/2026' }) === 'p' && g({ texto: '2026/250' }) === 'q', 'busca textual "2026": acha "250/2026", "2026/250" e o registro antigo com ano confirmado, com o filtro de ano em Todos');
+  ok(g({ texto: '2026', ano: '2026' }) === 'p,q,s' && g({ texto: '2026', ano: '2025' }) === '' && g({ texto: '2026', tipo: 'Ofício', ano: '2026' }) === 'p,q,s' && g({ texto: '2026', tipo: 'Memorando' }) === '', 'busca textual "2026" combinada com o filtro de ano e de tipo: o E lógico continua valendo');
+  ok(buscar('2026', { demandas: fa, arquivadas: [], entradas: [], entradasArquivadas: [], eventos: [] }).resultados.map((x) => x.destino.id).sort().join() === 'p,q,s', 'busca global "2026": acha "250/2026", "2026/250" e o ano confirmado antigo');
+  ok(g({ texto: '2025' }) === 'r,t' && g({ ano: '2025' }) === 't', 'o número ambíguo "2024/2025" é achado pelo texto, mas só o "15/2025" entra no filtro de ano 2025');
   ok(titulo({ tipo: null, numero: '' }) === 'Sem documento' && titulo({ tipo: null, numero: '45/2026' }) === '45/2026' && titulo({ tipo: 'Ofício', numero: '' }) === 'Ofício', 'título: sem tipo mostra só o número e, sem nada, "Sem documento" (nunca um título vazio)');
 }
 // ---------- Clima do Início (Open-Meteo): endereços fixos, validação, cache, corrida entre consultas, textos ----------

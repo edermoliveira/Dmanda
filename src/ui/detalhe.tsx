@@ -13,7 +13,6 @@ import { ChipEspera, ChipPrazo, ChipSelo } from './cartoes';
 import {
   CAMPOS_DA_SECAO, comAtalhoCoerente, CamposChegadaPrazo, CamposIdentificacao, chaveTarefa, Descricao, doCampos, EditorTarefas, mudou, paraDadosSecao, paraEnvio, type Campos, type Secao, type TarefaForm,
 } from './campos';
-import { anoDoDocumento } from '@/lib/documentos';
 import { dataBR, diasAte, diasDesde, diasDesdeInstante, ETAPAS, numeroDe, origemDe, permanencia, plural, temArea, titulo, type DadosDemanda, type Demanda, type Etapa } from '@/lib/demandas';
 import { dataComSemana } from '@/lib/prazos';
 import type { TarefaEdicao } from '@/nucleo/operacoes';
@@ -167,7 +166,6 @@ function Detalhe({ d }: { d: Demanda }) {
           <Linha rotulo="Tipo do documento" valor={d.tipo} />
           {temArea(d.tipo) ? <Linha rotulo="Área" valor={d.area} /> : null}
           <Linha rotulo="Número" valor={numeroDe(d)} />
-          <Linha rotulo="Ano do documento" valor={anoDoDocumento(d) ? `${anoDoDocumento(d)}${d.documento_ano ? '' : ' (reconhecido pelo número)'}` : null} />
           {d.rapida ? <Linha rotulo="Marca" valor="Rápida" /> : null}
         </dl>
       </Bloco>

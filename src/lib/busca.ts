@@ -50,7 +50,7 @@ export function buscar(consulta: string, f: Fontes): { resultados: ResultadoBusc
     for (const d of lista) {
       const estado = arquivada ? 'Arquivada' : d.etapa === 'Finalizado' ? 'Finalizada' : null;
       const cabeca = `${d.tipo ?? ''} ${d.numero} ${d.assunto}`;
-      const corpo = `${cabeca} ${d.descricao} ${d.origem} ${d.setor ?? ''}`;
+      const corpo = `${cabeca} ${d.descricao} ${d.origem} ${d.setor ?? ''} ${d.documento_ano ?? ''}`;
       if (casa(palavras, corpo)) {
         achados.push({ chave: `d:${d.id}`, tipo: 'demanda', titulo: d.assunto || titulo(d), detalhe: [titulo(d), d.etapa, d.origem].filter(Boolean).join(' · '), estado, destino: { t: 'editar', id: d.id }, peso: (casa(palavras, cabeca) ? 0 : 1) + (estado ? 2 : 0) });
       }

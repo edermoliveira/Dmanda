@@ -25,6 +25,9 @@ const d2 = await dem('Parecer sobre a licitação antiga', { numero: '77/2026', 
 await c('adicionar_tarefa', { p_demanda: d2.id, p_texto: 'Anexar planilha de custos' });
 await c('arquivar_demanda', { p_id: d2.id });
 const d3 = await dem('Demanda finalizada de teste', { numero: '300/2026' }); await c('concluir_demanda', { p_id: d3.id });
+await dem('Alvará Zeta da obra', { numero: '250/2026', tipo: 'Ofício' });
+await dem('Alvará Ômega da praça', { numero: '2026/250', tipo: 'Ofício' });
+await dem('Registro antigo Sigma', { numero: 'sem formato', tipo: 'Ofício', documento_ano: 2031 });
 const e1 = await c('criar_entrada', { p: { titulo: 'Ligar para o Jurídico', texto: 'Combinar a reunião das 14h #tce' } });
 const e2 = await c('criar_entrada', { p: { titulo: 'Lista de compras do gabinete', texto: 'café e papel' } }); await c('arquivar_entrada', { p_id: e2.id });
 const e3 = await c('criar_entrada', { p: { titulo: 'Ideia de capacitação', texto: 'curso de excel para os servidores' } });
@@ -211,6 +214,33 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok(!(await pg.$('.busca-aviso.erro')) && rec.some((x) => x.tipo === 'demanda' && x.estado === 'Arquivada'), 'recuperação: com a conexão de volta, a busca reaberta lê os arquivados, tira o aviso e mostra a demanda arquivada');
   ok(!(await pg.$('#toast.on')), 'recuperação: nenhum aviso de erro na tela depois da busca reaberta');
   await fechaBusca(pg);
+}
+
+// ================= 1b) busca por ano (decisão 62): digitar 2026 acha o número com o ano em qualquer posição, sem campo de ano =================
+{
+  const { pg } = t1;
+  await ir(pg, '/demandas');
+  const so = (r) => r.filter((x) => x.tipo === 'demanda').map((x) => x.titulo);
+  let r = await rapido(pg, '2026'); const t = so(r);
+  ok(t.includes('Alvará Zeta da obra') && t.includes('Alvará Ômega da praça'), 'a busca global por "2026" acha "250/2026" e "2026/250"');
+  await digitar(pg, '250/2026'); r = await itens(pg);
+  ok(so(r).join() === 'Alvará Zeta da obra', 'a busca global por "250/2026" acha só a demanda com esse número');
+  await digitar(pg, '2026/250'); r = await itens(pg);
+  ok(so(r).join() === 'Alvará Ômega da praça', 'a busca global por "2026/250" acha só a demanda com esse número');
+  await digitar(pg, '2031'); r = await itens(pg);
+  ok(so(r).join() === 'Registro antigo Sigma', 'o ano confirmado à mão de um registro antigo ("2031") continua pesquisável, mesmo sem campo de ano');
+  await fechaBusca(pg);
+  // o filtro de texto de Demandas, com o filtro de ano em Todos e com 2026 ligado
+  await pg.fill('#fq', '2026'); await pg.waitForTimeout(300);
+  let a = await pg.$$eval('.dcard .assunto', (e) => e.map((x) => x.textContent.trim()));
+  ok(a.includes('Alvará Zeta da obra') && a.includes('Alvará Ômega da praça'), 'o filtro de texto de Demandas por "2026" acha "250/2026" e "2026/250" (ano em Todos)');
+  await pg.click('[data-filtros]'); await pg.waitForSelector('.painel-filtros'); await pg.selectOption('#f-ano', '2026');
+  await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.painel-filtros')); await pg.waitForTimeout(300);
+  a = await pg.$$eval('.dcard .assunto', (e) => e.map((x) => x.textContent.trim()));
+  ok(a.includes('Alvará Zeta da obra') && a.includes('Alvará Ômega da praça') && !a.includes('Registro antigo Sigma'), 'o mesmo filtro de texto com o filtro de ano 2026 ligado: os dois seguem achados e a combinação filtra');
+  await pg.click('[data-filtros]'); await pg.waitForSelector('.painel-filtros'); await pg.selectOption('#f-ano', '');
+  await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.painel-filtros'));
+  await pg.fill('#fq', '');
 }
 
 // ================= 2) botão "+": menu, várias telas, cancelar, salvar =================

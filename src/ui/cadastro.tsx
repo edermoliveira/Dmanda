@@ -48,7 +48,7 @@ export function JanelaNova({ entradaId, entrada }: { entradaId?: string; entrada
   const listaTarefas = [...paraEnvio(tarefas), ...(nt.trim() ? [{ texto: nt.trim(), concluida: false }] : [])];
   const campoPendente = !!d && !!salvo && mudou(c, salvo, TODAS);
   const algoPendente = campoPendente || listaTarefas.length > 0;
-  const sujoAntes = !d && !!(c.assunto || c.numero || c.origem || c.tipo || c.ano_documento || c.rapida || c.descricao || c.chegou_em || c.prazo_original);
+  const sujoAntes = !d && !!(c.assunto || c.numero || c.origem || c.tipo || c.rapida || c.descricao || c.chegou_em || c.prazo_original);
   const sujo = d ? algoPendente : sujoAntes;
 
   // rascunho automático do cadastro inteiro (meio segundo depois da última alteração): recarregar ou perder a sessão não perde o texto, as tarefas em edição nem o vínculo com a demanda já criada

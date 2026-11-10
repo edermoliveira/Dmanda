@@ -117,7 +117,8 @@ export function filtrar(lista: Demanda[], f: Filtro, hoje: string, dias: readonl
       const data = dataFiltro(d, hoje, dias), n = data ? diasAte(data, hoje) : null;
       if (n === null || (f.prazo === 'atrasadas' ? n >= 0 : f.prazo === 'hoje' ? n !== 0 : n < 0 || n > 7)) return false;
     }
-    return !q || `${d.tipo ?? ''} ${d.numero} ${d.assunto} ${d.origem} ${d.descricao}`.toLowerCase().includes(q);
+    // o ano confirmado à mão em registros antigos também é pesquisável (o campo saiu da interface, decisão 62)
+    return !q || `${d.tipo ?? ''} ${d.numero} ${d.assunto} ${d.origem} ${d.descricao} ${d.documento_ano ?? ''}`.toLowerCase().includes(q);
   });
 }
 

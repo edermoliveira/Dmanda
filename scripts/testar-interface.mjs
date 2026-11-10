@@ -347,7 +347,7 @@ for (const tema of ['claro', 'escuro']) {
   const campos = await t.pg.$$eval('.modal input:not([type=checkbox]):not([type=radio]), .modal textarea, .modal select', (l) => l.map((x) => parseFloat(getComputedStyle(x).fontSize)));
   const filtro = await t.pg.$eval('.toolbar .filtro input', (x) => parseFloat(getComputedStyle(x).fontSize));
   const texto = await t.pg.$eval('.modal .data', (x) => parseFloat(getComputedStyle(x).fontSize));
-  ok(campos.length >= 4 && campos.every((s) => s === 16) && filtro === 16, `iPhone emulado: todos os campos de digitação têm 16 px (${campos.length} no cadastro, mais o filtro), então não há zoom ao focar`);
+  ok(campos.length >= 3 && campos.every((s) => s === 16) && filtro === 16, `iPhone emulado: todos os campos de digitação têm 16 px (${campos.length} no cadastro, mais o filtro), então não há zoom ao focar`);
   ok(texto < 13, `iPhone emulado: o texto comum segue a escala (${texto} px)`);
   const horizontal = await t.pg.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   ok(horizontal <= 0, 'iPhone emulado: sem rolagem horizontal');
@@ -364,7 +364,7 @@ for (const tema of ['claro', 'escuro']) {
   const br = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
   const gravadas = async () => (await (await fetch(BASE + '/api/exportar')).json()).demandas;
   const achar = async (assunto) => (await gravadas()).find((d) => d.assunto === assunto);
-  const campos = (assunto, extra) => ({ assunto, numero: '', origem: '', descricao: '', tipo: '', area: 'Geral', rapida: false, ano_documento: '', chegou_em: '', prazo_original: '', prazo_dias: null, prazo_tipo: 'Próprio', setor: '', acompanhar_em: '', encaminhada_em: '', reiterada_em: '', ...extra });
+  const campos = (assunto, extra) => ({ assunto, numero: '', origem: '', descricao: '', tipo: '', area: 'Geral', rapida: false, chegou_em: '', prazo_original: '', prazo_dias: null, prazo_tipo: 'Próprio', setor: '', acompanhar_em: '', encaminhada_em: '', reiterada_em: '', ...extra });
   const guardar = async (chave, valor) => { await pg.evaluate(([k, v]) => { const m = JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}'); m[k] = v; localStorage.setItem('dmanda:rascunhos', JSON.stringify(m)); }, [chave, valor]); await ir(pg); };
   const abrirRascunhoDoCadastro = async () => { await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#n-chegou', { timeout: 10000 }); };
   const concluirCadastro = async () => { await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt', { timeout: 15000 }); await pg.click('.modal [aria-label="Fechar"]'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 15000 }); };
