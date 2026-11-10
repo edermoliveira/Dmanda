@@ -26,6 +26,7 @@ Desenvolvido no computador e publicado na Vercel (com login restrito à conta do
 |---|---|---|
 | `npm run dev` | aplicação em http://localhost:7100 | **Supabase real** (exige `.env.local`; sem ele o proxy responde 503. O arquivo existe neste computador de trabalho desde 26/10/2026) |
 | `npm run dev:teste` | aplicação em http://localhost:7100 | **banco local descartável** (PGlite em `.dados-teste/`, `DMANDA_BANCO=teste`, só em desenvolvimento, recusado em produção) |
+| `npm run dev:exemplos` | aplicação em http://localhost:7100 com demandas de EXEMPLO (16 demandas fictícias em todas as etapas, todas com tarefas), em `.dados-teste/exemplos` | **banco local separado** (não toca o `pg` da prévia padrão). `npm run semear:exemplos` recria os exemplos do zero, sem duplicar |
 | `npm run build` e `npm run start` | produção local na 7100 | Supabase real |
 | `cd prototipo` e `python -m http.server 7200 --bind 127.0.0.1` | protótipo de referência em http://127.0.0.1:7200 | nenhum (dados fictícios) |
 

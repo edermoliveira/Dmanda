@@ -1708,5 +1708,27 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   } finally { rmSync(raiz, { recursive: true, force: true }); }
 }
 
+// ================= exemplos fictícios (scripts/semear-exemplos.mjs): cobertura, repetição sem duplicar e recusa de pastas fora de .dados-teste =================
+{
+  const { rmSync: apagar } = await import('node:fs');
+  const { semearExemplos } = await import('./semear-exemplos.mjs');
+  const pasta = '.dados-teste/exemplos-teste-banco';
+  try {
+    const r1 = await semearExemplos(pasta), r2 = await semearExemplos(pasta);
+    ok(r1.resumo.map((x) => x.etapa).sort().join() === 'Aguardando Prefeita,Aguardando retorno,Cadastro,Fazendo,Finalizado,Vistos', 'exemplos: as seis etapas permitidas têm demandas');
+    ok(r1.resumo.every((x) => x.sem_tarefa === 0 && x.tarefas > 0), 'exemplos: toda demanda tem tarefas');
+    ok(JSON.stringify(r1.resumo) === JSON.stringify(r2.resumo), 'exemplos: gerar de novo recria a pasta e não duplica nada');
+    ok(await semearExemplos('fora-de-dados-teste').then(() => false, (e) => /dentro de \.dados-teste/.test(e.message)) && await semearExemplos('.dados-teste/pg').then(() => false, (e) => /banco da prévia padrão/.test(e.message)), 'exemplos: recusa pasta fora de .dados-teste e a pasta da prévia padrão (pg)');
+    const x = await abrirBancoTeste({ pasta });
+    const q = async (sql) => (await x.query(sql)).rows[0].n;
+    const abertas = "etapa <> 'Finalizado' and arquivada_em is null";
+    ok(await q(`select count(*)::int n from public.demandas where ${abertas} and prazo < public.hoje()`) >= 3 && await q(`select count(*)::int n from public.demandas where ${abertas} and prazo = public.hoje()`) >= 1 && await q(`select count(*)::int n from public.demandas where ${abertas} and prazo > public.hoje()`) >= 3 && await q('select count(*)::int n from public.demandas where prazo is null') >= 2, 'exemplos: atrasadas, vencendo hoje, prazo futuro e sem prazo');
+    ok(await q('select count(*)::int n from public.demandas where tipo is null') >= 3 && await q("select count(*)::int n from public.demandas where tipo = 'Ofício'") >= 2 && await q("select count(distinct area)::int n from public.demandas where area in ('Pessoal', 'Geral', 'Compras') and tipo in ('Processo', 'Protocolo')") === 3, 'exemplos: sem documento, Ofício e as áreas Pessoal, Geral e Compras');
+    ok(await q("select count(*)::int n from public.demandas where origem = 'Prefeita'") >= 2 && await q("select count(*)::int n from public.demandas where origem = 'Gabinete'") >= 2 && await q('select count(*)::int n from public.entradas where demanda_id is not null') === 1, 'exemplos: origens Prefeita e Gabinete e uma demanda convertida de Entrada');
+    ok(await q('select max(length(assunto))::int n from public.demandas') > 150 && await q('select max(c)::int n from (select count(*) c from public.tarefas group by demanda_id) t') === 6, 'exemplos: assunto longo e uma demanda com seis tarefas');
+    await x.close();
+  } finally { apagar(pasta, { recursive: true, force: true }); }
+}
+
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);
