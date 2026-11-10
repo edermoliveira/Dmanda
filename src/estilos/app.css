@@ -489,3 +489,7 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
   .app[data-dir="d"] .modal.ed .m-h h3 { padding-right: 48px; font-size: calc(24px * var(--esc)); }
 }
 .app[data-dir="d"] .modal .cons-cab { text-align: left; }
+/* Configurações em tela estreita: a prévia de aparência fica abaixo dos controles (ao lado deles quando há espaço, ver acima) */
+.app[data-dir="d"] .cfg-controles { order: 1; }
+.app[data-dir="d"] .cfg-lado { order: 2; margin: 4px 0 16px; }
+.app[data-dir="d"] .cfg-apar > .cfg-nota { order: 3; }

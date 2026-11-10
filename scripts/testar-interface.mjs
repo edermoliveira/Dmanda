@@ -373,7 +373,7 @@ for (const tema of ['claro', 'escuro']) {
   // 5a) rascunho válido de anteontem: a base do clique é preservada e o banco grava a mesma data que a prévia mostra
   {
     const base = soma(hojeSP, -2), original = soma(base, 10);
-    await guardar('nova', { dados: campos('PRAZO atalho de anteontem', { prazo_original: original, prazo_dias: 10, prazo_base_em: base }), passo: 2, idNovo: crypto.randomUUID() });
+    await guardar('nova', { dados: campos('PRAZO atalho de anteontem', { prazo_original: original, prazo_dias: 10, prazo_base_em: base, ano_documento: '2026' }), passo: 2, idNovo: crypto.randomUUID() });
     await abrirRascunhoDoCadastro();
     const t = await previa();
     ok(t.includes(`10 dias corridos a partir de ${br(base)}`) && /o dia em que o botão foi escolhido/.test(t) && t.includes(br(original)), `rascunho de anteontem: a prévia diz que o prazo parte do dia do clique (${br(base)}) e mostra o prazo original ${br(original)}`);
@@ -381,6 +381,7 @@ for (const tema of ['claro', 'escuro']) {
     await concluirCadastro();
     const d = await achar('PRAZO atalho de anteontem');
     ok(d && d.prazo_original === original && d.prazo_dias === 10 && d.prazo_base_em === base, `rascunho de anteontem: o banco grava a data exibida (${d?.prazo_original}, base ${d?.prazo_base_em}), não hoje + 10 (${soma(hojeSP, 10)})`);
+    ok(d && d.documento_ano === null, 'rascunho antigo com o campo ano_documento (que saiu da interface): o ano do rascunho é ignorado e nada é gravado em documento_ano');
   }
   // 5b) rascunho legado (tem dias e data, não tem base): a base é recuperada e o atalho é preservado
   {

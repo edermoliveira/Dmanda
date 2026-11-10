@@ -666,3 +666,33 @@ Branch `bloco/configuracoes-catalyst`, a partir de `c2876dc`, sem push, sem publ
 5. Desligue a internet, recarregue, religue e use **Tentar de novo**: o Início volta inteiro, com Clima, dias e opções.
 
 **Decisões que continuam abertas (não entram neste bloco):** retentativa automática do Clima depois de falha, cópia dos dados versão 5 (humor), `npm audit fix` das ferramentas de desenvolvimento (7 alertas moderados, todos de uma cadeia `eslint-config-next` → `typescript-eslint` → `minimatch`, só desenvolvimento; `npm audit --omit=dev` dá zero), expediente nos lembretes, frase do dia e widgets do Início. O percentual de `ANDAMENTO.md` (45%) **não foi alterado**.
+
+### AA.3 Atualização de 11/11/2026: organização visual no Catalyst e Ano do documento fora da interface (decisão 62, candidato local, a validar)
+
+**Base:** o último commit aprovado funcionalmente pelo Éder é `13272d7`. Este bloco é só visual e de organização (local, sem push, PR, publicação nem Supabase real; andamento oficial 45%). A migração 21 continua sendo **pré-requisito de publicação** do código já aprovado (ver AA.2).
+
+**Commits locais sobre `13272d7` (branch `bloco/inicio-perfil-clima`):**
+- `ab85036` ferramenta de comparação visual antes e depois (`npm run capturar:comparacao`), com a base "antes" gerada no código inalterado.
+- `a22aa22` Ano do documento sai do cadastro, da edição e da consulta; busca por 2026 acha 250/2026 e 2026/250.
+- `1a37579` escala tipográfica compartilhada e conjunto Fraunces, Inter e IBM Plex Mono.
+- `9df5222` largura central de 1.200 px, Início em grade (Para hoje + apoio) e Configurações organizadas.
+- `257fb78` cadastro: Assunto em destaque e Documento associado (tipo e número) em bloco próprio.
+- `f5ccb24` consulta da demanda: assunto como título, documento no cabeçalho, Tarefas e Descrição primeiro.
+- este commit: suíte `testar:visual`, prévia de Configurações abaixo dos controles no estreito, documentação (decisão 62, esta seção) e capturas finais.
+
+**Comparação antes/depois (abrir no navegador):** `C:\Users\adminpmt04\Desktop\Dmanda-inicio-perfil-clima\.dados-teste\comparacao\indice.html` (pasta ignorada pelo Git; 46 capturas por lado: Início, Configurações, Nova demanda e Consulta, esta também com assunto longo e sem documento; monitor 1600 px, notebook 1280 px, tablet 820 px e celular 390 px; tema escuro e texto a 125% em monitor e celular; conjunto Fraunces ativo). Os dados são fictícios, num banco isolado (`.dados-teste/comparacao-dados`); o banco da prévia (`.dados-teste/pg`) não foi tocado. Regerar: `npm run capturar:comparacao -- antes|depois` (o "antes" só faz sentido no código base; `CAPTURA_FILTRO=<regex>` faz uma rodada parcial de rascunho em `comparacao/rascunho`).
+
+**Verificações (banco de teste, dados fictícios, uma suíte por vez com a prévia pausada):** `tsc` ok; ESLint 0 erros e 10 avisos (os mesmos da base); `verificar:cores` ok; `testar:regras` 311 (5 novas do ano e da busca); **`build` ok** (separado). Navegador: `testar:visual` **84** (suíte nova, porta 7118); `testar:interface` 161; `testar:origem` 58; `testar:prioridade` 56; `testar:busca` 102 (6 novas); `testar:config` 167; `testar:app` 132; `testar:perfil` 124; `testar:clima` 145; `testar:agenda` 114; `testar:resistencia` 125 (inclui o menu lateral); `testar:ajustes` 417 (sem WebKit); `testar:entradas` 179. Reaproveitados do bloco funcional por não haver mudança de banco, de fuso nem de sessão: `testar:banco` 458, `testar:fuso` 9, `testar:agenda-regras` 50, `testar:sessao` 97. Uma falha isolada em `testar:interface` ("a descrição reaparece sozinha") não repetiu na rodada seguinte (instabilidade de tempo no redimensionamento, já conhecida). Expectativas antigas atualizadas por decisão desta rodada: h1 de 28,9 para 30,6 px, três campos de texto no cadastro, coluna central em vez de largura total em Configurações, prévia abaixo dos controles no celular, ordem das seções da consulta e tipo e número no cabeçalho.
+
+**`ponytail-review` invocado de fato:** não achou defeito. Achou (a) um caso sem teste (rascunho antigo com `ano_documento`), coberto agora em `testar:interface`; (b) uma linha de depuração esquecida na ferramenta de capturas, removida; (c) o efeito de o ano antigo continuar valendo no filtro mesmo invisível (se o número de um registro antigo for corrigido para outro ano, o filtro segue o ano confirmado antigo), mantido porque o pedido foi preservar os dados antigos: decisão sua, ver interpretação 2.
+
+**WebKit e aparelhos reais (separados):** o WebKit do Playwright **não está instalado** neste computador (`testar:ajustes` roda 417 sem ele; a pendência continua). **Nenhum aparelho Apple real** foi usado; celular e iPad foram emulados no Edge. Safari e a PWA do iPhone continuam sem conferência.
+
+**Roteiro curto de conferência na prévia (`npm run dev:teste`, http://localhost:7100):**
+1. **Telas:** Início é `/`; Configurações é o último item do menu (`/config`); Nova demanda é o botão em Demandas ou o "+" do cabeçalho; a Consulta abre ao clicar no assunto de um card.
+2. **Conjunto Fraunces:** Configurações, bloco Fontes, botão "Fraunces, Inter e IBM Plex Mono" (para voltar, "Restaurar padrão"). O padrão global continua Inter.
+3. **Busca por 2026:** cadastre demandas com os números 250/2026 e 2026/250; com o filtro de ano em Todos, digite 2026 no filtro de texto de Demandas e em Buscar (Ctrl K): as duas aparecem. Ligue o filtro de ano 2026 e combine com tipo e origem.
+4. **Interações que a captura não mostra:** passe o mouse e use Tab no menu lateral; clique nos três contadores; marque uma tarefa na Consulta; abra o lápis de cada seção; confira Fechar e Concluir e o rodapé no celular; troque tema e tamanho do texto (100% e 125%).
+5. **Prévia com dados de exemplo:** a prévia padrão usa o banco da prévia (hoje com zero demandas). Para ver os mesmos dados fictícios das capturas, pare a prévia e rode `$env:DMANDA_PASTA_TESTE='.dados-teste/comparacao-dados'; npm run dev:teste`; depois volte à prévia normal.
+
+**Interpretações a confirmar:** (1) "independentemente do filtro de ano" foi lido como busca de texto que funciona com o filtro em Todos e ligado; (2) o ano confirmado à mão em registros antigos continua valendo no filtro e na busca, mas deixou de aparecer na consulta e na edição (se quiser vê-lo ou mudá-lo, é uma decisão nova); (3) Fraunces entra como conjunto opcional, não como padrão; (4) o botão "mais ações" da consulta no estreito fica no canto do cabeçalho.

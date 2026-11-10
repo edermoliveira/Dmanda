@@ -311,8 +311,8 @@ for (const [nome, w, h] of [['larga', 1800, 1000], ['intermediária', 1100, 900]
     const barra = await pg.$eval('.previa-aparencia .face', (f) => f.scrollHeight <= f.clientHeight + 1);
     ok(barra, `${nome}: a prévia reage ao ajuste feito enquanto ela está visível (texto a 125%)`);
   } else {
-    const o = await pg.evaluate(() => document.querySelector('.cfg-lado').getBoundingClientRect().top < document.querySelector('.cfg-controles').getBoundingClientRect().top);
-    ok(o, `${nome}: uma coluna, prévia primeiro`);
+    const o = await pg.evaluate(() => document.querySelector('.cfg-lado').getBoundingClientRect().top >= document.querySelector('.cfg-controles').getBoundingClientRect().bottom - 1);
+    ok(o, `${nome}: uma coluna, prévia abaixo dos controles (decisão 62)`);
   }
   await ctx.close();
 }
@@ -417,8 +417,8 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
     ok(g.rolagemH <= 0 && g.mainH <= 0, `${perfil}/${m}: sem rolagem horizontal`);
     ok(g.filhos.length === 0, `${perfil}/${m}: nenhum controle passa da largura da tela` + (g.filhos.length ? ': ' + g.filhos.join(', ') : ''));
     ok(g.sec.every((s) => s.l >= -1 && s.r <= g.vw + 1), `${perfil}/${m}: todos os painéis cabem na largura`);
-    const pos = await pg.evaluate(() => { const a = document.querySelector('.previa-aparencia').getBoundingClientRect(), c = document.querySelector('.cfg-controles').getBoundingClientRect(); return { pl: a.left, pt: a.top, pr: a.right, cr: c.right, ct: c.top, w: a.width }; });
-    ok(perfil === 'celular' ? pos.pt < pos.ct : perfil === 'computador' ? pos.pl >= pos.cr - 1 : (pos.pl >= pos.cr - 1 || pos.pt < pos.ct), `${perfil}/${m}: a prévia do card fica ${perfil === 'celular' ? 'acima dos controles' : perfil === 'computador' ? 'ao lado dos controles' : 'ao lado ou acima dos controles, sem cobri-los'}`);
+    const pos = await pg.evaluate(() => { const a = document.querySelector('.previa-aparencia').getBoundingClientRect(), c = document.querySelector('.cfg-controles').getBoundingClientRect(); return { pl: a.left, pt: a.top, pr: a.right, cr: c.right, ct: c.top, cb: c.bottom, w: a.width }; });
+    ok(perfil === 'celular' ? pos.pt >= pos.cb - 1 : perfil === 'computador' ? pos.pl >= pos.cr - 1 : (pos.pl >= pos.cr - 1 || pos.pt >= pos.cb - 1), `${perfil}/${m}: a prévia do card fica ${perfil === 'celular' ? 'abaixo dos controles (decisão 62)' : perfil === 'computador' ? 'ao lado dos controles' : 'ao lado ou abaixo dos controles, sem cobri-los'}`);
     ok(pos.pr <= g.vw + 1 && pos.w >= 240, `${perfil}/${m}: a prévia cabe na tela (${Math.round(pos.w)} px de largura)`);
     if (m === 'claro') {
       const colunas = new Set(g.sec.filter((s) => s.c.includes('painel') && !s.c.includes('cfg-topo')).map((s) => Math.round(s.l / 10))).size;
