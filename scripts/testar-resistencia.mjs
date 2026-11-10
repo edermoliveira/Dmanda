@@ -503,9 +503,17 @@ await subir(PASTA_A);
     ok(JSON.stringify(await rascunhos(pg)).includes(MARCA), `falha parcial (${partes.join(' e ')}): o rascunho continua intacto`);
     if (partes.includes('dias')) { await aba(pg, 'config'); const cfg = (await pg.textContent('section[aria-labelledby="cfg-dias-t"]')).replace(/\s+/g, ' '); ok(/Não foi possível ler os dias cadastrados/.test(cfg) && !/Nenhum dia cadastrado/.test(cfg), 'falha parcial (dias): Configurações não afirma "Nenhum dia cadastrado" (a leitura falhou, a lista pode estar incompleta)'); }
     ctl.partes = [];
-    await aba(pg, 'inicio');   // o aviso é o mesmo em todas as telas; o clique é feito no Início
+    // uso normal: depois de clicar num item do menu lateral, o foco fica nele; o menu NÃO pode continuar aberto por cima do botão do aviso (antes, a regra :focus-within o mantinha aberto)
+    await pg.mouse.move(700, 500); await pg.waitForTimeout(600);   // o ponteiro sai de cima do menu, como a pessoa faria
+    const cobre = await pg.evaluate(() => { const b = document.querySelector('[data-erro-leitura] .btn').getBoundingClientRect(); return !!document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)?.closest('.side'); });
+    ok(!cobre, 'menu lateral: depois de clicar num item do menu o botão "Tentar de novo" do aviso fica acessível (o menu só fica aberto por cima com o mouse sobre ele ou com foco de teclado)');
     await pg.click('[data-erro-leitura] .btn:has-text("Tentar de novo")');
     await pg.waitForFunction(() => !document.querySelector('[data-erro-leitura]'), null, { timeout: 30000 });
+    if (partes.length === 1 && partes[0] === 'dias') {
+      await pg.focus('.side .navi[data-nav="inicio"]'); await pg.keyboard.press('Tab'); await pg.waitForTimeout(500);
+      ok(await pg.evaluate(() => document.querySelector('.side').getBoundingClientRect().width > 200), 'menu lateral: com foco de teclado dentro do menu ele continua abrindo (acessibilidade preservada)');
+      await pg.mouse.move(700, 500); await pg.evaluate(() => document.activeElement?.blur());
+    }
     if (partes.includes('dias')) ok(/TESTE Natal fictício/.test(await diasNaTela(pg)), `falha parcial (${partes.join(' e ')}): depois de Tentar de novo os dias indisponíveis aparecem`);
     if (partes.includes('opcoes')) ok((await origensNoFiltro(pg)).includes('Prefeita'), `falha parcial (${partes.join(' e ')}): depois de Tentar de novo as opções aparecem`);
     ok(erros.length === antes, `falha parcial (${partes.join(' e ')}): nenhum erro de página`);
