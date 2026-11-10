@@ -19,6 +19,8 @@ const NAV: [string, string, string, string][] = [
 ];
 const EM_MAIS = ['/mais', '/entradas', '/documentos', '/ia', '/config', '/arquivo'];
 const ativo = (caminho: string, rota: string) => (rota === '/' ? caminho === '/' : caminho === rota || caminho.startsWith(rota + '/'));
+/** Largura útil da área de conteúdo: Início e Configurações numa coluna central de leitura; Agenda e Demandas (Quadro e Tabela) numa área maior; as demais telas como sempre. */
+const larguraDa = (caminho: string): 'centro' | 'ampla' | undefined => (ativo(caminho, '/') || ativo(caminho, '/config') ? 'centro' : ativo(caminho, '/agenda') || ativo(caminho, '/demandas') ? 'ampla' : undefined);
 
 function useToque() {
   const [toque, setToque] = useState(false);
@@ -90,7 +92,7 @@ function Interior({ children }: { children: ReactNode }) {
   );
   return (
     <div className="frame real" id="frame">
-      <div ref={appRef} className="app" data-dir="d" data-tema={tema} data-ico="fino" data-dev={toque ? 'toque' : 'desktop'} data-col="true" data-aberto={menuAberto} data-paleta={aparencia.paleta ?? undefined} data-reduzir={aparencia.movimento === 'reduzido'} data-fundo={aparencia.fundo === 'animado' ? 'animado' : undefined}
+      <div ref={appRef} className="app" data-dir="d" data-largura={larguraDa(caminho)} data-tema={tema} data-ico="fino" data-dev={toque ? 'toque' : 'desktop'} data-col="true" data-aberto={menuAberto} data-paleta={aparencia.paleta ?? undefined} data-reduzir={aparencia.movimento === 'reduzido'} data-fundo={aparencia.fundo === 'animado' ? 'animado' : undefined}
         style={variaveisAparencia(aparencia) as CSSProperties}>
         <div className="bg"><i className="bg-img" /></div>
         <aside className="side" aria-label="Menu">

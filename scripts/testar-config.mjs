@@ -296,11 +296,11 @@ for (const [nome, w, h] of [['larga', 1800, 1000], ['intermediária', 1100, 900]
     const m = document.querySelector('.main').getBoundingClientRect(), pad = parseFloat(getComputedStyle(document.querySelector('.main')).paddingRight) || 0;
     const blocos = [...document.querySelectorAll('.cfg-controles > section, .cfg > .cfg-bloco')].map((s) => s.getBoundingClientRect());
     const lado = document.querySelector('.cfg-lado').getBoundingClientRect();
-    const dir = Math.max(...blocos.map((b) => b.right), lado.right);
+    const dir = Math.max(...blocos.map((b) => b.right), lado.right), esq = Math.min(...blocos.map((b) => b.left), lado.left);
     const sob = blocos.some((b) => b.right > lado.left + 1 && b.left < lado.right - 1 && b.bottom > lado.top && b.top < lado.bottom);
-    return { vazio: m.right - pad - dir, sob, hov: document.documentElement.scrollWidth - innerWidth, diasL: document.querySelector('.cfg-bloco').getBoundingClientRect().width, ladoL: lado.left, ctlR: document.querySelector('.cfg-controles').getBoundingClientRect().right, mw: m.width };
+    return { vazio: m.right - pad - dir, esq: esq - (m.left + (parseFloat(getComputedStyle(document.querySelector('.main')).paddingLeft) || 0)), util: dir - esq, sob, hov: document.documentElement.scrollWidth - innerWidth, diasL: document.querySelector('.cfg-bloco').getBoundingClientRect().width, ladoL: lado.left, ctlR: document.querySelector('.cfg-controles').getBoundingClientRect().right, mw: m.width };
   });
-  ok(g.vazio < 24, `${nome} (${w} px): sem espaço vazio à direita (${Math.round(g.vazio)} px)`);
+  ok(g.util <= 1201 && Math.abs(g.vazio - g.esq) < 24, `${nome} (${w} px): conteúdo de no máximo 1.200 px (${Math.round(g.util)}), centralizado (sobra ${Math.round(g.esq)} px à esquerda e ${Math.round(g.vazio)} px à direita; decisão 62)`);
   ok(!g.sob && g.hov <= 0, `${nome}: sem sobreposição com a prévia e sem rolagem horizontal`);
   ok(g.diasL > g.mw * 0.6, `${nome}: Dias indisponíveis usa a largura útil (${Math.round(g.diasL)} px)`);
   if (w >= 760) {

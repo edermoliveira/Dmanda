@@ -43,16 +43,9 @@ export function PaginaInicio() {
   return (
     <>
       <CabecaPagina titulo="Início" sub="Seu dia em um só lugar." />
-      <RegistroNoInicio />
-      <ClimaNoInicio />
-      {carregando && !demandas.length ? <Carregando /> : null}
-      {!carregando && !erroCarga && !demandas.length ? (
-        <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Para hoje.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
-      ) : null}
       {demandas.length ? (
-        <>
-          <section className="sec">
-            <div className="stats tres" role="group" aria-label="Filtrar demandas por prazo">
+        <section className="sec ini-prazos">
+            <div className="stats tres ini-contadores" role="group" aria-label="Filtrar demandas por prazo">
               {GRUPOS_INICIO.map(([g, nome, icone, alerta]) => {
                 const n = porGrupo(demandas, g, hoje, dias).length;
                 return (
@@ -66,10 +59,22 @@ export function PaginaInicio() {
               const l = porGrupo(demandas, sel, hoje, dias), nome = GRUPOS_INICIO.find((g) => g[0] === sel)![1];
               return <><h3 className="sub-f">{nome} <small>{plural(l.length, 'demanda')}</small></h3>{l.length ? <div className="cards">{l.map((d) => <CardDemanda key={d.id} d={d} />)}</div> : <div className="vazio-c">Nenhuma demanda neste filtro.</div>}</>;
             })() : null}
-          </section>
-          <ParaHoje />
-        </>
+        </section>
       ) : null}
+      {/* Para hoje é o trabalho principal (cerca de dois terços); Humor e Clima são o apoio (um terço) e vêm depois dele, então no estreito empilham abaixo */}
+      <div className="ini-grade">
+        <div className="ini-principal">
+          {carregando && !demandas.length ? <Carregando /> : null}
+          {!carregando && !erroCarga && !demandas.length ? (
+            <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Para hoje.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
+          ) : null}
+          {demandas.length ? <ParaHoje /> : null}
+        </div>
+        <aside className="ini-apoio" aria-label="Apoio do dia: humor e clima">
+          <RegistroNoInicio />
+          <ClimaNoInicio />
+        </aside>
+      </div>
       <p className="rotina-estado">{textoRotina(rotina)}</p>
     </>
   );

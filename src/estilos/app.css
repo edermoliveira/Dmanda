@@ -423,3 +423,39 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app[data-dir="d"] .modal .ler, .app[data-dir="d"] .modal .ler-texto { font-size: var(--t-leitura); }
 .app[data-dir="d"] .modal .ler dt { font-size: var(--t-rotulo); }
 .app[data-dir="d"] .modal .t-ler li { font-size: var(--t-leitura); }
+
+/* ---------- largura útil e Início em grade (decisão 62) ----------
+   Início e Configurações ficam numa coluna central de até 1.200 px; Agenda e Demandas (Quadro e Tabela) usam uma área maior; a busca do cabeçalho acompanha a mesma coluna
+   (só com o menu lateral presente, a partir de 900 px). Não há largura fixa em px de fonte: só de layout. */
+.app[data-largura="centro"] { --larg-atual: 1200px; }
+.app[data-largura="ampla"] { --larg-atual: 1680px; }
+.app[data-dir="d"][data-largura] .main > * { max-width: var(--larg-atual); margin-inline: auto; }
+@container tela (min-width: 900px) {
+  .app[data-dir="d"][data-largura] .top { justify-self: center; width: min(var(--larg-atual), calc(100% - 48px)); margin-inline: 0; box-sizing: border-box; }
+}
+/* contadores de prazo compactos: ícone, número e rótulo na mesma linha, perto uns dos outros */
+.app[data-dir="d"] .ini-prazos { margin-bottom: 16px; }
+.app[data-dir="d"] .ini-prazos .stats.tres { margin-bottom: 12px; }
+@container tela (min-width: 700px) {
+  .app[data-dir] .stats.tres.ini-contadores .stat { grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "ic n r"; column-gap: 10px; row-gap: 0; min-height: 52px; padding: 8px 14px; }
+  .app[data-dir] .stats.tres.ini-contadores .stat .n { justify-self: start; font-size: calc(24px * var(--esc)); }
+  .app[data-dir] .stats.tres.ini-contadores .stat .r { font-size: var(--t-rotulo); }
+}
+/* Para hoje (principal) e apoio (Humor e Clima): dois terços e um terço no largo; empilhados abaixo disso, Para hoje antes */
+.app[data-dir="d"] .ini-grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px 22px; align-items: start; }
+.app[data-dir="d"] .ini-principal, .app[data-dir="d"] .ini-apoio { min-width: 0; }
+.app[data-dir="d"] .ini-apoio { display: grid; gap: 14px; align-content: start; }
+.app[data-dir="d"] .ini-apoio > * { margin: 0; }
+.app[data-dir="d"] .ini-apoio .widgets { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.app[data-dir="d"] .ini-apoio .wg { aspect-ratio: auto; }
+.app[data-dir="d"] .ini-apoio .sec > h3 { margin-bottom: 8px; }
+@container tela (min-width: 1100px) {
+  .app[data-dir="d"] .ini-grade { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+/* Configurações: título de bloco no tamanho da escala e controles deslizantes com rótulo, barra e valor lidos juntos */
+.app[data-dir="d"] .cfg .cfg-titulo { font-family: var(--font); font-size: var(--t-secao); line-height: 1.25; margin: 0 0 6px; }
+.app[data-dir="d"] .cfg .rng { max-width: 520px; }
+@container tela (min-width: 640px) and (max-width: 1099px) {
+  .app[data-dir="d"] .ini-apoio { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+.app[data-dir="d"] .cfg-controles { align-items: start; }

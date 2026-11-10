@@ -15,7 +15,9 @@ const LADO = process.argv[2];
 if (LADO !== 'antes' && LADO !== 'depois') { console.error('Uso: node scripts/capturar-comparacao.mjs antes|depois'); process.exit(2); }
 const COM_FRAUNCES = !process.argv.includes('--sem-fraunces');
 const PORTA = process.env.PORTA_CAPTURA || '7119', BASE = `http://localhost:${PORTA}`;
-const RAIZ = '.dados-teste/comparacao', PASTA_LADO = `${RAIZ}/${LADO}`, DADOS = '.dados-teste/comparacao-dados';
+// CAPTURA_FILTRO=<regex dos nomes> faz uma rodada parcial de rascunho (para olhar durante o desenvolvimento): grava em comparacao/rascunho e não mexe em antes, depois nem no índice
+const FILTRO = process.env.CAPTURA_FILTRO ? new RegExp(process.env.CAPTURA_FILTRO) : null;
+const RAIZ = '.dados-teste/comparacao', PASTA_LADO = FILTRO ? `${RAIZ}/rascunho` : `${RAIZ}/${LADO}`, DADOS = FILTRO ? '.dados-teste/comparacao-dados-rascunho' : '.dados-teste/comparacao-dados';
 rmSync(PASTA_LADO, { recursive: true, force: true }); rmSync(DADOS, { recursive: true, force: true }); mkdirSync(PASTA_LADO, { recursive: true });
 
 const USUARIO = '00000000-0000-4000-8000-000000000001';
@@ -104,6 +106,7 @@ const caberTudo = async (pg, vp) => {
 async function capturar({ tela, vpNome, tema, texto, fraunces }) {
   const vp = VIEWPORTS[vpNome];
   const nome = `${tela}-${vpNome}-${tema}-${texto}${fraunces ? '-fraunces' : ''}`;
+  if (FILTRO && !FILTRO.test(nome)) return;
   const aparencia = { textoPct: texto === '125' ? 125 : 100, ...(fraunces ? { titulo: 'fraunces', texto: 'inter', mono: 'plex' } : {}) };
   const ctx = await nav.newContext({ viewport: vp, hasTouch: vpNome === 'tablet' || vpNome === 'celular', deviceScaleFactor: 1 });
   try {
@@ -143,6 +146,7 @@ if (COM_FRAUNCES) for (const vpNome of ['largo', 'celular']) plano.push({ tela: 
 for (const p of plano) await capturar(p);
 await nav.close(); parar();
 
+if (FILTRO) { console.log(`rascunho: ${feitas.length} capturas, falhas: ${falhas.length} em ${PASTA_LADO}`); for (const f of falhas) console.log('FALHA ' + f); process.exit(falhas.length ? 1 : 0); }
 const sujo = spawnSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).stdout.trim().length > 0;
 writeFileSync(`${PASTA_LADO}/meta.json`, JSON.stringify({ lado: LADO, commit: git('rev-parse', '--short', 'HEAD'), comAlteracoesLocais: sujo, geradoEm: new Date().toISOString(), hoje: HOJE, capturas: feitas, falhas }, null, 2));
 
