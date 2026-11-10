@@ -4,8 +4,9 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { Icone } from './Icone';
 import { emLote, epocaDoApp, pendentes, registrar, type Pedido } from './ajuste';
 import { useApp } from './contexto';
-import { AcaoCard, BarraProg, CardDemanda, ChipEspera, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
-import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordemDaEtapa, ordenar, origemDe, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
+import { AcaoCard, BarraProg, CardDemanda, ChipEspera, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP, SeloPrioridade } from './cartoes';
+import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordenar, origemDe, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
+import { demandaPrioritaria, ordemDaEtapaComPrioridade, prioritariasPrimeiro } from '@/lib/prioridade';
 
 // O título é a informação principal do card: ele nunca é espremido para dar lugar ao resto. Linhas que o título mantém: o que o texto precisar, até TETO_TITULO, e nunca
 // menos que MINIMO_TITULO (ou o que o texto tiver, se for curto). Quando falta altura, cede primeiro a descrição (menos linhas, depois some), depois o tempo, só
@@ -81,7 +82,7 @@ export const Vazio = ({ icone = 'busca', titulo, texto }: { icone?: string; titu
 );
 
 export function Cards({ lista }: { lista: Demanda[] }) {
-  return <div className="cards">{lista.map((d) => <CardDemanda key={d.id} d={d} />)}</div>;
+  return <div className="cards">{prioritariasPrimeiro(lista).map((d) => <CardDemanda key={d.id} d={d} />)}</div>;
 }
 
 // ---------- Quadro ----------
@@ -176,7 +177,7 @@ export function Quadro({ lista }: { lista: Demanda[] }) {
       </div>
       <div className="quadro">
         {ETAPAS.map((et) => {
-          const l = ordemDaEtapa(lista.filter((d) => d.etapa === et), et);
+          const l = ordemDaEtapaComPrioridade(lista.filter((d) => d.etapa === et), et);
           return (
             <section key={et} className={`coluna${etapaSel === et ? ' sel' : ''}`} aria-label={et} style={{ '--et': ETAPA_COR[et] } as CSSProperties}>
               <header>
@@ -197,7 +198,8 @@ export function Quadro({ lista }: { lista: Demanda[] }) {
 const COLUNAS: [Coluna, string][] = [['numero', 'Número'], ['assunto', 'Assunto'], ['origem', 'Origem'], ['prazo', 'Prazo'], ['etapa', 'Etapa'], ['pct', 'Andamento']];
 export function Tabela({ lista }: { lista: Demanda[] }) {
   const { ordem, ordenarPor, abrirJanela, hoje } = useApp();
-  const linhas = ordenar(lista, ordem.coluna, ordem.sentido);
+  // a coluna escolhida ordena DENTRO de cada grupo; inverter o sentido nunca tira as prioritárias do topo (decisão 61)
+  const linhas = prioritariasPrimeiro(ordenar(lista, ordem.coluna, ordem.sentido));
   return (
     <div className="tabela-w">
       <table className="tabela">
@@ -215,10 +217,10 @@ export function Tabela({ lista }: { lista: Demanda[] }) {
         </thead>
         <tbody>
           {linhas.map((d) => (
-            <tr key={d.id} className={atrasada(d, hoje) ? 'atrasada' : ''}>
+            <tr key={d.id} className={`${atrasada(d, hoje) ? 'atrasada' : ''}${demandaPrioritaria(d) ? ' prio-pref' : ''}`.trim()} data-prioridade={demandaPrioritaria(d) ? 'prefeita' : undefined}>
               <td className="mono"><ChipTipo d={d} /> {numeroDe(d)}</td>
               <td><b role="link" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => abrirJanela({ t: 'editar', id: d.id })} onKeyDown={(e) => { if (e.key === 'Enter') abrirJanela({ t: 'editar', id: d.id }); }}>{d.assunto}</b></td>
-              <td><OrigemP d={d} /></td>
+              <td><OrigemP d={d} /> <SeloPrioridade d={d} /></td>
               <td><ChipPrazo d={d} /> <ChipSelo d={d} /></td>
               <td><span className="et-p" style={{ '--et': ETAPA_COR[d.etapa] } as CSSProperties}><i className="dot" />{d.etapa}</span></td>
               <td style={{ minWidth: 150 }}><BarraProg d={d} /></td>
@@ -237,25 +239,25 @@ export function Lista({ lista }: { lista: Demanda[] }) {
   return (
     <div className="lista lista-dem">
       {ETAPAS.map((et) => {
-        const itens = ordemDaEtapa(lista.filter((d) => d.etapa === et), et), fechado = !!gruposFechados[et];
+        const itens = ordemDaEtapaComPrioridade(lista.filter((d) => d.etapa === et), et), fechado = !!gruposFechados[et];
         return (
           <section key={et} className="grupo" style={{ '--et': ETAPA_COR[et] } as CSSProperties}>
             <button className="grupo-h" aria-expanded={!fechado} onClick={() => alternarGrupo(et)}><Icone nome="expandir-grupo" extra={fechado ? 'fechado' : ''} /><i className="dot" /><b>{et}</b><span className="cnt">{itens.length}</span></button>
             {fechado ? null : itens.length ? itens.map((d) => {
               const ab = !!aberto[d.id], n = d.tarefas.length, num = numeroDe(d), origem = origemDe(d);
               return (
-                <div key={d.id} className={`linha ld${atrasada(d, hoje) ? ' atrasada' : ''}${d.etapa === 'Finalizado' ? ' feita' : ''}`}>
+                <div key={d.id} className={`linha ld${atrasada(d, hoje) ? ' atrasada' : ''}${d.etapa === 'Finalizado' ? ' feita' : ''}${demandaPrioritaria(d) ? ' prio-pref' : ''}`} data-prioridade={demandaPrioritaria(d) ? 'prefeita' : undefined}>
                   <div className="ld-c">
                     {/* dois controles separados: a seta mostra ou esconde as tarefas aqui mesmo; o lápis abre a consulta completa */}
                     <button className="ld-m" aria-expanded={ab} aria-controls={`ld-d-${d.id}`} aria-label={`${ab ? 'Recolher' : 'Mostrar'} as tarefas: ${d.assunto}`} onClick={() => setAberto((a) => ({ ...a, [d.id]: !a[d.id] }))}>
                       <Icone nome="expandir-grupo" extra={ab ? '' : 'fechado'} />
                       <span className="ld-t">
                         <span className="ld-ass">{d.assunto}</span>
-                        <span className="ld-sec">{num ? <span className="mono num">#{num}</span> : null}<ChipTipo d={d} />{origem ? <OrigemP d={d} /> : null}</span>
+                        <span className="ld-sec">{num ? <span className="mono num">#{num}</span> : null}<ChipTipo d={d} />{origem ? <OrigemP d={d} /> : null}{d.etapa !== 'Aguardando Prefeita' ? <SeloPrioridade d={d} /> : null}</span>
                       </span>
                     </button>
                     <span className="ld-fim">
-                      <span className="ld-prazo"><ChipEspera d={d} /><ChipPrazo d={d} /></span>
+                      <span className="ld-prazo">{d.etapa === 'Aguardando Prefeita' ? <SeloPrioridade d={d} /> : null}<ChipEspera d={d} /><ChipPrazo d={d} /></span>
                       <span className="ld-prog mono" title={n ? `${feitas(d)} de ${n} tarefas concluídas` : undefined}>{n ? `${feitas(d)}/${n} ${n === 1 ? 'tarefa' : 'tarefas'}` : 'Sem tarefas'}</span>
                     </span>
                     <button className="btn mini ld-abrir" aria-label={`Abrir a demanda: ${d.assunto}`} title="Abrir a demanda completa" onClick={() => abrirJanela({ t: 'editar', id: d.id })}><Icone nome="pencil" /><span className="tx">Abrir</span></button>

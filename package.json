@@ -24,6 +24,7 @@
     "testar:busca": "node scripts/testar-busca.mjs",
     "testar:perfil": "node scripts/testar-perfil.mjs",
     "testar:origem": "node scripts/testar-origem.mjs",
+    "testar:prioridade": "node scripts/testar-prioridade.mjs",
     "testar:clima": "node scripts/testar-clima.mjs",
     "testar:resistencia": "node scripts/testar-resistencia.mjs",
     "medir:desempenho": "node scripts/medir-desempenho.mjs",

@@ -2,10 +2,12 @@
 // Humor e produtividade não entram no cálculo. Sem relógio: a data de hoje vem de fora.
 import { contagemRetorno, dataFiltro, diasAte, esperaPrefeita, permanencia, type Demanda } from './demandas.ts';
 import type { DiaIndisponivel } from './prazos.ts';
+import { demandaPrioritaria } from './prioridade.ts';
 
 export const VAGAS_PARA_HOJE = 3;
 export type ClasseUrgencia = 'atrasada' | 'hoje' | 'proxima' | 'sem-prazo';
-export type Elegivel = { demanda: Demanda; classe: ClasseUrgencia; data: string | null; cobranca: boolean };
+/** `prioritaria`: pedido da Prefeita ou do Gabinete (campo Origem, decisão 61): vai antes de todas as outras candidatas, inclusive das vencidas. */
+export type Elegivel = { demanda: Demanda; classe: ClasseUrgencia; data: string | null; cobranca: boolean; prioritaria: boolean };
 const ORDEM: Record<ClasseUrgencia, number> = { atrasada: 0, hoje: 1, proxima: 2, 'sem-prazo': 3 };
 /** Urgência de verdade: atrasada ou vencendo hoje. Uma urgência que aparece depois de as vagas serem escolhidas é destacada à parte. */
 export const ehUrgente = (c: ClasseUrgencia) => c === 'atrasada' || c === 'hoje';
@@ -16,7 +18,9 @@ export const ehUrgente = (c: ClasseUrgencia) => c === 'atrasada' || c === 'hoje'
  *    além dos próximos 7 dias.
  *  - Aguardando retorno e Aguardando Prefeita dependem de terceiros: só entram quando a cobrança está devida (retorno de 10 dias ou "Acompanhar em" vencidos; espera da Prefeita acima do limite
  *    de 10 dias), e então contam como urgência pela data da cobrança.
- * Ordem: atrasadas, depois vencem hoje, depois até 7 dias, depois sem prazo. Dentro de cada grupo, a marca Rápida primeiro, depois a data mais antiga, a maior permanência e o cadastro mais antigo.
+ * Prioridade da Prefeita e do Gabinete (campo Origem): em Cadastro, Vistos e Fazendo a demanda prioritária entra MESMO sem prazo ou com data além dos próximos 7 dias, e vai antes de todas as
+ * outras candidatas, inclusive das vencidas. Nas etapas de espera os critérios acima não mudam: ela só entra quando a cobrança está devida.
+ * Ordem: prioritárias, depois atrasadas, depois vencem hoje, depois até 7 dias, depois sem prazo. Dentro de cada grupo, a marca Rápida primeiro, depois a data mais antiga, a maior permanência e o cadastro mais antigo.
  */
 export function elegiveisParaHoje(lista: readonly Demanda[], hoje: string, dias: readonly DiaIndisponivel[] = []): Elegivel[] {
   const saida: Elegivel[] = [];
@@ -31,12 +35,14 @@ export function elegiveisParaHoje(lista: readonly Demanda[], hoje: string, dias:
       cobranca = true;
     } else data = dataFiltro(d, hoje, dias);
     const n = data ? diasAte(data, hoje) : null;
-    if (n !== null && n > 7) continue;
+    const prioritaria = demandaPrioritaria(d);
+    if (n !== null && n > 7 && !prioritaria) continue;   // a prioritária entra mesmo com a data além de 7 dias (nas etapas de espera a data da cobrança nunca passa de hoje)
     const classe: ClasseUrgencia = n === null ? 'sem-prazo' : n < 0 ? 'atrasada' : n === 0 ? 'hoje' : 'proxima';
-    saida.push({ demanda: d, classe, data, cobranca });
+    saida.push({ demanda: d, classe, data, cobranca, prioritaria });
   }
   return saida.sort((a, b) =>
-    ORDEM[a.classe] - ORDEM[b.classe]
+    Number(b.prioritaria) - Number(a.prioritaria)
+    || ORDEM[a.classe] - ORDEM[b.classe]
     || Number(b.demanda.rapida) - Number(a.demanda.rapida)
     || (a.data ?? '9999-12-31').localeCompare(b.data ?? '9999-12-31')
     || (permanencia(b.demanda, hoje) ?? -1) - (permanencia(a.demanda, hoje) ?? -1)
@@ -60,3 +66,19 @@ export const novasUrgencias = (vagas: readonly Vaga[], lista: readonly Demanda[]
   const ocupadas = new Set(vagasAbertas(vagas, lista).map((v) => v.demanda.id));
   return elegiveis.filter((e) => ehUrgente(e.classe) && !ocupadas.has(e.demanda.id));
 };
+
+/**
+ * O que o painel Para hoje mostra, em ordem de exibição (as vagas guardadas no banco NÃO mudam: só a ordem na tela):
+ *  1. as prioritárias que ocupam vagas (na ordem das posições) e, em seguida, as prioritárias que não ocupam vaga ("fora das vagas": as 3 vagas estão cheias, e nenhuma vaga ocupada é substituída);
+ *  2. as demais demandas das vagas, na ordem das posições;
+ *  3. a "nova urgência" comum (atrasadas e que vencem hoje sem vaga), sem as prioritárias, que já estão no primeiro grupo.
+ * Cada demanda aparece uma só vez.
+ */
+export function organizarPainel(vagas: readonly Vaga[], lista: readonly Demanda[], elegiveis: readonly Elegivel[]) {
+  const abertas = vagasAbertas(vagas, lista), ocupadas = new Set(abertas.map((v) => v.demanda.id));
+  const prioritariasNasVagas = abertas.filter((v) => demandaPrioritaria(v.demanda));
+  const comunsNasVagas = abertas.filter((v) => !demandaPrioritaria(v.demanda));
+  const prioritariasFora = elegiveis.filter((e) => e.prioritaria && !ocupadas.has(e.demanda.id));
+  const urgenciasComuns = novasUrgencias(vagas, lista, elegiveis).filter((e) => !e.prioritaria);
+  return { prioritariasNasVagas, prioritariasFora, comunsNasVagas, urgenciasComuns };
+}

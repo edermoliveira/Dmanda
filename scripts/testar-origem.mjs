@@ -23,7 +23,8 @@ const HOJE = (await db.query('select public.hoje()::text as h')).rows[0].h;
 if (Number((await db.query("select extract(epoch from date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '1 day' - (now() at time zone 'America/Sao_Paulo'))::int as s")).rows[0].s) < 2400) throw new Error('Faltam menos de 40 minutos para a meia-noite em Brasília: o banco usa o relógio real e o dia viraria no meio do teste. Rode de novo depois da meia-noite.');
 const dia = (n) => somarDias(HOJE, n);
 const mk = (assunto, o = {}) => c('criar_demanda', { p: { assunto, ...o } });
-await mk('Atrasada lenta', { prazo_original: dia(-5), tipo: 'Ofício', numero: '1/2026', origem: 'Prefeita' });
+// a origem desta demanda é neutra de propósito: "Prefeita" e "Gabinete" são prioridade máxima (decisão 61) e passariam à frente da regra Rápida que estas verificações medem; a prioridade tem a suíte própria testar:prioridade
+await mk('Atrasada lenta', { prazo_original: dia(-5), tipo: 'Ofício', numero: '1/2026', origem: 'Iniciativa própria' });
 await mk('Atrasada rapida', { prazo_original: dia(-2), rapida: true, numero: '2024/1250', origem: 'Reunião' });
 await mk('Vence hoje', { prazo_original: HOJE });
 await mk('Proxima em tres dias', { prazo_original: dia(3), tipo: 'Memorando', numero: '32/2026', origem: 'Pedido de colega' });

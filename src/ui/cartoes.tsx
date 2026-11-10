@@ -7,6 +7,7 @@ import { useTentativa } from './campos';
 import {
   atrasada, corCard, dataCurta, diasAte, diasDesde, diasDesdeInstante, esperaPrefeita, feitas, numeroDe, origemDe, percentual, proximaTarefa, TIPO_COR, titulo, type Demanda, type Tarefa,
 } from '@/lib/demandas';
+import { demandaPrioritaria, ROTULO_PRIORIDADE } from '@/lib/prioridade';
 
 const curto = (n: number) => `${n} d`;
 const matiz = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; };
@@ -44,7 +45,10 @@ export function ChipEspera({ d }: { d: Demanda }) {
   if (!e) return null;
   return <span className={`pz espera${e.alerta ? ' espera-alerta' : ''}`} data-espera-prefeita data-alerta={e.alerta ? 'sim' : 'nao'} data-dias={e.dias} title={e.alerta ? 'Alerta de espera: não é prazo vencido' : undefined}><Icone nome="clock" />{e.texto}</span>;
 }
-export const ChipsRow = ({ d }: { d: Demanda }) => (d.prazo || d.etapa === 'Aguardando Prefeita' ? <div className="chips"><ChipEspera d={d} />{d.prazo ? <><ChipPrazo d={d} /><ChipTempo d={d} /></> : null}</div> : null);
+/** Selo "Prioridade da Prefeita" (decisão 61): só em demanda ativa cuja ORIGEM é da Prefeita ou do Gabinete; a etapa Aguardando Prefeita sozinha não o ativa. */
+export const SeloPrioridade = ({ d }: { d: Demanda }) => (demandaPrioritaria(d) ? <span className="chip prio" data-selo-prioridade title="Pedido da Prefeita ou do Gabinete: aparece antes das demais demandas">{ROTULO_PRIORIDADE}</span> : null);
+// Em Aguardando Prefeita o selo fica ao lado da informação de espera (a linha de chips); nas outras etapas fica junto das etiquetas do card.
+export const ChipsRow = ({ d }: { d: Demanda }) => (d.prazo || d.etapa === 'Aguardando Prefeita' ? <div className="chips">{d.etapa === 'Aguardando Prefeita' ? <SeloPrioridade d={d} /> : null}<ChipEspera d={d} />{d.prazo ? <><ChipPrazo d={d} /><ChipTempo d={d} /></> : null}</div> : null);
 
 export function BarraProg({ d }: { d: Demanda }) {
   const p = percentual(d);
@@ -150,13 +154,14 @@ export function CardDemanda({ d, mostrarRapida = false }: { d: Demanda; mostrarR
   );
   const dias = diasDesdeInstante(d.etapa_desde, hoje);
   return (
-    <article className={`dcard${at ? ' atrasada' : ''}`} data-fix={fixo} data-id={d.id}>
+    <article className={`dcard${at ? ' atrasada' : ''}${demandaPrioritaria(d) ? ' prio-pref' : ''}`} data-fix={fixo} data-id={d.id} data-prioridade={demandaPrioritaria(d) ? 'prefeita' : undefined}>
       <div className="faces">
         <div className={`face front${corCard(d)}`}>
           <div className="cab"><OrigemP d={d} />{girar('verso')}</div>
           <div className="tags">
             <ChipTipo d={d} /><Numero d={d} />
             {fin ? <span className="chip">Finalizada</span> : <span className="chip neutro">{d.etapa}{d.etapa === 'Aguardando retorno' && d.setor ? ` · ${d.setor} ${curto(dias)}` : ''}</span>}
+            {d.etapa !== 'Aguardando Prefeita' ? <SeloPrioridade d={d} /> : null}
             {mostrarRapida && d.rapida ? <span className="chip rapida" data-rapida title="Marcada como rápida: ajuda a escolher o Para hoje">Rápida</span> : null}
           </div>
           <div className="assunto fit" role="link" tabIndex={0} title={d.assunto} onClick={abrirEd} onKeyDown={teclaAbrir}>{d.assunto}</div>
@@ -194,9 +199,9 @@ export function MiniCard({ d }: { d: Demanda }) {
   const abrirEd = () => abrirJanela({ t: 'editar', id: d.id });
   const dias = diasDesdeInstante(d.etapa_desde, hoje);
   return (
-    <article className={`mini-card${corCard(d)}${atrasada(d, hoje) ? ' atrasada' : ''}${fin ? ' feita' : ''}`} data-id={d.id}>
+    <article className={`mini-card${corCard(d)}${atrasada(d, hoje) ? ' atrasada' : ''}${fin ? ' feita' : ''}${demandaPrioritaria(d) ? ' prio-pref' : ''}`} data-id={d.id} data-prioridade={demandaPrioritaria(d) ? 'prefeita' : undefined}>
       <div className="m-top"><OrigemP d={d} /><button className="mais" aria-haspopup="menu" aria-label="Mais ações: mover de etapa" title="Mover de etapa" onClick={(e) => abrirMenuMover(d.id, e.currentTarget)}><Icone nome="ellipsis" /></button></div>
-      <div className="tags"><ChipTipo d={d} /><Numero d={d} /></div>
+      <div className="tags"><ChipTipo d={d} /><Numero d={d} />{d.etapa !== 'Aguardando Prefeita' ? <SeloPrioridade d={d} /> : null}</div>
       <div className="assunto" role="link" tabIndex={0} onClick={abrirEd} onKeyDown={(e) => { if (e.key === 'Enter') abrirEd(); }}>{d.assunto}</div>
       <Desc d={d} />
       <ChipsRow d={d} />

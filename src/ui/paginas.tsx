@@ -11,7 +11,7 @@ import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
 import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, type Demanda } from '@/lib/demandas';
-import { elegiveisParaHoje, novasUrgencias, precisaCompletar, vagasAbertas } from '@/lib/para-hoje';
+import { elegiveisParaHoje, organizarPainel, precisaCompletar, vagasAbertas } from '@/lib/para-hoje';
 import { anoDoDocumento, chaveOpcao } from '@/lib/documentos';
 import { WidgetClima } from './clima';
 
@@ -87,15 +87,24 @@ function ParaHoje() {
   const candidatas = faltaCompletar ? elegiveis.filter((e) => !ocupadas.has(e.demanda.id)).slice(0, 10).map((e) => e.demanda.id).join(',') : '';
   // preenche (ou repõe) só as vagas livres; a lista só muda quando as candidatas mudam, então uma resposta sem efeito não repete a chamada
   useEffect(() => { if (!carregando && hoje !== '2000-01-01' && candidatas) void sincronizarParaHoje(candidatas.split(',')); }, [candidatas, carregando, hoje, sincronizarParaHoje]);
-  const urgentes = novasUrgencias(paraHoje, demandas, elegiveis);
+  // Exibição (decisão 61): os pedidos da Prefeita e do Gabinete vêm antes das demais, mesmo quando ocupam a 2ª ou a 3ª vaga, e os que estão fora das vagas ficam acima das comuns. As vagas
+  // guardadas no banco não mudam (o data-vaga continua com a posição gravada) e cada demanda aparece uma só vez.
+  const { prioritariasNasVagas, prioritariasFora, comunsNasVagas, urgenciasComuns } = organizarPainel(paraHoje, demandas, elegiveis);
+  const vazio = !prioritariasNasVagas.length && !prioritariasFora.length && !comunsNasVagas.length;
   return (
     <section className="sec" data-painel="para-hoje" aria-labelledby="ph-t">
-      <h3 id="ph-t">Para hoje <small>até 3 demandas para tocar hoje: atrasadas e as que vencem hoje primeiro</small></h3>
-      {abertas.length ? <div className="cards">{abertas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}</div> : <div className="vazio-c">Nada para tocar hoje por enquanto.</div>}
-      {urgentes.length ? (
+      <h3 id="ph-t">Para hoje <small>até 3 demandas para tocar hoje: pedidos da Prefeita e do Gabinete primeiro, depois atrasadas e as que vencem hoje</small></h3>
+      {vazio ? <div className="vazio-c">Nada para tocar hoje por enquanto.</div> : (
+        <div className="cards">
+          {prioritariasNasVagas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}
+          {prioritariasFora.map((e) => <div key={e.demanda.id} data-fora-vaga className="vaga fora-vaga"><small className="data fora-t">Fora das 3 vagas</small><CardDemanda d={e.demanda} mostrarRapida /></div>)}
+          {comunsNasVagas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}
+        </div>
+      )}
+      {urgenciasComuns.length ? (
         <div className="nova-urgencia" role="status" data-nova-urgencia>
           <h4>Nova urgência <small>fora das suas vagas, sem trocar a seleção</small></h4>
-          <div className="cards">{urgentes.slice(0, 3).map((e) => <CardDemanda key={e.demanda.id} d={e.demanda} mostrarRapida />)}</div>
+          <div className="cards">{urgenciasComuns.slice(0, 3).map((e) => <CardDemanda key={e.demanda.id} d={e.demanda} mostrarRapida />)}</div>
         </div>
       ) : null}
     </section>

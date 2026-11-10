@@ -582,6 +582,114 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(validarDados({ prazo_original: '2026-11-19', prazo_dias: 10, prazo_base_em: '2026-11-09' }, { criando: false, aceitaEtapa: true }).prazo_base_em === '2026-11-09', 'validação: a edição de Chegada e prazo também aceita a base');
 }
 
+// ---------- prioridade da Prefeita e do Gabinete (decisão 61): derivada do campo Origem ----------
+{
+  const { ehOrigemPrioritaria, demandaPrioritaria, prioritariasPrimeiro, ordemDaEtapaComPrioridade, ORIGENS_PRIORITARIAS, ROTULO_PRIORIDADE } = await import('../src/lib/prioridade.ts');
+  const { elegiveisParaHoje, organizarPainel, vagasAbertas, precisaCompletar } = await import('../src/lib/para-hoje.ts');
+  const { filtrar, FILTRO_VAZIO, esperaPrefeita, porGrupo, ordenar } = await import('../src/lib/demandas.ts');
+  const base = { tipo: null, area: 'Geral', numero: '', assunto: 'x', descricao: '', origem: '', etapa: 'Fazendo', etapa_desde: '2026-11-01T12:00:00Z', chegou_em: null, prazo: null, prazo_original: null, prazo_dias: null, prazo_base_em: null, prazo_ajuste: null, prazo_legado: false, prazo_tipo: 'Próprio', rapida: false, documento_ano: null, setor: null, acompanhar_em: null, encaminhada_em: null, reiterada_em: null, arquivada_em: null, concluida_em: null, versao: 1, tarefas: [] };
+  let seq = 0;
+  const D = (id, o = {}) => ({ ...base, id, criado_em: `2026-11-01T12:00:${String(10 + seq++).padStart(2, '0')}Z`, ...o });
+  const H = '2026-11-10';
+
+  // ---- reconhecimento da origem
+  const reconhecidas = ['Prefeita', 'Pedido da Prefeita', 'Solicitação da Prefeita', 'Gabinete', 'Gabinete da Prefeita', 'Pedido do Gabinete', 'Solicitação do Gabinete'];
+  ok(reconhecidas.every(ehOrigemPrioritaria) && ORIGENS_PRIORITARIAS.every(ehOrigemPrioritaria), 'prioridade: Prefeita, Pedido da Prefeita, Solicitação da Prefeita, Gabinete, Gabinete da Prefeita, Pedido do Gabinete e Solicitação do Gabinete são reconhecidos');
+  ok(['  prefeita ', 'PREFEITA', 'pedido   da   prefeita', 'SOLICITACAO DA PREFEITA', 'solicitação da prefeita', 'Gabinete  Da  Prefeita', 'pedido do gabinete', 'Solicitacao do Gabinete'].every(ehOrigemPrioritaria), 'prioridade: maiúsculas, acentos e espaços repetidos não contam (a mesma normalização das opções)');
+  ok(ehOrigemPrioritaria('Pedido do Gabinete da Prefeita') && ehOrigemPrioritaria('Solicitação do Gabinete da Prefeita'), 'prioridade: as variantes inequívocas com "Gabinete da Prefeita" também valem');
+  const falsos = ['', null, undefined, 'Não informada', 'Reunião', 'Pedido de colega', 'Iniciativa própria', 'Aguardando Prefeita', 'Gabinete do Vice-Prefeito', 'Gabinete do Vereador', 'Gabinete de outro município', 'Prefeitura de Gramado', 'Prefeitura', 'Prefeito', 'Vice-Prefeita', 'Pedido da Secretaria', 'Solicitação do Secretário', 'Prefeita Maria', 'Pedido da Prefeita de outra cidade', 'Gabinete Civil', 'Pref', 'Gab.', 'Reunião com a Prefeita', 'Secretaria de Obras'];
+  ok(falsos.every((o) => !ehOrigemPrioritaria(o)), `prioridade: falsos positivos são rejeitados (${falsos.filter((o) => ehOrigemPrioritaria(o)).join(' | ') || 'nenhum'}): comparação exata, nunca por trecho`);
+  ok(!demandaPrioritaria(D('a', { origem: 'Reunião', assunto: 'Pedido da Prefeita sobre o prédio', descricao: 'Solicitação do Gabinete da Prefeita' })), 'prioridade: menção à Prefeita ou ao Gabinete no assunto ou na descrição NÃO ativa (só o campo Origem conta)');
+  ok(!demandaPrioritaria(D('b', { origem: '', etapa: 'Aguardando Prefeita' })) && !demandaPrioritaria(D('c', { origem: 'Reunião', etapa: 'Aguardando Prefeita' })), 'prioridade: a etapa Aguardando Prefeita, por si só, não confere prioridade');
+  ok(demandaPrioritaria(D('d', { origem: 'Prefeita', etapa: 'Aguardando Prefeita' })) && demandaPrioritaria(D('e', { origem: 'Gabinete', etapa: 'Aguardando retorno' })) && demandaPrioritaria(D('f', { origem: 'Prefeita' })), 'prioridade: a origem prioritária vale em qualquer etapa aberta');
+  ok(!demandaPrioritaria(D('g', { origem: 'Prefeita', etapa: 'Finalizado' })) && !demandaPrioritaria(D('h', { origem: 'Prefeita', arquivada_em: '2026-11-09T00:00:00Z' })), 'prioridade: finalizada ou arquivada não entra na fila ativa, mesmo com origem prioritária');
+  ok(ROTULO_PRIORIDADE === 'Prioridade da Prefeita', 'prioridade: o selo textual é "Prioridade da Prefeita"');
+  const fotoOrigem = JSON.stringify(D('i', { origem: '  pedido  da PREFEITA ' }));
+  ok(ehOrigemPrioritaria('  pedido  da PREFEITA ') && fotoOrigem.includes('"origem":"  pedido  da PREFEITA "'), 'prioridade: o texto da origem gravado nunca é alterado pela regra (só se compara)');
+
+  // ---- ordem: prioritárias antes das comuns, inclusive vencidas, preservando a ordem relativa
+  const L = [D('comumVenc', { prazo: '2026-11-01' }), D('prefSem', { origem: 'Prefeita' }), D('comumHoje', { prazo: H }), D('gabFuturo', { origem: 'Gabinete', prazo: '2026-12-20' }), D('comum2'), D('pedidoVenc', { origem: 'Pedido da Prefeita', prazo: '2026-10-01' }), D('finPref', { origem: 'Prefeita', etapa: 'Finalizado' })];
+  const ordem = prioritariasPrimeiro(L).map((d) => d.id).join();
+  ok(ordem === 'prefSem,gabFuturo,pedidoVenc,comumVenc,comumHoje,comum2,finPref', `ordem: prioritárias primeiro (sem prazo e com prazo futuro acima de comum vencida), ordem relativa de cada grupo preservada e finalizada como comum (${ordem})`);
+  ok(prioritariasPrimeiro([]).length === 0 && JSON.stringify(prioritariasPrimeiro(L.slice(0, 1))) === JSON.stringify(L.slice(0, 1)), 'ordem: lista vazia e lista sem prioritária ficam como estão');
+  const copia = JSON.stringify(L); prioritariasPrimeiro(L); ok(JSON.stringify(L) === copia, 'ordem: a lista de entrada não é alterada (mudança de origem recalcula pela derivação, sem estado guardado)');
+  // filtros preservados: a prioridade só reordena o que o filtro deixou passar
+  const filtradas = filtrar(L, { ...FILTRO_VAZIO, soAtrasadas: true }, H, []);
+  ok(prioritariasPrimeiro(filtradas).map((d) => d.id).join() === 'pedidoVenc,comumVenc' && filtradas.length === 2, 'ordem: o filtro escolhido continua valendo (a prioridade não traz de volta o que foi filtrado)');
+  // contadores de vencimento não mudam
+  const antesG = ['atrasadas', 'hoje', 'sete'].map((g) => porGrupo(L, g, H, []).length).join();
+  ok(antesG === ['atrasadas', 'hoje', 'sete'].map((g) => porGrupo(prioritariasPrimeiro(L), g, H, []).length).join() && antesG === '2,1,0', `ordem: os contadores de vencimento do Início não mudam (${antesG})`);
+  // Tabela: a coluna escolhida ordena dentro de cada grupo, sem inverter a precedência
+  const T = [D('t1', { assunto: 'b', origem: 'Prefeita' }), D('t2', { assunto: 'a' }), D('t3', { assunto: 'c', origem: 'Gabinete' }), D('t4', { assunto: 'd' })];
+  const asc = prioritariasPrimeiro(ordenar(T, 'assunto', 1)).map((d) => d.id).join(), desc = prioritariasPrimeiro(ordenar(T, 'assunto', -1)).map((d) => d.id).join();
+  ok(asc === 't1,t3,t2,t4' && desc === 't3,t1,t4,t2', `tabela: a coluna ordena dentro de cada grupo e inverter o sentido não tira as prioritárias do topo (${asc} | ${desc})`);
+  // etapas agrupadas
+  const E = [D('f1'), D('f2', { origem: 'Prefeita' }), D('f3'), D('f4', { origem: 'Pedido do Gabinete' })];
+  ok(ordemDaEtapaComPrioridade(E, 'Fazendo').map((d) => d.id).join() === 'f2,f4,f1,f3', 'etapa agrupada: dentro de cada etapa as prioritárias vêm primeiro, com a ordem relativa preservada');
+  // Aguardando Prefeita: a fila da espera mais antiga para a mais recente não muda; contagem e alerta a partir do 11º dia seguem
+  const AP = [D('p1', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-11-09T12:00:00Z' }), D('p2', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-10-25T12:00:00Z', origem: 'Prefeita' }), D('p3', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-10-30T12:00:00Z' }), D('p4', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-11-05T12:00:00Z', origem: 'Gabinete' })];
+  ok(ordemDaEtapaComPrioridade(AP, 'Aguardando Prefeita').map((d) => d.id).join() === 'p2,p3,p4,p1', 'Aguardando Prefeita: a fila continua da espera mais antiga para a mais recente (a prioridade da origem não a reordena)');
+  const dias = (id) => esperaPrefeita(AP.find((d) => d.id === id), H);
+  ok(dias('p2').dias === 16 && dias('p2').alerta && dias('p4').dias === 5 && !dias('p4').alerta && dias('p1').dias === 1, 'Aguardando Prefeita: contagem de dias e alerta a partir do 11º dia continuam como antes');
+  const fim10 = esperaPrefeita(D('z', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-10-31T12:00:00Z' }), H), fim11 = esperaPrefeita(D('z', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-10-30T12:00:00Z' }), H);
+  ok(fim10.dias === 10 && !fim10.alerta && fim11.dias === 11 && fim11.alerta, 'Aguardando Prefeita: 10 dias ainda sem alerta, 11 dias com alerta');
+
+  // ---- Para hoje
+  const el = elegiveisParaHoje([D('comumVencida', { prazo: '2026-11-03' }), D('prefLonge', { origem: 'Prefeita', prazo: '2026-12-30' }), D('prefSem', { origem: 'Gabinete' }), D('comumHoje', { prazo: H }), D('gabVencida', { origem: 'Solicitação do Gabinete', prazo: '2026-11-02' })], H, []);
+  ok(el.map((e) => e.demanda.id).join() === 'gabVencida,prefLonge,prefSem,comumVencida,comumHoje', `Para hoje: a prioritária vem antes das comuns, inclusive das vencidas, mesmo sem prazo ou com data além de 7 dias (${el.map((e) => e.demanda.id).join()})`);
+  ok(el.find((e) => e.demanda.id === 'prefLonge').prioritaria && !el.find((e) => e.demanda.id === 'comumHoje').prioritaria, 'Para hoje: cada candidata informa se é prioritária');
+  ok(!elegiveisParaHoje([D('comumLonge', { prazo: '2026-12-30' })], H, []).length, 'Para hoje: uma comum com data além de 7 dias continua de fora (só a prioritária ganha essa exceção)');
+  const rap = elegiveisParaHoje([D('prioLenta', { origem: 'Prefeita', prazo: H }), D('prioRapida', { origem: 'Prefeita', prazo: H, rapida: true }), D('comumRapida', { prazo: '2026-11-01', rapida: true })], H, []);
+  ok(rap.map((e) => e.demanda.id).join() === 'prioRapida,prioLenta,comumRapida', 'Para hoje: a marca Rápida desempata candidatas comparáveis (as duas prioritárias), e uma comum Rápida não passa à frente de prioritária');
+  // etapas de espera: critérios atuais, a prioridade não faz entrar sem cobrança devida
+  const espera = elegiveisParaHoje([
+    D('esperaPrefSemCobranca', { origem: 'Prefeita', etapa: 'Aguardando retorno', etapa_desde: '2026-11-09T12:00:00Z' }),
+    D('esperaPrefCobranca', { origem: 'Prefeita', etapa: 'Aguardando retorno', etapa_desde: '2026-11-09T12:00:00Z', acompanhar_em: '2026-11-09' }),
+    D('apPrefCurta', { origem: 'Gabinete', etapa: 'Aguardando Prefeita', etapa_desde: '2026-11-08T12:00:00Z' }),
+    D('apPrefLonga', { origem: 'Gabinete', etapa: 'Aguardando Prefeita', etapa_desde: '2026-10-20T12:00:00Z' }),
+    D('apComumLonga', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-10-20T12:00:00Z' }),
+    D('comumVencida', { prazo: '2026-11-01' })], H, []);
+  ok(espera.map((e) => e.demanda.id).join() === 'esperaPrefCobranca,apPrefLonga,comumVencida,apComumLonga' && espera.filter((e) => e.cobranca).length === 3, `Para hoje: nas etapas de espera só entra com cobrança devida, mesmo com origem prioritária (${espera.map((e) => e.demanda.id).join()})`);
+
+  // ---- painel com as três vagas: exibição separada das vagas guardadas
+  const vcomum = [D('v1', { prazo: '2026-11-04' }), D('v2', { prazo: '2026-11-05' }), D('v3', { prazo: '2026-11-06' })];
+  const P1 = D('p1', { origem: 'Prefeita' }), P2 = D('p2', { origem: 'Pedido do Gabinete', prazo: '2026-12-01' });
+  const lista = [...vcomum, P1, P2, D('u1', { prazo: '2026-11-07' }), D('u2', { prazo: H })];
+  const eleg = elegiveisParaHoje(lista, H, []);
+  const vagasCheias = [{ posicao: 1, demanda_id: 'v1' }, { posicao: 2, demanda_id: 'v2' }, { posicao: 3, demanda_id: 'v3' }];
+  const fotoVagas = JSON.stringify(vagasCheias);
+  const pa = organizarPainel(vagasCheias, lista, eleg);
+    ok(pa.prioritariasNasVagas.length === 0 && pa.prioritariasFora.map((e) => e.demanda.id).join() === 'p2,p1' && pa.comunsNasVagas.map((v) => v.demanda.id).join() === 'v1,v2,v3', 'Para hoje: com as 3 vagas cheias de comuns, as prioritárias aparecem fora das vagas, acima das comuns, sem substituir nenhuma');
+  ok(JSON.stringify(vagasCheias) === fotoVagas && vagasAbertas(vagasCheias, lista).map((v) => v.demanda.id).join() === 'v1,v2,v3', 'Para hoje: as vagas guardadas não mudam (a prioridade só ordena a exibição)');
+  ok(!precisaCompletar(vagasCheias, lista, eleg), 'Para hoje: com as 3 vagas cheias nada é gravado (não há vaga para repor)');
+  const todosIds = [...pa.prioritariasNasVagas.map((v) => v.demanda.id), ...pa.prioritariasFora.map((e) => e.demanda.id), ...pa.comunsNasVagas.map((v) => v.demanda.id), ...pa.urgenciasComuns.map((e) => e.demanda.id)];
+  ok(new Set(todosIds).size === todosIds.length, 'Para hoje: nenhuma demanda aparece duas vezes (vagas, fora das vagas e nova urgência)');
+  ok(pa.urgenciasComuns.every((e) => !e.prioritaria) && pa.urgenciasComuns.map((e) => e.demanda.id).includes('u2'), 'Para hoje: a nova urgência mostra só as comuns (as prioritárias já estão acima)');
+  // prioritária ocupando a 2ª ou a 3ª vaga: exibida antes das comuns, mas continua na posição gravada
+  const v2 = [{ posicao: 1, demanda_id: 'v1' }, { posicao: 2, demanda_id: 'p1' }, { posicao: 3, demanda_id: 'v3' }];
+  const pb = organizarPainel(v2, lista, eleg);
+  ok(pb.prioritariasNasVagas.map((v) => `${v.demanda.id}@${v.posicao}`).join() === 'p1@2' && pb.comunsNasVagas.map((v) => `${v.demanda.id}@${v.posicao}`).join() === 'v1@1,v3@3' && pb.prioritariasFora.map((e) => e.demanda.id).join() === 'p2', 'Para hoje: prioritária na 2ª vaga aparece antes das comuns, mantendo a posição gravada (2); a outra prioritária fica fora das vagas');
+  const v3 = [{ posicao: 1, demanda_id: 'v1' }, { posicao: 2, demanda_id: 'v2' }, { posicao: 3, demanda_id: 'p2' }];
+  const pc = organizarPainel(v3, lista, eleg);
+  ok(pc.prioritariasNasVagas.map((v) => `${v.demanda.id}@${v.posicao}`).join() === 'p2@3' && pc.comunsNasVagas.map((v) => v.posicao).join() === '1,2', 'Para hoje: prioritária na 3ª vaga aparece antes das comuns, mantendo a posição gravada (3)');
+  ok(JSON.stringify(v2) === JSON.stringify([{ posicao: 1, demanda_id: 'v1' }, { posicao: 2, demanda_id: 'p1' }, { posicao: 3, demanda_id: 'v3' }]) && JSON.stringify(v3) === JSON.stringify([{ posicao: 1, demanda_id: 'v1' }, { posicao: 2, demanda_id: 'v2' }, { posicao: 3, demanda_id: 'p2' }]), 'Para hoje: a lista de vagas recebida não é alterada pela ordenação de exibição');
+  // vaga livre: a prioritária é a primeira candidata para preenchê-la (reposição de uma única vaga)
+  const vLivre = [{ posicao: 1, demanda_id: 'v1' }, { posicao: 3, demanda_id: 'v3' }];
+  const ocupadas = new Set(vagasAbertas(vLivre, lista).map((v) => v.demanda.id));
+  const candidatas = eleg.filter((e) => !ocupadas.has(e.demanda.id)).map((e) => e.demanda.id);
+  ok(precisaCompletar(vLivre, lista, eleg) && ['p1', 'p2'].includes(candidatas[0]), `Para hoje: com uma vaga livre a primeira candidata é prioritária (${candidatas.slice(0, 3).join()})`);
+  // vagas com demanda finalizada: libera só a vaga dela
+  const fin = lista.map((d) => (d.id === 'v2' ? { ...d, etapa: 'Finalizado' } : d));
+  const pd = organizarPainel(vagasCheias, fin, elegiveisParaHoje(fin, H, []));
+  ok(pd.comunsNasVagas.map((v) => v.demanda.id).join() === 'v1,v3' && pd.prioritariasNasVagas.length === 0, 'Para hoje: a vaga de uma demanda finalizada some da exibição e as outras ficam como estão (a reposição é só da vaga liberada)');
+  // alterar a origem muda a prioridade (derivada): comum vira prioritária e volta a comum
+  const virou = lista.map((d) => (d.id === 'v2' ? { ...d, origem: 'Prefeita' } : d));
+  const pe = organizarPainel(vagasCheias, virou, elegiveisParaHoje(virou, H, []));
+  ok(pe.prioritariasNasVagas.map((v) => `${v.demanda.id}@${v.posicao}`).join() === 'v2@2' && pe.comunsNasVagas.map((v) => v.demanda.id).join() === 'v1,v3', 'origem alterada para Prefeita: a demanda da 2ª vaga passa a ser exibida como prioritária, sem mudar de vaga');
+  const voltou = virou.map((d) => (d.id === 'v2' ? { ...d, origem: 'Reunião' } : d));
+  ok(organizarPainel(vagasCheias, voltou, elegiveisParaHoje(voltou, H, [])).prioritariasNasVagas.length === 0, 'origem alterada para outra: a prioridade some (nada fica guardado)');
+}
+
 function urlDe(u) { return new URL(u); }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
