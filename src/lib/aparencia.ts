@@ -41,6 +41,7 @@ export const CONJUNTOS: readonly { nome: string; titulo: string; texto: string; 
   { nome: 'Sora, Inter e IBM Plex Mono', titulo: 'sora', texto: 'inter', mono: 'plex' },
   { nome: 'Jakarta e JetBrains Mono', titulo: 'jakarta', texto: 'jakarta', mono: 'jetbrains' },
   { nome: 'DM Serif, DM Sans e DM Mono', titulo: 'dmserif', texto: 'dmsans', mono: 'dmmono' },
+  { nome: 'Fraunces, Inter e IBM Plex Mono', titulo: 'fraunces', texto: 'inter', mono: 'plex' },
   { nome: 'Fraunces, Inter e DM Mono', titulo: 'fraunces', texto: 'inter', mono: 'dmmono' },
   { nome: 'Manrope, Inter e JetBrains Mono', titulo: 'manrope', texto: 'inter', mono: 'jetbrains' },
 ];
@@ -82,10 +83,10 @@ export const ePadrao = (a: Aparencia): boolean => (Object.keys(APARENCIA_PADRAO)
 
 const fonte = (lista: readonly Fonte[], id: string) => (lista.find((x) => x.id === id) ?? lista[0]).css;
 
-/** Variáveis de CSS da aparência (fontes e tamanhos), no `style` do `.app`. O destaque sai por `data-paleta` (cores só no CSS). */
+/** Variáveis de CSS da aparência (fontes e tamanhos), no `style` do `.app`. `--font-h` é a fonte dos títulos de página e do assunto; `--font-ui` (botões, abas, menu) segue a fonte de texto, então um título serifado não vai para os controles. O destaque sai por `data-paleta` (cores só no CSS). */
 export function variaveisAparencia(a: Aparencia): Record<string, string> {
   return {
-    '--font': fonte(FONTES_TEXTO, a.texto), '--font-h': fonte(FONTES_TITULO, a.titulo), '--font-ui': fonte(FONTES_TITULO, a.titulo), '--font-n': fonte(FONTES_MONO, a.mono),
+    '--font': fonte(FONTES_TEXTO, a.texto), '--font-h': fonte(FONTES_TITULO, a.titulo), '--font-ui': fonte(FONTES_TEXTO, a.texto), '--font-n': fonte(FONTES_MONO, a.mono),
     '--icn': `${a.icone}px`, '--cardh': `${a.card}px`, '--esc': String(+(ESCALA_BASE * a.textoPct / 100).toFixed(4)),
   };
 }

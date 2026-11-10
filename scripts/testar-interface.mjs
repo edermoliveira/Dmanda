@@ -328,7 +328,7 @@ for (const tema of ['claro', 'escuro']) {
     return { esc: getComputedStyle(document.documentElement).getPropertyValue('--esc').trim(), base: px('.app'), h1: px('.pagehead h1'), assunto: px('.dcard .assunto'), chip: px('.dcard .chip'), btn: px('.toolbar .btn.escuro'), desc: px('.dcard .desc'), zoom: cs.zoom, transform: cs.transform, bodyZoom: getComputedStyle(document.body).zoom, campo: px('.toolbar .filtro input') };
   });
   ok(e.esc === '.85' || e.esc === '0.85', 'a escala compartilhada --esc vale 0,85');
-  ok(Math.abs(e.base - 13.6) < 0.05 && Math.abs(e.assunto - 14.45) < 0.05 && Math.abs(e.btn - 11.9) < 0.05 && Math.abs(e.h1 - 28.9) < 0.05 && Math.abs(e.desc - 11.05) < 0.05, `tamanhos de texto em 85% do desenho anterior (base ${e.base}, título ${e.assunto}, botão ${e.btn}, h1 ${e.h1}, descrição ${e.desc})`);
+  ok(Math.abs(e.base - 13.6) < 0.05 && Math.abs(e.assunto - 14.45) < 0.05 && Math.abs(e.btn - 11.9) < 0.05 && Math.abs(e.h1 - 30.6) < 0.05 && Math.abs(e.desc - 11.05) < 0.05, `tamanhos de texto em 85% do desenho anterior (base ${e.base}, título ${e.assunto}, botão ${e.btn}, h1 ${e.h1}, descrição ${e.desc})`);
   ok(e.chip >= 10 && e.chip < 10.5, `texto miúdo respeita o piso de 10 px (chip ${e.chip})`);
   ok(e.zoom === '1' && e.bodyZoom === '1' && (e.transform === 'none' || e.transform === ''), 'a redução não usa zoom nem transform');
   ok(Math.abs(e.campo - 13.6) < 0.05, `no computador o campo de filtro segue a escala (${e.campo})`);

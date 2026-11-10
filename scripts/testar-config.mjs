@@ -157,6 +157,12 @@ const CONTRASTE = `(() => {
   const a = await apar(pg); ok(a.titulo === 'dmserif' && a.texto === 'dmsans' && a.mono === 'dmmono', 'fontes guardadas');
   await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.cfg'); await pronta(pg);
   ok(/dm.?serif/i.test(await fam('.pagehead h1')), 'fontes sobrevivem à recarga');
+  // conjunto Fraunces, Inter e IBM Plex Mono (decisão 62): serifa nos títulos, Inter nos controles e no texto, Plex nos identificadores
+  await pg.click('.cfg [data-conjunto="5"]');
+  ok(/fraunces/i.test(await fam('.pagehead h1')) && /inter/i.test(await fam('.cfg [data-conjunto="5"]')) && /inter/i.test(await pg.$eval('.app', (e) => getComputedStyle(e).fontFamily)) && /plex/i.test(await fam('.rng b')), 'conjunto Fraunces, Inter e IBM Plex Mono: Fraunces no título da página, Inter nos botões e no texto, IBM Plex Mono nos detalhes');
+  const fr = await pg.evaluate(async () => { await document.fonts.ready; return [...document.fonts].some((f) => /fraunces/i.test(f.family) && f.status === 'loaded'); });
+  ok(fr, 'a fonte Fraunces foi de fato carregada pelo navegador');
+  const ap5 = await apar(pg); ok(ap5.titulo === 'fraunces' && ap5.texto === 'inter' && ap5.mono === 'plex', 'o conjunto novo guarda título Fraunces, texto Inter e mono IBM Plex Mono');
   // todas as fontes carregam sem erro
   for (const papel of ['titulo', 'texto', 'mono']) for (const v of await pg.$$eval(`#cfg-f-${papel} [data-fonte]`, (o) => o.map((x) => x.dataset.fonte))) await escolher(pg, papel, v);
   await pg.evaluate(async () => { await document.fonts.ready; });

@@ -407,3 +407,19 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app[data-dir="d"] .linha.prio-pref.atrasada { box-shadow: 0 0 0 1px var(--card-brd), inset 5px 0 0 var(--acc), inset 9px 0 0 var(--perigo); }
 .app .vaga.fora-vaga { display: flex; flex-direction: column; gap: 4px; }
 .app .vaga .fora-t { font-size: max(10px, calc(11px * var(--esc))); font-weight: 600; color: var(--text2); }
+
+/* ---------- escala tipográfica compartilhada (decisão 62) ----------
+   Cinco papéis, todos "calc(Npx * var(--esc))" (decisão 35), então o ajuste de tamanho do usuário continua mandando. Valores efetivos a 100% (esc 0,85):
+   página ~30,6 px (28,9 no celular), seção ~18,7 px, leitura ~14,5 px, rótulo ~12,8 px, metadado ~12,3 px. Pisos de 10 px e campos de 16 px no toque ficam como estavam. */
+.app { --t-pagina: calc(36px * var(--esc)); --t-secao: calc(22px * var(--esc)); --t-leitura: calc(17px * var(--esc)); --t-rotulo: calc(15px * var(--esc)); --t-meta: calc(14.5px * var(--esc)); }
+@container tela (max-width: 520px) { .app { --t-pagina: calc(34px * var(--esc)); } }
+.app[data-dir="d"] .pagehead h1 { font-size: var(--t-pagina); line-height: 1.12; text-wrap: balance; overflow-wrap: anywhere; }
+.app[data-dir="d"] .pagehead p { font-size: var(--t-leitura); }
+.app[data-dir="d"] :is(.sec > h3, .cfg h3, .painel > h3, .sub-f) { font-size: var(--t-secao); line-height: 1.25; }
+.app[data-dir="d"] :is(.sec > h3, .sub-f) small { font-size: var(--t-meta); }
+.app[data-dir="d"] .cfg-sub { font-size: var(--t-rotulo); }
+.app[data-dir="d"] :is(.cfg, .modal, .pagehead, .previa-aparencia) .data { font-size: var(--t-meta); }
+.app[data-dir="d"] .modal .fld > label, .app[data-dir="d"] .modal .fld > span:first-child { font-size: var(--t-rotulo); }
+.app[data-dir="d"] .modal .ler, .app[data-dir="d"] .modal .ler-texto { font-size: var(--t-leitura); }
+.app[data-dir="d"] .modal .ler dt { font-size: var(--t-rotulo); }
+.app[data-dir="d"] .modal .t-ler li { font-size: var(--t-leitura); }
