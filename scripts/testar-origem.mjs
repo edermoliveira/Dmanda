@@ -220,7 +220,8 @@ await ir(C.pg, '/demandas');
   await escolherOpcao(pg, 'd', 'tipo', 'Memorando'); await pg.fill('#d-num', '45/2026');
   ok(!(await pg.$('#d-ano')) && !/Ano do documento/.test((await pg.textContent('.modal')) ?? ''), 'o memorando chega depois: não existe campo Ano do documento (decisão 62); o número "45/2026" fica como foi informado');
   await pg.click('.modal [data-salvar="identificacao"]'); await toast(pg, /alterações salvas|Identificação/);
-  ok(/Memorando/.test((await pg.textContent('.modal .ler')) ?? '') && /45\/2026/.test((await pg.textContent('.modal .ler')) ?? '') && /Reunião/.test((await pg.textContent('.modal .ler')) ?? '') && /Rápida/.test((await pg.textContent('.modal .ler')) ?? ''), 'consulta: o tipo, o número, a origem e a marca Rápida aparecem depois de salvar');
+  const identificacao = (await pg.textContent('[data-secao="identificacao"] .ler')) ?? '';
+  ok(/Memorando 45\/2026/.test((await pg.textContent('.modal .cons-doc')) ?? '') && /Reunião/.test(identificacao) && /Rápida/.test(identificacao) && !/45\/2026/.test(identificacao), 'consulta: o documento (tipo e número) fica no cabeçalho e a origem e a marca Rápida na Identificação depois de salvar, sem repetir tipo e número');
   ok(!/Ano do documento/.test((await pg.textContent('.modal .ler')) ?? ''), 'consulta: não há linha Ano do documento depois de salvar');
   await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 });
 }

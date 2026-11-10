@@ -143,7 +143,7 @@ ok(amostras.some((x) => x) && !amostras.some((x) => /faltam \d{4,}|há -\d/.test
 await pg.click('.dcard:has-text("Resposta ao TCE") .assunto'); await pg.waitForSelector('.modal .ler');
 const ler = await pg.textContent('.modal');
 ok(/Chegou em.*02\/01\/2020/.test(ler.replace(/\s+/g, ' ')) && /Na Secretaria há\s*\d+ dias/.test(ler) && /Vencimento.*sex, 09\/10\/2026/.test(ler) && /Prazo original.*sáb, 10\/10\/2026/.test(ler) && /Dias pulados: 10\/10 sábado/.test(ler) && /Tipo de prazo.*Legal/.test(ler.replace(/\s+/g, ' ')), 'a consulta mostra a chegada, a permanência desde a chegada, o vencimento ajustado, o prazo original e o motivo do ajuste');
-ok((await pg.$$eval('.modal .sec-h h4', (e) => e.map((x) => x.textContent))).join('|') === 'Identificação|Descrição|Chegada e prazo|Andamento|Tarefas' && (await pg.$$('.modal [data-lapis]')).length === 5, 'a consulta tem cinco seções, cada uma com seu lápis, numa única janela');
+ok((await pg.$$eval('.modal .sec-h h4', (e) => e.map((x) => x.textContent))).join('|') === 'Tarefas|Descrição|Chegada e prazo|Identificação|Andamento' && (await pg.$$('.modal [data-lapis]')).length === 5, 'a consulta tem cinco seções (Tarefas e Descrição primeiro), cada uma com seu lápis, numa única janela');
 ok(/Origem.*TCE-RS/.test(ler.replace(/\s+/g, ' ')) && /Texto da descrição da demanda de teste/.test(ler) && /1842\/26/.test(ler) && !(await pg.$('.modal input:not([type=checkbox])')), 'ao abrir, os dados aparecem para leitura (sem campos de edição) e nada reiniciou o questionário');
 await pg.click('[data-lapis="tarefas"]');
 ok((await pg.getAttribute('[data-lapis="identificacao"]', 'aria-disabled')) === 'true', 'com uma seção em edição, os lápis das outras ficam desativados');

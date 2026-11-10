@@ -468,3 +468,24 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app[data-dir="d"] .modal .grp-doc-t { margin: 0 0 6px 2px; font-size: var(--t-rotulo); font-weight: 700; color: var(--text); }
 .app[data-dir="d"] .modal .grp-doc .dois { gap: 0 12px; }
 .app[data-dir="d"] .modal .fld:not(.fld-assunto) > label small.data { font-weight: 400; }
+
+/* ---------- consulta da demanda (decisão 62) ----------
+   Assunto como título (fonte dos títulos, quebra natural), documento como referência secundária, chips de etapa, prazo e prioridade no cabeçalho; Tarefas e Descrição logo depois
+   (lado a lado quando a janela é larga; no estreito, uma sobre a outra com Tarefas primeiro), e então Chegada e prazo, Identificação e Andamento. */
+.app[data-dir="d"] .modal.ed .m-h { position: relative; -webkit-backdrop-filter: none; backdrop-filter: none; background: none; align-items: flex-start; margin-bottom: 2px; }
+.app[data-dir="d"] .modal.ed .m-h h3 { flex: 1 1 auto; min-width: 0; margin-right: 0; padding-top: 6px; text-align: left; font-family: var(--font-h); font-size: calc(28px * var(--esc)); font-weight: 700; line-height: 1.2; letter-spacing: -.01em; text-wrap: balance; overflow-wrap: anywhere; }
+.app[data-dir="d"] .modal .cons-cab { margin: 0 0 14px; }
+.app[data-dir="d"] .modal .cons-doc { margin: 0 0 8px; font-family: var(--font-n); font-size: var(--t-rotulo); font-weight: 600; color: var(--text2); overflow-wrap: anywhere; }
+.app[data-dir="d"] .modal .cons-doc.sem { font-family: var(--font); font-weight: 400; }
+.app[data-dir="d"] .modal .cons-duo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 22px; align-items: start; }
+@container tela (min-width: 1000px) { .app[data-dir="d"] .modal .cons-duo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.app[data-dir="d"] .modal.ed .sec-h h4 { font-size: var(--t-leitura); font-weight: 700; color: var(--text); letter-spacing: 0; }
+.app[data-dir="d"] .modal .t-ler li[data-proxima] { background: var(--acc-soft); border-radius: 12px; padding-inline: 10px; margin-inline: -10px; }
+.app[data-dir="d"] .modal .t-ler li[data-proxima] + li { border-top-color: transparent; }
+.app[data-dir="d"] .modal .t-ler .prox-rot { margin-left: auto; flex: none; font-size: var(--t-meta); font-weight: 700; color: var(--acc-text); }
+@container tela (max-width: 899px) {
+  /* celular e tablet em pé: o botão de mais ações fica no canto do cabeçalho e o título não passa por baixo dele */
+  .app[data-dir="d"] .modal.ed .m-mais { top: 22px; transform: none; }
+  .app[data-dir="d"] .modal.ed .m-h h3 { padding-right: 48px; font-size: calc(24px * var(--esc)); }
+}
+.app[data-dir="d"] .modal .cons-cab { text-align: left; }

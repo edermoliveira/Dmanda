@@ -9,7 +9,7 @@ import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { Janela } from './janela-base';
 import { OrigemEntrada } from './entradas';
-import { ChipEspera, ChipPrazo, ChipSelo } from './cartoes';
+import { ChipEspera, ChipPrazo, ChipSelo, SeloPrioridade } from './cartoes';
 import {
   CAMPOS_DA_SECAO, comAtalhoCoerente, CamposChegadaPrazo, CamposIdentificacao, chaveTarefa, Descricao, doCampos, EditorTarefas, mudou, paraDadosSecao, paraEnvio, type Campos, type Secao, type TarefaForm,
 } from './campos';
@@ -126,6 +126,8 @@ function Detalhe({ d }: { d: Demanda }) {
   const k = d.prazo ? diasAte(d.prazo, hoje) : null;
   const situacaoPrazo = k === null ? '' : fin ? '' : k < 0 ? ` (vencida há ${plural(-k, 'dia')})` : k === 0 ? ' (vence hoje)' : ` (faltam ${plural(k, 'dia')})`;
   const dias0 = diasDesdeInstante(d.etapa_desde, hoje);
+  const documento = d.tipo || numeroDe(d) ? titulo(d) : '';
+  const proximaId = d.tarefas.find((t) => !t.concluida)?.id;
 
   const rodape = conf ? (
     <>
@@ -147,7 +149,7 @@ function Detalhe({ d }: { d: Demanda }) {
   );
 
   return (
-    <Janela titulo={titulo(d)} larga aoFechar={fecharGuardando} sujo={sujo} rodape={rodape}
+    <Janela titulo={d.assunto} larga editorial aoFechar={fecharGuardando} sujo={sujo} rodape={rodape}
       extraCab={conf ? null : <button type="button" className="icbtn-s m-mais" aria-haspopup="menu" aria-label="Mais ações da demanda: arquivar ou excluir" title="Mais ações" onClick={(e) => { const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setMenuAcoes((m) => (m ? null : { x: b.right - a.left, y: b.bottom - a.top })); }}><Icone nome="ellipsis" /></button>}>
       {recuperado ? <p className="data rec">Rascunho recuperado nas seções abertas. Cancelar descarta as alterações da seção.</p> : null}
       {desatualizada ? (
@@ -157,23 +159,30 @@ function Detalhe({ d }: { d: Demanda }) {
         </p>
       ) : null}
       {d.entrada_id ? <OrigemEntrada id={d.entrada_id} /> : null}
-      <div className="resumo-chips"><span className="chip neutro">{fin ? 'Finalizada' : d.etapa}</span><ChipEspera d={d} /><ChipPrazo d={d} /><ChipSelo d={d} />{d.arquivada_em ? <span className="chip neutro">Arquivada</span> : null}</div>
+      <div className="cons-cab">
+        <p className={`cons-doc${documento ? '' : ' sem'}`} data-documento>{documento || 'Sem documento associado'}</p>
+        <div className="resumo-chips"><span className="chip neutro">{fin ? 'Finalizada' : d.etapa}</span><ChipEspera d={d} /><ChipPrazo d={d} /><ChipSelo d={d} /><SeloPrioridade d={d} />{d.arquivada_em ? <span className="chip neutro">Arquivada</span> : null}</div>
+      </div>
 
-      <Bloco ctx={ctx} s="identificacao" editor={<CamposIdentificacao c={c} mudar={mudar} prefixo="d" />}>
-        <dl className="ler">
-          <dt>Assunto</dt><dd><b>{d.assunto}</b></dd>
-          <Linha rotulo="Origem da solicitação" valor={origemDe(d)} />
-          <Linha rotulo="Tipo do documento" valor={d.tipo} />
-          {temArea(d.tipo) ? <Linha rotulo="Área" valor={d.area} /> : null}
-          <Linha rotulo="Número" valor={numeroDe(d)} />
-          {d.rapida ? <Linha rotulo="Marca" valor="Rápida" /> : null}
-        </dl>
+      <div className="cons-duo">
+      <Bloco ctx={ctx} s="tarefas" editor={<>{erro ? <p className="data" role="alert" style={{ color: 'var(--perigo)' }}>{erro}</p> : null}<EditorTarefas tarefas={tarefas} setTarefas={setTarefas} nt={nt} setNt={setNt} /></>}>
+        {d.tarefas.length ? (
+          <ul className="t-ler">
+            {d.tarefas.map((t) => (
+              <li key={t.id} data-proxima={t.id === proximaId ? '' : undefined}>
+                <input type="checkbox" checked={t.concluida} disabled={abertas.length > 0} title={abertas.length > 0 ? 'Salve ou cancele a edição aberta antes de marcar tarefas' : undefined} aria-label={`Concluir a tarefa: ${t.texto}`} onChange={(e) => void marcarTarefa(t.id, e.target.checked)} />
+                <span className={t.concluida ? 'feita' : undefined}>{t.texto}</span>{t.id === proximaId ? <small className="prox-rot">Próxima</small> : null}
+              </li>
+            ))}
+          </ul>
+        ) : <div className="proxima vazia"><span>Nenhuma tarefa cadastrada</span></div>}
+        <p className="data m-prog">{d.tarefas.length ? `${d.tarefas.filter((t) => t.concluida).length} de ${d.tarefas.length} concluídas. ` : ''}Toque no lápis para adicionar, alterar ou remover tarefas.</p>
       </Bloco>
-
       <Bloco ctx={ctx} s="descricao" editor={<Descricao c={c} mudar={mudar} prefixo="d" />}>
         <p className={`ler-texto${d.descricao.trim() ? '' : ' vazio'}`}>{d.descricao.trim() || 'Sem descrição'}</p>
       </Bloco>
 
+      </div>
       <Bloco ctx={ctx} s="chegada" editor={<CamposChegadaPrazo c={c} mudar={mudar} prefixo="d" hoje={hoje} dias={dias} legado={d.prazo_legado} />}>
         <dl className="ler">
           <Linha rotulo="Chegou em" valor={d.chegou_em ? dataBR(d.chegou_em) : null} />
@@ -187,6 +196,14 @@ function Detalhe({ d }: { d: Demanda }) {
               {d.prazo_legado ? <><dt>Origem do prazo</dt><dd>Já existia antes do cálculo por prazo original e foi mantido como referência.</dd></> : null}
             </>
           ) : <><dt>Vencimento</dt><dd className="vazio">Sem prazo</dd></>}
+        </dl>
+      </Bloco>
+
+      <Bloco ctx={ctx} s="identificacao" editor={<CamposIdentificacao c={c} mudar={mudar} prefixo="d" />}>
+        <dl className="ler">
+          <Linha rotulo="Origem da solicitação" valor={origemDe(d)} />
+          {temArea(d.tipo) ? <Linha rotulo="Área" valor={d.area} /> : null}
+          {d.rapida ? <Linha rotulo="Marca" valor="Rápida" /> : null}
         </dl>
       </Bloco>
 
@@ -218,19 +235,6 @@ function Detalhe({ d }: { d: Demanda }) {
         </dl>
       </Bloco>
 
-      <Bloco ctx={ctx} s="tarefas" editor={<>{erro ? <p className="data" role="alert" style={{ color: 'var(--perigo)' }}>{erro}</p> : null}<EditorTarefas tarefas={tarefas} setTarefas={setTarefas} nt={nt} setNt={setNt} /></>}>
-        {d.tarefas.length ? (
-          <ul className="t-ler">
-            {d.tarefas.map((t) => (
-              <li key={t.id}>
-                <input type="checkbox" checked={t.concluida} disabled={abertas.length > 0} title={abertas.length > 0 ? 'Salve ou cancele a edição aberta antes de marcar tarefas' : undefined} aria-label={`Concluir a tarefa: ${t.texto}`} onChange={(e) => void marcarTarefa(t.id, e.target.checked)} />
-                <span className={t.concluida ? 'feita' : undefined}>{t.texto}</span>
-              </li>
-            ))}
-          </ul>
-        ) : <div className="proxima vazia"><span>Nenhuma tarefa cadastrada</span></div>}
-        <p className="data m-prog">{d.tarefas.length ? `${d.tarefas.filter((t) => t.concluida).length} de ${d.tarefas.length} concluídas. ` : ''}Toque no lápis para adicionar, alterar ou remover tarefas.</p>
-      </Bloco>
       {menuAcoes ? <MenuAcoes pos={menuAcoes} fechar={() => setMenuAcoes(null)} aoArquivar={async () => { setMenuAcoes(null); const r = await arquivar(d.id); if (r) { guardarRascunho(chave, null); fecharJanela(); } }} aoExcluir={() => { setMenuAcoes(null); setConf(true); }} /> : null}
     </Janela>
   );

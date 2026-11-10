@@ -5,7 +5,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Icone } from './Icone';
 
-export function Janela({ titulo, larga, extraCab, aoFechar, sujo, rodape, foco = 'campo', children }: { titulo: string; larga?: boolean; extraCab?: ReactNode; aoFechar: () => void; sujo: boolean; rodape: ReactNode; foco?: 'campo' | 'janela'; children: ReactNode }) {
+/** `editorial`: o título é o assunto da demanda aberta (alinhado à esquerda, fonte dos títulos, quebra natural e sem cabeçalho fixo, para um assunto longo não ocupar a tela ao rolar). */
+export function Janela({ titulo, larga, editorial, extraCab, aoFechar, sujo, rodape, foco = 'campo', children }: { titulo: string; larga?: boolean; editorial?: boolean; extraCab?: ReactNode; aoFechar: () => void; sujo: boolean; rodape: ReactNode; foco?: 'campo' | 'janela'; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const fechar = useRef(aoFechar);
   useEffect(() => { fechar.current = aoFechar; });
@@ -30,7 +31,7 @@ export function Janela({ titulo, larga, extraCab, aoFechar, sujo, rodape, foco =
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- o foco inicial vale só na abertura
   return (
     <div className="modal-ov" onMouseDown={(e) => { if (e.target === e.currentTarget && !sujo) aoFechar(); }}>
-      <div ref={ref} className={`modal lg${larga ? ' larga' : ''}`} role="dialog" aria-modal="true" aria-labelledby="m-tit" tabIndex={-1}>
+      <div ref={ref} className={`modal lg${larga ? ' larga' : ''}${editorial ? ' ed' : ''}`} role="dialog" aria-modal="true" aria-labelledby="m-tit" tabIndex={-1}>
         <header className="m-h"><h3 id="m-tit">{titulo}</h3><button className="icbtn-s" aria-label="Fechar" onClick={aoFechar}><Icone nome="x" /></button>{extraCab}</header>
         {children}
         <footer className="m-f">{rodape}</footer>
