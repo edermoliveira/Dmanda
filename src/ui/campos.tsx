@@ -83,23 +83,30 @@ function novaTentativa() {
 export const useTentativa = () => useState(novaTentativa)[0];
 
 // ---------- identificação ----------
+// Ordem de leitura: Assunto (o único obrigatório, em destaque), Origem da solicitação e, separado, o Documento associado (tipo e número lado a lado, com o exemplo 250/2026).
+// O ano do documento não é mais um campo (decisão 62): o número fica como foi digitado e o filtro de ano lê o ano do próprio número.
 export function CamposIdentificacao({ c, mudar, prefixo, comDescricao, nota }: { c: Campos; mudar: (p: Partial<Campos>) => void; prefixo: string; comDescricao?: boolean; nota?: boolean }) {
   const area = temArea(c.tipo), areas = areasDoTipo(c.tipo || null);
   return (
     <>
-      <div className="fld"><label htmlFor={`${prefixo}-assunto`}>Assunto <small className="data">(obrigatório)</small></label><input id={`${prefixo}-assunto`} value={c.assunto} placeholder="Do que se trata?" maxLength={300} autoComplete="off" onChange={(e) => mudar({ assunto: e.target.value })} /></div>
+      <div className="fld fld-assunto"><label htmlFor={`${prefixo}-assunto`}>Assunto <small className="data">(obrigatório)</small></label><input id={`${prefixo}-assunto`} value={c.assunto} placeholder="Do que se trata?" maxLength={300} autoComplete="off" onChange={(e) => mudar({ assunto: e.target.value })} /></div>
       <div className="fld"><label htmlFor={`${prefixo}-origem`}>Origem da solicitação <small className="data">(opcional)</small></label>
         <SeletorOpcao campo="origem" id={`${prefixo}-origem`} rotulo="Origem da solicitação" valor={c.origem} aoEscolher={(v) => mudar({ origem: v })} />
       </div>
-      <div className="fld"><label htmlFor={`${prefixo}-tipo`}>Documento associado <small className="data">(opcional: pode chegar depois)</small></label>
-        <SeletorOpcao campo="tipo" id={`${prefixo}-tipo`} rotulo="Tipo do documento" valor={c.tipo} aoEscolher={(v) => mudar({ tipo: v, area: v === 'Protocolo' && c.area === 'Compras' ? 'Geral' : c.area })} />
-      </div>
-      {area ? (
-        <div className="fld"><label>Área (define a cor do card)</label><Opcoes lista={areas} valor={areas.includes(c.area) ? c.area : 'Geral'} rotulo="Área" aoEscolher={(v) => mudar({ area: v })} />
-          {nota ? <span className="data">{c.tipo === 'Protocolo' ? 'Protocolo geral é azul e de pessoal é verde. Amarelo (compras) só em processo aberto pelo setor de compras.' : 'Azul: geral. Verde: pessoal. Amarelo: compras.'}</span> : null}
+      <div className="grp-doc" role="group" aria-labelledby={`${prefixo}-doc-t`}>
+        <p className="grp-doc-t" id={`${prefixo}-doc-t`}>Documento associado <small className="data">(opcional: pode chegar depois)</small></p>
+        <div className="dois">
+          <div className="fld"><label htmlFor={`${prefixo}-tipo`}>Tipo do documento</label>
+            <SeletorOpcao campo="tipo" id={`${prefixo}-tipo`} rotulo="Tipo do documento" valor={c.tipo} aoEscolher={(v) => mudar({ tipo: v, area: v === 'Protocolo' && c.area === 'Compras' ? 'Geral' : c.area })} />
+          </div>
+          <div className="fld"><label htmlFor={`${prefixo}-num`}>Número do documento</label><input id={`${prefixo}-num`} value={c.numero} placeholder="Ex.: 250/2026" maxLength={80} autoComplete="off" onChange={(e) => mudar({ numero: e.target.value })} /></div>
         </div>
-      ) : null}
-      <div className="fld"><label htmlFor={`${prefixo}-num`}>Número ou identificação <small className="data">(opcional)</small></label><input id={`${prefixo}-num`} value={c.numero} placeholder="Ex.: 250/2026 ou 2024/1250" maxLength={80} autoComplete="off" onChange={(e) => mudar({ numero: e.target.value })} /></div>
+        {area ? (
+          <div className="fld"><label>Área (define a cor do card)</label><Opcoes lista={areas} valor={areas.includes(c.area) ? c.area : 'Geral'} rotulo="Área" aoEscolher={(v) => mudar({ area: v })} />
+            {nota ? <span className="data">{c.tipo === 'Protocolo' ? 'Protocolo geral é azul e de pessoal é verde. Amarelo (compras) só em processo aberto pelo setor de compras.' : 'Azul: geral. Verde: pessoal. Amarelo: compras.'}</span> : null}
+          </div>
+        ) : null}
+      </div>
       <label className="chk-l"><input type="checkbox" checked={c.rapida} onChange={(e) => mudar({ rapida: e.target.checked })} /> <span>Rápida <small className="data">(resolve em pouco tempo; ajuda a escolher o Para hoje)</small></span></label>
       {comDescricao ? <Descricao c={c} mudar={mudar} prefixo={prefixo} /> : null}
     </>

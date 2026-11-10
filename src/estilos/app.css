@@ -459,3 +459,12 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
   .app[data-dir="d"] .ini-apoio { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }
 .app[data-dir="d"] .cfg-controles { align-items: start; }
+
+/* ---------- cadastro e edição da identificação (decisão 62) ----------
+   Assunto em destaque; Documento associado num bloco próprio (tipo e número lado a lado) e os campos opcionais com rótulo mais discreto. */
+.app[data-dir="d"] .modal .fld-assunto > label { color: var(--text); font-weight: 600; }
+.app[data-dir="d"] .modal .fld-assunto input { min-height: 48px; font-size: max(16px, calc(17px * var(--esc))); font-weight: 600; }
+.app[data-dir="d"] .modal .grp-doc { margin: 4px 0 10px; padding: 10px 12px 2px; border-radius: 16px; background: var(--panel); box-shadow: 0 0 0 1px var(--brd); }
+.app[data-dir="d"] .modal .grp-doc-t { margin: 0 0 6px 2px; font-size: var(--t-rotulo); font-weight: 700; color: var(--text); }
+.app[data-dir="d"] .modal .grp-doc .dois { gap: 0 12px; }
+.app[data-dir="d"] .modal .fld:not(.fld-assunto) > label small.data { font-weight: 400; }
