@@ -1,7 +1,7 @@
 // Validação das entradas das operações (puro, sem banco nem alias de importação: roda também nos testes de regras, direto no Node).
 // As regras de negócio ficam no banco (migrações); aqui só se confere o formato e se traduz o erro em mensagem para a pessoa.
 import { AREAS, ETAPAS, PRAZOS } from '../lib/demandas.ts';
-import { BOTOES_PRAZO, CATEGORIAS_DIA, type CategoriaDia } from '../lib/prazos.ts';
+import { BOTOES_PRAZO, CATEGORIAS_DIA, somarDias, type CategoriaDia } from '../lib/prazos.ts';
 import { COR_MAX_ACEITA, LIMITE_TEXTO, LIMITE_TITULO } from '../lib/entradas.ts';
 import { erroDoEvento, TIPOS_EVENTO, type DadosEvento } from '../lib/eventos.ts';
 import { DIAS_CORRECAO, NIVEIS, type Nivel } from '../lib/registros.ts';
@@ -43,6 +43,13 @@ export function validarDados(entrada: unknown, { criando, aceitaEtapa = false }:
   if ('chegou_em' in e) s.chegou_em = dataOuNulo(e.chegou_em, 'Data de chegada');
   if ('prazo_original' in e) s.prazo_original = dataOuNulo(e.prazo_original, 'Prazo');
   if ('prazo_dias' in e && e.prazo_dias !== null) { if (typeof e.prazo_dias !== 'number' || !(BOTOES_PRAZO as readonly number[]).includes(e.prazo_dias)) throw new ErroDmanda('Quantidade de dias do prazo inválida.'); s.prazo_dias = e.prazo_dias; }
+  // data-base do atalho de dias (o dia em que o botão foi escolhido): só vale junto com os dias e precisa bater com o prazo original; o banco confere de novo (e recusa base no futuro)
+  if ('prazo_base_em' in e && e.prazo_base_em !== null && e.prazo_base_em !== undefined && e.prazo_base_em !== '') {
+    const b = dataOuNulo(e.prazo_base_em, 'Data-base do prazo') as string;
+    if (typeof s.prazo_dias !== 'number') throw new ErroDmanda('A data-base do prazo só vale junto com a quantidade de dias.');
+    if (typeof s.prazo_original === 'string' && somarDias(b, s.prazo_dias) !== s.prazo_original) throw new ErroDmanda('O prazo não confere com a data-base e a quantidade de dias.');
+    s.prazo_base_em = b;
+  }
   if ('acompanhar_em' in e) s.acompanhar_em = dataOuNulo(e.acompanhar_em, 'Data de acompanhamento');
   if ('encaminhada_em' in e) s.encaminhada_em = dataOuNulo(e.encaminhada_em, 'Data do encaminhamento');
   if ('reiterada_em' in e) s.reiterada_em = dataOuNulo(e.reiterada_em, 'Data da reiteração');

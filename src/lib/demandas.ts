@@ -60,7 +60,7 @@ export type Demanda = {
 };
 
 /** Campos que o formulário pode gravar (a etapa, as tarefas e o arquivamento têm operações próprias). */
-export type DadosDemanda = Partial<Pick<Demanda, 'tipo' | 'area' | 'numero' | 'assunto' | 'descricao' | 'origem' | 'chegou_em' | 'prazo_original' | 'prazo_dias' | 'prazo_tipo' | 'rapida' | 'documento_ano' | 'setor' | 'acompanhar_em' | 'encaminhada_em' | 'reiterada_em'>> & { etapa?: Etapa };
+export type DadosDemanda = Partial<Pick<Demanda, 'tipo' | 'area' | 'numero' | 'assunto' | 'descricao' | 'origem' | 'chegou_em' | 'prazo_original' | 'prazo_dias' | 'prazo_base_em' | 'prazo_tipo' | 'rapida' | 'documento_ano' | 'setor' | 'acompanhar_em' | 'encaminhada_em' | 'reiterada_em'>> & { etapa?: Etapa };
 
 /** Número e origem são opcionais: vazio (ou os marcadores antigos "s/n" e "Não informada", gravados antes do cadastro guiado) significa que não foram informados. */
 export const numeroDe = (d: Pick<Demanda, 'numero'>) => (d.numero.trim() === '' || d.numero === 's/n' ? '' : d.numero);

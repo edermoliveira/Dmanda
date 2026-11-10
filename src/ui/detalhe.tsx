@@ -11,7 +11,7 @@ import { Janela } from './janela-base';
 import { OrigemEntrada } from './entradas';
 import { ChipEspera, ChipPrazo, ChipSelo } from './cartoes';
 import {
-  CAMPOS_DA_SECAO, CamposChegadaPrazo, CamposIdentificacao, chaveTarefa, Descricao, doCampos, EditorTarefas, mudou, paraDadosSecao, paraEnvio, type Campos, type Secao, type TarefaForm,
+  CAMPOS_DA_SECAO, comAtalhoCoerente, CamposChegadaPrazo, CamposIdentificacao, chaveTarefa, Descricao, doCampos, EditorTarefas, mudou, paraDadosSecao, paraEnvio, type Campos, type Secao, type TarefaForm,
 } from './campos';
 import { anoDoDocumento } from '@/lib/documentos';
 import { dataBR, diasAte, diasDesde, diasDesdeInstante, ETAPAS, numeroDe, origemDe, permanencia, plural, temArea, titulo, type DadosDemanda, type Demanda, type Etapa } from '@/lib/demandas';
@@ -41,7 +41,7 @@ function Detalhe({ d }: { d: Demanda }) {
   const { rascunhos, guardarRascunho, fecharJanela, salvar, arquivar, excluir, concluir, reabrir, marcarTarefa, hoje, dias } = useApp();
   const chave = `d:${d.id}`;
   const rasc = rascunhos[chave];
-  const [c, setC] = useState<Campos>(() => ({ ...doCampos(d), ...(rasc?.dados as Partial<Campos> | undefined) }));
+  const [c, setC] = useState<Campos>(() => comAtalhoCoerente({ ...doCampos(d), ...(rasc?.dados as Partial<Campos> | undefined) }, hoje));
   const [tarefas, setTarefas] = useState<TarefaForm[]>(() => (rasc?.tarefas ?? d.tarefas.map((t) => ({ id: t.id, texto: t.texto, concluida: t.concluida }))).map((t) => ({ chave: chaveTarefa(), ...t })));
   const [nt, setNt] = useState(rasc?.nt ?? '');
   const [etapa, setEtapa] = useState<Etapa>((rasc?.dados as { etapa?: Etapa } | undefined)?.etapa ?? d.etapa);

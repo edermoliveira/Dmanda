@@ -519,6 +519,69 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(/Taquara: agora 17 graus, pancadas de chuva fracas\. Previsão de hoje: máxima de 25 graus e mínima de 15 graus\./.test(L.resumoDoClima(TAQ, p0)) && /1 grau negativo/.test(L.resumoDoClima(TAQ, { ...p0, atual: { ...p0.atual, temperatura: -1 } })), 'clima: a frase para leitores de tela diz agora e previsão do dia, com unidades por extenso');
   ok(L.ATRIBUICAO.texto === 'Weather data by Open-Meteo.com' && L.ATRIBUICAO.url === 'https://open-meteo.com/' && L.TTL_FRESCO_MS === 900000 && L.TIMEOUT_MS === 8000 && L.DEBOUNCE_MS >= 250 && L.MAX_RESULTADOS === 8, 'clima: atribuição exigida pela licença, TTL de 15 minutos, limite de tempo de 8 s e espera da busca');
 }
+// ---------- prazo por atalho: a data-base é o dia do clique (decisão 31; correção de 10/11/2026) ----------
+{
+  const { normalizarAtalho, dadosDoPrazo } = await import('../src/lib/prazos.ts');
+  const falhaV = (f) => { try { f(); return null; } catch (e) { return e.message; } };
+  const HOJE = '2026-11-10';
+  const form = (o) => ({ prazo_original: '', prazo_dias: null, prazo_base_em: '', ...o });
+
+  // rascunho válido de ontem e de uma semana atrás: a base e o prazo original são preservados (sem limite de antiguidade)
+  const ontem = normalizarAtalho(form({ prazo_original: '2026-11-19', prazo_dias: 10, prazo_base_em: '2026-11-09' }), HOJE);
+  ok(ontem.prazo_original === '2026-11-19' && ontem.prazo_dias === 10 && ontem.prazo_base_em === '2026-11-09', 'atalho: rascunho válido de ontem mantém a base e a data exibida (nada é recalculado a partir de hoje)');
+  const antigo = normalizarAtalho(form({ prazo_original: '2025-03-15', prazo_dias: 5, prazo_base_em: '2025-03-10' }), HOJE);
+  ok(antigo.prazo_original === '2025-03-15' && antigo.prazo_dias === 5 && antigo.prazo_base_em === '2025-03-10', 'atalho: rascunho de quase um ano atrás continua preservado (nenhum limite de antiguidade)');
+  // atravessar a meia-noite: o clique foi dado no dia 10, a tela já está no dia 11: a base continua sendo o dia 10
+  const meiaNoite = normalizarAtalho(form({ prazo_original: '2026-11-20', prazo_dias: 10, prazo_base_em: '2026-11-10' }), '2026-11-11');
+  ok(meiaNoite.prazo_base_em === '2026-11-10' && meiaNoite.prazo_original === '2026-11-20', 'atalho: passar da meia-noite depois do clique não desloca o prazo (base continua o dia do clique)');
+  // rascunho legado: tem dias e data, não tem base; a base é recuperada (original − dias) e o atalho é preservado
+  const legado = normalizarAtalho(form({ prazo_original: '2026-11-18', prazo_dias: 10 }), HOJE);
+  ok(legado.prazo_dias === 10 && legado.prazo_base_em === '2026-11-08' && legado.prazo_original === '2026-11-18', 'atalho: rascunho legado (18/11 com 10 dias, sem base) recupera a base 08/11 e preserva o atalho');
+  for (const n of BOTOES_PRAZO) { const x = normalizarAtalho(form({ prazo_original: somarDias(HOJE, n - 1), prazo_dias: n }), HOJE); ok(x.prazo_dias === n && x.prazo_base_em === somarDias(HOJE, -1) && x.prazo_original === somarDias(HOJE, n - 1), `atalho: legado de ${n} dias recupera a base com segurança`); }
+  // não dá para recuperar com segurança: vira prazo manual, mantendo a data exibida
+  const futura = normalizarAtalho(form({ prazo_original: '2026-11-25', prazo_dias: 10 }), HOJE);
+  ok(futura.prazo_dias === null && futura.prazo_base_em === '' && futura.prazo_original === '2026-11-25', 'atalho: se a base recuperada cairia no futuro, vira prazo manual e a data exibida é mantida');
+  const diasEstranhos = normalizarAtalho(form({ prazo_original: '2026-11-25', prazo_dias: 7, prazo_base_em: '2026-11-18' }), HOJE);
+  ok(diasEstranhos.prazo_dias === null && diasEstranhos.prazo_base_em === '' && diasEstranhos.prazo_original === '2026-11-25', 'atalho: quantidade de dias que não é de um botão vira prazo manual, com a mesma data');
+  const dataRuim = normalizarAtalho(form({ prazo_original: '2026-02-30', prazo_dias: 10, prazo_base_em: '2026-02-20' }), HOJE);
+  ok(dataRuim.prazo_dias === null && dataRuim.prazo_base_em === '', 'atalho: data que não existe no calendário vira prazo manual (nada quebra)');
+  const incoerente = normalizarAtalho(form({ prazo_original: '2026-11-18', prazo_dias: 10, prazo_base_em: '2026-11-01' }), HOJE);
+  ok(incoerente.prazo_dias === 10 && incoerente.prazo_base_em === '2026-11-08' && incoerente.prazo_original === '2026-11-18', 'atalho: base que não bate com a data exibida é refeita a partir dela (a data exibida manda)');
+  const baseFutura = normalizarAtalho(form({ prazo_original: '2026-11-25', prazo_dias: 5, prazo_base_em: '2026-11-20' }), HOJE);
+  ok(baseFutura.prazo_dias === null && baseFutura.prazo_base_em === '' && baseFutura.prazo_original === '2026-11-25', 'atalho: base no futuro (relógio do aparelho errado) vira prazo manual, mantendo a data exibida');
+  // prazo manual e sem prazo ficam como estão
+  const manual = normalizarAtalho(form({ prazo_original: '2026-12-01' }), HOJE);
+  ok(manual.prazo_dias === null && manual.prazo_base_em === '' && manual.prazo_original === '2026-12-01', 'atalho: prazo escolhido à mão continua à mão');
+  const sem = normalizarAtalho(form({}), HOJE);
+  ok(sem.prazo_original === '' && sem.prazo_dias === null && sem.prazo_base_em === '', 'atalho: sem prazo continua sem prazo');
+  ok(normalizarAtalho(form({ prazo_original: '2026-12-01', prazo_base_em: '2026-11-01' }), HOJE).prazo_base_em === '', 'atalho: base solta, sem dias, é descartada');
+
+  // o que vai ao servidor: base e dias só quando mudaram
+  const gravado = { prazo_original: '2026-11-19', prazo_dias: 10, prazo_base_em: '2026-11-09' };
+  const igual = dadosDoPrazo(form({ prazo_original: '2026-11-19', prazo_dias: 10, prazo_base_em: '2026-11-09' }), gravado);
+  ok(igual.prazo_original === '2026-11-19' && !('prazo_dias' in igual) && !('prazo_base_em' in igual), 'envio: regravar o mesmo prazo não manda dias nem base (a referência da contagem não muda)');
+  const novoClique = dadosDoPrazo(form({ prazo_original: '2026-11-20', prazo_dias: 10, prazo_base_em: '2026-11-10' }), gravado);
+  ok(novoClique.prazo_original === '2026-11-20' && novoClique.prazo_dias === 10 && novoClique.prazo_base_em === '2026-11-10', 'envio: um novo clique manda a nova base junto com os dias e a data exibida');
+  const criando = dadosDoPrazo(form({ prazo_original: '2026-11-19', prazo_dias: 10, prazo_base_em: '2026-11-09' }), null);
+  ok(criando.prazo_dias === 10 && criando.prazo_base_em === '2026-11-09' && criando.prazo_original === '2026-11-19', 'envio: na criação a base do clique vai junto (o banco grava exatamente a data que a tela mostrava)');
+  const aMao = dadosDoPrazo(form({ prazo_original: '2026-12-01' }), gravado);
+  ok(aMao.prazo_original === '2026-12-01' && !('prazo_dias' in aMao) && !('prazo_base_em' in aMao), 'envio: prazo à mão manda só a data');
+  const semPrazo = dadosDoPrazo(form({}), gravado);
+  ok(semPrazo.prazo_original === null && !('prazo_dias' in semPrazo), 'envio: sem prazo manda a data nula');
+
+  // validação do servidor: a base só vale com os dias e precisa bater com o prazo original
+  const v = validarDados({ assunto: 'a', prazo_original: '2026-11-19', prazo_dias: 10, prazo_base_em: '2026-11-09' }, { criando: true });
+  ok(v.prazo_base_em === '2026-11-09' && v.prazo_dias === 10 && v.prazo_original === '2026-11-19', 'validação: base, dias e prazo original coerentes passam');
+  ok(/só vale junto com a quantidade de dias/.test(falhaV(() => validarDados({ assunto: 'a', prazo_original: '2026-11-19', prazo_base_em: '2026-11-09' }, { criando: true }))), 'validação: base sem dias é recusada');
+  ok(/não confere com a data-base/.test(falhaV(() => validarDados({ assunto: 'a', prazo_original: '2026-11-20', prazo_dias: 10, prazo_base_em: '2026-11-09' }, { criando: true }))), 'validação: prazo original que não é base + dias é recusado (a data exibida e a gravada nunca divergem)');
+  ok(/Data-base do prazo inválida/.test(falhaV(() => validarDados({ assunto: 'a', prazo_dias: 10, prazo_base_em: '2026-02-30' }, { criando: true }))) && /Data-base do prazo inválida/.test(falhaV(() => validarDados({ assunto: 'a', prazo_dias: 10, prazo_base_em: 'ontem' }, { criando: true }))), 'validação: data-base que não existe no calendário é recusada');
+  const semBase = validarDados({ assunto: 'a', prazo_dias: 10 }, { criando: true });
+  ok(semBase.prazo_dias === 10 && !('prazo_base_em' in semBase), 'validação: telas antigas (dias sem base) continuam válidas');
+  const nula = validarDados({ assunto: 'a', prazo_original: '2026-11-19', prazo_base_em: null }, { criando: true });
+  ok(!('prazo_base_em' in nula), 'validação: base nula ou vazia é ignorada');
+  ok(validarDados({ prazo_original: '2026-11-19', prazo_dias: 10, prazo_base_em: '2026-11-09' }, { criando: false, aceitaEtapa: true }).prazo_base_em === '2026-11-09', 'validação: a edição de Chegada e prazo também aceita a base');
+}
+
 function urlDe(u) { return new URL(u); }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

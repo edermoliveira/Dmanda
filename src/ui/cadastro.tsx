@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from './contexto';
 import { Janela, Grupo } from './janela-base';
-import { CAMPOS_VAZIOS, CamposChegadaPrazo, CamposIdentificacao, CAMPOS_DA_SECAO, chaveTarefa, doCampos, EditorTarefas, mudou, novoUuid, paraDadosNovos, paraEnvio, type Campos, type Secao, type TarefaForm } from './campos';
+import { CAMPOS_VAZIOS, comAtalhoCoerente, CamposChegadaPrazo, CamposIdentificacao, CAMPOS_DA_SECAO, chaveTarefa, doCampos, EditorTarefas, mudou, novoUuid, paraDadosNovos, paraEnvio, type Campos, type Secao, type TarefaForm } from './campos';
 import { plural, type Demanda } from '@/lib/demandas';
 import { paraDemanda, type Entrada } from '@/lib/entradas';
 import * as srv from '@/servidor/demandas';
@@ -32,7 +32,7 @@ export function JanelaNova({ entradaId, entrada }: { entradaId?: string; entrada
   const [d, setD] = useState<Demanda | null>(vinc);
   const [salvo, setSalvo] = useState<Campos | null>(() => (vinc ? doCampos(vinc) : null)); // os campos como estão gravados (só existe depois da criação)
   const [versaoBase, setVersaoBase] = useState(() => (vinc ? rasc?.versao ?? vinc.versao : 0)); // a versão sobre a qual este cadastro foi digitado: se a demanda mudou desde então, gravar é recusado
-  const [c, setC] = useState<Campos>(() => ({ ...CAMPOS_VAZIOS, ...(rasc ? (rasc.dados as Partial<Campos>) : entrada ? paraDemanda(entrada) : undefined) }));
+  const [c, setC] = useState<Campos>(() => comAtalhoCoerente({ ...CAMPOS_VAZIOS, ...(rasc ? (rasc.dados as Partial<Campos>) : entrada ? paraDemanda(entrada) : undefined) }, hoje));
   const [passo, setPasso] = useState<1 | 2 | 3>(() => (rasc?.passo === 3 && !vinc ? 2 : rasc?.passo ?? 1));
   const [idNovo] = useState(() => rasc?.idNovo ?? novoUuid());
   const [tarefas, setTarefas] = useState<TarefaForm[]>(() => (rasc?.tarefas ?? []).map((t) => ({ chave: chaveTarefa(), ...t })));

@@ -971,7 +971,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
   const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova15 = todas.find((f) => f.includes('alinha_regras_agenda')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
   const nova20 = todas.find((f) => f.includes('origem_documento_para_hoje'));   // depende da migração 8: entra depois dela, não no banco antigo
-  for (const f of todas.filter((f) => f !== nova20 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const nova21 = todas.find((f) => f.includes('prazo_base_do_atalho'));   // também depende da migração 8 (ajustar_prazo): entra depois dela
+  for (const f of todas.filter((f) => f !== nova20 && f !== nova21 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -1568,6 +1569,100 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(await rodar(dq, quebrada) !== null && JSON.stringify((await dq.query('select (select count(*) from public.demandas)::int d, (select count(*) from public.tarefas)::int t, (select count(*) from public.entradas)::int e')).rows[0]) === JSON.stringify(antesQ), 'restauração 1 a 20: falha no meio desfaz tudo (transação única), inclusive demandas e tarefas');
   ok((await dq.query("select tgenabled from pg_trigger where tgname = 'tarefas_versao'")).rows[0].tgenabled === 'O', 'restauração 1 a 20: o gatilho de versão das tarefas continua ligado depois da falha');
   for (const d of [destino, d2, atual, dest2, dq]) await d.close();
+}
+
+// ---------- migração 21: prazo pelos botões de dias parte do DIA DO CLIQUE (decisão 31), e a data exibida é a gravada ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m21 = todas.find((f) => f.includes('prazo_base_do_atalho'));
+  const m20 = todas.find((f) => f.includes('origem_documento_para_hoje'));
+  ok(!!m21 && !!m20 && todas.indexOf(m21) === todas.indexOf(m20) + 1, 'migração 21: existe, vem logo depois da 20 e as anteriores não foram reescritas (arquivo à parte)');
+
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig21-'));
+  try {
+    for (const f of todas.filter((f) => f < m21)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    const a20 = await abrirBancoTeste({ raizMigracoes: pasta });
+    const U = 'c1c1c1c1-2121-4121-8121-c1c1c1c1c1c1';
+    await a20.exec(`insert into auth.users (id, email) values ('${U}', 'p21@teste')`);
+    await a20.exec("insert into dmanda_privado.acesso_autorizado (email) values ('p21@teste')");
+    const ua = (f, a) => chamarComoUsuario(a20, U, f, a);
+    const hoje = (await a20.query('select public.hoje()::text h')).rows[0].h;
+    const soma = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+
+    // ---- antes: o banco da migração 20 ignora a data enviada e recalcula hoje + N (a falha que a migração 21 corrige)
+    const antesBase = soma(hoje, -2);
+    const dAntes = await ua('criar_demanda', { p: { assunto: 'ANTES da 21', prazo_original: soma(antesBase, 10), prazo_dias: 10 } });
+    ok(dAntes.prazo_original === soma(hoje, 10) && dAntes.prazo_base_em === hoje, 'migração 21 (antes): no banco 1 a 20 a data enviada é ignorada e o prazo vira hoje + 10 (a divergência que a 21 corrige)');
+    const legada = await ua('criar_demanda', { p: { assunto: 'Atalho feito hoje', prazo_dias: 5 } });
+    await ua('criar_demanda', { p: { assunto: 'Prazo à mão', prazo_original: soma(hoje, 40) } });
+    await ua('adicionar_tarefa', { p_demanda: legada.id, p_texto: 'Tarefa antiga' });
+    const fotoAntes = JSON.stringify((await a20.query('select id, assunto, prazo, prazo_original, prazo_dias, prazo_base_em, prazo_ajuste, etapa, versao, atualizado_em from public.demandas order by assunto')).rows);
+    const tarefasAntes = JSON.stringify((await a20.query('select id, texto, demanda_id from public.tarefas order by id')).rows);
+    const aclAntes = JSON.stringify((await a20.query("select p.oid::regprocedure::text f, p.prosecdef, p.proacl::text acl from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') order by 1")).rows);
+
+    // ---- upgrade: aplica a 21 sobre dados da 20
+    await a20.exec(readFileSync(join('supabase/migrations', m21), 'utf8'));
+    ok(JSON.stringify((await a20.query('select id, assunto, prazo, prazo_original, prazo_dias, prazo_base_em, prazo_ajuste, etapa, versao, atualizado_em from public.demandas order by assunto')).rows) === fotoAntes
+      && JSON.stringify((await a20.query('select id, texto, demanda_id from public.tarefas order by id')).rows) === tarefasAntes, 'migração 21 (upgrade): as demandas e as tarefas existentes ficam idênticas (prazo, base, versão e carimbo)');
+    ok(JSON.stringify((await a20.query("select p.oid::regprocedure::text f, p.prosecdef, p.proacl::text acl from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') order by 1")).rows) === aclAntes, 'migração 21: nenhuma função muda de privilégio nem de modo (continuam as mesmas assinaturas, todas SECURITY INVOKER onde eram)');
+
+    // ---- criar: a base informada é respeitada
+    const base = soma(hoje, -2);
+    const c1 = await ua('criar_demanda', { p: { assunto: 'Clique de anteontem', prazo_original: soma(base, 10), prazo_dias: 10, prazo_base_em: base } });
+    ok(c1.prazo_base_em === base && c1.prazo_dias === 10 && c1.prazo_original === soma(base, 10), 'criar: o prazo parte do dia do clique (anteontem + 10), exatamente a data que a tela mostrava');
+    const c2 = await ua('criar_demanda', { p: { assunto: 'Só base e dias', prazo_dias: 20, prazo_base_em: base } });
+    ok(c2.prazo_original === soma(base, 20) && c2.prazo_base_em === base, 'criar: sem a data original, base + dias dá o prazo');
+    const velha = soma(hoje, -400);
+    const c3 = await ua('criar_demanda', { p: { assunto: 'Rascunho de mais de um ano', prazo_original: soma(velha, 30), prazo_dias: 30, prazo_base_em: velha } });
+    ok(c3.prazo_base_em === velha && c3.prazo_original === soma(velha, 30), 'criar: não há limite de antiguidade da base (rascunho de 400 dias atrás é preservado)');
+    const c4 = await ua('criar_demanda', { p: { assunto: 'Clique de hoje', prazo_original: soma(hoje, 5), prazo_dias: 5, prazo_base_em: hoje } });
+    ok(c4.prazo_base_em === hoje && c4.prazo_original === soma(hoje, 5), 'criar: base de hoje (o caso comum) continua igual');
+    const erroDe = async (f, a) => { try { await ua(f, a); return null; } catch (e) { return e.message || String(e); } };
+    ok(/não pode estar no futuro/.test(await erroDe('criar_demanda', { p: { assunto: 'x', prazo_dias: 10, prazo_base_em: soma(hoje, 1) } })), 'criar: base no futuro é recusada');
+    ok(/só vale junto com a quantidade de dias/.test(await erroDe('criar_demanda', { p: { assunto: 'x', prazo_original: soma(hoje, 3), prazo_base_em: hoje } })), 'criar: base sem dias é recusada');
+    ok(/não confere com a data-base/.test(await erroDe('criar_demanda', { p: { assunto: 'x', prazo_original: soma(base, 11), prazo_dias: 10, prazo_base_em: base } })), 'criar: data original que não é base + dias é recusada (a exibida e a gravada nunca divergem)');
+    ok((await ua('listar_demandas', { p_arquivadas: false })).every((d) => !/^x$/.test(d.assunto)), 'criar: nenhuma demanda é gravada quando a base é recusada');
+    // idempotência: repetir a criação com o mesmo identificador devolve a mesma demanda, mesmo com outra base
+    const idFixo = 'c2c2c2c2-2121-4121-8121-c2c2c2c2c2c2';
+    const i1 = await ua('criar_demanda', { p: { id: idFixo, assunto: 'Idempotente', prazo_original: soma(base, 10), prazo_dias: 10, prazo_base_em: base } });
+    const i2 = await ua('criar_demanda', { p: { id: idFixo, assunto: 'Idempotente', prazo_original: soma(hoje, 10), prazo_dias: 10, prazo_base_em: hoje } });
+    ok(i1.id === i2.id && i2.prazo_original === soma(base, 10) && (await a20.query("select count(*)::int n from public.demandas where id = $1", [idFixo])).rows[0].n === 1, 'criar: repetir com o mesmo identificador devolve a demanda que já existe, sem duplicar nem trocar a data');
+    // sem base: o comportamento antigo (telas antigas): hoje + N, a data enviada é ignorada
+    const velhaTela = await ua('criar_demanda', { p: { assunto: 'Tela antiga', prazo_original: soma(hoje, 99), prazo_dias: 10 } });
+    ok(velhaTela.prazo_base_em === hoje && velhaTela.prazo_original === soma(hoje, 10), 'criar: sem a base (tela antiga) o comportamento é o de sempre, hoje + N');
+    // o vencimento ajustado continua vindo do calendário (sábado e domingo antecipam)
+    const dom = (() => { let d = soma(hoje, 5); while (new Date(d + 'T00:00:00Z').getUTCDay() !== 6) d = soma(d, -1); return d; })();   // o sábado mais recente até hoje + 5 (a base, 10 dias antes, nunca fica no futuro)
+    const cs = await ua('criar_demanda', { p: { assunto: 'Cai no sábado', prazo_original: dom, prazo_dias: 10, prazo_base_em: soma(dom, -10) } });
+    ok(cs.prazo_original === dom && cs.prazo === soma(dom, -1) && /sábado/.test(cs.prazo_ajuste ?? ''), 'criar: o prazo original que cai em sábado continua sendo antecipado para sexta (o vencimento ajustado segue o calendário)');
+
+    // ---- atualizar (edição de Chegada e prazo)
+    const alvo = await ua('criar_demanda', { p: { assunto: 'Edição do prazo' } });
+    const b2 = soma(hoje, -3);
+    const e1 = await ua('atualizar_demanda', { p_id: alvo.id, p: { prazo_original: soma(b2, 10), prazo_dias: 10, prazo_base_em: b2 } });
+    ok(e1.prazo_base_em === b2 && e1.prazo_dias === 10 && e1.prazo_original === soma(b2, 10), 'atualizar: o atalho escolhido há 3 dias grava exatamente a data exibida');
+    const e2 = await ua('atualizar_demanda', { p_id: alvo.id, p: { prazo_original: soma(b2, 10), chegou_em: soma(hoje, -1) } });
+    ok(e2.prazo_base_em === b2 && e2.prazo_dias === 10 && e2.prazo_original === soma(b2, 10), 'atualizar: regravar a mesma data (só mudou outro campo) mantém os dias e a base');
+    const e3 = await ua('atualizar_demanda', { p_id: alvo.id, p: { prazo_original: soma(hoje, 10), prazo_dias: 10, prazo_base_em: hoje } });
+    ok(e3.prazo_base_em === hoje && e3.prazo_original === soma(hoje, 10), 'atualizar: um novo clique escolhe a nova base');
+    const e4 = await ua('atualizar_demanda', { p_id: alvo.id, p: { prazo_original: soma(hoje, 60) } });
+    ok(e4.prazo_dias === null && e4.prazo_base_em === null && e4.prazo_original === soma(hoje, 60), 'atualizar: escolher outra data à mão desfaz a referência dos dias');
+    ok(/não pode estar no futuro/.test(await erroDe('atualizar_demanda', { p_id: alvo.id, p: { prazo_original: soma(hoje, 11), prazo_dias: 10, prazo_base_em: soma(hoje, 1) } })), 'atualizar: base no futuro é recusada');
+    ok(/não confere com a data-base/.test(await erroDe('atualizar_demanda', { p_id: alvo.id, p: { prazo_original: soma(hoje, 12), prazo_dias: 10, prazo_base_em: hoje } })), 'atualizar: data original incoerente é recusada');
+    ok(/só vale junto com a quantidade de dias/.test(await erroDe('atualizar_demanda', { p_id: alvo.id, p: { prazo_original: soma(hoje, 5), prazo_base_em: hoje } })), 'atualizar: base sem dias é recusada');
+    ok((await ua('buscar_demanda', { p_id: alvo.id })).prazo_original === soma(hoje, 60), 'atualizar: depois das recusas o prazo gravado continua o da última gravação válida');
+    // o mesmo caminho do salvamento da janela (salvar_demanda, com versão)
+    const sv = await ua('criar_demanda', { p: { assunto: 'Salvar pela janela' } });
+    const s1 = await ua('salvar_demanda', { p_id: sv.id, p: { prazo_original: soma(b2, 20), prazo_dias: 20, prazo_base_em: b2 }, p_tarefas: null, p_versao: sv.versao });
+    ok(s1.prazo_base_em === b2 && s1.prazo_original === soma(b2, 20), 'salvar_demanda (janela de edição): usa a mesma regra da base do atalho');
+    // dia indisponível cadastrado depois: o recálculo continua partindo do prazo original gravado
+    await ua('salvar_dia_indisponivel', { p: { data: soma(b2, 20), descricao: 'Feriado fictício', categoria: 'Feriado' } });
+    const rec = await ua('buscar_demanda', { p_id: sv.id });
+    ok(rec.prazo_original === soma(b2, 20) && rec.prazo_base_em === b2 && rec.prazo !== rec.prazo_original, 'recálculo por dia indisponível: o prazo original e a base ficam, só o vencimento ajustado muda');
+    await a20.close();
+  } finally { rmSync(pasta, { recursive: true, force: true }); }
 }
 
 // ---------- primeira abertura do banco de teste em um checkout novo (pasta-mãe ausente) ----------

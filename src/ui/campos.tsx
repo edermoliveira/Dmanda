@@ -9,39 +9,39 @@ import { anoReconhecido } from '@/lib/documentos';
 import {
   areasDoTipo, dataBR, diasAte, numeroDe, origemDe, permanencia, plural, PRAZOS, temArea, type Area, type DadosDemanda, type Demanda, type PrazoTipo,
 } from '@/lib/demandas';
-import { ajustarPrazo, BOTOES_PRAZO, dataComSemana, prazoPorDias, type DiaIndisponivel } from '@/lib/prazos';
+import { ajustarPrazo, BOTOES_PRAZO, dadosDoPrazo as dadosDoPrazoDe, dataComSemana, normalizarAtalho, prazoPorDias, type DiaIndisponivel } from '@/lib/prazos';
 import type { TarefaEdicao } from '@/nucleo/operacoes';
 
 export type Campos = {
   assunto: string; numero: string; origem: string; descricao: string; tipo: string; area: Area; rapida: boolean; ano_documento: string;
-  chegou_em: string; prazo_original: string; prazo_dias: number | null; prazo_tipo: PrazoTipo;
+  chegou_em: string; prazo_original: string; prazo_dias: number | null; /** O dia em que o botão de dias foi escolhido (vazio = prazo escolhido à mão). */ prazo_base_em: string; prazo_tipo: PrazoTipo;
   setor: string; acompanhar_em: string; encaminhada_em: string; reiterada_em: string;
 };
-export const CAMPOS_VAZIOS: Campos = { assunto: '', numero: '', origem: '', descricao: '', tipo: '', area: 'Geral', rapida: false, ano_documento: '', chegou_em: '', prazo_original: '', prazo_dias: null, prazo_tipo: 'Próprio', setor: '', acompanhar_em: '', encaminhada_em: '', reiterada_em: '' };
+export const CAMPOS_VAZIOS: Campos = { assunto: '', numero: '', origem: '', descricao: '', tipo: '', area: 'Geral', rapida: false, ano_documento: '', chegou_em: '', prazo_original: '', prazo_dias: null, prazo_base_em: '', prazo_tipo: 'Próprio', setor: '', acompanhar_em: '', encaminhada_em: '', reiterada_em: '' };
 
 export const doCampos = (d: Demanda): Campos => ({
   assunto: d.assunto, numero: numeroDe(d), origem: origemDe(d), descricao: d.descricao, tipo: d.tipo ?? '', area: d.area, rapida: d.rapida, ano_documento: d.documento_ano ? String(d.documento_ano) : '',
-  chegou_em: d.chegou_em ?? '', prazo_original: d.prazo_original ?? '', prazo_dias: d.prazo_dias, prazo_tipo: d.prazo_tipo, setor: d.setor ?? '', acompanhar_em: d.acompanhar_em ?? '', encaminhada_em: d.encaminhada_em ?? '', reiterada_em: d.reiterada_em ?? '',
+  chegou_em: d.chegou_em ?? '', prazo_original: d.prazo_original ?? '', prazo_dias: d.prazo_dias, prazo_base_em: d.prazo_dias !== null ? d.prazo_base_em ?? '' : '', prazo_tipo: d.prazo_tipo, setor: d.setor ?? '', acompanhar_em: d.acompanhar_em ?? '', encaminhada_em: d.encaminhada_em ?? '', reiterada_em: d.reiterada_em ?? '',
 });
 
 export type Secao = 'identificacao' | 'descricao' | 'chegada' | 'andamento' | 'tarefas';
 export const CAMPOS_DA_SECAO: Record<Exclude<Secao, 'tarefas'>, (keyof Campos)[]> = {
   identificacao: ['assunto', 'numero', 'origem', 'tipo', 'area', 'rapida', 'ano_documento'],
   descricao: ['descricao'],
-  chegada: ['chegou_em', 'prazo_tipo', 'prazo_original', 'prazo_dias'],
+  chegada: ['chegou_em', 'prazo_tipo', 'prazo_original', 'prazo_dias', 'prazo_base_em'],
   andamento: ['setor', 'acompanhar_em', 'encaminhada_em', 'reiterada_em'],
 };
 
 /**
- * O que enviar ao servidor sobre o prazo. Vai sempre a data original (vazia = sem prazo). Os dias do botão só vão quando acabaram de ser escolhidos
- * (o banco parte de hoje ao receber os dias): regravar o mesmo prazo não muda a referência da contagem.
+ * O que enviar ao servidor sobre o prazo (regra pura em lib/prazos.ts). Vai sempre a data original (vazia = sem prazo). Os dias do botão e o dia em que ele foi escolhido
+ * (a base, que o banco passa a respeitar) só vão quando mudaram: regravar o mesmo prazo não muda a referência da contagem.
  */
 /** O ano confirmado à mão: vazio ou inválido vira nulo (então vale o ano reconhecido no número). */
 const anoDeCampo = (v: string): number | null => { const n = Number(v.trim()); return v.trim() && Number.isInteger(n) && n >= 1900 && n <= 2100 ? n : null; };
-function dadosDoPrazo(c: Campos, base: Demanda | null): DadosDemanda {
-  const dias = c.prazo_dias !== null && c.prazo_original && (!base || c.prazo_original !== base.prazo_original || c.prazo_dias !== base.prazo_dias);
-  return { prazo_original: c.prazo_original || null, ...(dias ? { prazo_dias: c.prazo_dias } : {}) };
-}
+const dadosDoPrazo = (c: Campos, base: Demanda | null): DadosDemanda => dadosDoPrazoDe(c, base);
+
+/** Rascunho recuperado ou demanda aberta: deixa o prazo coerente (base do atalho recuperada quando o atalho a determina; senão prazo manual com a mesma data exibida). */
+export const comAtalhoCoerente = (c: Campos, hoje: string): Campos => normalizarAtalho(c, hoje);
 
 /** Todos os campos do cadastro guiado (nada de valor padrão inventado: número, origem, chegada e prazo vazios seguem vazios). Com a demanda já criada, "base" evita refazer a contagem dos dias. */
 export function paraDadosNovos(c: Campos, base: Demanda | null = null): DadosDemanda {
@@ -124,7 +124,7 @@ export function PreviaPrazo({ c, dias, hoje }: { c: Campos; dias: readonly DiaIn
   const quanto = k < 0 ? `vencida há ${plural(-k, 'dia')}` : k === 0 ? 'vence hoje' : `faltam ${plural(k, 'dia')}`;
   return (
     <p className="prev-prazo" role="status">
-      {c.prazo_dias ? <>{c.prazo_dias} dias corridos a partir de hoje ({dataBR(hoje)}), excluindo o dia de hoje: prazo original <b>{dataComSemana(c.prazo_original)}</b>. </> : <>Prazo original: <b>{dataComSemana(c.prazo_original)}</b>. </>}
+      {c.prazo_dias ? <>{c.prazo_dias} dias corridos a partir de {dataBR(c.prazo_base_em || hoje)}{!c.prazo_base_em || c.prazo_base_em === hoje ? ' (hoje)' : ' (o dia em que o botão foi escolhido)'}, excluindo o dia inicial: prazo original <b>{dataComSemana(c.prazo_original)}</b>. </> : <>Prazo original: <b>{dataComSemana(c.prazo_original)}</b>. </>}
       {r.ajuste ? <>Vencimento antecipado para <b>{dataComSemana(r.prazo)}</b> ({quanto}).<span className="ajuste">Dias pulados: {r.ajuste}.</span></> : <>Vencimento: <b>{dataComSemana(r.prazo)}</b> ({quanto}).</>}
     </p>
   );
@@ -146,13 +146,13 @@ export function CamposChegadaPrazo({ c, mudar, prefixo, hoje, dias, legado }: { 
       <div className="fld">
         <label htmlFor={`${prefixo}-prazo`}>Data final do prazo <small className="data">(opcional)</small></label>
         <div className="add-t">
-          <input id={`${prefixo}-prazo`} type="date" value={c.prazo_original} onChange={(e) => mudar({ prazo_original: e.target.value, prazo_dias: null })} />
-          {c.prazo_original ? <button className="btn mini" type="button" onClick={() => mudar({ prazo_original: '', prazo_dias: null })}>Sem prazo</button> : null}
+          <input id={`${prefixo}-prazo`} type="date" value={c.prazo_original} onChange={(e) => mudar({ prazo_original: e.target.value, prazo_dias: null, prazo_base_em: '' })} />
+          {c.prazo_original ? <button className="btn mini" type="button" onClick={() => mudar({ prazo_original: '', prazo_dias: null, prazo_base_em: '' })}>Sem prazo</button> : null}
         </div>
         <div className="dias-btns" role="group" aria-label="Prazo em dias corridos a partir de hoje">
-          {BOTOES_PRAZO.map((n) => <button key={n} type="button" className="btn mini" aria-pressed={c.prazo_dias === n} onClick={() => mudar({ prazo_original: prazoPorDias(n, hoje), prazo_dias: n })}>{n} dias</button>)}
+          {BOTOES_PRAZO.map((n) => <button key={n} type="button" className="btn mini" aria-pressed={c.prazo_dias === n} onClick={() => mudar({ prazo_original: prazoPorDias(n, hoje), prazo_dias: n, prazo_base_em: hoje })}>{n} dias</button>)}
         </div>
-        <span className="data">Os botões contam dias corridos a partir de hoje, não da chegada. Se a data cair em fim de semana, feriado ou evento externo de dia inteiro, o vencimento é antecipado para o dia disponível anterior.</span>
+        <span className="data">Os botões contam dias corridos a partir do dia em que você clica, não da chegada, e esse dia fica guardado: reabrir o rascunho ou virar o dia não muda a data. Clique de novo para contar a partir de outro dia. Se a data cair em fim de semana, feriado ou evento externo de dia inteiro, o vencimento é antecipado para o dia disponível anterior.</span>
         <PreviaPrazo c={c} dias={dias} hoje={hoje} />
         {legado ? <span className="data">Este prazo existia antes do cálculo por prazo original e foi mantido como referência.</span> : null}
       </div>

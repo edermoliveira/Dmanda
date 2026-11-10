@@ -354,6 +354,90 @@ for (const tema of ['claro', 'escuro']) {
   await t.ctx.close();
 }
 
+// ================= 5) prazo pelos botões de dias: a data-base é o dia do clique (decisão 31), e a data exibida é a gravada =================
+// Antes, um rascunho aberto em outro dia mostrava "dia do clique + N" mas o banco gravava "hoje + N". Aqui os rascunhos são montados direto no armazenamento do navegador (dados fictícios).
+{
+  const { ctx, pg } = await novoContexto({ viewport: { width: 1360, height: 800 } });
+  await ir(pg);
+  const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const soma = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+  const br = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+  const gravadas = async () => (await (await fetch(BASE + '/api/exportar')).json()).demandas;
+  const achar = async (assunto) => (await gravadas()).find((d) => d.assunto === assunto);
+  const campos = (assunto, extra) => ({ assunto, numero: '', origem: '', descricao: '', tipo: '', area: 'Geral', rapida: false, ano_documento: '', chegou_em: '', prazo_original: '', prazo_dias: null, prazo_tipo: 'Próprio', setor: '', acompanhar_em: '', encaminhada_em: '', reiterada_em: '', ...extra });
+  const guardar = async (chave, valor) => { await pg.evaluate(([k, v]) => { const m = JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}'); m[k] = v; localStorage.setItem('dmanda:rascunhos', JSON.stringify(m)); }, [chave, valor]); await ir(pg); };
+  const abrirRascunhoDoCadastro = async () => { await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#n-chegou', { timeout: 10000 }); };
+  const concluirCadastro = async () => { await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt', { timeout: 15000 }); await pg.click('.modal [aria-label="Fechar"]'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 15000 }); };
+  const previa = async () => (await pg.textContent('.modal .prev-prazo')).replace(/\s+/g, ' ');
+
+  // 5a) rascunho válido de anteontem: a base do clique é preservada e o banco grava a mesma data que a prévia mostra
+  {
+    const base = soma(hojeSP, -2), original = soma(base, 10);
+    await guardar('nova', { dados: campos('PRAZO atalho de anteontem', { prazo_original: original, prazo_dias: 10, prazo_base_em: base }), passo: 2, idNovo: crypto.randomUUID() });
+    await abrirRascunhoDoCadastro();
+    const t = await previa();
+    ok(t.includes(`10 dias corridos a partir de ${br(base)}`) && /o dia em que o botão foi escolhido/.test(t) && t.includes(br(original)), `rascunho de anteontem: a prévia diz que o prazo parte do dia do clique (${br(base)}) e mostra o prazo original ${br(original)}`);
+    ok(await pg.getAttribute('.modal .dias-btns button:has-text("10 dias")', 'aria-pressed') === 'true', 'rascunho de anteontem: o botão de 10 dias continua escolhido');
+    await concluirCadastro();
+    const d = await achar('PRAZO atalho de anteontem');
+    ok(d && d.prazo_original === original && d.prazo_dias === 10 && d.prazo_base_em === base, `rascunho de anteontem: o banco grava a data exibida (${d?.prazo_original}, base ${d?.prazo_base_em}), não hoje + 10 (${soma(hojeSP, 10)})`);
+  }
+  // 5b) rascunho legado (tem dias e data, não tem base): a base é recuperada e o atalho é preservado
+  {
+    const base = soma(hojeSP, -1), original = soma(base, 10);
+    await guardar('nova', { dados: campos('PRAZO atalho legado', { prazo_original: original, prazo_dias: 10 }), passo: 2, idNovo: crypto.randomUUID() });
+    await abrirRascunhoDoCadastro();
+    ok((await previa()).includes(`10 dias corridos a partir de ${br(base)}`) && await pg.getAttribute('.modal .dias-btns button:has-text("10 dias")', 'aria-pressed') === 'true', 'rascunho legado: a base é recuperada da data e dos dias e o atalho continua escolhido');
+    await concluirCadastro();
+    const d = await achar('PRAZO atalho legado');
+    ok(d && d.prazo_original === original && d.prazo_dias === 10 && d.prazo_base_em === base, `rascunho legado: o banco grava a data exibida (${d?.prazo_original}) com a base recuperada (${d?.prazo_base_em})`);
+  }
+  // 5c) a base não pode ser recuperada com segurança: vira prazo manual e a data exibida é preservada
+  {
+    const original = soma(hojeSP, 20);
+    await guardar('nova', { dados: campos('PRAZO manual por segurança', { prazo_original: original, prazo_dias: 10 }), passo: 2, idNovo: crypto.randomUUID() });
+    await abrirRascunhoDoCadastro();
+    const t = await previa();
+    ok(!/dias corridos a partir de/.test(t) && t.includes(br(original)) && await pg.getAttribute('.modal .dias-btns button:has-text("10 dias")', 'aria-pressed') === 'false', 'rascunho sem base recuperável: vira prazo manual, com a mesma data exibida e nenhum botão marcado');
+    await concluirCadastro();
+    const d = await achar('PRAZO manual por segurança');
+    ok(d && d.prazo_original === original && d.prazo_dias === null && d.prazo_base_em === null, 'rascunho sem base recuperável: o banco grava a data exibida como prazo manual');
+  }
+  // 5d) um novo clique escolhe a nova base (hoje)
+  {
+    const base = soma(hojeSP, -3);
+    await guardar('nova', { dados: campos('PRAZO novo clique', { prazo_original: soma(base, 10), prazo_dias: 10, prazo_base_em: base }), passo: 2, idNovo: crypto.randomUUID() });
+    await abrirRascunhoDoCadastro();
+    await pg.click('.modal .dias-btns button:has-text("20 dias")');
+    const t = await previa();
+    ok(t.includes(`20 dias corridos a partir de ${br(hojeSP)} (hoje)`) && t.includes(br(soma(hojeSP, 20))), 'novo clique: o botão escolhe uma nova base (hoje) e o prazo original passa a ser hoje + 20');
+    await concluirCadastro();
+    const d = await achar('PRAZO novo clique');
+    ok(d && d.prazo_original === soma(hojeSP, 20) && d.prazo_dias === 20 && d.prazo_base_em === hojeSP, 'novo clique: o banco grava a nova base e o novo prazo');
+  }
+  // 5e) edição de "Chegada e prazo" de uma demanda existente, com rascunho do atalho feito há 3 dias
+  {
+    await guardar('nova', { dados: campos('PRAZO edição de demanda'), passo: 2, idNovo: crypto.randomUUID() });
+    await abrirRascunhoDoCadastro(); await concluirCadastro();
+    const antes = await achar('PRAZO edição de demanda');
+    const base = soma(hojeSP, -3), original = soma(base, 30);
+    await guardar(`d:${antes.id}`, { dados: { ...campos('PRAZO edição de demanda', { prazo_original: original, prazo_dias: 30, prazo_base_em: base }), etapa: antes.etapa }, nt: '', versao: antes.versao, secoes: ['chegada'] });
+    await pg.click('.dcard:has-text("PRAZO edição de demanda") .assunto'); await pg.waitForSelector('[data-salvar="chegada"]', { timeout: 10000 });
+    const t = await previa();
+    ok(t.includes(`30 dias corridos a partir de ${br(base)}`) && t.includes(br(original)), `edição de Chegada e prazo: o rascunho antigo mostra a base do clique (${br(base)}) e o prazo original ${br(original)}`);
+    await pg.click('[data-salvar="chegada"]'); await pg.waitForFunction(() => !document.querySelector('[data-salvar="chegada"]'), null, { timeout: 15000 });
+    const d = await achar('PRAZO edição de demanda');
+    ok(d && d.prazo_original === original && d.prazo_dias === 30 && d.prazo_base_em === base, `edição de Chegada e prazo: o banco grava a data exibida (${d?.prazo_original}), não hoje + 30 (${soma(hojeSP, 30)})`);
+    // regravar a mesma seção sem mexer no prazo não muda a referência da contagem
+    await pg.click('[data-lapis="chegada"]'); await pg.waitForSelector('[data-salvar="chegada"]');
+    await pg.fill('#d-chegou', soma(hojeSP, -10)); await pg.click('[data-salvar="chegada"]'); await pg.waitForFunction(() => !document.querySelector('[data-salvar="chegada"]'), null, { timeout: 15000 });
+    const e = await achar('PRAZO edição de demanda');
+    ok(e && e.prazo_original === original && e.prazo_dias === 30 && e.prazo_base_em === base && e.chegou_em === soma(hojeSP, -10), 'edição de Chegada e prazo: mudar só a chegada mantém o prazo, os dias e a base');
+    await pg.click('.modal [aria-label="Fechar"]').catch(() => {});
+  }
+  await ctx.close();
+}
+
 ok(erros.length === 0, 'sem erros de JavaScript durante os fluxos' + (erros.length ? ': ' + erros.slice(0, 2).join(' | ') : ''));
 await nav.close(); parar();
 await new Promise((r) => setTimeout(r, 2500));
