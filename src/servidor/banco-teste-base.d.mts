@@ -4,3 +4,4 @@ export type OpcoesJwt = { email?: string | null; provedor?: string };
 export function entrarComo(tx: { query: PGlite['query']; exec: PGlite['exec'] }, usuarioId: string, opcoes?: OpcoesJwt): Promise<void>;
 export function chamarComoUsuario(db: PGlite, usuarioId: string, funcao: string, args?: Record<string, unknown>, opcoes?: OpcoesJwt): Promise<unknown>;
 export function chamarComoServico(db: PGlite, funcao: string, args?: Record<string, unknown>): Promise<unknown>;
+export function abrirUmaVez<T>(estado: Record<string, Promise<T> | undefined>, chave: string, abrir: () => Promise<T>): Promise<T>;

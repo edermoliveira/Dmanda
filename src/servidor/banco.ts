@@ -11,15 +11,16 @@ const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
 type Banco = { db: import('@electric-sql/pglite').PGlite };
 const g = globalThis as unknown as { __dmandaBancoTeste?: Promise<Banco> };
 
+// A abertura é memorizada, mas uma abertura rejeitada é esquecida: a chamada seguinte tenta de novo, sem reiniciar o servidor e sem tocar nos dados que já existem.
 async function bancoTeste(): Promise<Banco> {
-  g.__dmandaBancoTeste ??= (async () => {
-    const { abrirBancoTeste } = await import('./banco-teste-base.mjs');
+  const { abrirBancoTeste, abrirUmaVez } = await import('./banco-teste-base.mjs');
+  const estado = g as unknown as Record<string, Promise<Banco> | undefined>;
+  return abrirUmaVez<Banco>(estado, '__dmandaBancoTeste', async () => {
     const db = await abrirBancoTeste({ pasta: process.env.DMANDA_PASTA_TESTE ?? './.dados-teste/pg' });
     await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO_TESTE]);
     await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
     return { db };
-  })();
-  return g.__dmandaBancoTeste;
+  });
 }
 
 /** Erros de regra do banco (P0001) já vêm em português e são mostrados; o resto vira mensagem genérica (o detalhe vai para o log). */

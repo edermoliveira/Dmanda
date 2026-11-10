@@ -14,7 +14,7 @@ Painel pessoal de demandas do Secretário de Administração da Prefeitura de Ta
 
 ```
 npm install        (só na primeira vez)
-npm run dev:teste  (aplicação em http://localhost:7100 com banco local descartável, sem Supabase)
+npm run dev:teste  (aplicação em http://localhost:7100 com banco local descartável, sem Supabase; num checkout novo a pasta .dados-teste é criada sozinha e o banco nasce com zero demandas, então cadastre algumas para ver as telas)
 npm run dev        (aplicação em http://localhost:7100 com o Supabase real, exige .env.local)
 ```
 

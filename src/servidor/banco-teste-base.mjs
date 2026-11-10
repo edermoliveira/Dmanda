@@ -2,8 +2,8 @@
 // fornece (papéis anon e authenticated, esquema auth com auth.uid()). Serve para testar as regras e a RLS sem um projeto Supabase.
 // NÃO é o banco de uso: não valida o Supabase real (plataforma, Auth, chaves, rede). Usado pelos testes e, sob DMANDA_BANCO=teste, pelo aplicativo em desenvolvimento.
 import { PGlite } from '@electric-sql/pglite';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 
 const PALCO = `
 create role anon nologin; create role authenticated nologin;
@@ -39,6 +39,9 @@ grant usage on schema public to service_role; grant usage on schema auth to serv
 const JA_TINHAM = ['20261025000000_nucleo_demandas.sql', '20261025000100_salvar_demanda.sql'];
 
 export async function abrirBancoTeste({ pasta, raizMigracoes = join(/*turbopackIgnore: true*/ process.cwd(), 'supabase', 'migrations') } = {}) {
+  // Num checkout novo a pasta .dados-teste não existe (o Git a ignora) e o PGlite só cria a última pasta do caminho, não as anteriores: a pasta-mãe é criada aqui.
+  // Só cria; nunca apaga nem esvazia nada (os dados da prévia ficam onde estão).
+  if (pasta) mkdirSync(dirname(resolve(/*turbopackIgnore: true*/ pasta)), { recursive: true });
   const db = pasta ? new PGlite(pasta) : new PGlite();
   await db.waitReady;
   const ja = await db.query("select to_regnamespace('auth') as a, to_regclass('public.demandas') as d, to_regclass('teste_infra.migracoes') as m");
@@ -54,6 +57,19 @@ export async function abrirBancoTeste({ pasta, raizMigracoes = join(/*turbopackI
     await db.query('insert into teste_infra.migracoes (nome) values ($1)', [f]);
   }
   return db;
+}
+
+/**
+ * Abre uma coisa uma só vez por `estado` (chamadas simultâneas esperam a mesma abertura) e, se a abertura for rejeitada, esquece a falha: a chamada seguinte tenta de novo
+ * em vez de repetir para sempre o erro memorizado (a pasta pode ter sido criada, o disco liberado...). Usada pelo `dev:teste` para o banco de teste.
+ */
+export function abrirUmaVez(estado, chave, abrir) {
+  if (!estado[chave]) {
+    const p = Promise.resolve().then(abrir);
+    estado[chave] = p;
+    p.catch(() => { if (estado[chave] === p) delete estado[chave]; });
+  }
+  return estado[chave];
 }
 
 // Entra, dentro de uma transação, como um usuário autenticado: define as claims do JWT (sub, e-mail e provedor, como o Supabase Auth assina)

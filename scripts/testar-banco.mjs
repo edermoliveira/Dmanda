@@ -1570,5 +1570,48 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   for (const d of [destino, d2, atual, dest2, dq]) await d.close();
 }
 
+// ---------- primeira abertura do banco de teste em um checkout novo (pasta-mãe ausente) ----------
+// O `dev:teste` abre ./.dados-teste/pg; num checkout novo a pasta .dados-teste não existe e o PGlite não cria a pasta-mãe. A abertura precisa criá-la (nunca apagar nada) e,
+// se uma abertura for rejeitada, a próxima chamada precisa tentar de novo em vez de repetir a falha memorizada.
+{
+  const { mkdtempSync, rmSync, existsSync, mkdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { abrirUmaVez } = await import('../src/servidor/banco-teste-base.mjs');
+  const raiz = mkdtempSync(join(tmpdir(), 'dmanda-primeira-abertura-'));
+  try {
+    const pasta = join(raiz, 'nao-existe', '.dados-teste', 'pg');
+    let aberto = null, falha = null;
+    try { aberto = await abrirBancoTeste({ pasta }); } catch (e) { falha = e; }
+    ok(falha === null && aberto !== null, `primeira abertura: pasta-mãe ausente é criada e o banco abre${falha ? ' (' + (falha.code || falha.message) + ')' : ''}`);
+    if (aberto) {
+      const n = (await aberto.query('select (select count(*) from public.demandas)::int d, (select count(*) from public.entradas)::int e, (select count(*) from public.registros_dia)::int r')).rows[0];
+      ok(n.d === 0 && n.e === 0 && n.r === 0, 'primeira abertura: um checkout novo nasce com zero demandas, zero entradas e zero registros de humor');
+      await aberto.query("insert into auth.users (id, email) values ('99999999-9999-4999-8999-999999999999', 'p@teste')");
+      await aberto.close();
+      // reabrir a mesma pasta (agora existente, com dados) não apaga nada
+      const outra = await abrirBancoTeste({ pasta });
+      ok((await outra.query("select count(*)::int n from auth.users where email = 'p@teste'")).rows[0].n === 1 && existsSync(pasta), 'primeira abertura: reabrir a pasta que já existe preserva o que estava gravado');
+      await outra.close();
+    }
+    // pasta-mãe já existente continua funcionando
+    const existente = join(raiz, 'ja-existe'); mkdirSync(existente, { recursive: true });
+    const b = await abrirBancoTeste({ pasta: join(existente, 'pg') });
+    ok((await b.query('select count(*)::int n from public.demandas')).rows[0].n === 0, 'primeira abertura: pasta-mãe que já existia também abre');
+    await b.close();
+
+    // abertura rejeitada: a próxima chamada tenta de novo (nada de falha memorizada) e o que deu certo é reaproveitado
+    const estado = {}; let chamadas = 0;
+    const abrir = async () => { chamadas++; if (chamadas === 1) throw Object.assign(new Error('falha simulada'), { code: 'SIMULADA' }); return { db: 'aberto' }; };
+    const r1 = await abrirUmaVez(estado, 'banco', abrir).then(() => 'ok', (e) => e.code);
+    const r2 = await abrirUmaVez(estado, 'banco', abrir).then((v) => v.db, (e) => e.code);
+    const r3 = await abrirUmaVez(estado, 'banco', abrir).then((v) => v.db, (e) => e.code);
+    ok(r1 === 'SIMULADA' && r2 === 'aberto' && r3 === 'aberto' && chamadas === 2, 'abertura rejeitada: a chamada seguinte tenta de novo, e depois que abre ela é reaproveitada (sem abrir duas vezes)');
+    const paralelas = {}; let abertas = 0;
+    await Promise.all([1, 2, 3].map(() => abrirUmaVez(paralelas, 'banco', async () => { abertas++; await new Promise((r) => setTimeout(r, 30)); return {}; })));
+    ok(abertas === 1, 'abertura simultânea: três chamadas ao mesmo tempo abrem o banco uma só vez');
+  } finally { rmSync(raiz, { recursive: true, force: true }); }
+}
+
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);
