@@ -49,6 +49,10 @@ type Ctx = {
   hoje: string;
   carregando: boolean;
   erroCarga: string | null;
+  /** Erro de leitura só dos dias indisponíveis ou só das opções de origem e tipo (a carga conjunta tem um resultado por parte): o que já estava carregado é mantido. */
+  erroDias: string | null;
+  erroOpcoes: string | null;
+  /** "Tentar de novo" da carga: relê TUDO pelo mesmo caminho da abertura (demandas, entradas, eventos, dias, humor, opções, Para hoje, rotina e ambiente). */
   recarregar: () => Promise<void>;
   /** Lê as demandas arquivadas; devolve false se a leitura falhou (o erro já foi avisado). */
   /** Com `silencioso`, a falha não mostra o aviso rápido: quem chamou (a busca) mostra o seu próprio. */
@@ -174,6 +178,9 @@ async function explicarFalha(offlineAntes: boolean): Promise<string> {
 }
 const protegido = async <T,>(f: () => Promise<Resultado<T>>): Promise<Resultado<T>> => { const offlineAntes = typeof navigator !== 'undefined' && !navigator.onLine; try { return await f(); } catch { return { ok: false, erro: await explicarFalha(offlineAntes) }; } };
 
+const MSG_LEITURA_DESCARTADA = 'Havia gravações em andamento e a leitura foi descartada para não trazer dados antigos por cima delas. Nada foi perdido. Tente de novo.';
+type CargaConjunta = Extract<Awaited<ReturnType<typeof cargaInicial>>, { ok: true }>['dados'];
+
 const assinarConexao = (aviso: () => void) => { addEventListener('online', aviso); addEventListener('offline', aviso); return () => { removeEventListener('online', aviso); removeEventListener('offline', aviso); }; };
 /** true enquanto o navegador diz que há conexão (no servidor e na hidratação vale true, para as duas telas serem iguais). */
 export const useOnline = () => useSyncExternalStore(assinarConexao, () => navigator.onLine, () => true);
@@ -211,6 +218,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [hoje, setHoje] = useState('2000-01-01');
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
+  const [erroDias, setErroDias] = useState<string | null>(null);
+  const [erroOpcoes, setErroOpcoes] = useState<string | null>(null);
   const [aviso, setAviso] = useState<Aviso>(null);
   const [ambiente, setAmbiente] = useState<Ctx['ambiente']>(null);
   const [rotina, setRotina] = useState<Ctx['rotina']>(null);
@@ -296,13 +305,38 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const recarregar = useCallback(async () => {
-    setCarregando(true);
-    const r = await protegido(() => srv.listarDemandas(false));
+  // Aplica o resultado da carga conjunta. A abertura e o "Tentar de novo" usam este MESMO caminho. Cada parte tem o seu resultado: a que falhou mostra o seu erro e mantém o que já estava
+  // na tela (nunca vira uma lista vazia "carregada com sucesso"), e as outras partes entram normalmente.
+  const aplicarCarga = useCallback((c: CargaConjunta) => {
     // a data de hoje vai no mesmo lote das demandas: sem isso os cards aparecem um instante com a data provisória e mostram prazos errados
-    if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); } else setErroCarga(r.erro);
+    if (c.demandas.ok) { setHoje(hojeISO()); setDemandas(c.demandas.dados); setErroCarga(null); } else setErroCarga(c.demandas.erro);
     setCarregando(false);
+    if (c.entradas.ok) { setEntradas(c.entradas.dados); setErroEntradas(null); } else setErroEntradas(c.entradas.erro);
+    setCarregandoEntradas(false);
+    if (c.eventos.ok) { setEventos(c.eventos.dados); setErroEventos(null); } else setErroEventos(c.eventos.erro);
+    setCarregandoEventos(false);
+    if (c.registros.ok) { setRegistros(c.registros.dados); setErroRegistros(null); } else setErroRegistros(c.registros.erro);
+    setCarregandoRegistros(false);
+    if (c.dias.ok) { setDias(c.dias.dados); setErroDias(null); } else setErroDias(c.dias.erro);
+    if (c.opcoes.ok) { setOpcoes(agruparOpcoes(c.opcoes.dados)); setErroOpcoes(null); } else setErroOpcoes(c.opcoes.erro);
+    if (c.paraHoje.ok) setParaHoje(c.paraHoje.dados);
+    if (c.rotina?.ok) setRotina(c.rotina.dados);
+    if (c.ambiente) setAmbiente(c.ambiente);
   }, []);
+  // Lê a carga conjunta e aplica. Uma leitura que começou antes de uma gravação terminar (ou durante ela) pode trazer o estado antigo e nunca sobrescreve o que a pessoa acabou de gravar:
+  // ela é descartada e refeita (até 3 vezes). Se as gravações não pararem, nada possivelmente antigo é aplicado e a tela diz isso.
+  const carregarTudo = useCallback(async () => {
+    for (let i = 0; i < 3; i++) {
+      const antes = gravacoes.current;
+      const r = await protegido(() => cargaInicial());
+      if (gravacoes.current !== antes || pendentes.current > 0) { await new Promise((ok) => setTimeout(ok, 400)); continue; }
+      if (r.ok) aplicarCarga(r.dados);
+      else { setErroCarga(r.erro); setErroEntradas(r.erro); setErroEventos(r.erro); setErroRegistros(r.erro); setCarregando(false); setCarregandoEntradas(false); setCarregandoEventos(false); setCarregandoRegistros(false); }
+      return;
+    }
+    setErroCarga(MSG_LEITURA_DESCARTADA); setCarregando(false); setCarregandoEntradas(false); setCarregandoEventos(false); setCarregandoRegistros(false);
+  }, [aplicarCarga]);
+  const recarregar = useCallback(async () => { setCarregando(true); await carregarTudo(); }, [carregarTudo]);
   // Uma leitura por vez: se já há uma em andamento, quem pede de novo recebe a mesma (a busca e o Perfil abrem e pedem os arquivados; em desenvolvimento o React ainda repete o efeito da montagem,
   // e sem isto cada abertura mandava duas leituras iguais ao servidor).
   const lendoArquivadas = useRef<Promise<boolean> | null>(null);
@@ -356,30 +390,14 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setHoje(hojeISO());
-    // uma só chamada ao servidor traz tudo (ver servidor/carga.ts); cada parte tem o seu resultado e o seu erro
-    void protegido(() => cargaInicial()).then((r) => {
-      if (!r.ok) { setErroCarga(r.erro); setErroEntradas(r.erro); setErroEventos(r.erro); setErroRegistros(r.erro); setCarregando(false); setCarregandoEntradas(false); setCarregandoEventos(false); setCarregandoRegistros(false); return; }
-      const c = r.dados;
-      if (c.demandas.ok) { setHoje(hojeISO()); setDemandas(c.demandas.dados); setErroCarga(null); } else setErroCarga(c.demandas.erro);
-      setCarregando(false);
-      if (c.entradas.ok) { setEntradas(c.entradas.dados); setErroEntradas(null); } else setErroEntradas(c.entradas.erro);
-      setCarregandoEntradas(false);
-      if (c.eventos.ok) { setEventos(c.eventos.dados); setErroEventos(null); } else setErroEventos(c.eventos.erro);
-      setCarregandoEventos(false);
-      if (c.registros.ok) { setRegistros(c.registros.dados); setErroRegistros(null); } else setErroRegistros(c.registros.erro);
-      setCarregandoRegistros(false);
-      if (c.dias.ok) setDias(c.dias.dados);
-      if (c.opcoes.ok) setOpcoes(agruparOpcoes(c.opcoes.dados));
-      if (c.paraHoje.ok) setParaHoje(c.paraHoje.dados);
-      if (c.rotina?.ok) setRotina(c.rotina.dados);
-      if (c.ambiente) setAmbiente(c.ambiente);
-    });
+    // uma só chamada ao servidor traz tudo (ver servidor/carga.ts); cada parte tem o seu resultado e o seu erro. O "Tentar de novo" repete exatamente este caminho.
+    void carregarTudo();
     // um só relógio para o dia e para a hora (os dois lidos do MESMO instante, em America/Sao_Paulo), senão na virada do dia o aviso pode juntar a data de ontem com a hora de hoje
     const tique = () => { const a = new Date(); setHoje(hojeISO(a)); setAgoraMin(minutosAgora(a)); };
     const relogio = setInterval(tique, 30_000);
     setAgoraMin(minutosAgora());
     return () => { clearInterval(relogio); };
-  }, []);
+  }, [carregarTudo]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => { janelaAberta.current = janela !== null; }, [janela]);
@@ -394,11 +412,11 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       if (!c.ok) return; // sem rede agora: o que está na tela continua
       const { demandas: r, dias: d, entradas: en, eventos: evs, registros: rg, opcoes: op, paraHoje: ph } = c.dados;
       if (gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) {
-        if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) setDias(d.dados); }
+        if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) { setDias(d.dados); setErroDias(null); } }
         if (en.ok) { setEntradas(en.dados); setErroEntradas(null); }
         if (evs.ok) { setEventos(evs.dados); setErroEventos(null); }
         if (rg.ok) { setRegistros(rg.dados); setErroRegistros(null); }
-        if (op.ok) setOpcoes(agruparOpcoes(op.dados));
+        if (op.ok) { setOpcoes(agruparOpcoes(op.dados)); setErroOpcoes(null); }
         if (ph.ok) setParaHoje(ph.dados);
         setAgoraMin(minutosAgora());
       }
@@ -487,7 +505,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const valor = useMemo<Ctx>(() => ({
     opcoes, criarOpcao, paraHoje, sincronizarParaHoje,
     registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar,
-    demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, setAbaArquivo,
+    demandas, arquivadas, dias, hoje, carregando, erroCarga, erroDias, erroOpcoes, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, setAbaArquivo,
     criarEntrada: (dados) => rodarEntrada(() => srvE.criarEntrada(dados)),
     salvarEntrada: (id, dados, versao) => rodarEntrada(() => srvE.salvarEntrada(id, dados, versao)),
     buscarEntrada: async (id) => { const r = await protegido(() => srvE.buscarEntrada(id)); return r.ok ? r.dados : null; },
@@ -584,7 +602,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, prefsPerfil, pronto, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
+  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, erroDias, erroOpcoes, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, prefsPerfil, pronto, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

@@ -423,6 +423,130 @@ await subir(PASTA_A);
   }
 }
 
+// ================= 7e) a carga inicial falha: "Tentar de novo" recupera TUDO pelo mesmo caminho da abertura =================
+// Antes, o botão relia só as demandas: o ambiente, os dias indisponíveis e as opções de origem e tipo ficavam de fora (e o Clima, que depende do ambiente, não aparecia). Aqui a carga inteira é
+// derrubada na primeira abertura (erro 500 do servidor) e depois liberada; também se prova a falha PARCIAL de dias/opções (erro de leitura, sem lista vazia fingindo sucesso, dados mantidos)
+// e que uma leitura feita antes de uma gravação não é aplicada por cima dela.
+{
+  const MARCA = 'RECUPERA rascunho que não pode sumir';
+  const rascunho = JSON.stringify({ 'e:nova': { dados: { titulo: '', texto: MARCA, cor: null, fixada: false }, tocados: ['texto'], base: {} } });
+  const ehCarga = (t) => /^1:\{"ok":true,"dados":\{"demandas":/m.test(t);
+  const controlar = async (pg) => {
+    const c = { falhar: 0, partes: [], atraso: 0, chamadas: 0 };
+    await pg.route('**/*', async (route) => {
+      const q = route.request();
+      if (!(q.method() === 'POST' && q.headers()['next-action'])) { await route.fallback(); return; }
+      const r = await route.fetch(); const t = await r.text();
+      if (!ehCarga(t)) { await route.fulfill({ response: r, body: t }); return; }
+      c.chamadas++;
+      if (c.atraso) await new Promise((x) => setTimeout(x, c.atraso));
+      if (c.falhar > 0) { c.falhar--; await route.fulfill({ status: 500, headers: { 'content-type': 'text/plain' }, body: 'falha simulada da carga inicial' }); return; }
+      if (c.partes.length) {
+        const linhas = t.split('\n'), i = linhas.findIndex((l) => /^1:\{"ok":true,"dados":\{"demandas":/.test(l));
+        const j = JSON.parse(linhas[i].slice(2)); for (const parte of c.partes) j.dados[parte] = { ok: false, erro: `Falha simulada em ${parte}.` };
+        linhas[i] = '1:' + JSON.stringify(j); const corpo = linhas.join('\n');
+        await route.fulfill({ response: r, body: corpo, headers: { ...r.headers(), 'content-length': String(Buffer.byteLength(corpo)) } }); return;
+      }
+      await route.fulfill({ response: r, body: t });
+    });
+    return c;
+  };
+  const semear = async (ctx) => {
+    await ctx.addInitScript((r) => { try { if (!sessionStorage.getItem('rasc-recupera')) { sessionStorage.setItem('rasc-recupera', '1'); localStorage.setItem('dmanda:rascunhos', r); } } catch { /* sem armazenamento */ } }, rascunho);
+  };
+  const aba = async (pg, nav) => { await pg.click(`.side .navi[data-nav="${nav}"]`); await pg.waitForTimeout(600); };
+  const diasNaTela = async (pg) => { await aba(pg, 'config'); return (await pg.$$eval('.cfg-lista li', (l) => l.map((x) => x.textContent.replace(/\s+/g, ' ')))).join(' | '); };
+  const origensNoFiltro = async (pg) => { await aba(pg, 'demandas'); await pg.click('[data-filtros]'); await pg.waitForSelector('#f-origem'); const o = await pg.$$eval('#f-origem option', (l) => l.map((x) => x.textContent)); await pg.keyboard.press('Escape'); return o; };
+
+  // semente: um dia indisponível fictício, cadastrado pela tela
+  {
+    const { ctx, pg } = await novoContexto();
+    await ir(pg, '/config');
+    await pg.fill('#cfg-data', `${new Date().getFullYear() + 1}-12-25`); await pg.fill('#cfg-desc', 'TESTE Natal fictício');
+    await pg.click('.btn.pri:has-text("Cadastrar dia")');
+    await pg.waitForFunction(() => /TESTE Natal fictício/.test(document.querySelector('.cfg-lista')?.textContent ?? ''), null, { timeout: 30000 });
+    await ctx.close();
+  }
+
+  // 1) a carga inteira falha na abertura; "Tentar de novo" traz ambiente, dias, opções e as demais partes
+  {
+    const { ctx, pg } = await novoContexto(); await semear(ctx);
+    const antes = erros.length, ctl = await controlar(pg); ctl.falhar = 2;   // a abertura em desenvolvimento pode pedir duas vezes
+    await ir(pg, '/');
+    await pg.waitForSelector('.erro-carga[role="alert"]', { timeout: 30000 });
+    const alerta = await pg.textContent('.erro-carga[role="alert"]');
+    ok(/Não foi possível carregar as demandas/.test(alerta) && ctl.chamadas >= 1, `carga inicial falha: a tela avisa que não conseguiu carregar (${ctl.chamadas} chamada(s) derrubada(s))`);
+    ok(!(await pg.$('.faixa-teste')) && !(await pg.$('section.wg-clima')), 'carga inicial falha: sem o ambiente lido a tela não finge que está tudo certo (sem faixa de teste, sem Clima)');
+    ok(JSON.stringify(await rascunhos(pg)).includes(MARCA), 'carga inicial falha: o rascunho guardado no aparelho continua intacto');
+    ctl.falhar = 0;
+    await pg.click('.erro-carga[role="alert"] .btn:has-text("Tentar de novo")');
+    await pg.waitForFunction(() => !document.querySelector('.erro-carga[role="alert"]'), null, { timeout: 30000 });
+    await pg.waitForSelector('.faixa-teste', { timeout: 20000 });
+    ok(!!(await pg.$('.faixa-teste')), 'Tentar de novo: o ambiente voltou (a faixa do banco de teste aparece, que é o que o Clima e os lembretes esperam)');
+    ok((await pg.$$('.stat')).length === 3, 'Tentar de novo: o Início voltou inteiro (grupos de prazo)');
+    ok(/TESTE Natal fictício/.test(await diasNaTela(pg)), 'Tentar de novo: os dias indisponíveis voltaram (antes só as demandas eram relidas)');
+    ok((await origensNoFiltro(pg)).includes('Prefeita'), 'Tentar de novo: as opções de origem voltaram (a lista tem a origem padrão "Prefeita")');
+    ok(JSON.stringify(await rascunhos(pg)).includes(MARCA) && erros.length === antes, 'Tentar de novo: o rascunho continua intacto e não houve erro de página');
+    await ctx.close();
+  }
+
+  // 2) falha PARCIAL de dias e de opções: erro de leitura no lugar de lista vazia; as outras partes chegam; Tentar de novo recupera
+  for (const partes of [['dias'], ['opcoes'], ['dias', 'opcoes']]) {
+    const { ctx, pg } = await novoContexto(); await semear(ctx);
+    const antes = erros.length, ctl = await controlar(pg); ctl.partes = partes;
+    await ir(pg, '/');
+    await pg.waitForSelector('[data-erro-leitura]', { timeout: 30000 });
+    const t = (await pg.textContent('[data-erro-leitura]')).replace(/\s+/g, ' ');
+    const esperado = partes.length === 2 ? /dias indisponíveis e as opções/ : partes[0] === 'dias' ? /ler os dias indisponíveis\./ : /ler as opções de origem e tipo\./;
+    ok(esperado.test(t) && /O que já estava na tela foi mantido/.test(t), `falha parcial (${partes.join(' e ')}): aparece o erro de leitura dessa parte (${t.slice(0, 70)})`);
+    ok((await pg.$$('.stat')).length === 3 && !!(await pg.$('.faixa-teste')), `falha parcial (${partes.join(' e ')}): o resto da carga chegou certo (grupos de prazo e ambiente)`);
+    ok(JSON.stringify(await rascunhos(pg)).includes(MARCA), `falha parcial (${partes.join(' e ')}): o rascunho continua intacto`);
+    if (partes.includes('dias')) { await aba(pg, 'config'); const cfg = (await pg.textContent('section[aria-labelledby="cfg-dias-t"]')).replace(/\s+/g, ' '); ok(/Não foi possível ler os dias cadastrados/.test(cfg) && !/Nenhum dia cadastrado/.test(cfg), 'falha parcial (dias): Configurações não afirma "Nenhum dia cadastrado" (a leitura falhou, a lista pode estar incompleta)'); }
+    ctl.partes = [];
+    await aba(pg, 'inicio');   // o aviso é o mesmo em todas as telas; o clique é feito no Início
+    await pg.click('[data-erro-leitura] .btn:has-text("Tentar de novo")');
+    await pg.waitForFunction(() => !document.querySelector('[data-erro-leitura]'), null, { timeout: 30000 });
+    if (partes.includes('dias')) ok(/TESTE Natal fictício/.test(await diasNaTela(pg)), `falha parcial (${partes.join(' e ')}): depois de Tentar de novo os dias indisponíveis aparecem`);
+    if (partes.includes('opcoes')) ok((await origensNoFiltro(pg)).includes('Prefeita'), `falha parcial (${partes.join(' e ')}): depois de Tentar de novo as opções aparecem`);
+    ok(erros.length === antes, `falha parcial (${partes.join(' e ')}): nenhum erro de página`);
+    await ctx.close();
+  }
+
+  // 3) a falha parcial de uma nova tentativa NÃO apaga o que a abertura já tinha carregado
+  {
+    const { ctx, pg } = await novoContexto();
+    const ctl = await controlar(pg); ctl.partes = ['opcoes'];
+    await ir(pg, '/'); await pg.waitForSelector('[data-erro-leitura]', { timeout: 30000 });
+    ok(/TESTE Natal fictício/.test(await diasNaTela(pg)), 'dados mantidos: os dias carregados na abertura aparecem (só as opções falharam)');
+    ctl.partes = ['dias'];
+    await pg.click('[data-erro-leitura] .btn:has-text("Tentar de novo")');
+    await pg.waitForFunction(() => /ler os dias indisponíveis\./.test(document.querySelector('[data-erro-leitura]')?.textContent ?? ''), null, { timeout: 30000 });
+    ok(/TESTE Natal fictício/.test(await diasNaTela(pg)), 'dados mantidos: a nova tentativa em que os dias falham NÃO apaga a lista que já estava na tela');
+    ctl.partes = [];
+    await ctx.close();
+  }
+
+  // 4) gravação durante a releitura: a resposta antiga não é aplicada por cima do que acabou de ser gravado
+  {
+    const { ctx, pg } = await novoContexto();
+    const ctl = await controlar(pg); ctl.falhar = 2;
+    await ir(pg, '/entradas');
+    await pg.waitForSelector('.erro-carga[role="alert"]', { timeout: 30000 });
+    ctl.falhar = 0; ctl.atraso = 4000; const chamadasAntes = ctl.chamadas;
+    await pg.click('.erro-carga[role="alert"] .btn:has-text("Tentar de novo")');
+    await novaEntrada(pg); await pg.fill('#e-texto', 'RECUPERA gravada durante a releitura');
+    await esperaEstado(pg, 'salvo', 30000);
+    await pg.click('.modal .btn.pri'); await janelaFechada(pg);
+    ctl.atraso = 0;
+    await pg.waitForFunction(() => !document.querySelector('.erro-carga[role="alert"]'), null, { timeout: 60000 });
+    await pg.waitForTimeout(1500);
+    ok(ctl.chamadas - chamadasAntes >= 2, `releitura com gravação no meio: a primeira leitura foi descartada e refeita (${ctl.chamadas - chamadasAntes} leituras)`);
+    ok(/RECUPERA gravada durante a releitura/.test(await pg.textContent('.postits')), 'releitura com gravação no meio: a anotação recém-gravada continua na lista (a resposta antiga não a apagou)');
+    ok(comMarca((await dados()).entradas, 'RECUPERA gravada durante').length === 1, 'releitura com gravação no meio: uma só anotação no banco');
+    await ctx.close();
+  }
+}
+
 // ================= 7c) armazenamento do navegador corrompido ou bloqueado, textos grandes e Unicode =================
 {
   const formatos = {

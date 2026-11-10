@@ -14,7 +14,7 @@ type Form = { id?: string; data: string; descricao: string; categoria: Categoria
 const VAZIO: Form = { data: '', descricao: '', categoria: 'Feriado' };
 
 export function PaginaConfig() {
-  const { dias, salvarDia, excluirDia, carregando } = useApp();
+  const { dias, salvarDia, excluirDia, carregando, erroDias } = useApp();
   const [f, setF] = useState<Form>(VAZIO);
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -55,7 +55,7 @@ export function PaginaConfig() {
           </div>
         </div>
         {!dias.length ? (
-          <p className="data" style={{ marginTop: 14 }}>{carregando ? 'Carregando...' : 'Nenhum dia cadastrado. Só os fins de semana ajustam os prazos por enquanto.'}</p>
+          <p className="data" style={{ marginTop: 14 }}>{carregando ? 'Carregando...' : erroDias ? 'Não foi possível ler os dias cadastrados agora, então esta lista pode estar incompleta. Use "Tentar de novo" no aviso do topo.' : 'Nenhum dia cadastrado. Só os fins de semana ajustam os prazos por enquanto.'}</p>
         ) : (
           <ul className="cfg-lista" aria-label="Dias cadastrados">
             {dias.map((x) => (

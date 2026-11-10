@@ -27,7 +27,7 @@ function useToque() {
 }
 
 function Interior({ children }: { children: ReactNode }) {
-  const { tema, aparencia, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover, avisosEventos, dispensarAviso, perfilAberto } = useApp();
+  const { tema, aparencia, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, erroDias, erroOpcoes, recarregar, fecharMenuMover, avisosEventos, dispensarAviso, perfilAberto } = useApp();
   const caminho = usePathname();
   const router = useRouter();
   const toque = useToque();
@@ -124,6 +124,13 @@ function Interior({ children }: { children: ReactNode }) {
             </div>
           ) : null}
           {erroCarga ? <div className="erro-carga" role="alert"><b>Não foi possível carregar as demandas.</b><span>{erroCarga}</span><button className="btn mini" onClick={() => void recarregar()}>Tentar de novo</button></div> : null}
+          {erroDias || erroOpcoes ? (
+            <div className="erro-carga" role="alert" data-erro-leitura>
+              <b>Não foi possível ler {erroDias && erroOpcoes ? 'os dias indisponíveis e as opções de origem e tipo' : erroDias ? 'os dias indisponíveis' : 'as opções de origem e tipo'}.</b>
+              <span>O que já estava na tela foi mantido. {erroDias ? 'Os prazos continuam calculados pelo banco, mas a lista de dias pode estar incompleta aqui.' : ''}</span>
+              <button className="btn mini" onClick={() => void recarregar()}>Tentar de novo</button>
+            </div>
+          ) : null}
           {children}
         </main>
         <nav className="bar glass" aria-label="Navegação">

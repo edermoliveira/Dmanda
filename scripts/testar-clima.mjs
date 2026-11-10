@@ -160,6 +160,30 @@ const guardado = (pg, chave) => pg.evaluate((k) => { try { return JSON.parse(loc
   await ctx.close();
 }
 
+// ================= 1b) a carga inicial falha: "Tentar de novo" traz o ambiente e, com ele, o Clima =================
+// O widget só aparece depois que o ambiente (que vem da carga conjunta) é lido. Antes, o botão do aviso relia só as demandas: o Clima ficava ausente até recarregar a página.
+{
+  const { ctx, pg, e } = await novo({ viewport: { width: 1280, height: 800 } });
+  let derrubar = 2, derrubadas = 0;
+  await pg.route('**/*', async (rota) => {
+    const q = rota.request();
+    if (!(q.method() === 'POST' && q.headers()['next-action'])) { await rota.fallback(); return; }
+    const r = await rota.fetch(); const t = await r.text();
+    if (derrubar > 0 && /^1:\{"ok":true,"dados":\{"demandas":/m.test(t)) { derrubar--; derrubadas++; await rota.fulfill({ status: 500, headers: { 'content-type': 'text/plain' }, body: 'falha simulada da carga inicial' }); return; }
+    await rota.fulfill({ response: r, body: t });
+  });
+  await abrir(pg);
+  await pg.waitForSelector('.erro-carga[role="alert"]', { timeout: 30000 });
+  ok(derrubadas >= 1 && !(await pg.$('section.wg-clima')) && previsoes(e).length === 0, 'carga inicial falha: o Clima não aparece e nenhuma consulta ao Open-Meteo sai antes de o ambiente ser lido');
+  derrubar = 0;
+  await pg.click('.erro-carga[role="alert"] .btn:has-text("Tentar de novo")');
+  await pg.waitForFunction(() => !document.querySelector('.erro-carga[role="alert"]'), null, { timeout: 30000 });
+  await esperarW(pg, 'ok', 20000);
+  ok(await estadoW(pg) === 'ok' && (await texto(pg, '[data-clima-temp]')) === '17°' && previsoes(e).length === 1, 'Tentar de novo: o widget do Clima aparece com a previsão, com uma só consulta (pelo mesmo caminho da abertura)');
+  ok((await pg.$$('.stat')).length === 3 && /Para hoje/.test(await texto(pg, '[data-painel="para-hoje"]')), 'Tentar de novo: os grupos de prazo e o Para hoje também voltaram');
+  await ctx.close();
+}
+
 // ================= 2) trocar de cidade pelo mouse: busca com espera, desambiguação, persistência =================
 {
   const { ctx, pg, e } = await novo({ viewport: { width: 1280, height: 800 } });
