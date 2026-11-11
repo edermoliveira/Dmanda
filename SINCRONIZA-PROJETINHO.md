@@ -5,6 +5,7 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 **Última atualização:** 30/10/2026 (ajustes depois da aprovação funcional de Entradas: ver o bloco "AJUSTES DE 30/10/2026" logo abaixo; e antes, o bloco de Entradas); antes, 29/10/2026 (bloco de sessão persistente, cadastro guiado e prazos); antes, 28/10/2026 (publicação e continuidade: **leia primeiro `CONTINUIDADE-DMANDA.md`**, que consolida o estado; os blocos abaixo são o histórico por data); antes, 27/10/2026 (consolidação na `main`); antes dela, auditoria completa e realinhamento (bloco logo abaixo, em "ATUALIZAÇÃO 27/10/2026 (noite)"); antes dela, o bloco de publicação controlada no computador de casa (ver "PONTO DE RETOMADA ATUAL" logo abaixo; as seções seguintes são histórico), branch `checkpoint/2026-10-23-ajustes-a-d` (ver "PONTO DE RETOMADA (26/10/2026...)" logo abaixo, depois o ponto de 01h20 do computador de casa). As seções 1 em diante são histórico de sessões anteriores e podem estar superadas.
 **Andamento do projeto: 45%** (cálculo item a item em `ANDAMENTO.md`, reavaliado em 04/11/2026 com a aprovação da Agenda; era 37%, 33%, 29% e 18% antes).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
+**Retomada de 11/11/2026 (branch `bloco/inicio-perfil-clima`, só local):** decisões 64 e 65 implementadas e validadas em banco de teste; ler `CONTINUIDADE-DMANDA.md`, seções AC e AD (hashes, testes, desempenho, migrações 21 a 24 pendentes no real, validação em aparelhos reais). Próximo bloco: redesenho da Agenda principal.
 
 ---
 
