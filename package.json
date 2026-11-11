@@ -29,7 +29,6 @@
     "testar:prioridade": "node scripts/testar-prioridade.mjs",
     "capturar:comparacao": "node scripts/capturar-comparacao.mjs",
     "testar:visual": "node scripts/testar-visual.mjs",
-    "testar:inicio": "node scripts/testar-inicio.mjs",
     "testar:clima": "node scripts/testar-clima.mjs",
     "testar:resistencia": "node scripts/testar-resistencia.mjs",
     "medir:desempenho": "node scripts/medir-desempenho.mjs",

@@ -104,7 +104,7 @@ const contraste = (pg, sel) => pg.evaluate((s) => {
   const mainBox = await caixa(pg, '.app .main');
   ok(Math.abs((cab.l - mainBox.l) - (mainBox.r - cont.r)) <= 24, 'Início 1600 px: a coluna fica centralizada na área de conteúdo');
   const pr = await caixa(pg, '.ini-principal'), ap = await caixa(pg, '.ini-apoio');
-  ok(ap.l >= pr.r - 1 && pr.w / ap.w > 2.5 && pr.w / ap.w < 3.6 && ap.w <= 300, `Início 1600 px: Para hoje ocupa a maior parte e o apoio é uma coluna estreita (decisão 63) (${Math.round(pr.w)} e ${Math.round(ap.w)} px)`);
+  ok(ap.l >= pr.r - 1 && pr.w / ap.w > 1.7 && pr.w / ap.w < 2.4, `Início 1600 px: Para hoje ocupa cerca de dois terços e o apoio um terço (${Math.round(pr.w)} e ${Math.round(ap.w)} px)`);
   const ordem = await pg.evaluate(() => !!(document.querySelector('.ini-principal').compareDocumentPosition(document.querySelector('.ini-apoio')) & Node.DOCUMENT_POSITION_FOLLOWING));
   ok(ordem, 'Início: Para hoje vem antes de Humor e Clima na ordem do documento');
   const hum = await caixa(pg, '[data-quadro="humor"] .painel'), wg = await caixa(pg, '.ini-apoio .wg-clima');
