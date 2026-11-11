@@ -20,7 +20,7 @@ const NAV: [string, string, string, string][] = [
 const EM_MAIS = ['/mais', '/entradas', '/documentos', '/ia', '/config', '/arquivo'];
 const ativo = (caminho: string, rota: string) => (rota === '/' ? caminho === '/' : caminho === rota || caminho.startsWith(rota + '/'));
 /** Largura útil da área de conteúdo: Início e Configurações numa coluna central de leitura; Agenda e Demandas (Quadro e Tabela) numa área maior; as demais telas como sempre. */
-const larguraDa = (caminho: string): 'centro' | 'ampla' | undefined => (ativo(caminho, '/') || ativo(caminho, '/config') ? 'centro' : ativo(caminho, '/agenda') || ativo(caminho, '/demandas') ? 'ampla' : undefined);
+const larguraDa = (caminho: string): 'inicio' | 'centro' | 'ampla' | undefined => (ativo(caminho, '/') ? 'inicio' : ativo(caminho, '/config') ? 'centro' : ativo(caminho, '/agenda') || ativo(caminho, '/demandas') ? 'ampla' : undefined);
 
 function useToque() {
   const [toque, setToque] = useState(false);

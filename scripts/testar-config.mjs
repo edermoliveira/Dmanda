@@ -491,6 +491,44 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
   await ctx.close();
 }
 
+// ================= 13) Pagamentos (decisão 64): a data do salário, cadastrada uma a uma =================
+{
+  const { ctx, pg } = await novo();
+  await ir(pg);
+  const sec = '[data-secao="pagamentos"]', hojeBr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  const dia28 = `${hojeBr.slice(0, 7)}-28`, dia26 = `${hojeBr.slice(0, 7)}-26`;
+  ok(!!(await pg.$(`${sec} #cfg-pag-data`)) && /Sem valores/.test(await pg.textContent(`${sec} > p.data`)) && !(await pg.$(`${sec} .cfg-lista`)), 'Pagamentos: seção em Configurações, só com a data (sem valores nem repetição) e vazia no começo');
+  await pg.click(`${sec} button:has-text("Cadastrar pagamento")`);
+  ok(/Informe a data do pagamento/.test(await pg.textContent(`${sec} [role="alert"]`)), 'Pagamentos: sem data o cadastro é recusado com mensagem clara');
+  await pg.fill(`${sec} #cfg-pag-data`, dia28); await pg.click(`${sec} button:has-text("Cadastrar pagamento")`);
+  await pg.waitForSelector(`${sec} .cfg-lista li`, { timeout: 15000 });
+  ok((await pg.$$(`${sec} .cfg-lista li`)).length === 1 && (await pg.textContent(`${sec} .cfg-lista li`)).includes(`28/${hojeBr.slice(5, 7)}/${hojeBr.slice(0, 4)}`) && (await pg.inputValue(`${sec} #cfg-pag-data`)) === '', 'Pagamentos: cadastrar mostra a data na lista e limpa o campo');
+  await pg.fill(`${sec} #cfg-pag-data`, dia28); await pg.click(`${sec} button:has-text("Cadastrar pagamento")`);
+  ok(/Já existe um pagamento cadastrado/.test(await pg.textContent(`${sec} [role="alert"]`)) && (await pg.$$(`${sec} .cfg-lista li`)).length === 1, 'Pagamentos: a mesma data duas vezes é recusada, sem duplicar');
+  await pg.fill(`${sec} #cfg-pag-data`, '');
+  await pg.click(`${sec} .cfg-lista button[aria-label^="Editar o pagamento"]`);
+  ok((await pg.inputValue(`${sec} #cfg-pag-data`)) === dia28 && !!(await pg.$(`${sec} button:has-text("Salvar alteração")`)), 'Pagamentos: editar traz a data para o campo');
+  await pg.fill(`${sec} #cfg-pag-data`, dia26); await pg.click(`${sec} button:has-text("Salvar alteração")`);
+  await pg.waitForFunction((d) => document.querySelector('[data-secao="pagamentos"] .cfg-lista li')?.textContent.includes(d), `26/${hojeBr.slice(5, 7)}/${hojeBr.slice(0, 4)}`, { timeout: 15000 });
+  ok((await pg.$$(`${sec} .cfg-lista li`)).length === 1, 'Pagamentos: editar troca a data do mesmo registro (sem criar outro)');
+  await ir(pg);
+  ok((await pg.$$(`${sec} .cfg-lista li`)).length === 1 && (await pg.textContent(`${sec} .cfg-lista li`)).includes(`26/${hojeBr.slice(5, 7)}/`), 'Pagamentos: depois de recarregar a data continua cadastrada (fica no banco, vale em todos os aparelhos)');
+  // aparece no mini calendário do Início, com a cor de Pagamento
+  await ir(pg, '/');
+  await pg.waitForSelector(`.mc-dia[data-data="${dia26}"]`, { timeout: 30000 });
+  ok(/pagamento/.test(await pg.$eval(`.mc-dia[data-data="${dia26}"]`, (e) => e.dataset.cats || '')), 'Pagamentos: a data aparece no mini calendário do Início como Pagamento');
+  await ir(pg);
+  await pg.click(`${sec} .cfg-lista button[aria-label^="Excluir o pagamento"]`);
+  ok(/Excluir esta data de pagamento/.test(await pg.textContent(`${sec} .cfg-lista li`)) && (await pg.$$(`${sec} .cfg-lista li`)).length === 1, 'Pagamentos: excluir pede confirmação');
+  await pg.click(`${sec} .cfg-lista button:has-text("Cancelar")`);
+  ok((await pg.$$(`${sec} .cfg-lista li`)).length === 1, 'Pagamentos: cancelar a exclusão mantém a data');
+  await pg.click(`${sec} .cfg-lista button[aria-label^="Excluir o pagamento"]`); await pg.click(`${sec} .cfg-lista button:has-text("Confirmar exclusão")`);
+  await pg.waitForFunction(() => !document.querySelector('[data-secao="pagamentos"] .cfg-lista'), null, { timeout: 15000 });
+  await ir(pg);
+  ok(!(await pg.$(`${sec} .cfg-lista`)), 'Pagamentos: depois de excluir e recarregar a data não volta');
+  await ctx.close();
+}
+
 ok(erros.length === 0, 'nenhum erro de página nem de console durante toda a execução' + (erros.length ? ': ' + [...new Set(erros)].slice(0, 5).join(' | ') : ''));
 await nav.close();
 console.log(`\n${total - falhas} de ${total} verificações aprovadas.`);

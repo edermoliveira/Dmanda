@@ -1,0 +1,108 @@
+/* ---------- Início em duas colunas, Para hoje com quatro vagas e mini calendário (decisão 64) ----------
+   Composição aprovada: título, três contadores e Para hoje (quatro cards na mesma linha) com a faixa Nova urgência na mesma grade; à direita Humor, Clima e o mini calendário, numa coluna que
+   fica sob o cabeçalho enquanto a área principal rola. Sem largura para as duas colunas (medida no próprio Início, não na janela), o apoio vai para baixo das demandas.
+   Vem depois de app.css e de agenda.css: sobrepõe só o que o Início precisa. Cores só por tokens (os das seis categorias do calendário ficam aqui, iguais em qualquer paleta de destaque). */
+.app[data-dir="d"][data-largura="inicio"] { --larg-atual: 1680px; }
+.app[data-dir="d"] .ini-c { container: ig / inline-size; }
+.app[data-dir="d"] .ini { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
+.app[data-dir="d"] .ini-principal, .app[data-dir="d"] .ini-apoio { min-width: 0; }
+.app[data-dir="d"] .ini-apoio { display: grid; gap: 14px; align-content: start; }
+.app[data-dir="d"] .ini-apoio > * { margin: 0; min-width: 0; }
+.app[data-dir="d"] .ini-apoio .widgets { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.app[data-dir="d"] .ini-apoio .wg { aspect-ratio: auto; }
+.app[data-dir="d"] .ini-apoio .sec > h3 { margin-bottom: 8px; }
+@container ig (min-width: 600px) and (max-width: 959px) {
+  .app[data-dir="d"] .ini-apoio { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app[data-dir="d"] .ini-apoio .mini-cal { grid-column: 1 / -1; max-width: 520px; }
+}
+@container ig (min-width: 960px) and (max-width: 1179px) { .app[data-dir="d"] .ini-apoio { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; } }
+@container ig (min-width: 1180px) {
+  .app[data-dir="d"] .ini { grid-template-columns: minmax(0, 1fr) clamp(272px, 23cqw, 336px); gap: 22px; }
+  .app[data-dir="d"] .ini-apoio { position: sticky; top: 84px; max-height: calc(100dvh - 100px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 2px 2px 6px; }
+}
+
+/* Para hoje: quatro vagas na mesma linha; faixa horizontal de duas vagas por vez no iPad em pé; pilha no celular */
+.app[data-dir="d"] .ph .ph-cards, .app[data-dir="d"] .ph .ph-cards-urg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+.app[data-dir="d"] .ph .ph-cards > .vaga, .app[data-dir="d"] .ph .ph-cards-urg > .vaga { min-width: 0; }
+.app[data-dir="d"] .ph[data-modo="duas"] .ph-cards { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: calc((100% - 14px) / 2); overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: thin; padding-bottom: 8px; }
+.app[data-dir="d"] .ph[data-modo="duas"] .ph-cards > .vaga { scroll-snap-align: start; }
+.app[data-dir="d"] .ph[data-modo="duas"] .ph-cards-urg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.app[data-dir="d"] .ph[data-modo="pilha"] .ph-cards-urg { grid-template-columns: minmax(0, 1fr); }
+.app[data-dir="d"] .ph .ph-nav { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin: 0 0 6px; }
+.app[data-dir="d"] .ph .ph-nav .data { margin-right: auto; font-size: var(--t-meta); }
+.app[data-dir="d"] .ph .ph-ant svg { transform: scaleX(-1); }
+.app[data-dir="d"] .ph > h3 { margin-bottom: 10px; }
+.app[data-dir="d"] .nova-urgencia { margin-top: 18px; padding: 12px 14px 14px; border-radius: 22px; }
+.app[data-dir="d"] .nova-urgencia h4 { margin: 0 0 10px; font-size: calc(14px * var(--esc)); font-weight: 700; }
+
+/* pilha do celular: o card ativo, o arrasto horizontal (a rolagem vertical segue livre) e os botões equivalentes */
+.app[data-dir="d"] .ph-pilha { display: grid; gap: 10px; }
+.app[data-dir="d"] .ph-arrasto { position: relative; touch-action: pan-y; transform: translateX(var(--dx, 0px)) rotate(calc(var(--dx, 0px) / 40)); transition: transform .22s var(--mola, ease-out); will-change: transform; }
+.app[data-dir="d"] .ph-arrasto[data-arrastando] { transition: none; }
+.app[data-dir="d"] .ph-arrasto .vaga { min-width: 0; }
+.app[data-dir="d"] .ph-dica { position: absolute; top: 10px; z-index: 3; padding: 4px 10px; border-radius: 999px; font-size: var(--t-rotulo); font-weight: 700; background: var(--acc); color: var(--on-acc, var(--card)); opacity: 0; pointer-events: none; transition: opacity .12s; }
+.app[data-dir="d"] .ph-dica-esq { right: 10px; }
+.app[data-dir="d"] .ph-dica-dir { left: 10px; }
+.app[data-dir="d"] .ph-arrasto[data-lado="esq"] .ph-dica-esq, .app[data-dir="d"] .ph-arrasto[data-lado="dir"] .ph-dica-dir { opacity: 1; }
+.app[data-dir="d"] .ph-botoes { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.app[data-dir="d"] .ph-botoes .btn:first-child svg { transform: scaleX(-1); }
+.app[data-dir="d"] .ph-botoes .btn:disabled { opacity: .5; }
+.app[data-dir="d"] .ph-confirma { padding: 12px 14px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 2px var(--acc); }
+.app[data-dir="d"] .ph-confirma p { margin: 0 0 10px; font-size: var(--t-leitura); }
+.app[data-dir="d"] .ph-confirma .acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+
+/* ---------- mini calendário ----------
+   Seis categorias, cada uma com a sua cor, com o texto em alto contraste por cima nos dois modos. Vários itens no mesmo dia dividem a célula em faixas verticais com uma transição curta.
+   Hoje (número em círculo de destaque) e seleção (contorno forte e número em negrito) têm sinais diferentes e nunca escondem as faixas. */
+.app[data-dir="d"] {
+  --cal-compromisso: oklch(0.86 0.09 245); --cal-feriado: oklch(0.86 0.1 55); --cal-pagamento: oklch(0.86 0.1 150);
+  --cal-evento: oklch(0.86 0.09 340); --cal-reuniao: oklch(0.86 0.09 295); --cal-prazo: oklch(0.9 0.12 98);
+}
+.app[data-dir="d"][data-tema="escuro"] {
+  --cal-compromisso: oklch(0.44 0.11 245); --cal-feriado: oklch(0.46 0.1 55); --cal-pagamento: oklch(0.43 0.1 150);
+  --cal-evento: oklch(0.45 0.11 340); --cal-reuniao: oklch(0.45 0.12 295); --cal-prazo: oklch(0.5 0.1 98);
+}
+.app[data-dir="d"] .mini-cal { background: var(--card); border-radius: var(--r-card); box-shadow: 0 0 0 1px var(--card-brd); padding: 14px 14px 12px; }
+.app[data-dir="d"] .mc-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.app[data-dir="d"] .mc-mes { margin: 0; font-size: var(--t-leitura); font-weight: 700; text-align: center; }
+.app[data-dir="d"] .mc-seta:first-child svg { transform: scaleX(-1); }
+.app[data-dir="d"] .mc-linha { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.app[data-dir="d"] .mc-linha > [role="gridcell"] { min-width: 0; }
+.app[data-dir="d"] .mc-cabsem { text-align: center; padding: 4px 0; font-size: max(10px, calc(12px * var(--esc))); font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .mc-cabsem abbr { text-decoration: none; }
+.app[data-dir="d"] .mc-dia { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 1; min-height: 32px; padding: 0; border: 0; border-radius: 10px; background-color: transparent; background-repeat: no-repeat; color: var(--text); font: inherit; cursor: pointer; transition: background-color .15s ease-out, box-shadow .15s ease-out; }
+.app[data-dir="d"] .mc-dia::before { content: ""; position: absolute; inset: -6px -1.5px; } /* área de toque de 44 px sem aumentar a célula */
+.app[data-dir="d"] .mc-dia:hover { background-color: color-mix(in srgb, var(--text) 8%, transparent); }
+.app[data-dir="d"] .mc-dia[data-fora] .mc-num { opacity: .5; }
+.app[data-dir="d"] .mc-num { position: relative; display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 4px; border-radius: 999px; font-size: var(--t-meta); font-variant-numeric: tabular-nums; }
+.app[data-dir="d"] .mc-dia[data-hoje] .mc-num { background: var(--acc); color: var(--on-acc, var(--card)); font-weight: 700; opacity: 1; }
+.app[data-dir="d"] .mc-dia[data-sel] { box-shadow: inset 0 0 0 2px var(--text); }
+.app[data-dir="d"] .mc-dia[data-sel] .mc-num { font-weight: 800; }
+.app[data-dir="d"] .mc-dia:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.app[data-dir="d"] .mc-leg { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 10px 0 0; padding: 0; list-style: none; font-size: max(10px, calc(12px * var(--esc))); color: var(--text2); }
+.app[data-dir="d"] .mc-leg li { display: inline-flex; align-items: center; gap: 5px; }
+.app[data-dir="d"] .mc-amostra, .app[data-dir="d"] .mc-barra { display: inline-block; flex: none; border-radius: 4px; background: var(--cal-compromisso); }
+.app[data-dir="d"] .mc-amostra { width: 12px; height: 12px; box-shadow: 0 0 0 1px var(--card-brd); }
+.app[data-dir="d"] :is(.mc-leg li, .mc-item)[data-categoria="compromisso"] :is(.mc-amostra, .mc-barra) { background: var(--cal-compromisso); }
+.app[data-dir="d"] :is(.mc-leg li, .mc-item)[data-categoria="feriado"] :is(.mc-amostra, .mc-barra) { background: var(--cal-feriado); }
+.app[data-dir="d"] :is(.mc-leg li, .mc-item)[data-categoria="pagamento"] :is(.mc-amostra, .mc-barra) { background: var(--cal-pagamento); }
+.app[data-dir="d"] :is(.mc-leg li, .mc-item)[data-categoria="evento"] :is(.mc-amostra, .mc-barra) { background: var(--cal-evento); }
+.app[data-dir="d"] :is(.mc-leg li, .mc-item)[data-categoria="reuniao"] :is(.mc-amostra, .mc-barra) { background: var(--cal-reuniao); }
+.app[data-dir="d"] :is(.mc-leg li, .mc-item)[data-categoria="prazo"] :is(.mc-amostra, .mc-barra) { background: var(--cal-prazo); }
+.app[data-dir="d"] .mc-dia-lista { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--card-brd); }
+.app[data-dir="d"] .mc-dl-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.app[data-dir="d"] .mc-dl-cab h4 { margin: 0; font-size: var(--t-leitura); font-weight: 700; }
+.app[data-dir="d"] .mc-itens { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.app[data-dir="d"] .mc-item-b { display: flex; align-items: stretch; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 12px; background: var(--panel); color: var(--text); font: inherit; text-align: left; cursor: pointer; min-height: 44px; }
+.app[data-dir="d"] .mc-item-b:hover { background: color-mix(in srgb, var(--text) 7%, var(--panel)); }
+.app[data-dir="d"] .mc-barra { width: 4px; border-radius: 999px; }
+.app[data-dir="d"] .mc-item-t { display: grid; gap: 1px; min-width: 0; }
+.app[data-dir="d"] .mc-item-t b { font-size: var(--t-leitura); overflow-wrap: anywhere; }
+.app[data-dir="d"] .mc-item-t small { font-size: var(--t-meta); color: var(--text2); overflow-wrap: anywhere; }
+.app[data-dir="d"] .mc-rot { font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--text2); }
+.app[data-dir="d"] .mc-vazio { margin: 0; font-size: var(--t-meta); color: var(--text2); }
+
+/* títulos e chips em largura estreita: a explicação do Para hoje vai para a linha de baixo e os chips de prazo e de espera quebram em vez de passar da borda do card */
+.app[data-dir="d"] .ph:is([data-modo="duas"], [data-modo="pilha"]) > h3 small { display: block; margin-top: 2px; }
+.app[data-dir="d"] .ph .dcard .chips { flex-wrap: wrap; }
+.app[data-dir="d"] .ph .dcard .chips .pz { max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }

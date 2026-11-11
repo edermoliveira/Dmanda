@@ -6,6 +6,7 @@
 // - Consulta só com a aba visível: ao abrir, ao voltar para a aba quando o dado ficou velho (15 min) ou o dia virou, e quando a conexão volta; nunca por cima de uma consulta em andamento. Sem consulta por desenho da tela e sem repetição em aba escondida.
 // - Falha do serviço afeta só este widget. Com dado guardado, ele continua na tela marcado como desatualizado, com a hora da última atualização.
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from './contexto';
 import { Icone } from './Icone';
 import { Janela } from './janela-base';
@@ -146,7 +147,8 @@ export function WidgetClima() {
       ) : null}
 
       <a className="data wg-cl-cred" href={ATRIBUICAO.url} target="_blank" rel="noopener noreferrer">{ATRIBUICAO.texto}</a>
-      {trocando ? <JanelaCidade aoFechar={() => { setTrocando(false); }} /> : null}
+      {/* a janela sobe para o .app: o widget tem overflow oculto e fica na coluna fixa do Início (decisão 64), que a deixaria presa na caixa dele */}
+      {trocando ? createPortal(<JanelaCidade aoFechar={() => { setTrocando(false); }} />, document.querySelector('.app') ?? document.body) : null}
     </section>
   );
 }

@@ -78,9 +78,11 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok(cx.every((c) => Math.abs(c.w - c.h) <= 1) && cx.every((c) => c.w >= 44), 'células quadradas (aspect-ratio 1) e com pelo menos 44 px de lado');
   const col1 = (await caixa(pg, `.agd-cel[data-data="${mesDe(HOJE)}-01"]`))[0], cabs = await caixa(pg, '.agd-cabsem'), primeiraCol = g[0].findIndex(Boolean);
   ok(Math.abs((col1.x + col1.w / 2) - (cabs[primeiraCol].x + cabs[primeiraCol].w / 2)) <= 2, `o dia 1 fica sob o cabeçalho da coluna certa (coluna ${primeiraCol}, segunda na primeira)`);
-  const gap = cx.length > 1 ? (() => { const a = cx.find((c) => Math.abs(c.y - cx[0].y) < 2 && c.x > cx[0].x); return a.x - cx[0].r; })() : 0;
+  // o espaço entre duas células vizinhas da mesma linha (com a semana na segunda, o dia 1 pode ficar sozinho na primeira linha: usa o primeiro par de vizinhas)
+  const gap = cx.length > 1 ? (() => { for (const base of cx) { const a = cx.find((c) => Math.abs(c.y - base.y) < 2 && c.x > base.x); if (a) return a.x - base.r; } return 0; })() : 0;
   ok(gap / cx[0].w > 0.06 && gap / cx[0].w < 0.22, `espaço entre as células proporcional ao lado (${(gap / cx[0].w * 100).toFixed(0)}%)`);
-  const css = await pg.$eval('.agd-cel', (e) => { const s = getComputedStyle(e); return { raio: parseFloat(s.borderTopLeftRadius), lado: e.getBoundingClientRect().width, nums: s.fontVariantNumeric, pad: parseFloat(getComputedStyle(e.closest('.agd-painel')).paddingLeft), ar: s.aspectRatio }; });
+  // o raio vem em porcentagem do lado (22%): vira pixels pelo lado da célula, para o teste não depender da largura da janela nem do menu lateral aberto
+  const css = await pg.$eval('.agd-cel', (e) => { const s = getComputedStyle(e), lado = e.getBoundingClientRect().width, r = s.borderTopLeftRadius; return { raio: r.endsWith('%') ? (parseFloat(r) / 100) * lado : parseFloat(r), lado, nums: s.fontVariantNumeric, pad: parseFloat(getComputedStyle(e.closest('.agd-painel')).paddingLeft), ar: s.aspectRatio }; });
   ok(css.raio / css.lado > 0.18 && css.raio / css.lado < 0.28 && /tabular-nums/.test(css.nums), 'cantos entre 20% e 25% do lado e números tabulares');
   ok(css.pad / css.lado > 0.15 && css.pad / css.lado < 0.6, `margem lateral do painel proporcional à célula (${(css.pad / css.lado * 100).toFixed(0)}% do lado)`);
   const centro = await pg.$eval(`.agd-cel[data-data="${HOJE}"]`, (e) => { const n = e.querySelector('.agd-num').getBoundingClientRect(), c = e.getBoundingClientRect(); return [Math.abs((n.x + n.width / 2) - (c.x + c.width / 2)), Math.abs((n.y + n.height / 2) - (c.y + c.height / 2))]; });

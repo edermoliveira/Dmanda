@@ -1,6 +1,6 @@
 'use client';
 // Telas do aplicativo funcional: Início (resumos e Foco do dia), Demandas (quatro visões), Arquivo, Mais e as áreas ainda não construídas.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Capsula } from './Capsula';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
@@ -11,9 +11,10 @@ import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
 import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, type Demanda } from '@/lib/demandas';
-import { VAGAS_PARA_HOJE, elegiveisParaHoje, organizarPainel, precisaCompletar, vagasAbertas } from '@/lib/para-hoje';
 import { anoDoDocumento, chaveOpcao } from '@/lib/documentos';
 import { WidgetClima } from './clima';
+import { ParaHoje } from './para-hoje';
+import { MiniCalendario } from './mini-calendario';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
 function Carregando() { return <div className="vazio-c" role="status">Carregando as demandas...</div>; }
@@ -40,11 +41,15 @@ export function PaginaInicio() {
   const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina, dias } = useApp();
   const [sel, setSel] = useState<'atrasadas' | 'hoje' | 'sete' | null>(null);
   useAjustar(`${demandas.length}${sel}`);
+  // Composição de 11/11/2026 (decisão 64): à esquerda o título, os três contadores e o Para hoje com Nova urgência; à direita, numa coluna que fica sob o cabeçalho enquanto a área principal rola,
+  // Humor, Clima e o mini calendário (nessa ordem). Sem largura para as duas colunas, o apoio vai para baixo das demandas.
   return (
-    <>
-      <CabecaPagina titulo="Início" sub="Seu dia em um só lugar." />
-      {demandas.length ? (
-        <section className="sec ini-prazos">
+    <div className="ini-c">
+    <div className="ini" data-inicio>
+      <div className="ini-principal">
+        <CabecaPagina titulo="Início" sub="Seu dia em um só lugar." />
+        {demandas.length ? (
+          <section className="sec ini-prazos">
             <div className="stats tres ini-contadores" role="group" aria-label="Filtrar demandas por prazo">
               {GRUPOS_INICIO.map(([g, nome, icone, alerta]) => {
                 const n = porGrupo(demandas, g, hoje, dias).length;
@@ -59,60 +64,22 @@ export function PaginaInicio() {
               const l = porGrupo(demandas, sel, hoje, dias), nome = GRUPOS_INICIO.find((g) => g[0] === sel)![1];
               return <><h3 className="sub-f">{nome} <small>{plural(l.length, 'demanda')}</small></h3>{l.length ? <div className="cards">{l.map((d) => <CardDemanda key={d.id} d={d} />)}</div> : <div className="vazio-c">Nenhuma demanda neste filtro.</div>}</>;
             })() : null}
-        </section>
-      ) : null}
-      {/* Para hoje é o trabalho principal (cerca de dois terços); Humor e Clima são o apoio (um terço) e vêm depois dele, então no estreito empilham abaixo */}
-      <div className="ini-grade">
-        <div className="ini-principal">
-          {carregando && !demandas.length ? <Carregando /> : null}
-          {!carregando && !erroCarga && !demandas.length ? (
-            <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Para hoje.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
-          ) : null}
-          {demandas.length ? <ParaHoje /> : null}
-        </div>
-        <aside className="ini-apoio" aria-label="Apoio do dia: humor e clima">
-          <RegistroNoInicio />
-          <ClimaNoInicio />
-        </aside>
+          </section>
+        ) : null}
+        {carregando && !demandas.length ? <Carregando /> : null}
+        {!carregando && !erroCarga && !demandas.length ? (
+          <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Para hoje.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
+        ) : null}
+        {demandas.length ? <ParaHoje /> : null}
+        <p className="rotina-estado">{textoRotina(rotina)}</p>
       </div>
-      <p className="rotina-estado">{textoRotina(rotina)}</p>
-    </>
-  );
-}
-
-// ---------- Para hoje ----------
-// O painel de execução do dia (o antigo Foco do dia): até 4 vagas, guardadas no banco. Ao concluir ou arquivar uma demanda, só a vaga liberada é reposta. Uma urgência que surge depois
-// das vagas escolhidas aparece à parte, sem trocar a seleção. Não é o grupo "Vencem hoje" (que lista tudo o que vence hoje, com ou sem ação).
-function ParaHoje() {
-  const { demandas, hoje, dias, paraHoje, sincronizarParaHoje, carregando } = useApp();
-  const elegiveis = useMemo(() => elegiveisParaHoje(demandas, hoje, dias), [demandas, hoje, dias]);
-  const abertas = vagasAbertas(paraHoje, demandas);
-  const ocupadas = new Set(abertas.map((v) => v.demanda.id));
-  const faltaCompletar = precisaCompletar(paraHoje, demandas, elegiveis);
-  const candidatas = faltaCompletar ? elegiveis.filter((e) => !ocupadas.has(e.demanda.id)).slice(0, 10).map((e) => e.demanda.id).join(',') : '';
-  // preenche (ou repõe) só as vagas livres; a lista só muda quando as candidatas mudam, então uma resposta sem efeito não repete a chamada
-  useEffect(() => { if (!carregando && hoje !== '2000-01-01' && candidatas) void sincronizarParaHoje(candidatas.split(',')); }, [candidatas, carregando, hoje, sincronizarParaHoje]);
-  // Exibição (decisão 61): os pedidos da Prefeita e do Gabinete vêm antes das demais, mesmo quando ocupam a 2ª ou a 3ª vaga, e os que estão fora das vagas ficam acima das comuns. As vagas
-  // guardadas no banco não mudam (o data-vaga continua com a posição gravada) e cada demanda aparece uma só vez.
-  const { prioritariasNasVagas, prioritariasFora, comunsNasVagas, urgenciasComuns } = organizarPainel(paraHoje, demandas, elegiveis);
-  const vazio = !prioritariasNasVagas.length && !prioritariasFora.length && !comunsNasVagas.length;
-  return (
-    <section className="sec" data-painel="para-hoje" aria-labelledby="ph-t">
-      <h3 id="ph-t">Para hoje <small>até 4 demandas para tocar hoje: pedidos da Prefeita e do Gabinete primeiro, depois atrasadas e as que vencem hoje</small></h3>
-      {vazio ? <div className="vazio-c">Nada para tocar hoje por enquanto.</div> : (
-        <div className="cards">
-          {prioritariasNasVagas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}
-          {prioritariasFora.map((e) => <div key={e.demanda.id} data-fora-vaga className="vaga fora-vaga"><small className="data fora-t">Fora das {VAGAS_PARA_HOJE} vagas</small><CardDemanda d={e.demanda} mostrarRapida /></div>)}
-          {comunsNasVagas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}
-        </div>
-      )}
-      {urgenciasComuns.length ? (
-        <div className="nova-urgencia" role="status" data-nova-urgencia>
-          <h4>Nova urgência <small>fora das suas vagas, sem trocar a seleção</small></h4>
-          <div className="cards">{urgenciasComuns.slice(0, 3).map((e) => <CardDemanda key={e.demanda.id} d={e.demanda} mostrarRapida />)}</div>
-        </div>
-      ) : null}
-    </section>
+      <aside className="ini-apoio" aria-label="Apoio do dia: humor, clima e calendário">
+        <RegistroNoInicio />
+        <ClimaNoInicio />
+        <MiniCalendario />
+      </aside>
+    </div>
+    </div>
   );
 }
 

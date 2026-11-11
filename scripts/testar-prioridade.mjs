@@ -233,7 +233,8 @@ await semear(PASTA_B, async ({ mk, dia }) => {
 await subir(PASTA_B);
 {
   const { ctx, pg } = await novo(); await ir(pg, '/');
-  const vagas = () => pg.$$eval('[data-painel="para-hoje"] .vaga', (l) => l.map((e) => `${e.dataset.vaga ?? 'fora'}:${e.querySelector('.assunto')?.textContent.trim()}`));
+  // as vagas do Para hoje (decisão 64) e, depois delas, só as prioridades que a Nova urgência traz "fora" das vagas
+  const vagas = () => pg.$$eval('[data-painel="para-hoje"] .ph-cards > .vaga, [data-nova-urgencia] .vaga[data-fora-vaga]', (l) => l.map((e) => `${e.dataset.vaga ?? 'fora'}:${e.querySelector('.assunto')?.textContent.trim()}`));
   const urgencias = () => pg.$$eval('[data-nova-urgencia] .assunto', (l) => l.map((e) => e.textContent.trim()));
   await pg.waitForFunction(() => document.querySelectorAll('[data-painel="para-hoje"] [data-vaga]').length === 4, null, { timeout: 30000 });
   const inicial = await vagas();
@@ -265,9 +266,9 @@ await subir(PASTA_B);
   await ir(pg, '/');
   await pg.waitForSelector('[data-painel="para-hoje"] [data-fora-vaga]', { timeout: 20000 });
   const com4 = await vagas();
-  ok(com4[0] === '3:Vaga tres comum' && com4[1] === 'fora:Pedido novo da Prefeita' && com4.slice(2).join() === '1:Vaga um comum,2:Vaga dois comum,4:Vaga quatro comum', `Para hoje: com as 4 vagas cheias a nova prioritária aparece fora das vagas, acima das comuns, sem substituir nenhuma (${com4.join(' | ')})`);
-  ok((await pg.$$('[data-painel="para-hoje"] [data-vaga]')).length === 3 && (await urgencias()).join() === 'Comum que sobra', 'Para hoje: continuam 4 vagas, e a nova urgência só mostra a comum (a prioritária já está acima)');
-  ok(await pg.$eval('[data-fora-vaga]', (e) => !!e.querySelector('[data-selo-prioridade]') && /Fora das 4 vagas/.test(e.textContent)), 'Para hoje: o card fora das vagas traz o selo e a indicação "Fora das 4 vagas"');
+  ok(com4.join() === '3:Vaga tres comum,1:Vaga um comum,2:Vaga dois comum,4:Vaga quatro comum,fora:Pedido novo da Prefeita', `Para hoje: com as 4 vagas cheias a nova prioritária fica fora das vagas e nenhuma é substituída (${com4.join(' | ')})`);
+  ok((await pg.$$('[data-painel="para-hoje"] .ph-cards > [data-vaga]')).length === 4 && (await urgencias()).join() === 'Pedido novo da Prefeita,Comum que sobra', 'Para hoje: continuam 4 vagas, e a Nova urgência abre com a prioritária, antes da urgência comum, sem repetir ninguém');
+  ok(await pg.$eval('[data-nova-urgencia] [data-fora-vaga]', (e) => !!e.querySelector('[data-selo-prioridade]') && e.querySelector('.dcard')?.dataset.prioridade === 'prefeita'), 'Para hoje: o card da prioridade na Nova urgência traz o selo e o destaque');
   await pg.screenshot({ path: `${CAPTURAS}/c1-para-hoje-claro.png` });
 
   // recarregar mantém tudo (vagas guardadas no banco) e não duplica

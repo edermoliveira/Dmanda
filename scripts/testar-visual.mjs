@@ -97,14 +97,15 @@ const contraste = (pg, sel) => pg.evaluate((s) => {
 {
   const { ctx, pg } = await novo({ w: 1600, h: 900 });
   await ir(pg, '/');
-  const cab = await caixa(pg, '.pagehead'), cont = await caixa(pg, '.ini-contadores'), grade = await caixa(pg, '.ini-grade'), busca = await caixa(pg, '.top .buscabtn');
-  ok(grade && grade.w <= 1201 && cab.w <= 1201 && cont.w <= 1201, `Início 1600 px: título, contadores e grade têm no máximo 1.200 px (${Math.round(cab.w)}, ${Math.round(cont.w)}, ${Math.round(grade.w)})`);
-  ok(Math.abs(cab.l - cont.l) <= 1 && Math.abs(cont.l - grade.l) <= 1 && Math.abs(cont.r - grade.r) <= 1, 'Início 1600 px: título, contadores e painéis começam na mesma borda e terminam na mesma borda');
+  // Composição da decisão 64: duas colunas (demandas à esquerda, apoio à direita) numa área de até 1.680 px; título, contadores e Para hoje começam e terminam nas mesmas bordas da coluna da esquerda
+  const cab = await caixa(pg, '.pagehead'), cont = await caixa(pg, '.ini-contadores'), grade = await caixa(pg, '.ini'), ph = await caixa(pg, '[data-painel="para-hoje"]'), busca = await caixa(pg, '.top .buscabtn');
+  ok(grade && grade.w <= 1681 && cab.w <= 1681 && cont.w <= 1681, `Início 1600 px: a composição cabe na largura de até 1.680 px (${Math.round(cab.w)}, ${Math.round(cont.w)}, ${Math.round(grade.w)})`);
+  ok(Math.abs(cab.l - cont.l) <= 3 && Math.abs(cont.l - ph.l) <= 1 && Math.abs(cont.r - ph.r) <= 1, 'Início 1600 px: título, contadores e Para hoje começam na mesma borda e terminam na mesma borda');
   ok(Math.abs(busca.l - cab.l) <= 14, `Início 1600 px: a busca do cabeçalho começa na mesma borda do conteúdo (${Math.round(busca.l)} e ${Math.round(cab.l)})`);
   const mainBox = await caixa(pg, '.app .main');
-  ok(Math.abs((cab.l - mainBox.l) - (mainBox.r - cont.r)) <= 24, 'Início 1600 px: a coluna fica centralizada na área de conteúdo');
+  ok(Math.abs((cab.l - mainBox.l) - (mainBox.r - grade.r)) <= 24, 'Início 1600 px: a composição fica centralizada na área de conteúdo');
   const pr = await caixa(pg, '.ini-principal'), ap = await caixa(pg, '.ini-apoio');
-  ok(ap.l >= pr.r - 1 && pr.w / ap.w > 1.7 && pr.w / ap.w < 2.4, `Início 1600 px: Para hoje ocupa cerca de dois terços e o apoio um terço (${Math.round(pr.w)} e ${Math.round(ap.w)} px)`);
+  ok(ap.l >= pr.r - 1 && ap.w >= 260 && ap.w <= 340 && pr.w > ap.w * 2.5, `Início 1600 px: o apoio é uma coluna estreita à direita e as demandas ocupam o resto (${Math.round(pr.w)} e ${Math.round(ap.w)} px)`);
   const ordem = await pg.evaluate(() => !!(document.querySelector('.ini-principal').compareDocumentPosition(document.querySelector('.ini-apoio')) & Node.DOCUMENT_POSITION_FOLLOWING));
   ok(ordem, 'Início: Para hoje vem antes de Humor e Clima na ordem do documento');
   const hum = await caixa(pg, '[data-quadro="humor"] .painel'), wg = await caixa(pg, '.ini-apoio .wg-clima');
@@ -120,7 +121,8 @@ const contraste = (pg, sel) => pg.evaluate((s) => {
 }
 
 // ================= 2) Início em larguras menores: empilha com Para hoje antes =================
-for (const [nome, w, esperaEmpilhar] of [['notebook 1280', 1280, false], ['notebook estreito 1024', 1024, true], ['tablet 820', 820, true], ['celular 390', 390, true]]) {
+// (com o menu lateral aberto, que é o padrão, as duas colunas pedem cerca de 1.500 px de janela; abaixo disso o apoio fica sob as demandas)
+for (const [nome, w, esperaEmpilhar] of [['notebook 1280', 1280, true], ['notebook estreito 1024', 1024, true], ['tablet 820', 820, true], ['celular 390', 390, true]]) {
   const { ctx, pg } = await novo({ w, h: 900, toque: w < 900 });
   await ir(pg, '/');
   const pr = await caixa(pg, '.ini-principal'), ap = await caixa(pg, '.ini-apoio');
