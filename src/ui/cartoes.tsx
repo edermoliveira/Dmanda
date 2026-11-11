@@ -212,3 +212,53 @@ export function MiniCard({ d }: { d: Demanda }) {
   );
 }
 
+
+/**
+ * Card do Início (Para hoje, decisão 63): plano e de altura conforme o conteúdo, sem verso. Dá precedência ao assunto, ao prazo e à próxima tarefa (ou ao botão de concluir),
+ * com o progresso logo abaixo e a descrição em poucas linhas (o texto integral fica na Consulta). Superfície neutra: o atraso aparece só no chip "Prazo vencido" e na borda fina,
+ * e a Prioridade da Prefeita mantém o anel e o selo; os dois sinais convivem. As demais telas continuam com o CardDemanda.
+ */
+export function CardInicio({ d, mostrarRapida = false }: { d: Demanda; mostrarRapida?: boolean }) {
+  const { abrirJanela, abrirMenuMover, hoje } = useApp();
+  const at = atrasada(d, hoje);
+  const prio = demandaPrioritaria(d);
+  const abrirEd = () => abrirJanela({ t: 'editar', id: d.id });
+  const dias = diasDesdeInstante(d.etapa_desde, hoje);
+  return (
+    <article className={`icard${at ? ' atrasada' : ''}${prio ? ' prio-pref' : ''}`} data-id={d.id} data-prioridade={prio ? 'prefeita' : undefined}>
+      <div className="ic-topo"><OrigemP d={d} /><span className="ic-etapa">{d.etapa}{d.etapa === 'Aguardando retorno' && d.setor ? ` · ${d.setor} ${curto(dias)}` : ''}</span><button className="mais" aria-haspopup="menu" aria-label="Mais ações: mover de etapa" title="Mover de etapa" onClick={(e) => abrirMenuMover(d.id, e.currentTarget)}><Icone nome="ellipsis" /></button></div>
+      <div className="tags">
+        <ChipTipo d={d} /><Numero d={d} />
+        {d.etapa !== 'Aguardando Prefeita' ? <SeloPrioridade d={d} /> : null}
+        {mostrarRapida && d.rapida ? <span className="chip rapida" data-rapida title="Marcada como rápida: ajuda a escolher o Para hoje">Rápida</span> : null}
+      </div>
+      <div className="assunto" role="link" tabIndex={0} title={d.assunto} onClick={abrirEd} onKeyDown={(e) => { if (e.key === 'Enter') abrirEd(); }}>{d.assunto}</div>
+      <Desc d={d} />
+      {d.prazo || d.etapa === 'Aguardando Prefeita' ? <div className="chips ic-prazo">{d.etapa === 'Aguardando Prefeita' ? <SeloPrioridade d={d} /> : null}<ChipEspera d={d} />{d.prazo ? <ChipPrazo d={d} /> : null}</div> : null}
+      <AcaoCard d={d} />
+      <BarraProg d={d} />
+    </article>
+  );
+}
+
+/** Linha compacta do Início: assunto, sinais e prazo em uma só linha que quebra no estreito. Usada para a prioridade fora das vagas e para a "Nova urgência". `rotulo`: texto pequeno antes do assunto. */
+export function LinhaInicio({ d, rotulo, mostrarRapida = false }: { d: Demanda; rotulo?: string; mostrarRapida?: boolean }) {
+  const { abrirJanela, hoje } = useApp();
+  const at = atrasada(d, hoje);
+  const prio = demandaPrioritaria(d);
+  const abrirEd = () => abrirJanela({ t: 'editar', id: d.id });
+  return (
+    <article className={`ilinha${at ? ' atrasada' : ''}${prio ? ' prio-pref' : ''}`} data-id={d.id} data-prioridade={prio ? 'prefeita' : undefined}>
+      <div className="il-texto">
+        {rotulo ? <small className="data fora-t">{rotulo}</small> : null}
+        <div className="assunto" role="link" tabIndex={0} title={d.assunto} onClick={abrirEd} onKeyDown={(e) => { if (e.key === 'Enter') abrirEd(); }}>{d.assunto}</div>
+      </div>
+      <div className="chips il-sinais">
+        <SeloPrioridade d={d} />
+        {mostrarRapida && d.rapida ? <span className="chip rapida" data-rapida>Rápida</span> : null}
+        <ChipEspera d={d} />
+        {d.prazo ? <ChipPrazo d={d} /> : null}
+      </div>
+    </article>
+  );
+}

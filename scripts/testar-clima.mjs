@@ -140,7 +140,7 @@ const guardado = (pg, chave) => pg.evaluate((k) => { try { return JSON.parse(loc
   ok(p1[0].host === 'api.open-meteo.com' && p1[0].path === '/v1/forecast' && q.latitude === '-29.6506' && q.longitude === '-50.7806' && q.current === 'temperature_2m,weather_code,is_day' && q.daily === 'temperature_2m_max,temperature_2m_min,weather_code' && q.timezone === 'America/Sao_Paulo' && q.forecast_days === '1' && Object.keys(q).length === 6, 'clima: o pedido leva só a localização e as variáveis meteorológicas');
   ok(!('cookie' in p1[0].headers) && !('referer' in p1[0].headers) && !('authorization' in p1[0].headers) && p1[0].metodo === 'GET' && !/dmanda|user|email|humor|energia|token/i.test(p1[0].url), 'clima: o pedido não leva cookie, referência, autorização nem dado do Dmanda (humor, energia, conta)');
   // o resto do Início continua inteiro
-  ok((await pg.$$('.stat')).length === 3 && (await pg.$$('.sec .cards .dcard, .sec .cards article')).length >= 1 && /Para hoje/.test(await texto(pg, '[data-painel="para-hoje"]')), 'Início: os grupos de prazo e o Para hoje continuam ao lado do Clima');
+  ok((await pg.$$('.stat')).length === 3 && (await pg.$$('.ph-grade .icard, .sec .cards article')).length >= 1 && /Para hoje/.test(await texto(pg, '[data-painel="para-hoje"]')), 'Início: os grupos de prazo e o Para hoje continuam ao lado do Clima');
   await pg.click('.stat >> nth=0'); await pg.waitForTimeout(300);
   ok((await pg.$$eval('.stat[aria-pressed="true"]', (l) => l.length)) === 1 && await estadoW(pg) === 'ok', 'Início: filtrar por prazo continua funcionando e não mexe no Clima');
   // cache: ir e voltar e recarregar dentro dos 15 minutos não consulta de novo

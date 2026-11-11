@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Icone } from './Icone';
 import { useApp, type EstadoRotina } from './contexto';
-import { CardDemanda, ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
+import { CardDemanda, CardInicio, ChipPrazo, ChipSelo, ChipTipo, LinhaInicio, OrigemP } from './cartoes';
 import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
@@ -100,16 +100,23 @@ function ParaHoje() {
     <section className="sec" data-painel="para-hoje" aria-labelledby="ph-t">
       <h3 id="ph-t">Para hoje <small>até 4 demandas para tocar hoje: pedidos da Prefeita e do Gabinete primeiro, depois atrasadas e as que vencem hoje</small></h3>
       {vazio ? <div className="vazio-c">Nada para tocar hoje por enquanto.</div> : (
-        <div className="cards">
-          {prioritariasNasVagas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}
-          {prioritariasFora.map((e) => <div key={e.demanda.id} data-fora-vaga className="vaga fora-vaga"><small className="data fora-t">Fora das {VAGAS_PARA_HOJE} vagas</small><CardDemanda d={e.demanda} mostrarRapida /></div>)}
-          {comunsNasVagas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}
-        </div>
+        <>
+          {/* decisão 63: a prioridade fora das vagas vem em linhas compactas, acima das comuns; as vagas ficam numa grade que se adapta à quantidade (2x2 com quatro) */}
+          {prioritariasFora.length ? (
+            <div className="ph-fora">{prioritariasFora.map((e) => <div key={e.demanda.id} data-fora-vaga className="vaga fora-vaga"><LinhaInicio d={e.demanda} rotulo={`Fora das ${VAGAS_PARA_HOJE} vagas`} mostrarRapida /></div>)}</div>
+          ) : null}
+          {prioritariasNasVagas.length + comunsNasVagas.length ? (
+            <div className="ph-grade" data-n={prioritariasNasVagas.length + comunsNasVagas.length}>
+              {prioritariasNasVagas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardInicio d={v.demanda} mostrarRapida /></div>)}
+              {comunsNasVagas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardInicio d={v.demanda} mostrarRapida /></div>)}
+            </div>
+          ) : null}
+        </>
       )}
       {urgenciasComuns.length ? (
         <div className="nova-urgencia" role="status" data-nova-urgencia>
           <h4>Nova urgência <small>fora das suas vagas, sem trocar a seleção</small></h4>
-          <div className="cards">{urgenciasComuns.slice(0, 3).map((e) => <CardDemanda key={e.demanda.id} d={e.demanda} mostrarRapida />)}</div>
+          <div className="il-lista">{urgenciasComuns.slice(0, 3).map((e) => <LinhaInicio key={e.demanda.id} d={e.demanda} mostrarRapida />)}</div>
         </div>
       ) : null}
     </section>
