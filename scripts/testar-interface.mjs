@@ -32,7 +32,7 @@ const novoContexto = async (opcoes, { visao = 'cards', tema = 'claro' } = {}) =>
 // Depois de carregar, a tela ainda precisa aplicar a visão guardada no navegador (Cards, Quadro, Tabela ou Lista): o aplicativo lê essa preferência depois da hidratação e as ações do servidor
 // do início (demandas, ambiente, dias, rotina, entradas) rodam uma de cada vez, então a visão guardada aparece de 0,1 a 0,5 s DEPOIS de os dados chegarem (medido, e igual na versão anterior ao
 // bloco de Entradas). Por isso o "ir" espera explicitamente a visão pedida (ou o estado vazio, ou o erro de carga), com limite, e falha com o retrato da tela.
-const VISAO_SEL = { cards: '.cards .dcard', quadro: '.quadro .coluna', tabela: '.tabela tbody tr', lista: '.lista .linha' };
+const VISAO_SEL = { cards: '.cards .dcard, .cartas .dcard', quadro: '.quadro .coluna', tabela: '.tabela tbody tr', lista: '.lista .linha' };
 const ir = async (pg, rota = '/demandas') => {
   await pg.goto(BASE + rota, { waitUntil: 'load', timeout: 120000 }); await pg.waitForSelector('.app .main', { timeout: 120000 });
   await pg.waitForFunction(() => !document.body.innerText.includes('Carregando as demandas'), null, { timeout: 120000 });

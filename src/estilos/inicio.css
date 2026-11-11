@@ -18,7 +18,7 @@
 @container ig (min-width: 960px) and (max-width: 1179px) { .app[data-dir="d"] .ini-apoio { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; } }
 @container ig (min-width: 1180px) {
   .app[data-dir="d"] .ini { grid-template-columns: minmax(0, 1fr) clamp(272px, 23cqw, 336px); gap: 22px; }
-  .app[data-dir="d"] .ini-apoio { position: sticky; top: 84px; max-height: calc(100dvh - 100px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 2px 2px 6px; }
+  .app[data-dir="d"] .ini-apoio { position: sticky; top: 0; padding: 2px 2px 6px; } /* sem rolagem própria: o `top` (medido a partir do padding do .main) é ajustado por useColunaFixa */
 }
 
 /* Para hoje: quatro vagas na mesma linha; faixa horizontal de duas vagas por vez no iPad em pé; pilha no celular */
@@ -35,11 +35,27 @@
 .app[data-dir="d"] .nova-urgencia { margin-top: 18px; padding: 12px 14px 14px; border-radius: 22px; }
 .app[data-dir="d"] .nova-urgencia h4 { margin: 0 0 10px; font-size: calc(14px * var(--esc)); font-weight: 700; }
 
-/* pilha do celular: o card ativo, o arrasto horizontal (a rolagem vertical segue livre) e os botões equivalentes */
+/* baralho do celular (decisão 65): o card da frente acompanha o dedo com leve inclinação, dois cards ficam logo atrás; gesto confirmado faz o card sair e reaparecer atrás da pilha.
+   A rolagem vertical segue livre (touch-action: pan-y). Movimento reduzido tira todas as animações. */
 .app[data-dir="d"] .ph-pilha { display: grid; gap: 10px; }
-.app[data-dir="d"] .ph-arrasto { position: relative; touch-action: pan-y; transform: translateX(var(--dx, 0px)) rotate(calc(var(--dx, 0px) / 40)); transition: transform .22s var(--mola, ease-out); will-change: transform; }
+.app[data-dir="d"] .ph-palco { position: relative; padding-bottom: 22px; }
+.app[data-dir="d"] .ph-arrasto { position: relative; z-index: 2; touch-action: pan-y; transform: translateX(var(--dx, 0px)) rotate(var(--rot, 0deg)); transform-origin: 50% 90%; transition: transform .26s var(--suave, ease-out), opacity .26s ease-out; will-change: transform; }
 .app[data-dir="d"] .ph-arrasto[data-arrastando] { transition: none; }
+.app[data-dir="d"] .ph-arrasto[data-anima] { animation: ph-entra .24s var(--suave, ease-out); }
 .app[data-dir="d"] .ph-arrasto .vaga { min-width: 0; }
+.app[data-dir="d"] .ph-pilha[data-saindo="esq"] .ph-arrasto { transform: translateX(-125%) rotate(-16deg); opacity: 0; }
+.app[data-dir="d"] .ph-pilha[data-saindo="dir"] .ph-arrasto { transform: translateX(125%) rotate(16deg); opacity: 0; }
+.app[data-dir="d"] .ph-atras { position: absolute; inset: 0 0 22px; z-index: 1; display: flex; align-items: flex-start; padding: 16px 18px; overflow: hidden; border-radius: var(--r-card); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); color: var(--text2); font-weight: 600;
+  transform-origin: 50% 100%; transition: transform .26s var(--suave, ease-out); }
+.app[data-dir="d"] .ph-atras > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: var(--t-leitura); }
+.app[data-dir="d"] .ph-atras[data-nivel="1"] { z-index: 1; transform: translateY(calc(11px * (1 - var(--prog, 0)))) scale(calc(.95 + .05 * var(--prog, 0))); }
+.app[data-dir="d"] .ph-atras[data-nivel="2"] { z-index: 0; transform: translateY(calc(22px - 11px * var(--prog, 0))) scale(calc(.9 + .05 * var(--prog, 0))); }
+.app[data-dir="d"] .ph-atras[data-nivel="3"] { z-index: 0; transform: translateY(22px) scale(.9); }
+.app[data-dir="d"] .ph-pilha[data-saindo] .ph-atras[data-nivel="1"] { transform: translateY(0) scale(1); }
+.app[data-dir="d"] .ph-pilha[data-saindo] .ph-atras[data-nivel="2"] { transform: translateY(11px) scale(.95); }
+.app[data-dir="d"] .ph-atras[data-volta] { animation: ph-volta .36s var(--suave, ease-out); }
+@keyframes ph-entra { from { transform: scale(.95) translateY(10px); opacity: .7; } to { transform: none; opacity: 1; } }
+@keyframes ph-volta { from { transform: translateX(-70%) translateY(0) rotate(-14deg) scale(1); opacity: 0; } 60% { opacity: 1; } }
 .app[data-dir="d"] .ph-dica { position: absolute; top: 10px; z-index: 3; padding: 4px 10px; border-radius: 999px; font-size: var(--t-rotulo); font-weight: 700; background: var(--acc); color: var(--on-acc, var(--card)); opacity: 0; pointer-events: none; transition: opacity .12s; }
 .app[data-dir="d"] .ph-dica-esq { right: 10px; }
 .app[data-dir="d"] .ph-dica-dir { left: 10px; }
@@ -47,13 +63,20 @@
 .app[data-dir="d"] .ph-botoes { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .app[data-dir="d"] .ph-botoes .btn:first-child svg { transform: scaleX(-1); }
 .app[data-dir="d"] .ph-botoes .btn:disabled { opacity: .5; }
+.app[data-dir="d"] .ph-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .app[data-dir="d"] .ph-confirma { padding: 12px 14px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 2px var(--acc); }
 .app[data-dir="d"] .ph-confirma p { margin: 0 0 10px; font-size: var(--t-leitura); }
 .app[data-dir="d"] .ph-confirma .acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+@media (prefers-reduced-motion: reduce) {
+  .app[data-dir="d"] .ph-arrasto, .app[data-dir="d"] .ph-atras { transition: none; }
+  .app[data-dir="d"] .ph-arrasto[data-anima], .app[data-dir="d"] .ph-atras[data-volta] { animation: none; }
+}
+/* as listas de cards das outras páginas no celular: o mesmo baralho; nas demais larguras a grade segue como era */
+.app[data-dir="d"] .cartas { min-width: 0; }
 
 /* ---------- mini calendário ----------
-   Seis categorias, cada uma com a sua cor, com o texto em alto contraste por cima nos dois modos. Vários itens no mesmo dia dividem a célula em faixas verticais com uma transição curta.
-   Hoje (número em círculo de destaque) e seleção (contorno forte e número em negrito) têm sinais diferentes e nunca escondem as faixas. */
+   Seis categorias, cada uma com a sua cor, com o texto em alto contraste por cima nos dois modos. A célula tem uma cor só: a mistura em partes iguais (oklab) das cores distintas presentes no dia.
+   Hoje (número em círculo de destaque) e seleção (contorno forte e número em negrito) têm sinais diferentes e nunca escondem a cor. */
 .app[data-dir="d"] {
   --cal-compromisso: oklch(0.86 0.09 245); --cal-feriado: oklch(0.86 0.1 55); --cal-pagamento: oklch(0.86 0.1 150);
   --cal-evento: oklch(0.86 0.09 340); --cal-reuniao: oklch(0.86 0.09 295); --cal-prazo: oklch(0.9 0.12 98);
@@ -62,7 +85,7 @@
   --cal-compromisso: oklch(0.44 0.11 245); --cal-feriado: oklch(0.46 0.1 55); --cal-pagamento: oklch(0.43 0.1 150);
   --cal-evento: oklch(0.45 0.11 340); --cal-reuniao: oklch(0.45 0.12 295); --cal-prazo: oklch(0.5 0.1 98);
 }
-.app[data-dir="d"] .mini-cal { background: var(--card); border-radius: var(--r-card); box-shadow: 0 0 0 1px var(--card-brd); padding: 14px 14px 12px; }
+.app[data-dir="d"] .mini-cal { position: relative; background: var(--card); border-radius: var(--r-card); box-shadow: 0 0 0 1px var(--card-brd); padding: 14px 14px 12px; }
 .app[data-dir="d"] .mc-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .app[data-dir="d"] .mc-mes { margin: 0; font-size: var(--t-leitura); font-weight: 700; text-align: center; }
 .app[data-dir="d"] .mc-seta:first-child svg { transform: scaleX(-1); }
@@ -70,9 +93,10 @@
 .app[data-dir="d"] .mc-linha > [role="gridcell"] { min-width: 0; }
 .app[data-dir="d"] .mc-cabsem { text-align: center; padding: 4px 0; font-size: max(10px, calc(12px * var(--esc))); font-weight: 600; color: var(--text2); }
 .app[data-dir="d"] .mc-cabsem abbr { text-decoration: none; }
-.app[data-dir="d"] .mc-dia { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 1; min-height: 32px; padding: 0; border: 0; border-radius: 10px; background-color: transparent; background-repeat: no-repeat; color: var(--text); font: inherit; cursor: pointer; transition: background-color .15s ease-out, box-shadow .15s ease-out; }
+.app[data-dir="d"] .mc-dia { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 1; min-height: 32px; padding: 0; border: 0; border-radius: 10px; background-color: transparent; color: var(--text); font: inherit; cursor: pointer; transition: background-color .2s ease-out, box-shadow .15s ease-out; }
 .app[data-dir="d"] .mc-dia::before { content: ""; position: absolute; inset: -6px -1.5px; } /* área de toque de 44 px sem aumentar a célula */
-.app[data-dir="d"] .mc-dia:hover { background-color: color-mix(in srgb, var(--text) 8%, transparent); }
+.app[data-dir="d"] .mc-dia:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 38%, transparent); }
+.app[data-dir="d"] .mc-dia:not([style]):hover { background-color: color-mix(in srgb, var(--text) 8%, transparent); }
 .app[data-dir="d"] .mc-dia[data-fora] .mc-num { opacity: .5; }
 .app[data-dir="d"] .mc-num { position: relative; display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 4px; border-radius: 999px; font-size: var(--t-meta); font-variant-numeric: tabular-nums; }
 .app[data-dir="d"] .mc-dia[data-hoje] .mc-num { background: var(--acc); color: var(--on-acc, var(--card)); font-weight: 700; opacity: 1; }
@@ -89,7 +113,10 @@
 .app[data-dir="d"] :is(.mc-leg li, .mc-item)[data-categoria="evento"] :is(.mc-amostra, .mc-barra) { background: var(--cal-evento); }
 .app[data-dir="d"] :is(.mc-leg li, .mc-item)[data-categoria="reuniao"] :is(.mc-amostra, .mc-barra) { background: var(--cal-reuniao); }
 .app[data-dir="d"] :is(.mc-leg li, .mc-item)[data-categoria="prazo"] :is(.mc-amostra, .mc-barra) { background: var(--cal-prazo); }
+.app[data-dir="d"] .mc-rodape { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px -14px 0; padding: 10px 14px 0; border-top: 1px solid var(--card-brd); }
+.app[data-dir="d"] .mc-rodape .btn { flex: 1 1 auto; justify-content: center; white-space: nowrap; }
 .app[data-dir="d"] .mc-dia-lista { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--card-brd); }
+.app[data-dir="d"] .mc-dl-cab h4 { margin-right: auto; }
 .app[data-dir="d"] .mc-dl-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .app[data-dir="d"] .mc-dl-cab h4 { margin: 0; font-size: var(--t-leitura); font-weight: 700; }
 .app[data-dir="d"] .mc-itens { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
@@ -100,6 +127,19 @@
 .app[data-dir="d"] .mc-item-t b { font-size: var(--t-leitura); overflow-wrap: anywhere; }
 .app[data-dir="d"] .mc-item-t small { font-size: var(--t-meta); color: var(--text2); overflow-wrap: anywhere; }
 .app[data-dir="d"] .mc-rot { font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--text2); }
+.app[data-dir="d"] .mc-cartao { position: fixed; z-index: 70; box-sizing: border-box; width: max-content; max-width: min(320px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow-y: auto; padding: 14px 16px; border-radius: var(--r-card); color: var(--text);
+  background: color-mix(in oklab, var(--card) 70%, var(--mc-mix, var(--card))); box-shadow: 0 0 0 1px var(--card-brd), 0 12px 32px color-mix(in srgb, var(--text) 22%, transparent); }
+.app[data-dir="d"] .mc-cartao h4 { margin: 0 0 8px; font-size: var(--t-leitura); font-weight: 700; }
+.app[data-dir="d"] .mc-cartao ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.app[data-dir="d"] .mc-cartao li { display: flex; align-items: stretch; gap: 10px; }
+.app[data-dir="d"] .mc-cartao li[data-categoria="compromisso"] .mc-barra { background: var(--cal-compromisso); }
+.app[data-dir="d"] .mc-cartao li[data-categoria="feriado"] .mc-barra { background: var(--cal-feriado); }
+.app[data-dir="d"] .mc-cartao li[data-categoria="pagamento"] .mc-barra { background: var(--cal-pagamento); }
+.app[data-dir="d"] .mc-cartao li[data-categoria="evento"] .mc-barra { background: var(--cal-evento); }
+.app[data-dir="d"] .mc-cartao li[data-categoria="reuniao"] .mc-barra { background: var(--cal-reuniao); }
+.app[data-dir="d"] .mc-cartao li[data-categoria="prazo"] .mc-barra { background: var(--cal-prazo); }
+.app[data-dir="d"] .mc-cartao .mc-rot, .app[data-dir="d"] .mc-cartao small { color: var(--text); opacity: .78; }
+@media (prefers-reduced-motion: reduce) { .app[data-dir="d"] .mc-dia { transition: none; } }
 .app[data-dir="d"] .mc-vazio { margin: 0; font-size: var(--t-meta); color: var(--text2); }
 
 /* títulos e chips em largura estreita: a explicação do Para hoje vai para a linha de baixo e os chips de prazo e de espera quebram em vez de passar da borda do card */

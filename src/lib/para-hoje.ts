@@ -102,3 +102,13 @@ export function ordemDaPilha(ids: readonly string[], guardada: readonly string[]
 /** O card ativo vai para o fim da ordem de apresentação (a vaga, a etapa e a prioridade não mudam: só a ordem em que o aparelho mostra). */
 export const ativoParaOFim = (ordem: readonly string[]): string[] => (ordem.length < 2 ? [...ordem] : [...ordem.slice(1), ordem[0]]);
 
+/** O inverso: o último da ordem volta para a frente (o "anterior" das pilhas das outras páginas). Quem foi para o fim pelo gesto da esquerda volta ao deslizar para a direita. */
+export const ultimoParaAFrente = (ordem: readonly string[]): string[] => (ordem.length < 2 ? [...ordem] : [ordem[ordem.length - 1], ...ordem.slice(0, -1)]);
+
+/** O gesto de deslizar vale quando o deslocamento passa de max(72 px, 22% da largura) ou quando é um gesto rápido (velocidade em px/ms) e longo o bastante para não ser um toque acidental. */
+export function gestoValido(dx: number, velocidade: number, largura: number): 'esq' | 'dir' | null {
+  const limite = Math.max(72, largura * 0.22), lado = dx < 0 ? 'esq' : 'dir';
+  if (Math.abs(dx) >= limite) return lado;
+  if (Math.abs(dx) >= 36 && Math.abs(velocidade) >= 0.55 && Math.sign(velocidade) === Math.sign(dx)) return lado;
+  return null;
+}

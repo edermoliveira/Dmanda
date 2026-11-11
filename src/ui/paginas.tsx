@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Icone } from './Icone';
 import { useApp, type EstadoRotina } from './contexto';
-import { CardDemanda, ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
+import { ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
 import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
@@ -14,7 +14,9 @@ import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, type Dema
 import { anoDoDocumento, chaveOpcao } from '@/lib/documentos';
 import { WidgetClima } from './clima';
 import { ParaHoje } from './para-hoje';
+import { CardsDeDemandas } from './baralho';
 import { MiniCalendario } from './mini-calendario';
+import { useColunaFixa } from './coluna-fixa';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
 function Carregando() { return <div className="vazio-c" role="status">Carregando as demandas...</div>; }
@@ -41,6 +43,8 @@ export function PaginaInicio() {
   const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina, dias } = useApp();
   const [sel, setSel] = useState<'atrasadas' | 'hoje' | 'sete' | null>(null);
   useAjustar(`${demandas.length}${sel}`);
+  const apoio = useRef<HTMLElement>(null);
+  useColunaFixa(apoio);
   // Composição de 11/11/2026 (decisão 64): à esquerda o título, os três contadores e o Para hoje com Nova urgência; à direita, numa coluna que fica sob o cabeçalho enquanto a área principal rola,
   // Humor, Clima e o mini calendário (nessa ordem). Sem largura para as duas colunas, o apoio vai para baixo das demandas.
   return (
@@ -62,7 +66,7 @@ export function PaginaInicio() {
             </div>
             {sel ? (() => {
               const l = porGrupo(demandas, sel, hoje, dias), nome = GRUPOS_INICIO.find((g) => g[0] === sel)![1];
-              return <><h3 className="sub-f">{nome} <small>{plural(l.length, 'demanda')}</small></h3>{l.length ? <div className="cards">{l.map((d) => <CardDemanda key={d.id} d={d} />)}</div> : <div className="vazio-c">Nenhuma demanda neste filtro.</div>}</>;
+              return <><h3 className="sub-f">{nome} <small>{plural(l.length, 'demanda')}</small></h3>{l.length ? <CardsDeDemandas lista={l} /> : <div className="vazio-c">Nenhuma demanda neste filtro.</div>}</>;
             })() : null}
           </section>
         ) : null}
@@ -73,7 +77,7 @@ export function PaginaInicio() {
         {demandas.length ? <ParaHoje /> : null}
         <p className="rotina-estado">{textoRotina(rotina)}</p>
       </div>
-      <aside className="ini-apoio" aria-label="Apoio do dia: humor, clima e calendário">
+      <aside ref={apoio} className="ini-apoio" aria-label="Apoio do dia: humor, clima e calendário">
         <RegistroNoInicio />
         <ClimaNoInicio />
         <MiniCalendario />

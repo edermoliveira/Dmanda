@@ -1,12 +1,12 @@
 // Mini calendário do Início (decisão 64): o que cada dia tem, em seis categorias. Regras puras, sem banco e sem relógio ("hoje" vem de fora). Todas as datas são datas do calendário
 // (AAAA-MM-DD, America/Sao_Paulo) e a semana começa na segunda. Nada aqui reescreve vencimento: o Prazo é o vencimento efetivo que o Dmanda já gravou (ajustado por fim de semana, feriado e
 // evento externo de dia inteiro cadastrados em Dias indisponíveis). Acompanhar em e Retorno do setor continuam só na Agenda principal.
-import { dataPorExtenso, marcosDaDemanda } from './agenda.ts';
+import { dataPorExtenso, indiceSemana, marcosDaDemanda } from './agenda.ts';
 import { compararEventos, horarioDe, type Evento } from './eventos.ts';
 import type { Demanda } from './demandas.ts';
 import { titulo as tituloDemanda } from './demandas.ts';
 import type { Pagamento } from './pagamentos.ts';
-import type { DiaIndisponivel } from './prazos.ts';
+import { somarDias, type DiaIndisponivel } from './prazos.ts';
 
 export const CATEGORIAS_MINI = ['compromisso', 'feriado', 'pagamento', 'evento', 'reuniao', 'prazo'] as const;
 export type CategoriaMini = (typeof CATEGORIAS_MINI)[number];
@@ -64,16 +64,22 @@ export function descreverDiaMini(data: string, itens: readonly Pick<ItemMini, 'c
 }
 
 /**
- * Faixas de cor da célula: cada categoria ocupa uma fatia igual, da esquerda para a direita, com uma transição curta (em px, para não depender do tamanho da célula) entre as cores.
- * `cor(c)` devolve a referência da cor da categoria (uma variável de CSS). Uma só categoria é uma cor lisa; sem categoria, nada.
+ * A cor única de uma célula (decisão 65): mistura, em proporções iguais, as cores DISTINTAS das categorias presentes no dia. Duas categorias dão a média das duas, três dão a média das três, e assim
+ * por diante; várias marcas da mesma categoria contam uma vez só e mantêm a cor dela. A mistura é feita no espaço oklab (as coordenadas são lineares, então a média não depende da ordem) e a
+ * ordem das categorias é a fixa da legenda. `cor(c)` devolve a referência da cor da categoria (uma variável de CSS): nenhuma cor literal passa por aqui. Sem categoria, nada.
  */
-export function faixasDaCelula(cats: readonly CategoriaMini[], cor: (c: CategoriaMini) => string, transicaoPx = 2): string | undefined {
-  if (!cats.length) return undefined;
-  if (cats.length === 1) return `linear-gradient(90deg, ${cor(cats[0])}, ${cor(cats[0])})`;
-  const n = cats.length, paradas: string[] = [];
-  cats.forEach((c, i) => {
-    const ini = i === 0 ? '0%' : `calc(${(i * 100) / n}% + ${transicaoPx}px)`, fim = i === n - 1 ? '100%' : `calc(${((i + 1) * 100) / n}% - ${transicaoPx}px)`;
-    paradas.push(`${cor(c)} ${ini}`, `${cor(c)} ${fim}`);
-  });
-  return `linear-gradient(90deg, ${paradas.join(', ')})`;
+export function corMisturada(cats: readonly CategoriaMini[], cor: (c: CategoriaMini) => string): string | undefined {
+  const lista = CATEGORIAS_MINI.filter((c) => cats.includes(c));
+  if (!lista.length) return undefined;
+  const pct = (x: number) => `${Math.round(x * 10000) / 10000}%`;
+  return lista.slice(1).reduce((acc, c, i) => `color-mix(in oklab, ${acc} ${pct((100 * (i + 1)) / (i + 2))}, ${cor(c)} ${pct(100 / (i + 2))})`, cor(lista[0]));
+}
+
+/** Os atalhos do rodapé: quantos dias depois de hoje cada um leva. */
+export const ATALHOS_MINI = [{ rotulo: 'Hoje', dias: 0 }, { rotulo: 'Amanhã', dias: 1 }, { rotulo: 'Em 3 dias', dias: 3 }, { rotulo: 'Em 1 semana', dias: 7 }, { rotulo: 'Em 2 semanas', dias: 14 }] as const;
+
+/** A grade do mês: sempre seis semanas de segunda a domingo (42 células), com os dias do mês anterior e do seguinte completando as pontas. `primeiro` é o dia 1 do mês mostrado. */
+export function seisSemanas(primeiro: string): { data: string; doMes: boolean }[][] {
+  const inicio = somarDias(primeiro, -indiceSemana(primeiro)), mes = primeiro.slice(0, 7);
+  return Array.from({ length: 6 }, (_, s) => Array.from({ length: 7 }, (_, i) => { const d = somarDias(inicio, s * 7 + i); return { data: d, doMes: d.slice(0, 7) === mes }; }));
 }

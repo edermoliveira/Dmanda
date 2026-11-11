@@ -63,7 +63,7 @@ const estavel = (pg, seletor = '.app') => pg.waitForFunction((sel) => {
   const r = e.getBoundingClientRect(), k = sel + '|' + [r.left, r.top, r.width, r.height].map((x) => x.toFixed(1)).join();
   const ant = window.__estavelPrio; window.__estavelPrio = k; return ant === k;
 }, seletor, { timeout: 20000, polling: 100 });
-const VISAO_SEL = { cards: '.cards .dcard', quadro: '.quadro .coluna', tabela: '.tabela tbody tr', lista: '.lista .linha' };
+const VISAO_SEL = { cards: '.cards .dcard, .cartas .dcard', quadro: '.quadro .coluna', tabela: '.tabela tbody tr', lista: '.lista .linha' };
 const ir = async (pg, rota = '/demandas') => {
   await pg.goto(BASE + rota, { waitUntil: 'load', timeout: 120000 }); await pg.waitForSelector('.app .main', { timeout: 120000 });
   await pg.waitForFunction(() => !/Carregando/.test(document.querySelector('.main')?.innerText ?? ''), null, { timeout: 120000 });

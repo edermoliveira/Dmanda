@@ -4,7 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { Icone } from './Icone';
 import { emLote, epocaDoApp, pendentes, registrar, type Pedido } from './ajuste';
 import { useApp } from './contexto';
-import { AcaoCard, BarraProg, CardDemanda, ChipEspera, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP, SeloPrioridade } from './cartoes';
+import { CardsDeDemandas } from './baralho';
+import { AcaoCard, BarraProg, ChipEspera, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP, SeloPrioridade } from './cartoes';
 import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordenar, origemDe, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
 import { demandaPrioritaria, ordemDaEtapaComPrioridade, prioritariasPrimeiro } from '@/lib/prioridade';
 
@@ -82,7 +83,7 @@ export const Vazio = ({ icone = 'busca', titulo, texto }: { icone?: string; titu
 );
 
 export function Cards({ lista }: { lista: Demanda[] }) {
-  return <div className="cards">{prioritariasPrimeiro(lista).map((d) => <CardDemanda key={d.id} d={d} />)}</div>;
+  return <CardsDeDemandas lista={prioritariasPrimeiro(lista)} />;
 }
 
 // ---------- Quadro ----------

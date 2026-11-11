@@ -5,18 +5,14 @@
 //  - celular: pilha com um card ativo. Deslizar à esquerda manda o card para o fim da ordem de apresentação (guardada só neste aparelho, até a virada do dia em Brasília);
 //    deslizar à direita avança a etapa (Cadastro, Vistos, Fazendo, Finalizado) ou, nas etapas de espera, abre o menu para escolher. Botões equivalentes fazem o mesmo.
 // A vaga, a etapa e a prioridade nunca mudam pelo gesto da esquerda. O primeiro desenho é o mesmo no servidor e no navegador: a ordem guardada só entra depois de montar.
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as PonteiroReact } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { CardDemanda } from './cartoes';
+import { Baralho, BaralhoSimples, useModo } from './baralho';
 import { eObjeto } from '@/lib/armazenamento';
 import { ativoParaOFim, elegiveisParaHoje, ETAPA_SEGUINTE, etapaDeEspera, ordemDaPilha, organizarPainel, precisaCompletar, vagasAbertas, VAGAS_PARA_HOJE } from '@/lib/para-hoje';
 import { plural, type Demanda } from '@/lib/demandas';
-
-type Modo = 'quatro' | 'duas' | 'pilha';
-/** Larguras do painel em px de layout (não de fonte): abaixo de 520 é celular (pilha), abaixo de 840 é iPad em pé (duas vagas por vez). */
-const LARGURA_DUAS = 840, LARGURA_PILHA = 520;
-const modoDaLargura = (w: number): Modo => (w < LARGURA_PILHA ? 'pilha' : w < LARGURA_DUAS ? 'duas' : 'quatro');
 
 const CHAVE_ORDEM = 'dmanda:para-hoje-ordem';
 type OrdemGuardada = { dia: string; ids: string[] };
@@ -29,86 +25,27 @@ function lerOrdem(): OrdemGuardada | null {
 }
 function gravarOrdem(o: OrdemGuardada) { try { localStorage.setItem(CHAVE_ORDEM, JSON.stringify(o)); } catch { /* sem armazenamento: vale só nesta visita */ } }
 
-/** O modo da apresentação, medido no próprio painel (e não na janela): o menu lateral aberto ou fechado muda a largura útil. Começa em "quatro" (igual no servidor). */
-function useModo(ref: React.RefObject<HTMLElement | null>): Modo {
-  const [modo, setModo] = useState<Modo>('quatro');
-  useLayoutEffect(() => {
-    const el = ref.current; if (!el) return;
-    const medir = () => setModo(modoDaLargura(el.getBoundingClientRect().width));
-    medir();
-    const ro = new ResizeObserver(medir); ro.observe(el);
-    return () => ro.disconnect();
-  }, [ref]);
-  return modo;
-}
-
-/**
- * Arrasto horizontal com o dedo (ou a caneta). O mouse nunca arrasta: no computador valem os botões. A rolagem vertical segue livre (touch-action: pan-y); o gesto só começa quando o
- * movimento é claramente horizontal. Um deslize curto ou cancelado volta ao lugar sem mudar nada. Depois de um arrasto o clique seguinte é engolido (não abre a demanda nem marca tarefa).
- */
-function useArrasto(onEsquerda: () => void, onDireita: () => void, desligado: boolean) {
-  const ref = useRef<HTMLDivElement>(null);
-  const est = useRef<{ x: number; y: number; id: number; fase: 'espera' | 'arrasta' | 'fora'; dx: number } | null>(null);
-  const engolir = useRef(false);
-  const aplicar = (dx: number, lado?: 'esq' | 'dir') => {
-    const el = ref.current; if (!el) return;
-    el.style.setProperty('--dx', `${dx}px`);
-    if (lado) el.dataset.lado = lado; else delete el.dataset.lado;
-  };
-  const limite = () => Math.max(72, (ref.current?.getBoundingClientRect().width ?? 300) * 0.22);
-  const final = () => { const el = ref.current; if (el) { delete el.dataset.arrastando; aplicar(0); } est.current = null; };
-  return {
-    ref,
-    props: {
-      onPointerDown: (e: PonteiroReact<HTMLDivElement>) => {
-        if (desligado || e.pointerType === 'mouse' || !e.isPrimary) return;
-        if ((e.target as HTMLElement).closest('input:not([type="checkbox"]), textarea, select')) return; // editando o texto de uma tarefa: o dedo é do campo
-        est.current = { x: e.clientX, y: e.clientY, id: e.pointerId, fase: 'espera', dx: 0 };
-      },
-      onPointerMove: (e: PonteiroReact<HTMLDivElement>) => {
-        const s = est.current; if (!s || s.id !== e.pointerId || s.fase === 'fora') return;
-        const dx = e.clientX - s.x, dy = e.clientY - s.y;
-        if (s.fase === 'espera') {
-          if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { s.fase = 'fora'; return; } // rolagem vertical: não é gesto
-          if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-          s.fase = 'arrasta'; ref.current?.setPointerCapture(e.pointerId); if (ref.current) ref.current.dataset.arrastando = 'sim';
-        }
-        s.dx = dx; aplicar(dx, Math.abs(dx) >= limite() ? (dx < 0 ? 'esq' : 'dir') : undefined);
-      },
-      onPointerUp: (e: PonteiroReact<HTMLDivElement>) => {
-        const s = est.current; if (!s || s.id !== e.pointerId) return;
-        const foi = s.fase === 'arrasta', dx = s.dx;
-        if (foi) { engolir.current = true; setTimeout(() => { engolir.current = false; }, 350); }
-        final();
-        if (foi && dx <= -limite()) onEsquerda(); else if (foi && dx >= limite()) onDireita();
-      },
-      onPointerCancel: () => final(),
-      onClickCapture: (e: React.MouseEvent) => { if (engolir.current) { e.preventDefault(); e.stopPropagation(); } },
-    },
-  };
-}
-
 type Vaga = { posicao: number; demanda: Demanda };
 
-/** A pilha do celular: o card ativo, os botões e os gestos. */
-function Pilha({ vagas }: { vagas: Vaga[] }) {
+/** A pilha do celular do Para hoje: o baralho com a ordem guardada no aparelho, a etapa pelo gesto da direita (ou pelo botão) e a confirmação de finalizar. */
+function Pilha({ vagas, vagaDe }: { vagas: Vaga[]; vagaDe: (id: string) => number | undefined }) {
   const { hoje, mover, concluir, abrirMenuMover, demandas } = useApp();
   const [guardada, setGuardada] = useState<OrdemGuardada | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [confirmar, setConfirmar] = useState<{ id: string; pendentes: number } | null>(null);
   const [aviso, setAviso] = useState('');
   const observando = useRef<{ id: string; etapa: string; ate: number } | null>(null);
-  const botaoAvancar = useRef<HTMLButtonElement>(null);
+  const gravando = useRef(false);   // uma única gravação por vez, mesmo com o gesto repetido antes de o estado atualizar
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => { setGuardada(lerOrdem()); const f = (e: StorageEvent) => { if (e.key === CHAVE_ORDEM) setGuardada(lerOrdem()); }; addEventListener('storage', f); return () => removeEventListener('storage', f); }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
   const ids = useMemo(() => vagas.map((v) => v.demanda.id), [vagas]);
   const ordem = useMemo(() => ordemDaPilha(ids, guardada && guardada.dia === hoje ? guardada.ids : []), [ids, guardada, hoje]);
   const guardarOrdem = useCallback((novos: string[]) => { const o = { dia: hoje, ids: novos }; setGuardada(o); gravarOrdem(o); }, [hoje]);
-  const porId = useMemo(() => new Map(vagas.map((v) => [v.demanda.id, v] as const)), [vagas]);
+  const porId = useMemo(() => new Map(vagas.map((v) => [v.demanda.id, v.demanda] as const)), [vagas]);
   const ativa = porId.get(ordem[0]) ?? null;
   // uma confirmação aberta para um card que já não é o ativo (a lista mudou por baixo, por exemplo ao voltar à aba) não pode travar a pilha
-  const confirmarAtivo = confirmar && ativa && confirmar.id === ativa.demanda.id ? confirmar : null;
+  const confirmarAtivo = confirmar && ativa && confirmar.id === ativa.id ? confirmar : null;
 
   // card que foi para a escolha de etapa no menu: quando a etapa mudar de verdade, a pilha avança (depois da gravação confirmada)
   useEffect(() => {
@@ -122,21 +59,23 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
 
   const passar = useCallback(() => {
     if (ocupado || confirmarAtivo || ordem.length < 2) return;
-    guardarOrdem(ativoParaOFim(ordem)); setAviso(`Passado para o fim. Agora: ${porId.get(ordem[1])?.demanda.assunto ?? ''}`);
+    guardarOrdem(ativoParaOFim(ordem)); setAviso(`Passado para o fim. Agora: ${porId.get(ordem[1])?.assunto ?? ''}`);
   }, [ocupado, confirmarAtivo, ordem, guardarOrdem, porId]);
 
   const gravar = useCallback(async (d: Demanda, destino: 'Vistos' | 'Fazendo' | 'Finalizado') => {
-    setOcupado(true);
-    const r = await (destino === 'Finalizado' ? concluir(d.id) : mover(d.id, destino));
-    setOcupado(false);
-    if (!r) return; // falhou (o aviso de erro já apareceu): o card e a ordem ficam como estavam
-    if (destino !== 'Finalizado') guardarOrdem(ativoParaOFim(ordem)); // a vaga continua dele; a pilha segue para o próximo
+    if (gravando.current) return;
+    gravando.current = true; setOcupado(true);
+    try {
+      const r = await (destino === 'Finalizado' ? concluir(d.id) : mover(d.id, destino));
+      if (!r) return; // falhou (o aviso de erro já apareceu): o card e a ordem ficam como estavam
+      if (destino !== 'Finalizado') guardarOrdem(ativoParaOFim(ordem)); // a vaga continua dele; a pilha segue para o próximo
+    } finally { gravando.current = false; setOcupado(false); }
   }, [concluir, mover, ordem, guardarOrdem]);
 
-  const avancar = useCallback(() => {
-    if (ocupado || confirmarAtivo || !ativa) return;
-    const d = ativa.demanda;
-    if (etapaDeEspera(d.etapa)) { observando.current = { id: d.id, etapa: d.etapa, ate: Date.now() + 60_000 }; if (botaoAvancar.current) abrirMenuMover(d.id, botaoAvancar.current); return; }
+  const avancar = useCallback((ancora: HTMLElement | null) => {
+    if (ocupado || gravando.current || confirmarAtivo || !ativa) return;
+    const d = ativa;
+    if (etapaDeEspera(d.etapa)) { observando.current = { id: d.id, etapa: d.etapa, ate: Date.now() + 60_000 }; if (ancora) abrirMenuMover(d.id, ancora); return; }
     const destino = ETAPA_SEGUINTE[d.etapa];
     if (!destino) return;
     if (destino === 'Finalizado') {
@@ -146,36 +85,22 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
     void gravar(d, destino as 'Vistos' | 'Fazendo' | 'Finalizado');
   }, [ocupado, confirmarAtivo, ativa, abrirMenuMover, gravar]);
 
-  const { ref, props } = useArrasto(passar, avancar, ocupado || !!confirmarAtivo);
   if (!ativa) return null;
-  const d = ativa.demanda, destino = ETAPA_SEGUINTE[d.etapa];
+  const d = ativa, destino = ETAPA_SEGUINTE[d.etapa];
   const rotuloAvancar = etapaDeEspera(d.etapa) ? 'Escolher a etapa' : destino ? (destino === 'Finalizado' ? 'Finalizar' : `Avançar para ${destino}`) : 'Sem etapa seguinte';
-  return (
-    <div className="ph-pilha" data-pilha data-total={ordem.length}>
-      <div ref={ref} className="ph-arrasto" data-ativo-id={d.id} {...props}>
-        <span className="ph-dica ph-dica-esq" aria-hidden="true">Passar para o fim</span>
-        <span className="ph-dica ph-dica-dir" aria-hidden="true">{rotuloAvancar}</span>
-        <div className="vaga" data-vaga={ativa.posicao} data-ativo>
-          <CardDemanda d={d} mostrarRapida />
-        </div>
+  const rodape = confirmarAtivo ? (
+    <div className="ph-confirma" role="alertdialog" aria-label="Finalizar a demanda" data-confirma-finalizar>
+      <p>Ao finalizar, {confirmarAtivo.pendentes === 1 ? '1 tarefa pendente será marcada' : `${confirmarAtivo.pendentes} tarefas pendentes serão marcadas`} como concluída{confirmarAtivo.pendentes === 1 ? '' : 's'}.</p>
+      <div className="acoes">
+        <button type="button" className="btn" autoFocus onClick={() => setConfirmar(null)}>Cancelar</button>
+        <button type="button" className="btn pri" disabled={ocupado} onClick={async () => { await gravar(d, 'Finalizado'); setConfirmar(null); }}>Finalizar e concluir {plural(confirmarAtivo.pendentes, 'tarefa')}</button>
       </div>
-      {confirmarAtivo ? (
-        <div className="ph-confirma" role="alertdialog" aria-label="Finalizar a demanda" data-confirma-finalizar>
-          <p>Ao finalizar, {confirmarAtivo.pendentes === 1 ? '1 tarefa pendente será marcada' : `${confirmarAtivo.pendentes} tarefas pendentes serão marcadas`} como concluída{confirmarAtivo.pendentes === 1 ? '' : 's'}.</p>
-          <div className="acoes">
-            <button type="button" className="btn" autoFocus onClick={() => setConfirmar(null)}>Cancelar</button>
-            <button type="button" className="btn pri" disabled={ocupado} onClick={async () => { await gravar(d, 'Finalizado'); setConfirmar(null); }}>Finalizar e concluir {plural(confirmarAtivo.pendentes, 'tarefa')}</button>
-          </div>
-        </div>
-      ) : (
-        <div className="ph-botoes" role="group" aria-label="Navegar pelas vagas">
-          <button type="button" className="btn mini" data-pilha-passar disabled={ocupado || ordem.length < 2} onClick={passar}><Icone nome="chevron-right" />Passar para o fim</button>
-          <span className="ph-posicao data" aria-live="polite">1 de {ordem.length}</span>
-          <button ref={botaoAvancar} type="button" className="btn mini pri" data-pilha-avancar aria-haspopup={etapaDeEspera(d.etapa) ? 'menu' : undefined} disabled={ocupado || (!destino && !etapaDeEspera(d.etapa))} onClick={avancar}>{rotuloAvancar}<Icone nome="chevron-right" /></button>
-        </div>
-      )}
-      <p className="sr-only" role="status" aria-live="polite">{aviso}</p>
     </div>
+  ) : undefined;
+  return (
+    <Baralho nome="Para hoje" ordem={ordem} porId={porId} vagaDe={vagaDe} aviso={aviso} travado={ocupado || !!confirmarAtivo} rodape={rodape}
+      esquerda={{ rotulo: 'Passar para o fim', executar: passar }}
+      direita={{ rotulo: rotuloAvancar, executar: avancar, desabilitado: !destino && !etapaDeEspera(d.etapa), menu: etapaDeEspera(d.etapa) }} />
   );
 }
 
@@ -201,7 +126,7 @@ export function ParaHoje() {
   return (
     <section ref={secao} className="sec ph" data-painel="para-hoje" data-modo={modo} aria-labelledby="ph-t">
       <h3 id="ph-t">Para hoje <small>até {VAGAS_PARA_HOJE} demandas para tocar hoje: pedidos da Prefeita e do Gabinete primeiro, depois atrasadas e as que vencem hoje</small></h3>
-      {vazio ? <div className="vazio-c">Nada para tocar hoje por enquanto.</div> : modo === 'pilha' ? <Pilha vagas={vagas} /> : (
+      {vazio ? <div className="vazio-c">Nada para tocar hoje por enquanto.</div> : modo === 'pilha' ? <Pilha vagas={vagas} vagaDe={(id) => vagas.find((v) => v.demanda.id === id)?.posicao} /> : (
         <>
           {modo === 'duas' && vagas.length > 2 ? (
             <div className="ph-nav" role="group" aria-label="Ver outras vagas">
@@ -218,7 +143,8 @@ export function ParaHoje() {
       {urgencias.length ? (
         <div className="nova-urgencia" role="status" data-nova-urgencia>
           <h4>Nova urgência <small>fora das suas vagas, sem trocar a seleção</small></h4>
-          <div className="cards ph-cards-urg">{urgencias.map((e) => <div key={e.demanda.id} className="vaga" {...(e.prioritaria ? { 'data-fora-vaga': '' } : {})}><CardDemanda d={e.demanda} mostrarRapida /></div>)}</div>
+          {modo === 'pilha' ? <BaralhoSimples lista={urgencias.map((e) => e.demanda)} nome="Nova urgência" foraDaVaga={new Set(urgencias.filter((e) => e.prioritaria).map((e) => e.demanda.id))} />
+            : <div className="cards ph-cards-urg">{urgencias.map((e) => <div key={e.demanda.id} className="vaga" {...(e.prioritaria ? { 'data-fora-vaga': '' } : {})}><CardDemanda d={e.demanda} mostrarRapida /></div>)}</div>}
         </div>
       ) : null}
     </section>

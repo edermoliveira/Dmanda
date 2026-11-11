@@ -142,7 +142,7 @@ export function AcaoCard({ d }: { d: Demanda }) {
 const Desc = ({ d }: { d: Demanda }) => (d.descricao.trim() ? <div className="desc">{d.descricao.trim()}</div> : null);
 
 /** `mostrarRapida`: o painel Para hoje mostra a marca Rápida (só quando está ativa) no card; nas demais telas o card segue como era. */
-export function CardDemanda({ d, mostrarRapida = false }: { d: Demanda; mostrarRapida?: boolean }) {
+export function CardDemanda({ d, mostrarRapida = false, lado, aoGirar }: { d: Demanda; mostrarRapida?: boolean; lado?: 'frente' | 'verso'; aoGirar?: (para: 'frente' | 'verso') => void }) {
   const { abrirJanela, arquivar, mover, abrirMenuMover, hoje } = useApp();
   const [fixo, setFixo] = useState<'frente' | 'verso' | undefined>();
   const fin = d.etapa === 'Finalizado';
@@ -150,11 +150,11 @@ export function CardDemanda({ d, mostrarRapida = false }: { d: Demanda; mostrarR
   const abrirEd = () => abrirJanela({ t: 'editar', id: d.id });
   const teclaAbrir = (e: KeyboardEvent) => { if (e.key === 'Enter') abrirEd(); };
   const girar = (para: 'frente' | 'verso') => (
-    <button className="girar" aria-label={para === 'verso' ? 'Fixar o verso do card' : 'Fixar a frente do card'} title={para === 'verso' ? 'Ver tarefas' : 'Ver a frente'} onClick={() => setFixo(para)}><Icone nome="rotate-cw" /></button>
+    <button className="girar" aria-label={para === 'verso' ? 'Fixar o verso do card' : 'Fixar a frente do card'} title={para === 'verso' ? 'Ver tarefas' : 'Ver a frente'} onClick={() => { setFixo(para); aoGirar?.(para); }}><Icone nome="rotate-cw" /></button>
   );
   const dias = diasDesdeInstante(d.etapa_desde, hoje);
   return (
-    <article className={`dcard${at ? ' atrasada' : ''}${demandaPrioritaria(d) ? ' prio-pref' : ''}`} data-fix={fixo} data-id={d.id} data-prioridade={demandaPrioritaria(d) ? 'prefeita' : undefined}>
+    <article className={`dcard${at ? ' atrasada' : ''}${demandaPrioritaria(d) ? ' prio-pref' : ''}`} data-fix={lado ?? fixo} data-id={d.id} data-prioridade={demandaPrioritaria(d) ? 'prefeita' : undefined}>
       <div className="faces">
         <div className={`face front${corCard(d)}`}>
           <div className="cab"><OrigemP d={d} />{girar('verso')}</div>

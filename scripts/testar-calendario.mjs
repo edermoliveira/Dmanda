@@ -1,9 +1,10 @@
 // Regras puras do mini calendário, dos pagamentos e da pilha do Para hoje (decisão 64), sem navegador nem banco. Uso: node scripts/testar-calendario.mjs
-import { CATEGORIAS_MINI, categoriaDoDia, categoriaDoEvento, categoriasDoDia, descreverDiaMini, faixasDaCelula, itensMini, mapaMini, ROTULO_MINI } from '../src/lib/mini-calendario.ts';
+import { CATEGORIAS_MINI, categoriaDoDia, categoriaDoEvento, categoriasDoDia, descreverDiaMini, corMisturada, ATALHOS_MINI, seisSemanas, itensMini, mapaMini, ROTULO_MINI } from '../src/lib/mini-calendario.ts';
 import { dataExiste, erroDoPagamento, ordenarPagamentos } from '../src/lib/pagamentos.ts';
-import { ajustarPrazo, somarDias } from '../src/lib/prazos.ts';
+import { ajustarPrazo } from '../src/lib/prazos.ts';
 import { TIPOS_EVENTO, erroDoEvento } from '../src/lib/eventos.ts';
-import { ativoParaOFim, elegiveisParaHoje, ETAPA_SEGUINTE, etapaDeEspera, ordemDaPilha, organizarPainel, precisaCompletar, VAGAS_PARA_HOJE, vagasAbertas } from '../src/lib/para-hoje.ts';
+import { ativoParaOFim, ultimoParaAFrente, gestoValido, elegiveisParaHoje, ETAPA_SEGUINTE, etapaDeEspera, ordemDaPilha, organizarPainel, precisaCompletar, VAGAS_PARA_HOJE, vagasAbertas } from '../src/lib/para-hoje.ts';
+import { limitesDaColuna, topoDepoisDeRolar } from '../src/ui/coluna-fixa.ts';
 import { validarPagamento } from '../src/nucleo/validacao.ts';
 import { gradeMes, indiceSemana, semanaDe } from '../src/lib/agenda.ts';
 
@@ -70,12 +71,22 @@ ok(TIPOS_EVENTO.includes('Evento externo') && TIPOS_EVENTO.includes('Lembrete') 
 // ---------- faixas de cor e nome acessível ----------
 {
   const cor = (c) => `var(--cal-${c})`;
-  ok(faixasDaCelula([], cor) === undefined, 'sem categoria não há fundo');
-  ok(faixasDaCelula(['prazo'], cor) === 'linear-gradient(90deg, var(--cal-prazo), var(--cal-prazo))', 'uma categoria é uma cor lisa');
-  const g = faixasDaCelula(['compromisso', 'prazo'], cor);
-  ok(g.includes('var(--cal-compromisso) 0%') && g.includes('var(--cal-compromisso) calc(50% - 2px)') && g.includes('var(--cal-prazo) calc(50% + 2px)') && g.includes('var(--cal-prazo) 100%'), 'duas categorias dividem a célula ao meio, com 4 px de transição entre as cores');
-  const seis = faixasDaCelula(CATEGORIAS_MINI, cor);
-  ok(CATEGORIAS_MINI.every((c) => seis.includes(`var(--cal-${c})`)) && !/#[0-9a-f]{3,6}|rgb\(|hsl\(/i.test(seis), 'as seis cores entram nas faixas, só por variáveis de CSS (nenhuma cor solta)');
+  ok(corMisturada([], cor) === undefined, 'sem categoria não há fundo');
+  ok(corMisturada(['prazo'], cor) === 'var(--cal-prazo)', 'uma categoria é a cor dela, lisa');
+  const dois = corMisturada(['prazo', 'compromisso'], cor);
+  ok(dois === 'color-mix(in oklab, var(--cal-compromisso) 50%, var(--cal-prazo) 50%)', `duas categorias: média em partes iguais no oklab, na ordem fixa da legenda (${dois})`);
+  ok(corMisturada(['compromisso', 'prazo'], cor) === dois && corMisturada(['reuniao', 'compromisso', 'prazo'], cor) === corMisturada(['prazo', 'reuniao', 'compromisso'], cor), 'o resultado não depende da ordem em que as categorias chegam');
+  const tres = corMisturada(['compromisso', 'evento', 'prazo'], cor);
+  ok(/66\.6667%/.test(tres) && /33\.3333%/.test(tres), 'três categorias: cada uma pesa um terço (a anterior a dois terços, a nova um terço)');
+  const seis = corMisturada(CATEGORIAS_MINI, cor);
+  ok(CATEGORIAS_MINI.every((c) => seis.includes(`var(--cal-${c})`)) && !/#[0-9a-f]{3,6}|rgb\(|hsl\(/i.test(seis), 'as seis cores entram na mistura, só por variáveis de CSS (nenhuma cor solta)');
+  ok(corMisturada(['prazo', 'prazo'], cor) === 'var(--cal-prazo)', 'várias marcas da mesma categoria mantêm a cor dela');
+  // grade fixa de seis semanas
+  for (const m of ['2026-02-01', '2026-11-01', '2026-08-01', '2027-02-01', '2024-02-01', '2026-03-01']) {
+    const g = seisSemanas(m);
+    ok(g.length === 6 && g.every((l) => l.length === 7) && indiceSemana(g[0][0].data) === 0 && g[0][0].data <= m && g.flat().filter((c) => c.doMes).length === Number(new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0)).getUTCDate()), `grade de ${m}: seis semanas de segunda a domingo, com o mês inteiro dentro`);
+  }
+  ok(ATALHOS_MINI.map((a) => `${a.rotulo}:${a.dias}`).join() === 'Hoje:0,Amanhã:1,Em 3 dias:3,Em 1 semana:7,Em 2 semanas:14', 'atalhos do rodapé: Hoje, Amanhã, Em 3 dias, Em 1 semana, Em 2 semanas');
   const itens = itensMini(H, F({ eventos: [ev('c1'), ev('r1', { tipo: 'Reunião' })], pagamentos: [pag('p', H)] }));
   const nome = descreverDiaMini(H, itens, { hoje: H, selecionado: true });
   ok(/quarta-feira, 11 de novembro de 2026/.test(nome) && /hoje/.test(nome) && /Compromisso: 1 item/.test(nome) && /Pagamento: 1 item/.test(nome) && /Reunião: 1 item/.test(nome) && /selecionado/.test(nome), `nome acessível diz a data, hoje, as categorias com quantidade e a seleção (${nome})`);
@@ -108,6 +119,9 @@ ok(TIPOS_EVENTO.includes('Evento externo') && TIPOS_EVENTO.includes('Lembrete') 
   ok(ordemDaPilha(['a', 'b', 'c', 'd'], ['b', 'a']).join() === 'b,a,c,d' && ordemDaPilha(['a', 'b', 'c', 'd', 'e'], ['b', 'a', 'c', 'd']).join() === 'b,a,c,d,e', 'vaga nova entra no fim da fila, sem perder nem duplicar ninguém');
   for (const n of [0, 1, 2, 4]) { const ids = Array.from({ length: n }, (_, i) => `d${i}`); const r = ordemDaPilha(ids, [...ids].reverse().concat(['fantasma', ids[0] ?? 'x'])); ok(r.length === n && new Set(r).size === n && ids.every((x) => r.includes(x)), `com ${n} cards a ordem nunca perde nem repete`); }
   ok(ativoParaOFim(['a', 'b', 'c', 'd']).join() === 'b,c,d,a' && ativoParaOFim(['a']).join() === 'a' && ativoParaOFim([]).length === 0, 'passar o card ativo o leva ao fim; com um só card nada muda');
+  ok(ultimoParaAFrente(['a', 'b', 'c', 'd']).join() === 'd,a,b,c' && ultimoParaAFrente(['a']).join() === 'a' && ultimoParaAFrente(ativoParaOFim(['a', 'b', 'c'])).join() === 'a,b,c', 'o gesto da direita nas pilhas de navegação traz o último de volta à frente (inverso exato do gesto da esquerda)');
+  ok(gestoValido(-100, 0, 390) === 'esq' && gestoValido(100, 0, 390) === 'dir' && gestoValido(-60, 0, 390) === null && gestoValido(-85, 0, 390) === null && gestoValido(-86, 0, 390) === 'esq', 'distância proporcional: max(72 px, 22% da largura) (85,8 px em 390 px)');
+  ok(gestoValido(-45, -0.8, 390) === 'esq' && gestoValido(45, 0.8, 390) === 'dir' && gestoValido(-20, -2, 390) === null && gestoValido(-45, 0.8, 390) === null && gestoValido(-45, -0.3, 390) === null, 'gesto rápido e longo o bastante vale com menos distância; toque acidental (curto), lento ou em sentido contrário não vale');
   let o = ['a', 'b', 'c', 'd']; for (let i = 0; i < 4; i++) o = ativoParaOFim(o);
   ok(o.join() === 'a,b,c,d', 'quatro passagens devolvem a fila ao começo (cada card passa uma vez)');
 }
@@ -133,6 +147,20 @@ ok(TIPOS_EVENTO.includes('Evento externo') && TIPOS_EVENTO.includes('Lembrete') 
   ok(sem.novaUrgencia.length === 0, 'sem prioridade nem urgência fora das vagas, a Nova urgência não aparece');
   const concl = lista.map((d) => (d.id === 'v2' ? { ...d, etapa: 'Finalizado' } : d));
   ok(vagasAbertas(vagas, concl).map((v) => v.demanda.id).join() === 'v1,v3,v4' && precisaCompletar(vagas, concl, elegiveisParaHoje(concl, H, [])), 'concluir uma demanda libera só a vaga dela (as outras três ficam) e pede reposição');
+}
+
+// ---------- coluna lateral que acompanha a página (decisão 65) ----------
+{
+  const lim = limitesDaColuna(914, 760, 84);
+  ok(lim.max === 84 && lim.min === 760 - 914 - 16, `coluna mais alta que a janela: o topo varia entre ${lim.min} (borda de baixo visível) e ${lim.max} (logo abaixo do cabeçalho)`);
+  const cabe = limitesDaColuna(400, 760, 84);
+  ok(cabe.min === cabe.max && cabe.max === 84, 'coluna que cabe: topo fixo logo abaixo do cabeçalho (sem folga para acompanhar)');
+  let t = lim.max; const caminho = [];
+  for (const d of [40, 40, 40, 40, 40, 40, 40, 40]) { t = topoDepoisDeRolar(t, d, lim); caminho.push(t); }
+  ok(caminho[0] === 44 && caminho[caminho.length - 1] === lim.min && caminho.every((x, i) => i === 0 || x <= caminho[i - 1]), `ao descer o topo acompanha a página e para na borda de baixo (${caminho.join(', ')})`);
+  const sobe = []; for (const d of [-40, -40, -40, -40, -40, -40, -40, -40]) { t = topoDepoisDeRolar(t, d, lim); sobe.push(t); }
+  ok(sobe[0] === lim.min + 40 && sobe[sobe.length - 1] === lim.max && sobe.every((x, i) => i === 0 || x >= sobe[i - 1]), `ao subir acompanha a página desde o primeiro passo (sem salto) e para logo abaixo do cabeçalho (${sobe.join(', ')})`);
+  ok(topoDepoisDeRolar(topoDepoisDeRolar(lim.max, 60, lim), -20, lim) === lim.max - 40, 'trocar de direção no meio do caminho continua de onde estava (desce 60, sobe 20)');
 }
 
 console.log(falhas ? `\n${falhas} verificação(ões) falharam de ${total}.` : `\nTudo certo: ${total} verificações.`);

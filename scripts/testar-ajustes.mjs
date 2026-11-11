@@ -38,7 +38,7 @@ const ir = async (pg, rota) => {
   await pg.waitForFunction(() => { const a = document.querySelector('.app'); return !!a && Object.keys(a).some((k) => k.startsWith('__reactFiber') || k.startsWith('__reactProps')); }, null, { timeout: 120000 });
   if (rota === '/demandas') { // a visão guardada só aparece depois de os dados chegarem (as ações do servidor do início rodam uma de cada vez): espera explícita
     await pg.waitForFunction(() => { let v = 'cards'; try { v = JSON.parse(localStorage.getItem('dmanda:ui') || '{}').visao || 'cards'; } catch { /* Cards */ }
-      return !!document.querySelector({ cards: '.cards .dcard', quadro: '.quadro .coluna', tabela: '.tabela tbody tr', lista: '.lista-dem .linha' }[v]) || !!document.querySelector('.vazio, .erro-carga'); }, null, { timeout: 30000 });
+      return !!document.querySelector({ cards: '.cards .dcard, .cartas .dcard', quadro: '.quadro .coluna', tabela: '.tabela tbody tr', lista: '.lista-dem .linha' }[v]) || !!document.querySelector('.vazio, .erro-carga'); }, null, { timeout: 30000 });
   }
   await pg.waitForTimeout(900);
 };
