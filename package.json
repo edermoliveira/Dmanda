@@ -24,6 +24,7 @@
     "testar:calendario": "node scripts/testar-calendario.mjs",
     "testar:metricas": "node scripts/testar-metricas.mjs",
     "metricas:local": "node scripts/metricas-local.mjs",
+    "medir:inicio": "node scripts/medir-inicio.mjs",
     "testar:agenda": "node scripts/testar-agenda.mjs",
     "testar:config": "node scripts/testar-config.mjs",
     "testar:busca": "node scripts/testar-busca.mjs",
