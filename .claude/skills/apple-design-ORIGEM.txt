@@ -1,0 +1,6 @@
+Skill apple-design (somente ela), copiada sem alteração.
+Origem: https://github.com/emilkowalski/skills, pasta skills/apple-design
+Revisão: c8a79627b59d72d764d6ab6f2c87c09a48169833
+Licença: MIT (Emil Kowalski), texto em LICENSE-emilkowalski.txt
+Escopo: este projeto, branch visual/apple-design. Sem hooks, sem dependências no aplicativo.
+Copiada em 05/11/2026. ui-humanizer fica para o acabamento posterior.

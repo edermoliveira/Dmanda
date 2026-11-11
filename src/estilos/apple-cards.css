@@ -1,0 +1,52 @@
+/* Protótipo visual inspirado na Apple (branch visual/apple-design), SÓ para a tela Demandas, visão Cards.
+   Tudo vem preso a ".cards.ap-cards", então Quadro, Tabela, Lista e as outras telas não mudam. Remover a classe em visoes.tsx volta ao desenho aprovado.
+   Princípios (skill apple-design): resposta imediata ao toque, superfície sólida para o conteúdo, hierarquia por peso e entrelinha, movimento discreto e reduzido sob preferência.
+   Sem cor solta: só os tokens do Catalyst. Cores de categoria e de atraso seguem como estão. */
+
+.app[data-dir="d"] .cards.ap-cards { --ap-r: 22px; --ap-sombra: 0 1px 1px rgba(10,10,10,.04), 0 10px 24px -14px rgba(10,10,10,.22); gap: 18px; }
+.app[data-dir="d"][data-tema="escuro"] .cards.ap-cards { --ap-sombra: 0 10px 24px -14px rgba(0,0,0,.7); }
+
+/* superfície: sólida, sem o brilho de vidro, anel fino no lugar de borda */
+.app[data-dir="d"] .cards.ap-cards .dcard .face { border-radius: var(--ap-r); padding: 18px 18px 16px; gap: 10px; background-image: none; border: 0;
+  box-shadow: 0 0 0 1px var(--card-brd), var(--ap-sombra); transition: box-shadow .25s var(--rapido), background-color .25s var(--rapido); }
+.app[data-dir="d"] .cards.ap-cards .dcard .face:hover { box-shadow: 0 0 0 1px var(--card-brd), var(--ap-sombra); }
+.app[data-dir="d"] .cards.ap-cards .dcard.atrasada .face.front { box-shadow: 0 0 0 1.5px var(--perigo), var(--ap-sombra); }
+
+/* resposta ao toque: começa no pressionar, não no soltar (só quando o gesto é no título ou na próxima tarefa, que abrem a demanda) */
+.app[data-dir="d"] .cards.ap-cards .dcard { transition: transform .14s var(--rapido); }
+.app[data-dir="d"] .cards.ap-cards .dcard:has(.face.front .assunto:active) { transform: scale(.985); }
+.app[data-dir="d"] .cards.ap-cards .dcard :is(.btn, .girar):active { transform: scale(.96); transition-duration: .08s; }
+
+/* hierarquia: o assunto manda; o resto desce de peso */
+.app[data-dir="d"] .cards.ap-cards .face.front .assunto { font-size: calc(21px * var(--esc)); font-weight: 650; line-height: 1.18; letter-spacing: -.015em; text-wrap: balance; }
+.app[data-dir="d"] .cards.ap-cards .face.front .tags { gap: 6px; }
+.app[data-dir="d"] .cards.ap-cards .face.front .tags .num { letter-spacing: .01em; }
+.app[data-dir="d"] .cards.ap-cards .face.front .desc { font-size: calc(14px * var(--esc)); line-height: 1.4; letter-spacing: .005em; color: var(--text2); }
+.app[data-dir="d"] .cards.ap-cards .face.front .chips { gap: 6px; }
+.app[data-dir="d"] .cards.ap-cards .face.front .pz { min-height: 28px; font-weight: 650; }
+.app[data-dir="d"] .cards.ap-cards .face.front .prox-t { border-radius: 14px; }
+.app[data-dir="d"] .cards.ap-cards .face.front .barra { height: 6px; }
+
+/* botão de virar o card: discreto, só aparece com força ao passar ou focar */
+.app[data-dir="d"] .cards.ap-cards .cab .girar::before { background: transparent; border-color: transparent; box-shadow: none; transition: background-color .2s var(--rapido); }
+.app[data-dir="d"] .cards.ap-cards .cab .girar { color: var(--text2); }
+.app[data-dir="d"] .cards.ap-cards .cab .girar:hover::before, .app[data-dir="d"] .cards.ap-cards .cab .girar:focus-visible::before { background: var(--btn-hov); }
+
+/* teclado: anel de foco claro em tudo que se aciona */
+.app[data-dir="d"] .cards.ap-cards .dcard :is(.assunto, .btn, .girar, .t-txt, .t-lapis, .prox-t, input):focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; border-radius: 10px; }
+
+/* celular e iPad: alvos de 44 px */
+@media (pointer: coarse) {
+  .app[data-dir="d"] .cards.ap-cards .dcard .btn { min-height: 44px; }
+}
+
+/* movimento reduzido: sem escala; o retorno vira só mudança de cor/sombra */
+@media (prefers-reduced-motion: reduce) {
+  .app[data-dir="d"] .cards.ap-cards .dcard, .app[data-dir="d"] .cards.ap-cards .dcard :is(.btn, .girar) { transition: none; }
+  .app[data-dir="d"] .cards.ap-cards .dcard:has(.face.front .assunto:active), .app[data-dir="d"] .cards.ap-cards .dcard :is(.btn, .girar):active { transform: none; }
+  .app[data-dir="d"] .cards.ap-cards .dcard:has(.face.front .assunto:active) .face.front { box-shadow: 0 0 0 2px var(--foco), var(--ap-sombra); }
+}
+/* superfícies translúcidas pedem mais corpo com a preferência de transparência reduzida (aqui os cards já são sólidos) */
+@media (prefers-contrast: more) {
+  .app[data-dir="d"] .cards.ap-cards .dcard .face { box-shadow: 0 0 0 2px var(--text2); }
+}

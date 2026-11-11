@@ -7,6 +7,7 @@ import '@/estilos/v4.css';
 import '@/estilos/v5.css';
 import '@/estilos/catalyst.css';
 import '@/estilos/app.css';
+import '@/estilos/apple-cards.css';
 import '@/estilos/agenda.css';
 import { coresDaBarra } from '@/lib/cores-barra';
 

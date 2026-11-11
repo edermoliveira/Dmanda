@@ -11,6 +11,7 @@
     "gerar:logo": "node scripts/gerar-logo.mjs",
     "capturar": "node scripts/capturar.mjs",
     "dev:teste": "node scripts/dev-teste.mjs",
+    "previa:apple": "node scripts/previa-apple.mjs",
     "testar:banco": "node scripts/testar-banco.mjs",
     "testar:regras": "node scripts/testar-regras.mjs",
     "testar:app": "node scripts/testar-app.mjs",

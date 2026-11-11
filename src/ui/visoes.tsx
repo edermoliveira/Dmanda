@@ -81,7 +81,7 @@ export const Vazio = ({ icone = 'busca', titulo, texto }: { icone?: string; titu
 );
 
 export function Cards({ lista }: { lista: Demanda[] }) {
-  return <div className="cards">{lista.map((d) => <CardDemanda key={d.id} d={d} />)}</div>;
+  return <div className="cards ap-cards">{lista.map((d) => <CardDemanda key={d.id} d={d} />)}</div>;
 }
 
 // ---------- Quadro ----------
