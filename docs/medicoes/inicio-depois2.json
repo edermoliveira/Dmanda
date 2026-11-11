@@ -1,0 +1,290 @@
+{
+  "rotulo": "depois2",
+  "rodadas": 7,
+  "data": "2026-11-11T20:42:50.375Z",
+  "cenario": "semente fictícia \"completo\" do Início, banco de teste (PGlite), next start (produção local), Edge headless",
+  "perfis": {
+    "desktop": {
+      "frio": {
+        "ttfb": {
+          "mediana": 13,
+          "min": 6,
+          "max": 38,
+          "n": 7
+        },
+        "cards": {
+          "mediana": 263,
+          "min": 224,
+          "max": 1234,
+          "n": 7
+        },
+        "util": {
+          "mediana": 264,
+          "min": 225,
+          "max": 1234,
+          "n": 7
+        },
+        "jsTransferidoKB": {
+          "mediana": 223.4,
+          "min": 223.4,
+          "max": 223.4,
+          "n": 7
+        },
+        "jsDescompactadoKB": {
+          "mediana": 725.4,
+          "min": 725.4,
+          "max": 725.4,
+          "n": 7
+        },
+        "jsArquivos": {
+          "mediana": 13,
+          "min": 13,
+          "max": 13,
+          "n": 7
+        },
+        "requisicoes": {
+          "mediana": 24,
+          "min": 24,
+          "max": 24,
+          "n": 7
+        }
+      },
+      "quente": {
+        "ttfb": {
+          "mediana": 10,
+          "min": 8,
+          "max": 15,
+          "n": 7
+        },
+        "cards": {
+          "mediana": 167,
+          "min": 146,
+          "max": 238,
+          "n": 7
+        },
+        "util": {
+          "mediana": 168,
+          "min": 146,
+          "max": 238,
+          "n": 7
+        },
+        "jsTransferidoKB": {
+          "mediana": 223.4,
+          "min": 223.4,
+          "max": 223.4,
+          "n": 7
+        },
+        "jsDescompactadoKB": {
+          "mediana": 725.4,
+          "min": 725.4,
+          "max": 725.4,
+          "n": 7
+        },
+        "jsArquivos": {
+          "mediana": 13,
+          "min": 13,
+          "max": 13,
+          "n": 7
+        },
+        "requisicoes": {
+          "mediana": 23,
+          "min": 23,
+          "max": 23,
+          "n": 7
+        }
+      }
+    },
+    "notebook_lento": {
+      "frio": {
+        "ttfb": {
+          "mediana": 155,
+          "min": 153,
+          "max": 156,
+          "n": 7
+        },
+        "cards": {
+          "mediana": 2923,
+          "min": 2890,
+          "max": 2989,
+          "n": 7
+        },
+        "util": {
+          "mediana": 2923,
+          "min": 2891,
+          "max": 2990,
+          "n": 7
+        },
+        "jsTransferidoKB": {
+          "mediana": 223.4,
+          "min": 223.4,
+          "max": 223.4,
+          "n": 7
+        },
+        "jsDescompactadoKB": {
+          "mediana": 725.4,
+          "min": 725.4,
+          "max": 725.4,
+          "n": 7
+        },
+        "jsArquivos": {
+          "mediana": 13,
+          "min": 13,
+          "max": 13,
+          "n": 7
+        },
+        "requisicoes": {
+          "mediana": 24,
+          "min": 24,
+          "max": 24,
+          "n": 7
+        }
+      },
+      "quente": {
+        "ttfb": {
+          "mediana": 153,
+          "min": 153,
+          "max": 154,
+          "n": 7
+        },
+        "cards": {
+          "mediana": 2607,
+          "min": 2587,
+          "max": 2638,
+          "n": 7
+        },
+        "util": {
+          "mediana": 2607,
+          "min": 2588,
+          "max": 2639,
+          "n": 7
+        },
+        "jsTransferidoKB": {
+          "mediana": 223.4,
+          "min": 223.4,
+          "max": 223.4,
+          "n": 7
+        },
+        "jsDescompactadoKB": {
+          "mediana": 725.4,
+          "min": 725.4,
+          "max": 725.4,
+          "n": 7
+        },
+        "jsArquivos": {
+          "mediana": 13,
+          "min": 13,
+          "max": 13,
+          "n": 7
+        },
+        "requisicoes": {
+          "mediana": 23,
+          "min": 23,
+          "max": 23,
+          "n": 7
+        }
+      }
+    },
+    "celular_lento": {
+      "frio": {
+        "ttfb": {
+          "mediana": 154,
+          "min": 153,
+          "max": 158,
+          "n": 7
+        },
+        "cards": {
+          "mediana": 2982,
+          "min": 2966,
+          "max": 3004,
+          "n": 7
+        },
+        "util": {
+          "mediana": 2983,
+          "min": 2966,
+          "max": 3004,
+          "n": 7
+        },
+        "jsTransferidoKB": {
+          "mediana": 223.4,
+          "min": 223.4,
+          "max": 223.4,
+          "n": 7
+        },
+        "jsDescompactadoKB": {
+          "mediana": 725.4,
+          "min": 725.4,
+          "max": 725.4,
+          "n": 7
+        },
+        "jsArquivos": {
+          "mediana": 13,
+          "min": 13,
+          "max": 13,
+          "n": 7
+        },
+        "requisicoes": {
+          "mediana": 24,
+          "min": 24,
+          "max": 24,
+          "n": 7
+        }
+      },
+      "quente": {
+        "ttfb": {
+          "mediana": 153,
+          "min": 153,
+          "max": 156,
+          "n": 7
+        },
+        "cards": {
+          "mediana": 2667,
+          "min": 2643,
+          "max": 2755,
+          "n": 7
+        },
+        "util": {
+          "mediana": 2667,
+          "min": 2644,
+          "max": 2755,
+          "n": 7
+        },
+        "jsTransferidoKB": {
+          "mediana": 223.4,
+          "min": 223.4,
+          "max": 223.4,
+          "n": 7
+        },
+        "jsDescompactadoKB": {
+          "mediana": 725.4,
+          "min": 725.4,
+          "max": 725.4,
+          "n": 7
+        },
+        "jsArquivos": {
+          "mediana": 13,
+          "min": 13,
+          "max": 13,
+          "n": 7
+        },
+        "requisicoes": {
+          "mediana": 23,
+          "min": 23,
+          "max": 23,
+          "n": 7
+        }
+      }
+    }
+  },
+  "build": {
+    "js": {
+      "arquivos": 24,
+      "bytes": 1218147,
+      "gz": 367987
+    },
+    "css": {
+      "arquivos": 3,
+      "bytes": 234227,
+      "gz": 44497
+    }
+  }
+}
