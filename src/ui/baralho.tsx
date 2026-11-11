@@ -49,10 +49,10 @@ function useArrasto(aoLado: (lado: Lado) => boolean | void, desligado: boolean) 
     const el = ref.current; if (!el) return;
     const w = largura(), prog = Math.min(1, Math.abs(dx) / Math.max(72, w * 0.22));
     el.style.setProperty('--dx', `${dx}px`); el.style.setProperty('--rot', `${Math.max(-14, Math.min(14, (dx / w) * 18)).toFixed(2)}deg`);
-    el.parentElement?.parentElement?.style.setProperty('--prog', prog.toFixed(3));
+    el.closest<HTMLElement>('.ph-pilha')?.style.setProperty('--prog', prog.toFixed(3));
     if (prog >= 1) el.dataset.lado = dx < 0 ? 'esq' : 'dir'; else delete el.dataset.lado;
   };
-  const zerar = () => { const el = ref.current; if (el) { delete el.dataset.arrastando; delete el.dataset.lado; el.style.setProperty('--dx', '0px'); el.style.setProperty('--rot', '0deg'); el.parentElement?.parentElement?.style.setProperty('--prog', '0'); } };
+  const zerar = () => { const el = ref.current; if (el) { delete el.dataset.arrastando; delete el.dataset.lado; el.style.setProperty('--dx', '0px'); el.style.setProperty('--rot', '0deg'); el.closest<HTMLElement>('.ph-pilha')?.style.setProperty('--prog', '0'); } };
   const final = () => { zerar(); est.current = null; };
   return {
     ref,

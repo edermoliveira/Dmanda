@@ -1975,6 +1975,13 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
     const dems = [...await ua('listar_demandas', { p_arquivadas: false }), ...await ua('listar_demandas', { p_arquivadas: true })];
     const m = calcularMetricas(dems, await ua('listar_transicoes_demanda', {}), hoje);
     ok(m.totais.conclusoesCiclos === 3 && m.totais.conclusoesDemandas === 2 && m.totais.reaberturasCiclos === 4 && m.totais.reaberturasDemandas === 2 && m.totais.conclusoesLegadasCiclos === 1 && m.confiavelDesde.conclusoesRegistradas === hoje, `métricas do banco: 2 demandas com 3 ciclos de conclusão registrados, 4 reaberturas, 1 conclusão legada comprovada, coleta confiável desde hoje (${JSON.stringify(m.totais)})`);
+    // numeração robusta a lacunas: sem a conclusão de ciclo 1 gravada, a próxima conclusão continua numerada pelo maior ciclo e nenhuma transição se perde
+    const gap = await ua('criar_demanda', { p: { assunto: 'Com lacuna' } });
+    await ua('concluir_demanda', { p_id: gap.id }); await ua('reabrir_demanda', { p_id: gap.id, p_etapa: 'Fazendo' }); await ua('concluir_demanda', { p_id: gap.id });
+    await a.exec(`delete from public.demanda_transicoes where demanda_id = '${gap.id}' and tipo = 'conclusao' and ciclo = 1`);
+    await ua('reabrir_demanda', { p_id: gap.id, p_etapa: 'Fazendo' }); await ua('concluir_demanda', { p_id: gap.id });
+    const tg = (await ua('listar_transicoes_demanda', {})).transicoes.filter((x) => x.demanda_id === gap.id).map((x) => `${x.tipo}:${x.ciclo}`);
+    ok(tg.join() === 'reabertura:1,conclusao:2,reabertura:2,conclusao:3', `com uma linha faltando, as transições seguintes não colidem nem somem (${tg.join()})`);
     // excluir a demanda leva o histórico junto
     await ua('excluir_demanda', { p_id: viva.id, p_confirmado: true });
     ok(!ids(await ua('listar_transicoes_demanda', {})).includes(viva.id), 'excluir a demanda leva as transições dela junto (sem linhas soltas)');
@@ -1984,6 +1991,43 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
     ok(JSON.stringify(await ua('listar_transicoes_demanda', {})) === antesRe, 'migração 24: aplicar de novo não muda as transições nem a data de início da coleta');
     await a.close();
   } finally { rmSync(pasta, { recursive: true, force: true }); }
+}
+
+// ---------- cópia v5 e as transições da migração 24: restaurar na mesma base e numa base vazia (decisão 65) ----------
+{
+  const { calcularMetricas } = await import('../src/lib/metricas.ts');
+  const SQL = readFileSync('supabase/restaurar-copia.sql', 'utf8');
+  const S = 'c1c1c1c1-6666-4666-8666-c1c1c1c1c1c1', N = 'c2c2c2c2-6666-4666-8666-c2c2c2c2c2c2';
+  const preparar = async (d, id, email) => { await d.query('insert into auth.users (id, email) values ($1, $2)', [id, email]); await d.query('insert into dmanda_privado.acesso_autorizado (email) values ($1) on conflict do nothing', [email]); return d; };
+  const rodar = async (d, j) => { try { await d.exec(SQL.replace('__COLE_AQUI_O_JSON__', () => JSON.stringify(j))); return null; } catch (e) { return e.message || String(e); } };
+  const origem = await preparar(await abrirBancoTeste(), S, 'ct24o@teste');
+  const co = (f, a) => chamarComoUsuario(origem, S, f, a);
+  const hoje = (await origem.query('select public.hoje()::text as h')).rows[0].h;
+  const d1 = await co('criar_demanda', { p: { assunto: 'Com histórico', chegou_em: '2026-10-01' } });
+  await co('concluir_demanda', { p_id: d1.id }); await co('reabrir_demanda', { p_id: d1.id, p_etapa: 'Fazendo' }); await co('concluir_demanda', { p_id: d1.id });
+  const d2 = await co('criar_demanda', { p: { assunto: 'Aberta', chegou_em: '2026-10-05' } });
+  const antes = await co('listar_transicoes_demanda', {});
+  ok(antes.transicoes.map((t) => `${t.tipo}:${t.ciclo}`).join() === 'conclusao:1,reabertura:1,conclusao:2', 'cópia e transições: a origem tem 2 conclusões e 1 reabertura gravadas');
+  const copia = JSON.parse(JSON.stringify({ formato: 'dmanda-exportacao', versao: 5, exportado_em: new Date().toISOString(), fuso: 'America/Sao_Paulo', demandas: await co('listar_demandas', { p_arquivadas: false }), arquivadas: [], dias_indisponiveis: [], entradas: [], entradas_arquivadas: [], eventos: [], pagamentos: [] }));
+  ok(!('transicoes' in copia), 'a cópia v5 não inclui as transições (só o estado das demandas)');
+  // 1) mesma base: nada muda (as demandas já existem, nada é atualizado, o gatilho não dispara)
+  ok(await rodar(origem, copia) === null, 'cópia v5 restaurada na mesma base: sem erro');
+  const depois = await co('listar_transicoes_demanda', {});
+  ok(JSON.stringify(depois) === JSON.stringify(antes), 'mesma base: as transições continuam exatamente as mesmas (nenhuma apagada, nenhuma duplicada, data de início da coleta igual)');
+  // 2) base vazia: as demandas voltam, as transições não (e nada é inventado)
+  const vazia = await preparar(await abrirBancoTeste(), N, 'ct24n@teste');
+  const cv = (f, a) => chamarComoUsuario(vazia, N, f, a);
+  ok(await rodar(vazia, copia) === null, 'cópia v5 restaurada em base vazia: sem erro');
+  const tv = await cv('listar_transicoes_demanda', {}), dv = [...await cv('listar_demandas', { p_arquivadas: false })];
+  ok(dv.length === 2 && tv.transicoes.length === 0 && tv.desde === hoje, `base vazia: as 2 demandas voltam e nenhuma transição é inventada; a coleta começa hoje (${tv.transicoes.length} transições)`);
+  const mv = calcularMetricas(dv, tv, hoje), mo = calcularMetricas([...await co('listar_demandas', { p_arquivadas: false })], antes, hoje);
+  ok(mo.totais.conclusoesCiclos === 2 && mo.totais.reaberturasCiclos === 1 && mv.totais.conclusoesCiclos === 0 && mv.totais.reaberturasCiclos === 0 && mv.totais.conclusoesLegadasCiclos === 1 && mv.chegadaAteConclusao.casos === 1, `perda medida: a origem tinha 2 ciclos e 1 reabertura; a base restaurada só tem a conclusão atual como legado comprovada (${JSON.stringify(mv.totais)})`);
+  // depois de restaurar, o histórico volta a ser gravado normalmente (a reabertura de uma demanda restaurada é ciclo 0 com a data antiga)
+  const finalizada = dv.find((d) => d.etapa === 'Finalizado');
+  await cv('reabrir_demanda', { p_id: finalizada.id, p_etapa: 'Fazendo' });
+  const t2 = (await cv('listar_transicoes_demanda', {})).transicoes;
+  ok(t2.length === 1 && t2[0].tipo === 'reabertura' && t2[0].ciclo === 0 && t2[0].concluida_em_anterior === finalizada.concluida_em, 'na base restaurada a primeira reabertura guarda a data comprovada (ciclo 0) e a coleta segue normal');
+  await origem.close(); await vazia.close();
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

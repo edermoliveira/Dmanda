@@ -351,7 +351,7 @@ for (const [w, h, rotulo] of [[390, 800, 'celular'], [820, 1000, 'iPad vertical'
   for (const modo of ['claro', 'escuro']) {
     await ir('/demandas'); if ((await pg.getAttribute('.app', 'data-tema')) !== modo) { await pg.click('.icbtn[aria-label^="Alternar tema"]'); await pg.waitForTimeout(300); }
     await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.waitForTimeout(400);
-    const larg = await pg.evaluate(() => ({ main: document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1, cards: document.querySelectorAll('.dcard').length }));
+    const larg = await pg.evaluate(() => ({ main: document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1, cards: document.querySelector('.cartas[data-modo="pilha"] .ph-posicao') ? Number(document.querySelector('.cartas .ph-posicao').textContent.split(' de ')[1]) : document.querySelectorAll('.dcard').length }));   // no celular a visão Cards é um baralho (decisão 65): o total vem de "1 de N"
     await pg.click('.dcard .assunto >> nth=0'); await pg.waitForSelector('.modal .ler');
     const jan = await pg.evaluate(() => { const m = document.querySelector('.modal'), f = document.querySelector('.m-f').getBoundingClientRect(), r = m.getBoundingClientRect(); return { lateral: m.scrollWidth > m.clientWidth + 1, rodape: f.bottom <= r.bottom + 1 && f.height > 0 }; });
     await pg.keyboard.press('Escape'); await pg.waitForTimeout(250);

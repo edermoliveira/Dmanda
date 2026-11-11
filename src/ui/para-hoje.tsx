@@ -57,6 +57,9 @@ function Pilha({ vagas, vagaDe }: { vagas: Vaga[]; vagaDe: (id: string) => numbe
     if (ordem[0] === o.id) guardarOrdem(ativoParaOFim(ordem));
   }, [demandas, ordem, guardarOrdem]);
 
+  // Esc fecha o menu sem escolher nada: a pilha deixa de esperar a mudança de etapa (senão uma mudança feita depois, pelo verso do card, faria a pilha avançar sozinha)
+  useEffect(() => { const f = (e: KeyboardEvent) => { if (e.key === 'Escape') observando.current = null; }; addEventListener('keydown', f); return () => removeEventListener('keydown', f); }, []);
+
   const passar = useCallback(() => {
     if (ocupado || confirmarAtivo || ordem.length < 2) return;
     guardarOrdem(ativoParaOFim(ordem)); setAviso(`Passado para o fim. Agora: ${porId.get(ordem[1])?.assunto ?? ''}`);
@@ -75,7 +78,7 @@ function Pilha({ vagas, vagaDe }: { vagas: Vaga[]; vagaDe: (id: string) => numbe
   const avancar = useCallback((ancora: HTMLElement | null) => {
     if (ocupado || gravando.current || confirmarAtivo || !ativa) return;
     const d = ativa;
-    if (etapaDeEspera(d.etapa)) { observando.current = { id: d.id, etapa: d.etapa, ate: Date.now() + 60_000 }; if (ancora) abrirMenuMover(d.id, ancora); return; }
+    if (etapaDeEspera(d.etapa)) { observando.current = { id: d.id, etapa: d.etapa, ate: Date.now() + 15_000 }; if (ancora) abrirMenuMover(d.id, ancora); return; }
     const destino = ETAPA_SEGUINTE[d.etapa];
     if (!destino) return;
     if (destino === 'Finalizado') {

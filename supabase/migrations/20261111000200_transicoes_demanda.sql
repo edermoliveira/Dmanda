@@ -48,7 +48,8 @@ language plpgsql security definer set search_path = '' as $$
 declare v_n integer;
 begin
   -- a linha de demanda está travada por esta própria atualização, então duas mudanças ao mesmo tempo na mesma demanda são serializadas e a contagem não se perde
-  select count(*) into v_n from public.demanda_transicoes where demanda_id = new.id and tipo = 'conclusao';
+  -- o maior ciclo já gravado (e não a contagem): se faltar alguma linha, o número seguinte não colide com outra e nenhuma transição se perde em silêncio
+  select coalesce(max(ciclo), 0) into v_n from public.demanda_transicoes where demanda_id = new.id and tipo = 'conclusao';
   if new.etapa = 'Finalizado' and old.etapa <> 'Finalizado' then
     insert into public.demanda_transicoes (user_id, demanda_id, tipo, ciclo, dia, etapa_anterior, etapa_nova)
       values (new.user_id, new.id, 'conclusao', v_n + 1, public.hoje(), old.etapa, new.etapa)

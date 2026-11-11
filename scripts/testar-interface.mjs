@@ -202,6 +202,18 @@ const medirCards = () => {
   }
   return out;
 };
+/** Mede todos os cards da visão Cards. No celular a visão é um baralho (decisão 65: só o card da frente existe), então percorre a pilha inteira pelo botão "Passar para o fim" e mede cada card quando ele chega à frente. */
+const medirTodos = async (pg) => {
+  const total = await pg.$eval('.cartas[data-modo="pilha"] .ph-posicao', (e) => Number(e.textContent.split(' de ')[1])).catch(() => null);
+  if (!total) return pg.evaluate(medirCards);
+  const out = [];
+  for (let i = 0; i < total; i++) {
+    await pg.waitForTimeout(450);
+    out.push(...await pg.evaluate(medirCards));
+    await pg.click('.cartas .ph-pilha [data-pilha-passar]');
+  }
+  return out;
+};
 {
   const { ctx, pg } = await novoContexto({ viewport: { width: 1360, height: 800 } });
   await ir(pg);
@@ -223,7 +235,7 @@ for (const tema of ['claro', 'escuro']) {
     const { ctx, pg } = await novoContexto(opcoes, { tema });
     await ir(pg);
     await pg.waitForFunction((n) => document.querySelectorAll('.dcard').length >= n, CASOS.length, { timeout: 20000 }).catch(() => {}); await pg.waitForTimeout(400);
-    const r = await pg.evaluate(medirCards);
+    const r = await medirTodos(pg);
     const longos = r.filter((x) => x.naturais >= 3);
     ok(r.length === CASOS.length + 6, `${nome}, ${tema}: ${r.length} cards renderizados (esperados ${CASOS.length + 6})`);
     ok(r.every((x) => x.vis >= Math.min(x.naturais, 2)), `${nome}, ${tema}: nenhum título fica com menos de 2 linhas (ou o que o texto tiver)` + (r.filter((x) => x.vis < Math.min(x.naturais, 2)).length ? ': ' + JSON.stringify(r.filter((x) => x.vis < Math.min(x.naturais, 2)).map((x) => [x.titulo, x.vis, x.naturais])) : ''));
@@ -249,6 +261,8 @@ for (const tema of ['claro', 'escuro']) {
   ok(folgado.desc && folgado.linhas === antes.linhas && !folgado.sobra, 'voltando a haver espaço, a descrição reaparece sozinha e o título volta ao que era');
   // redimensionar a janela inteira (zoom e viewport) também recalcula
   await pg.setViewportSize({ width: 453, height: 800 }); await pg.waitForTimeout(500);
+  // a 453 px a visão Cards vira baralho: traz o card medido para a frente (decisão 65)
+  for (let i = 0; i < 20 && !(await pg.$(cartaoA)); i++) { await pg.click('.cartas .ph-pilha [data-pilha-passar]'); await pg.waitForTimeout(450); }
   const estreito = await estadoA();
   await pg.setViewportSize({ width: 1360, height: 800 }); await pg.waitForTimeout(500);
   const largo = await estadoA();
