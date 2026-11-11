@@ -783,3 +783,17 @@ Branch `bloco/configuracoes-catalyst`, a partir de `c2876dc`, sem push, sem publ
 **Prévia local:** `node scripts/semear-inicio.mjs completo` (servidor parado) e depois `$env:DMANDA_PASTA_TESTE='.dados-teste/inicio-completo'; npm.cmd run dev:exemplos`, em http://localhost:7100. Dados de evolução da semente: `npm run metricas:local -- .dados-teste/inicio-completo` (só com o servidor parado).
 
 **Pendências e decisões abertas:** CalendarWithPresets original não foi enviado (a estrutura foi reproduzida pela descrição; comparar quando houver o código); aplicar as migrações 21 a 24 no real e publicar (autorização própria); validar nos aparelhos reais; versão 6 da cópia antes de usar as métricas em gráficos; confirmar a regra do Evento externo (seção AC); consolidação das pastas e redesenho da Agenda.
+
+### AE. Inventário das pastas do computador do trabalho e o que foi enviado ao GitHub (11/11/2026)
+
+Três pastas no computador do trabalho: `Dmanda` (clone principal, em `bloco/configuracoes-catalyst`, `8473dde`, igual ao remoto), `Dmanda-inicio-perfil-clima` (worktree de `Dmanda`, branch `bloco/inicio-perfil-clima`) e `Dmanda-para-hoje` (clone separado, em `checkpoint/retomada-casa-2026-11-09`, `f8b6a74`, igual ao remoto, sem alterações nem stash). Todas estavam sem alterações rastreadas ou não rastreadas. Nenhuma pasta foi apagada ou alterada; o stash de 05/11 continua no computador do trabalho.
+
+| Origem | Conteúdo | Branch no GitHub |
+|---|---|---|
+| `Dmanda-inicio-perfil-clima` | Início (decisões 64 e 65), migrações 22 a 24, métricas, medições | `bloco/inicio-perfil-clima` (**é esta que se abre em casa para continuar o Início**) |
+| `Dmanda`, stash de 05/11/2026 (base na `main` antiga) | rascunho de desempenho: filtro em contexto separado, `memo` nos cards, ajuste com assinatura, medidor antigo; nunca testado depois | `checkpoint/stash-desempenho-2026-11-11` (rascunho, não integrar sem medir) |
+| `Dmanda`, branch local `visual/apple-design` | experimento visual Apple anterior à decisão 44 (não é a direção vigente), sem as 8 capturas PNG | `checkpoint/rascunho-apple-design-2026-11-11` |
+| `Dmanda`, branches locais `main`, `base/resistencia-desempenho`, `checkpoint/2026-10-23-ajustes-a-d` | nenhum commit exclusivo (já estão em branches do GitHub) | sem envio |
+| `Dmanda-para-hoje` | tudo já no GitHub | `bloco/para-hoje-origem` (`4e16aaf`), `checkpoint/retomada-casa-2026-11-09` (`f8b6a74`) |
+
+**Ficou só no computador do trabalho, de propósito:** `.env.local`, `.claude/settings.local.json` e `supabase/.temp` (credenciais e vínculo do Supabase); `.dados-teste/` (bancos locais, logs e capturas, recriáveis com `node scripts/semear-inicio.mjs completo` e `npm run semear:exemplos`); `node_modules/`, `.next/` e o `Dmanda-projeto.zip` de 20/10/2026 (253 MB). Em casa é preciso criar o próprio `.env.local` e repetir `supabase link` (ver `supabase/LEIA-ME.md`). Nenhum envio dispara deploy: o `vercel.json` de todas as branches só habilita a `main`.
