@@ -1,6 +1,6 @@
 // Para hoje: o painel de execução do Início, com até 4 vagas (decisão 63). Aqui ficam só as regras de quem pode ocupar uma vaga e em que ordem (o banco guarda as vagas e impede duplicação).
 // Humor e produtividade não entram no cálculo. Sem relógio: a data de hoje vem de fora.
-import { contagemRetorno, dataFiltro, diasAte, esperaPrefeita, permanencia, type Demanda } from './demandas.ts';
+import { contagemRetorno, dataFiltro, diasAte, esperaPrefeita, permanencia, type Demanda, type Etapa } from './demandas.ts';
 import type { DiaIndisponivel } from './prazos.ts';
 import { demandaPrioritaria } from './prioridade.ts';
 
@@ -80,5 +80,25 @@ export function organizarPainel(vagas: readonly Vaga[], lista: readonly Demanda[
   const comunsNasVagas = abertas.filter((v) => !demandaPrioritaria(v.demanda));
   const prioritariasFora = elegiveis.filter((e) => e.prioritaria && !ocupadas.has(e.demanda.id));
   const urgenciasComuns = novasUrgencias(vagas, lista, elegiveis).filter((e) => !e.prioritaria);
-  return { prioritariasNasVagas, prioritariasFora, comunsNasVagas, urgenciasComuns };
+  // Início (decisão 64): com as quatro vagas cheias, a prioridade fora das vagas abre a faixa Nova urgência, antes das urgências comuns. Nenhuma demanda repete: as prioritárias de fora e as comuns são conjuntos disjuntos.
+  const novaUrgencia = [...prioritariasFora, ...urgenciasComuns];
+  return { prioritariasNasVagas, prioritariasFora, comunsNasVagas, urgenciasComuns, novaUrgencia };
 }
+
+// ---------- pilha do celular (decisão 64) ----------
+/** Avanço pelo gesto para a direita: Cadastro, Vistos, Fazendo, Finalizado. Nas etapas de espera não há avanço direto (abre o menu para escolher); em Finalizado não há o que avançar. */
+export const ETAPA_SEGUINTE: Partial<Record<Etapa, Etapa>> = { Cadastro: 'Vistos', Vistos: 'Fazendo', Fazendo: 'Finalizado' };
+export const etapaDeEspera = (e: Etapa) => e === 'Aguardando retorno' || e === 'Aguardando Prefeita';
+/**
+ * Ordem de apresentação da pilha neste aparelho: a ordem guardada (se for do dia) com só os cards que ainda estão nas vagas, e os que não estavam nela entram no fim, na ordem do painel.
+ * Nunca perde nem repete um card, mesmo com a lista guardada velha, repetida ou com ids que saíram.
+ */
+export function ordemDaPilha(ids: readonly string[], guardada: readonly string[]): string[] {
+  const nas = new Set(ids), vistos = new Set<string>(), saida: string[] = [];
+  for (const id of guardada) if (nas.has(id) && !vistos.has(id)) { vistos.add(id); saida.push(id); }
+  for (const id of ids) if (!vistos.has(id)) { vistos.add(id); saida.push(id); }
+  return saida;
+}
+/** O card ativo vai para o fim da ordem de apresentação (a vaga, a etapa e a prioridade não mudam: só a ordem em que o aparelho mostra). */
+export const ativoParaOFim = (ordem: readonly string[]): string[] => (ordem.length < 2 ? [...ordem] : [...ordem.slice(1), ordem[0]]);
+
