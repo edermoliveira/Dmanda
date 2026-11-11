@@ -1,5 +1,5 @@
 'use client';
-// Agenda (decisões 46 a 49): Hoje, semana (domingo a sábado) e mês, com o heatmap da carga pendente, os marcos das demandas (vencimento, acompanhamento, retorno do setor),
+// Agenda (decisões 46 a 49): Hoje, semana (segunda a domingo desde a decisão 64) e mês, com o heatmap da carga pendente, os marcos das demandas (vencimento, acompanhamento, retorno do setor),
 // os compromissos próprios e os dias indisponíveis. Toda a lógica de datas e de carga fica em src/lib/agenda.ts e eventos.ts (testada à parte); aqui só se desenha.
 // Nada de relógio na renderização: a data de hoje vem do contexto, e a hora de agora só existe depois de montar no navegador.
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as TeclaReact } from 'react';
@@ -7,11 +7,11 @@ import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { ChipEspera } from './cartoes';
 import { diasDesde, plural, titulo, type Demanda } from '@/lib/demandas';
-import { diaDaSemana, somarDias, type DiaIndisponivel } from '@/lib/prazos';
+import { somarDias, type DiaIndisponivel } from '@/lib/prazos';
 import { horarioDe, sobrepostosA, type Evento } from '@/lib/eventos';
 import { eObjeto } from '@/lib/armazenamento';
 import {
-  anoMes, cargaPorDia, dataPorExtenso, descreverDia, diaDoMes, fimDeSemana, gradeMes, itensDoDia, LIMIARES_CARGA, marcosPorDia, nivelDaCarga, nomeLongoDoDia, NOMES_MES, panorama,
+  anoMes, cargaPorDia, dataPorExtenso, descreverDia, diaDoMes, fimDeSemana, gradeMes, indiceSemana, itensDoDia, LIMIARES_CARGA, marcosPorDia, nivelDaCarga, nomeLongoDoDia, NOMES_MES, panorama,
   pendenciasSemPrazo, primeiroDoMes, ROTULO_MARCO, ROTULO_NIVEL, rotuloSemana, SEMANA_INICIAIS, SEMANA_NOMES, semanaDe, somarMeses, tituloMes, diasNoMes, type CargaDia, type Marco, type NivelCarga, type OpcoesAgenda,
 } from '@/lib/agenda';
 
@@ -179,7 +179,7 @@ function GradeMes({ dia, hoje, carga, eventosPorData, indispPorData, escolher }:
   const focar = useRef(false);
   useEffect(() => { if (focar.current) { focar.current = false; gridRef.current?.querySelector<HTMLElement>(`[data-data="${dia}"]`)?.focus(); } }, [dia]);
   const tecla = (e: TeclaReact<HTMLDivElement>) => {
-    const passo: Record<string, string> = { ArrowLeft: somarDias(dia, -1), ArrowRight: somarDias(dia, 1), ArrowUp: somarDias(dia, -7), ArrowDown: somarDias(dia, 7), Home: somarDias(dia, -diaDaSemana(dia)), End: somarDias(dia, 6 - diaDaSemana(dia)), PageUp: somarMeses(dia, -1), PageDown: somarMeses(dia, 1) };
+    const passo: Record<string, string> = { ArrowLeft: somarDias(dia, -1), ArrowRight: somarDias(dia, 1), ArrowUp: somarDias(dia, -7), ArrowDown: somarDias(dia, 7), Home: somarDias(dia, -indiceSemana(dia)), End: somarDias(dia, 6 - indiceSemana(dia)), PageUp: somarMeses(dia, -1), PageDown: somarMeses(dia, 1) };
     const alvo = passo[e.key];
     if (!alvo || e.altKey || e.ctrlKey || e.metaKey) return;
     e.preventDefault(); focar.current = true; escolher(alvo);

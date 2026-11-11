@@ -7,8 +7,10 @@ import { ordenarEventos, type Evento } from './eventos.ts';
 
 // ---------- calendário ----------
 export const NOMES_MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-export const SEMANA_INICIAIS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-export const SEMANA_NOMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+// A semana começa na segunda e termina no domingo em todas as grades (Agenda, Semana, Mês e mini calendário do Início, decisão 64).
+export const SEMANA_INICIAIS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+export const SEMANA_ABREVIADAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+export const SEMANA_NOMES = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
 const NOMES_DIA_LONGO = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
 
 export const anoMes = (iso: string) => ({ ano: Number(iso.slice(0, 4)), mes: Number(iso.slice(5, 7)) });
@@ -24,15 +26,17 @@ export function somarMeses(iso: string, n: number): string {
   return `${a}-${dois(m)}-${dois(Math.min(Number(iso.slice(8, 10)), diasNoMes(a, m)))}`;
 }
 
-/** Grade do mês: semanas de domingo a sábado; as posições antes do dia 1 e depois do último dia são nulas (vazias). O número de semanas muda com o mês (4 a 6). */
+/** Posição do dia na semana que começa na segunda: 0 segunda, 6 domingo. */
+export const indiceSemana = (iso: string) => (diaDaSemana(iso) + 6) % 7;
+/** Grade do mês: semanas de segunda a domingo; as posições antes do dia 1 e depois do último dia são nulas (vazias). O número de semanas muda com o mês (4 a 6). */
 export function gradeMes(ano: number, mes: number): (string | null)[][] {
-  const primeiro = `${ano}-${dois(mes)}-01`, inicio = diaDaSemana(primeiro), total = diasNoMes(ano, mes);
+  const primeiro = `${ano}-${dois(mes)}-01`, inicio = indiceSemana(primeiro), total = diasNoMes(ano, mes);
   const celulas: (string | null)[] = [...Array<null>(inicio).fill(null), ...Array.from({ length: total }, (_, i) => `${ano}-${dois(mes)}-${dois(i + 1)}`)];
   while (celulas.length % 7) celulas.push(null);
   return Array.from({ length: celulas.length / 7 }, (_, i) => celulas.slice(i * 7, i * 7 + 7));
 }
-/** A semana (domingo a sábado) que contém a data. */
-export const semanaDe = (iso: string): string[] => { const d = somarDias(iso, -diaDaSemana(iso)); return Array.from({ length: 7 }, (_, i) => somarDias(d, i)); };
+/** A semana (segunda a domingo) que contém a data. */
+export const semanaDe = (iso: string): string[] => { const d = somarDias(iso, -indiceSemana(iso)); return Array.from({ length: 7 }, (_, i) => somarDias(d, i)); };
 export const fimDeSemana = (iso: string) => diaDaSemana(iso) === 0 || diaDaSemana(iso) === 6;
 export const nomeLongoDoDia = (iso: string) => NOMES_DIA_LONGO[diaDaSemana(iso)];
 /** "terça-feira, 3 de novembro de 2026" */

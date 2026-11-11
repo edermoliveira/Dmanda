@@ -23,21 +23,22 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
 // ---------- calendário ----------
 {
   const fev26 = gradeMes(2026, 2), fev24 = gradeMes(2024, 2), ago26 = gradeMes(2026, 8);
-  ok(fev26.length === 4 && fev26[0][0] === '2026-02-01' && fev26[3][6] === '2026-02-28' && fev26.flat().every(Boolean), 'fevereiro de 2026 começa no domingo e tem 4 semanas completas, sem espaços vazios');
-  ok(fev24.length === 5 && fev24[0].slice(0, 4).every((x) => x === null) && fev24[0][4] === '2024-02-01' && fev24.flat().includes('2024-02-29') && fev24[4].slice(5).every((x) => x === null), 'ano bissexto: fevereiro de 2024 começa na quinta, tem o dia 29 e completa a última semana com vazios');
-  ok(ago26.length === 6 && ago26[0].slice(0, 6).every((x) => x === null) && ago26[0][6] === '2026-08-01', 'agosto de 2026 começa no sábado: seis posições vazias e 6 semanas');
+  ok(fev26.length === 5 && fev26[0].slice(0, 6).every((x) => x === null) && fev26[0][6] === '2026-02-01' && fev26[4][5] === '2026-02-28' && fev26[4][6] === null, 'fevereiro de 2026 começa no domingo: a semana começa na segunda, então o dia 1 fica na última coluna e há 5 semanas');
+  ok(fev24.length === 5 && fev24[0].slice(0, 3).every((x) => x === null) && fev24[0][3] === '2024-02-01' && fev24.flat().includes('2024-02-29') && fev24[4].slice(4).every((x) => x === null), 'ano bissexto: fevereiro de 2024 começa na quinta (quarta posição), tem o dia 29 e completa a última semana com vazios');
+  ok(ago26.length === 6 && ago26[0].slice(0, 5).every((x) => x === null) && ago26[0][5] === '2026-08-01' && ago26[0][6] === '2026-08-02' && ago26[5][0] === '2026-08-31', 'agosto de 2026 começa no sábado (sexta posição vazia até ali) e tem 6 semanas, a última só com o dia 31 na segunda');
   let tudo = true, qtd = 0;
   for (let a = 2024; a <= 2030; a++) for (let m = 1; m <= 12; m++) {
     const g = gradeMes(a, m), nn = g.flat().filter(Boolean);
     if (!g.every((s) => s.length === 7) || nn.length !== diasNoMes(a, m) || nn[0] !== `${a}-${String(m).padStart(2, '0')}-01`) tudo = false;
-    g.forEach((s) => s.forEach((x, i) => { if (x && diaDaSemana(x) !== i) tudo = false; }));
+    g.forEach((s) => s.forEach((x, i) => { if (x && diaDaSemana(x) !== (i + 1) % 7) tudo = false; }));
     qtd++;
   }
-  ok(tudo && qtd === 84, 'em 84 meses (2024 a 2030) toda semana tem 7 posições, cada data cai na coluna do seu dia da semana (domingo na primeira) e a quantidade de dias confere');
+  ok(tudo && qtd === 84, 'em 84 meses (2024 a 2030) toda semana tem 7 posições, cada data cai na coluna do seu dia da semana (segunda na primeira, domingo na última) e a quantidade de dias confere');
   ok(diasNoMes(2024, 2) === 29 && diasNoMes(2026, 2) === 28 && diasNoMes(2100, 2) === 28 && diasNoMes(2000, 2) === 29 && diasNoMes(2026, 4) === 30, 'meses de tamanhos diferentes e anos bissextos (2100 não é bissexto, 2000 é)');
   ok(somarMeses('2026-01-31', 1) === '2026-02-28' && somarMeses('2024-01-31', 1) === '2024-02-29' && somarMeses('2026-12-15', 1) === '2027-01-15' && somarMeses('2026-01-15', -1) === '2025-12-15' && somarMeses('2026-03-31', -1) === '2026-02-28', 'somar meses mantém o dia ou usa o último dia do mês de destino, e cruza o ano nos dois sentidos');
-  ok(semanaDe('2026-11-04')[0] === '2026-11-01' && semanaDe('2026-11-04')[6] === '2026-11-07' && semanaDe('2026-11-01')[0] === '2026-11-01' && semanaDe('2026-11-07')[0] === '2026-11-01' && semanaDe('2026-12-02')[0] === '2026-11-29' && semanaDe('2026-12-02')[6] === '2026-12-05', 'semana de domingo a sábado, inclusive quando atravessa o mês');
-  ok(tituloMes('2026-11-15') === 'novembro de 2026' && dataPorExtenso('2026-11-03') === 'terça-feira, 3 de novembro de 2026' && rotuloSemana(semanaDe('2026-11-04')) === '1 a 7 de novembro de 2026' && rotuloSemana(semanaDe('2026-12-02')) === '29 de nov a 5 de dez de 2026', 'rótulos por extenso do mês, do dia e da semana');
+  ok(semanaDe('2026-11-04')[0] === '2026-11-02' && semanaDe('2026-11-04')[6] === '2026-11-08' && semanaDe('2026-11-01')[0] === '2026-10-26' && semanaDe('2026-11-01')[6] === '2026-11-01' && semanaDe('2026-11-08')[0] === '2026-11-02' && semanaDe('2026-12-02')[0] === '2026-11-30' && semanaDe('2026-12-02')[6] === '2026-12-06', 'semana de segunda a domingo: o domingo fecha a semana (1/11 pertence à semana de 26/10) e a de 2/12 começa em 30/11');
+  ok(semanaDe('2027-01-01')[0] === '2026-12-28' && semanaDe('2027-01-01')[6] === '2027-01-03' && semanaDe('2026-12-28')[0] === '2026-12-28' && semanaDe('2026-12-31').join() === '2026-12-28,2026-12-29,2026-12-30,2026-12-31,2027-01-01,2027-01-02,2027-01-03' && semanaDe('2024-03-01')[0] === '2024-02-26' && semanaDe('2024-03-01').includes('2024-02-29'), 'semana que vira o ano (28/12/2026 a 3/1/2027) e a que atravessa o 29 de fevereiro bissexto');
+  ok(tituloMes('2026-11-15') === 'novembro de 2026' && dataPorExtenso('2026-11-03') === 'terça-feira, 3 de novembro de 2026' && rotuloSemana(semanaDe('2026-11-04')) === '2 a 8 de novembro de 2026' && rotuloSemana(semanaDe('2026-12-02')) === '30 de nov a 6 de dez de 2026', 'rótulos por extenso do mês, do dia e da semana');
 }
 
 // ---------- retorno de outro setor (10 dias) ----------
