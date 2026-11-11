@@ -227,6 +227,7 @@ await semear(PASTA_B, async ({ mk, dia }) => {
   await mk('Vaga um comum', { prazo_original: dia(-3), origem: 'Reunião' });
   await mk('Vaga dois comum', { prazo_original: dia(-2), origem: 'Pedido de colega' });
   await mk('Vaga tres comum', { prazo_original: dia(-1), origem: 'Iniciativa própria' });
+  await mk('Vaga quatro comum', { prazo_original: HOJE, origem: 'Reunião' });
   await mk('Comum que sobra', { prazo_original: HOJE, origem: 'Reunião' });
 });
 await subir(PASTA_B);
@@ -234,9 +235,9 @@ await subir(PASTA_B);
   const { ctx, pg } = await novo(); await ir(pg, '/');
   const vagas = () => pg.$$eval('[data-painel="para-hoje"] .vaga', (l) => l.map((e) => `${e.dataset.vaga ?? 'fora'}:${e.querySelector('.assunto')?.textContent.trim()}`));
   const urgencias = () => pg.$$eval('[data-nova-urgencia] .assunto', (l) => l.map((e) => e.textContent.trim()));
-  await pg.waitForFunction(() => document.querySelectorAll('[data-painel="para-hoje"] [data-vaga]').length === 3, null, { timeout: 30000 });
+  await pg.waitForFunction(() => document.querySelectorAll('[data-painel="para-hoje"] [data-vaga]').length === 4, null, { timeout: 30000 });
   const inicial = await vagas();
-  ok(inicial.join() === '1:Vaga um comum,2:Vaga dois comum,3:Vaga tres comum' && (await urgencias()).join() === 'Comum que sobra', `Para hoje: as 3 vagas começam com as comuns mais antigas (${inicial.join(' | ')}) e a outra vencida fica na nova urgência`);
+  ok(inicial.join() === '1:Vaga um comum,2:Vaga dois comum,3:Vaga tres comum,4:Vaga quatro comum' && (await urgencias()).join() === 'Comum que sobra', `Para hoje: as 4 vagas começam com as comuns mais antigas (${inicial.join(' | ')}) e a outra vencida fica na nova urgência`);
 
   // uma das demandas das vagas (a da vaga 3) passa a ser pedido do Gabinete: pela interface, depois da gravação confirmada
   await ir(pg, '/demandas');
@@ -250,11 +251,11 @@ await subir(PASTA_B);
   await ir(pg, '/');
   await pg.waitForSelector('[data-painel="para-hoje"] [data-vaga]');
   const depois = await vagas();
-  ok(depois.join() === '3:Vaga tres comum,1:Vaga um comum,2:Vaga dois comum', `Para hoje: a prioritária que estava na vaga 3 é exibida antes das comuns, mas continua na vaga gravada 3 (${depois.join(' | ')})`);
+  ok(depois.join() === '3:Vaga tres comum,1:Vaga um comum,2:Vaga dois comum,4:Vaga quatro comum', `Para hoje: a prioritária que estava na vaga 3 é exibida antes das comuns, mas continua na vaga gravada 3 (${depois.join(' | ')})`);
   const ids = await pg.$$eval('[data-painel="para-hoje"] .assunto', (l) => l.map((e) => e.textContent.trim()));
   ok(new Set(ids).size === ids.length, 'Para hoje: nenhum card aparece duas vezes');
 
-  // um pedido novo da Prefeita chega com as 3 vagas cheias: aparece fora das vagas, acima das comuns, sem tirar ninguém
+  // um pedido novo da Prefeita chega com as 4 vagas cheias: aparece fora das vagas, acima das comuns, sem tirar ninguém
   await ir(pg, '/demandas');
   await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#n-assunto');
   await pg.fill('#n-assunto', 'Pedido novo da Prefeita'); await escolherOpcao(pg, 'n', 'origem', 'Prefeita');
@@ -264,13 +265,13 @@ await subir(PASTA_B);
   await ir(pg, '/');
   await pg.waitForSelector('[data-painel="para-hoje"] [data-fora-vaga]', { timeout: 20000 });
   const com4 = await vagas();
-  ok(com4[0] === '3:Vaga tres comum' && com4[1] === 'fora:Pedido novo da Prefeita' && com4.slice(2).join() === '1:Vaga um comum,2:Vaga dois comum', `Para hoje: com as 3 vagas cheias a nova prioritária aparece fora das vagas, acima das comuns, sem substituir nenhuma (${com4.join(' | ')})`);
-  ok((await pg.$$('[data-painel="para-hoje"] [data-vaga]')).length === 3 && (await urgencias()).join() === 'Comum que sobra', 'Para hoje: continuam 3 vagas, e a nova urgência só mostra a comum (a prioritária já está acima)');
-  ok(await pg.$eval('[data-fora-vaga]', (e) => !!e.querySelector('[data-selo-prioridade]') && /Fora das 3 vagas/.test(e.textContent)), 'Para hoje: o card fora das vagas traz o selo e a indicação "Fora das 3 vagas"');
+  ok(com4[0] === '3:Vaga tres comum' && com4[1] === 'fora:Pedido novo da Prefeita' && com4.slice(2).join() === '1:Vaga um comum,2:Vaga dois comum,4:Vaga quatro comum', `Para hoje: com as 4 vagas cheias a nova prioritária aparece fora das vagas, acima das comuns, sem substituir nenhuma (${com4.join(' | ')})`);
+  ok((await pg.$$('[data-painel="para-hoje"] [data-vaga]')).length === 3 && (await urgencias()).join() === 'Comum que sobra', 'Para hoje: continuam 4 vagas, e a nova urgência só mostra a comum (a prioritária já está acima)');
+  ok(await pg.$eval('[data-fora-vaga]', (e) => !!e.querySelector('[data-selo-prioridade]') && /Fora das 4 vagas/.test(e.textContent)), 'Para hoje: o card fora das vagas traz o selo e a indicação "Fora das 4 vagas"');
   await pg.screenshot({ path: `${CAPTURAS}/c1-para-hoje-claro.png` });
 
   // recarregar mantém tudo (vagas guardadas no banco) e não duplica
-  await ir(pg, '/'); await pg.waitForFunction(() => document.querySelectorAll('[data-painel="para-hoje"] [data-vaga]').length === 3, null, { timeout: 20000 });
+  await ir(pg, '/'); await pg.waitForFunction(() => document.querySelectorAll('[data-painel="para-hoje"] [data-vaga]').length === 4, null, { timeout: 20000 });
   const recarregado = await vagas();
   ok(recarregado.join() === com4.join(), `Para hoje: depois de recarregar a ordem e as vagas são as mesmas (${recarregado.join(' | ')})`);
 

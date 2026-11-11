@@ -11,7 +11,7 @@ import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
 import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, type Demanda } from '@/lib/demandas';
-import { elegiveisParaHoje, organizarPainel, precisaCompletar, vagasAbertas } from '@/lib/para-hoje';
+import { VAGAS_PARA_HOJE, elegiveisParaHoje, organizarPainel, precisaCompletar, vagasAbertas } from '@/lib/para-hoje';
 import { anoDoDocumento, chaveOpcao } from '@/lib/documentos';
 import { WidgetClima } from './clima';
 
@@ -81,7 +81,7 @@ export function PaginaInicio() {
 }
 
 // ---------- Para hoje ----------
-// O painel de execução do dia (o antigo Foco do dia): até 3 vagas, guardadas no banco. Ao concluir ou arquivar uma demanda, só a vaga liberada é reposta. Uma urgência que surge depois
+// O painel de execução do dia (o antigo Foco do dia): até 4 vagas, guardadas no banco. Ao concluir ou arquivar uma demanda, só a vaga liberada é reposta. Uma urgência que surge depois
 // das vagas escolhidas aparece à parte, sem trocar a seleção. Não é o grupo "Vencem hoje" (que lista tudo o que vence hoje, com ou sem ação).
 function ParaHoje() {
   const { demandas, hoje, dias, paraHoje, sincronizarParaHoje, carregando } = useApp();
@@ -98,11 +98,11 @@ function ParaHoje() {
   const vazio = !prioritariasNasVagas.length && !prioritariasFora.length && !comunsNasVagas.length;
   return (
     <section className="sec" data-painel="para-hoje" aria-labelledby="ph-t">
-      <h3 id="ph-t">Para hoje <small>até 3 demandas para tocar hoje: pedidos da Prefeita e do Gabinete primeiro, depois atrasadas e as que vencem hoje</small></h3>
+      <h3 id="ph-t">Para hoje <small>até 4 demandas para tocar hoje: pedidos da Prefeita e do Gabinete primeiro, depois atrasadas e as que vencem hoje</small></h3>
       {vazio ? <div className="vazio-c">Nada para tocar hoje por enquanto.</div> : (
         <div className="cards">
           {prioritariasNasVagas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}
-          {prioritariasFora.map((e) => <div key={e.demanda.id} data-fora-vaga className="vaga fora-vaga"><small className="data fora-t">Fora das 3 vagas</small><CardDemanda d={e.demanda} mostrarRapida /></div>)}
+          {prioritariasFora.map((e) => <div key={e.demanda.id} data-fora-vaga className="vaga fora-vaga"><small className="data fora-t">Fora das {VAGAS_PARA_HOJE} vagas</small><CardDemanda d={e.demanda} mostrarRapida /></div>)}
           {comunsNasVagas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}
         </div>
       )}
