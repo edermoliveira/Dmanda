@@ -21,3 +21,13 @@ export async function salvarEvento(id: string, dados: DadosEvento, versao: numbe
 export async function excluirEvento(id: string, confirmado: boolean) {
   return executar(() => op().excluirEvento(id, confirmado));
 }
+// Pagamentos (data do salário): ficam aqui porque aparecem no calendário; a carga conjunta os lê junto com os eventos.
+export async function listarPagamentos() {
+  return executar(() => op().listarPagamentos());
+}
+export async function salvarPagamento(dados: { id?: string; data: string }) {
+  return executar(() => op().salvarPagamento(dados));
+}
+export async function excluirPagamento(id: string) {
+  return executar(() => op().excluirPagamento(id));
+}

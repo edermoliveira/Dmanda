@@ -68,7 +68,7 @@ const auth = http.createServer(async (req, res) => {
     res.writeHead(204, CORS); return res.end();
   }
   // listas vazias: demandas, dias indisponíveis e entradas (a cópia dos dados, /api/exportar, lê as três; uma função desconhecida aqui vira 404 e a rota responde 500)
-  if (['listar_demandas', 'listar_dias_indisponiveis', 'listar_entradas', 'listar_eventos', 'listar_registros_dia'].some((f) => u.pathname === `/rest/v1/rpc/${f}`)) return json(res, 200, []);
+  if (['listar_demandas', 'listar_dias_indisponiveis', 'listar_entradas', 'listar_eventos', 'listar_pagamentos', 'listar_registros_dia'].some((f) => u.pathname === `/rest/v1/rpc/${f}`)) return json(res, 200, []);
   if (u.pathname === '/rest/v1/rpc/estado_rotina') return json(res, 200, { ultima_ok: null, ultima_falha: null, resumo_data: null, resumo_calculado_em: null });
   return json(res, 404, {});
 });

@@ -12,6 +12,7 @@ import { APARENCIA_PADRAO, aparenciaGuardada, CONJUNTOS, PALETAS, temaDoModo, ty
 import { eObjeto, gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada } from '@/lib/armazenamento';
 import { avisosDeHoje, compararEventos, minutosAgora, type AvisoEvento, type DadosEvento, type Evento } from '@/lib/eventos';
 import type { Entrada } from '@/lib/entradas';
+import { ordenarPagamentos, type Pagamento } from '@/lib/pagamentos';
 import type { Opcao } from '@/lib/documentos';
 import type { Vaga } from '@/lib/para-hoje';
 import { substituirRegistros, type RegistroDia } from '@/lib/registros';
@@ -46,6 +47,10 @@ type Ctx = {
   dias: DiaIndisponivel[];
   salvarDia: (dia: { id?: string; data: string; descricao: string; categoria: CategoriaDia }) => Promise<boolean>;
   excluirDia: (id: string) => Promise<boolean>;
+  /** Datas de pagamento (salário), cadastradas em Configurações: aparecem no mini calendário do Início. */
+  pagamentos: Pagamento[];
+  salvarPagamento: (p: { id?: string; data: string }) => Promise<boolean>;
+  excluirPagamento: (id: string) => Promise<boolean>;
   hoje: string;
   carregando: boolean;
   erroCarga: string | null;
@@ -201,6 +206,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [erroEntradas, setErroEntradas] = useState<string | null>(null);
   const [abaArquivo, setAbaArquivo] = useState<AbaArquivo>('demandas');
   const [dias, setDias] = useState<DiaIndisponivel[]>([]);
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [carregandoEventos, setCarregandoEventos] = useState(true);
   const [erroEventos, setErroEventos] = useState<string | null>(null);
@@ -261,7 +267,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setSistemaEscuro(matchMedia('(prefers-color-scheme: dark)').matches);
     setAparencia(aparenciaGuardada(lerLS<unknown>('dmanda:aparencia', null)));
     setPrefsPerfil(preferenciasGuardadas(lerLS<unknown>(CHAVE_PREFERENCIAS, null)));
-    setMenuAberto(lerLS<unknown>('dmanda:menu-aberto', false) === true);
+    { const m = lerLS<unknown>('dmanda:menu-aberto', null); setMenuAberto(m === null ? true : m === true); } // sem escolha guardada o menu começa aberto (decisão 64); só vale a partir de 1100 px
     // o que está guardado pode estar corrompido ou ser de outra versão: só entra o que tem a forma esperada (ver lib/armazenamento.ts)
     const ui = lerLS<Record<string, unknown> | null>('dmanda:ui', null) ?? {};
     const visaoUi = visaoGuardada(ui.visao), ordemUi = ordemGuardada(ui.ordem);
@@ -318,6 +324,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (c.registros.ok) { setRegistros(c.registros.dados); setErroRegistros(null); } else setErroRegistros(c.registros.erro);
     setCarregandoRegistros(false);
     if (c.dias.ok) { setDias(c.dias.dados); setErroDias(null); } else setErroDias(c.dias.erro);
+    if (c.pagamentos.ok) setPagamentos(c.pagamentos.dados);
     if (c.opcoes.ok) { setOpcoes(agruparOpcoes(c.opcoes.dados)); setErroOpcoes(null); } else setErroOpcoes(c.opcoes.erro);
     if (c.paraHoje.ok) setParaHoje(c.paraHoje.dados);
     if (c.rotina?.ok) setRotina(c.rotina.dados);
@@ -410,9 +417,10 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       const antes = gravacoes.current;
       const c = await protegido(() => cargaInicial(false)); // uma só chamada, sem o estado da rotina nem o ambiente
       if (!c.ok) return; // sem rede agora: o que está na tela continua
-      const { demandas: r, dias: d, entradas: en, eventos: evs, registros: rg, opcoes: op, paraHoje: ph } = c.dados;
+      const { demandas: r, dias: d, pagamentos: pg, entradas: en, eventos: evs, registros: rg, opcoes: op, paraHoje: ph } = c.dados;
       if (gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) {
         if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) { setDias(d.dados); setErroDias(null); } }
+        if (pg.ok) setPagamentos(pg.dados);
         if (en.ok) { setEntradas(en.dados); setErroEntradas(null); }
         if (evs.ok) { setEventos(evs.dados); setErroEventos(null); }
         if (rg.ok) { setRegistros(rg.dados); setErroRegistros(null); }
@@ -567,6 +575,21 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       await aposCalendario('Dia excluído', r.dados.recalculadas);
       return true;
     },
+    pagamentos,
+    salvarPagamento: async (pag) => {
+      const r = await gravando(() => protegido(() => srvA.salvarPagamento(pag)));
+      if (!r.ok) { avisar(r.erro, true); return false; }
+      setPagamentos((l) => ordenarPagamentos([...l.filter((x) => x.id !== r.dados.id), r.dados]));
+      avisar(pag.id ? 'Pagamento alterado' : 'Pagamento cadastrado');
+      return true;
+    },
+    excluirPagamento: async (pagId) => {
+      const r = await gravando(() => protegido(() => srvA.excluirPagamento(pagId)));
+      if (!r.ok) { avisar(r.erro, true); return false; }
+      setPagamentos((l) => l.filter((x) => x.id !== pagId));
+      avisar('Pagamento excluído');
+      return true;
+    },
     criar: async (dados, msg = 'Demanda cadastrada', entradaId) => {
       const d = await rodar(() => (entradaId ? srvE.criarDemandaDeEntrada(entradaId, dados as DadosDemanda & { id: string }) : srv.criarDemanda(dados)), msg);
       // a anotação já está ligada à demanda no banco: sai de Entradas, o rascunho dela some e o Arquivo recarrega ao abrir
@@ -602,7 +625,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, erroDias, erroOpcoes, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, prefsPerfil, pronto, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
+  }), [opcoes, criarOpcao, pagamentos, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, erroDias, erroOpcoes, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, prefsPerfil, pronto, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

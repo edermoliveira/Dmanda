@@ -110,6 +110,7 @@ function JanelaEvento({ evento, idOriginal, dataInicial }: { evento: Evento | nu
           {erro ? <p className="data" role="alert" style={{ color: 'var(--perigo)' }}>{erro}</p> : null}
           <div className="fld"><label htmlFor="ev-titulo">Título</label><input id="ev-titulo" value={c.titulo} autoComplete="off" maxLength={200} placeholder="Ex.: Reunião com o Gabinete" onChange={(e) => mudar({ titulo: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void gravar(); } }} /></div>
           <div className="fld"><label>Tipo</label><Opcoes lista={TIPOS_EVENTO} valor={c.tipo} rotulo="Tipo do evento" aoEscolher={(v) => mudar({ tipo: v })} /></div>
+          {c.tipo === 'Evento externo' ? <p className="data" data-nota-externo>Evento externo aparece no calendário, mas não antecipa vencimentos. Para um dia sem trabalho que antecipa prazos, cadastre em Configurações, Dias indisponíveis.</p> : null}
           <div className="fld"><label htmlFor="ev-data">Data</label><input id="ev-data" type="date" value={c.data} onChange={(e) => mudar({ data: e.target.value })} /></div>
           <label className="agd-chk"><input type="checkbox" checked={c.dia_inteiro} onChange={(e) => mudar({ dia_inteiro: e.target.checked, aviso: e.target.checked ? '' : String(AVISO_PADRAO) })} />Dia inteiro (sem horário)</label>
           {c.dia_inteiro ? (

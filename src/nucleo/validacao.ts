@@ -105,6 +105,15 @@ export function validarTarefas(l: unknown): TarefaEdicao[] | null {
  * Evento ou lembrete da Agenda vindo da tela. Chave ausente = não mexe (na alteração); a regra completa (horário, término depois do início, dia inteiro sem horário, aviso) é a mesma da tela
  * (`erroDoEvento`) e o banco repete as conferências. Na criação todos os campos obrigatórios precisam vir; na alteração o banco confere o resultado final.
  */
+/** Pagamento (data do salário): só a data, que precisa existir no calendário. Com `id` é alteração. */
+export function validarPagamento(entrada: unknown): { id?: string; data: string } {
+  if (!entrada || typeof entrada !== 'object' || Array.isArray(entrada)) throw new ErroDmanda('Dados do pagamento inválidos.');
+  const e = entrada as Record<string, unknown>;
+  const data = dataOuNulo(e.data ?? null, 'Data');
+  if (!data) throw new ErroDmanda('Informe a data do pagamento.');
+  return { ...(e.id ? { id: id(e.id, 'Pagamento') } : {}), data };
+}
+
 export function validarEvento(entrada: unknown, { criando }: { criando: boolean }): Record<string, unknown> {
   if (!entrada || typeof entrada !== 'object' || Array.isArray(entrada)) throw new ErroDmanda('Dados do evento inválidos.');
   const e = entrada as Record<string, unknown>, s: Record<string, unknown> = {};

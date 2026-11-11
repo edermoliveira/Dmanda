@@ -1,5 +1,5 @@
 -- Restaura uma cópia dos dados do Dmanda (arquivo "dmanda-copia-AAAA-MM-DD.json", menu do avatar > "Baixar cópia dos dados") em um projeto Supabase.
--- Aceita cópias da versão 4 (demandas, tarefas, dias indisponíveis, entradas e eventos da Agenda), da versão 3 (sem eventos), da versão 2 (sem entradas) e da versão 1 (antigas, sem dias indisponíveis; o prazo delas vira a referência original, marcada como legado).
+-- Aceita cópias da versão 5 (a 4 mais as datas de pagamento), da versão 4 (demandas, tarefas, dias indisponíveis, entradas e eventos da Agenda), da versão 3 (sem eventos), da versão 2 (sem entradas) e da versão 1 (antigas, sem dias indisponíveis; o prazo delas vira a referência original, marcada como legado).
 -- Procedimento completo e limites: supabase/LEIA-ME.md, seção "Cópia dos dados e restauração".
 --
 -- Como usar (no SQL Editor do painel do Supabase, do projeto Dmanda, ou em um banco de teste):
@@ -30,9 +30,10 @@ declare
   n_dias integer;
   n_ent integer;
   n_eve integer;
+  n_pag integer;
 begin
-  if j ->> 'formato' is distinct from 'dmanda-exportacao' or j ->> 'versao' not in ('1', '2', '3', '4') then
-    raise exception 'Este arquivo não é uma cópia do Dmanda (esperado formato dmanda-exportacao, versão 1, 2, 3 ou 4).';
+  if j ->> 'formato' is distinct from 'dmanda-exportacao' or j ->> 'versao' not in ('1', '2', '3', '4', '5') then
+    raise exception 'Este arquivo não é uma cópia do Dmanda (esperado formato dmanda-exportacao, versão 1, 2, 3, 4 ou 5).';
   end if;
   select count(*) into qtd from auth.users;
   if qtd <> 1 then
@@ -99,6 +100,13 @@ begin
   on conflict (id) do nothing;
   get diagnostics n_eve = row_count;
 
-  raise notice 'Restauradas % demanda(s), % tarefa(s), % dia(s) indisponível(is), % entrada(s) e % evento(s); o que já existia não foi tocado.', n_dem, n_tar, n_dias, n_ent, n_eve;
+  -- datas de pagamento (cópias da versão 5; as anteriores não têm a lista): uma data que o usuário já tem cadastrada não é tocada nem duplicada
+  insert into public.pagamentos (id, user_id, data, criado_em, atualizado_em)
+  select (x ->> 'id')::uuid, dono, (x ->> 'data')::date, coalesce((x ->> 'criado_em')::timestamptz, now()), coalesce((x ->> 'criado_em')::timestamptz, now())
+  from jsonb_array_elements(coalesce(j -> 'pagamentos', '[]'::jsonb)) x
+  on conflict do nothing;
+  get diagnostics n_pag = row_count;
+
+  raise notice 'Restauradas % demanda(s), % tarefa(s), % dia(s) indisponível(is), % entrada(s), % evento(s) e % data(s) de pagamento; o que já existia não foi tocado.', n_dem, n_tar, n_dias, n_ent, n_eve, n_pag;
 end
 $restaurar$;

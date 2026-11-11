@@ -436,7 +436,7 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
 
   // recusas: nada é gravado
   const vazio = await novoBanco([N, 'destino@teste']);
-  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 5 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
+  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 6 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
   const dois = await novoBanco([N, 'destino@teste'], [O, 'origem@teste']);
   ok(/exatamente 1 usuário/.test(await tentar(dois, copia)) && await contar(dois) === '0/0', 'restauração: com mais de um usuário no projeto, nada é gravado');
   const nenhum = await novoBanco();
@@ -972,8 +972,9 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova15 = todas.find((f) => f.includes('alinha_regras_agenda')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
   const nova20 = todas.find((f) => f.includes('origem_documento_para_hoje'));   // depende da migração 8: entra depois dela, não no banco antigo
   const nova22 = todas.find((f) => f.includes('para_hoje_quatro_vagas'));   // depende da 20 (tabela para_hoje): entra depois dela
+  const nova23 = todas.find((f) => f.includes('evento_externo_e_pagamentos'));   // depende da 14 (tabela eventos): fora do banco antigo
   const nova21 = todas.find((f) => f.includes('prazo_base_do_atalho'));   // também depende da migração 8 (ajustar_prazo): entra depois dela
-  for (const f of todas.filter((f) => f !== nova20 && f !== nova21 && f !== nova22 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  for (const f of todas.filter((f) => f !== nova20 && f !== nova21 && f !== nova22 && f !== nova23 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -1789,6 +1790,115 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
     ok(await lista() === foto && await privilegios() === privAntes, 'migração 22: aplicar de novo não muda vagas nem privilégios');
     await a.close();
   } finally { rmSync(pasta, { recursive: true, force: true }); }
+}
+
+
+// ---------- migração 23: Evento externo na Agenda e pagamentos (decisão 64) ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m23 = todas.find((f) => f.includes('evento_externo_e_pagamentos')), m22 = todas.find((f) => f.includes('para_hoje_quatro_vagas'));
+  ok(!!m23 && !!m22 && todas.indexOf(m23) === todas.indexOf(m22) + 1, 'migração 23: existe, vem logo depois da 22 e as anteriores não foram reescritas (arquivo à parte)');
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig23-'));
+  try {
+    for (const f of todas.filter((f) => f < m23)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    const a = await abrirBancoTeste({ raizMigracoes: pasta });
+    const U = 'e1e1e1e1-3333-4333-8333-e1e1e1e1e1e1', O = 'e2e2e2e2-3333-4333-8333-e2e2e2e2e2e2', X = 'e3e3e3e3-3333-4333-8333-e3e3e3e3e3e3';
+    for (const [id, e] of [[U, 'p23@teste'], [O, 'p23b@teste'], [X, 'p23x@teste']]) await a.exec(`insert into auth.users (id, email) values ('${id}', '${e}')`);
+    await a.exec("insert into dmanda_privado.acesso_autorizado (email) values ('p23@teste'), ('p23b@teste')");   // X não é autorizado
+    const ua = (f, x) => chamarComoUsuario(a, U, f, x), uo = (f, x) => chamarComoUsuario(a, O, f, x), ux = (f, x) => chamarComoUsuario(a, X, f, x);
+    const er = async (fn, f, x) => { try { await fn(f, x); return null; } catch (e) { return e.message || String(e); } };
+    // antes: os lançamentos anteriores (todos os tipos antigos) e um dia indisponível já existem
+    const antigos = [];
+    for (const [t, h] of [['Reunião', '09:00'], ['Compromisso', '10:00'], ['Lembrete', '11:00']]) antigos.push((await ua('criar_evento', { p: { titulo: `Antigo ${t}`, tipo: t, data: '2026-12-01', inicio: h } })).id);
+    await ua('salvar_dia_indisponivel', { p: { data: '2026-12-25', descricao: 'Natal', categoria: 'Feriado' } });
+    ok(/Escolha o tipo/.test(await er(ua, 'criar_evento', { p: { titulo: 'x', tipo: 'Evento externo', data: '2026-12-02', inicio: '09:00' } })), 'migração 23 (antes): o tipo Evento externo ainda é recusado');
+    const foto = async () => JSON.stringify({
+      ev: (await a.query('select id, titulo, tipo, data, dia_inteiro, inicio, fim, versao, criado_em from public.eventos order by id')).rows,
+      di: (await a.query('select id, data, descricao, categoria from public.dias_indisponiveis order by id')).rows });
+    const privilegios = async () => JSON.stringify((await a.query(`select has_function_privilege('anon', 'public.salvar_pagamento(jsonb)', 'execute') an, has_function_privilege('authenticated', 'public.salvar_pagamento(jsonb)', 'execute') au,
+      has_function_privilege('anon', 'public.conferir_evento(text, text, boolean, text, text, text, integer)', 'execute') ean, has_function_privilege('authenticated', 'public.listar_pagamentos()', 'execute') lau,
+      has_table_privilege('anon', 'public.pagamentos', 'select') ts, has_table_privilege('authenticated', 'public.pagamentos', 'select') tas`)).rows);
+    const fotoAntes = await foto();
+    await a.exec(readFileSync(join('supabase/migrations', m23), 'utf8'));
+    ok(await foto() === fotoAntes, 'migração 23: os eventos e os dias indisponíveis anteriores ficam idênticos (nenhum dado tocado)');
+    ok((await ua('listar_eventos', {})).filter((e) => antigos.includes(e.id)).length === 3, 'migração 23: Reunião, Compromisso e Lembrete anteriores continuam listados e editáveis');
+    const privDepois = await privilegios();
+
+    // evento externo: com horário e de dia inteiro
+    const ex1 = await ua('criar_evento', { p: { titulo: 'Congresso AMVARS', tipo: 'Evento externo', data: '2026-12-02', inicio: '09:00', fim: '12:00' } });
+    const ex2 = await ua('criar_evento', { p: { titulo: 'Feira regional', tipo: 'Evento externo', data: '2026-12-03', dia_inteiro: true } });
+    ok(ex1.tipo === 'Evento externo' && ex1.inicio === '09:00' && ex2.tipo === 'Evento externo' && ex2.dia_inteiro === true, 'migração 23: Evento externo vale com horário e de dia inteiro');
+    ok(/Escolha o tipo/.test(await er(ua, 'criar_evento', { p: { titulo: 'x', tipo: 'Outro', data: '2026-12-02', inicio: '09:00' } })) && /Informe o horário/.test(await er(ua, 'criar_evento', { p: { titulo: 'x', tipo: 'Evento externo', data: '2026-12-02' } })), 'migração 23: tipo desconhecido e evento externo sem horário nem dia inteiro continuam recusados');
+    const alt = await ua('salvar_evento', { p_id: antigos[0], p: { tipo: 'Evento externo' }, p_versao: 1 });
+    ok(alt.tipo === 'Evento externo' && alt.versao === 2, 'migração 23: um evento anterior pode mudar para Evento externo (versão sobe)');
+    // o evento externo da Agenda NÃO antecipa vencimento; o dia indisponível sim (regra vigente, não mudou)
+    const dv = await ua('criar_demanda', { p: { assunto: 'Prazo no dia do evento externo', prazo_original: '2026-12-03' } });
+    ok(dv.prazo === '2026-12-03' && dv.prazo_ajuste === null, 'migração 23: o evento externo (com horário ou de dia inteiro) da Agenda não antecipa o vencimento');
+    await ua('salvar_dia_indisponivel', { p: { data: '2026-12-10', descricao: 'Congresso fora', categoria: 'Evento externo' } });
+    const dv2 = await ua('criar_demanda', { p: { assunto: 'Prazo no dia indisponível', prazo_original: '2026-12-10' } });
+    ok(dv2.prazo === '2026-12-09' && /evento externo: Congresso fora/.test(dv2.prazo_ajuste || ''), 'migração 23: o evento externo cadastrado em Dias indisponíveis segue antecipando o vencimento');
+
+    // pagamentos
+    ok((await ua('listar_pagamentos', {})).length === 0, 'pagamentos: começa sem nenhuma data');
+    const p1 = await ua('salvar_pagamento', { p: { data: '2026-12-05' } });
+    ok(!!p1.id && p1.data === '2026-12-05' && Object.keys(p1).join() === 'id,data,criado_em', 'pagamentos: cria só com a data (sem valor, sem recorrência)');
+    const p1b = await ua('salvar_pagamento', { p: { data: '2026-12-05' } });
+    ok(p1b.id === p1.id && (await ua('listar_pagamentos', {})).length === 1, 'pagamentos: criar a mesma data de novo (clique repetido ou resposta perdida) devolve a que existe, sem duplicar nem dar erro');
+    const p2 = await ua('salvar_pagamento', { p: { data: '2027-01-05' } });
+    ok((await ua('listar_pagamentos', {})).map((x) => x.data).join() === '2026-12-05,2027-01-05', 'pagamentos: listados em ordem de data');
+    const ed = await ua('salvar_pagamento', { p: { id: p2.id, data: '2027-01-08' } });
+    ok(ed.id === p2.id && ed.data === '2027-01-08' && (await ua('listar_pagamentos', {})).length === 2, 'pagamentos: edita a data do próprio registro');
+    ok(/Já existe um pagamento/.test(await er(ua, 'salvar_pagamento', { p: { id: p2.id, data: '2026-12-05' } })), 'pagamentos: mudar para uma data que já está cadastrada é recusado');
+    ok((await ua('salvar_pagamento', { p: { id: p2.id, data: '2027-01-08' } })).data === '2027-01-08', 'pagamentos: salvar o mesmo valor de novo é inofensivo');
+    ok(/Informe a data/.test(await er(ua, 'salvar_pagamento', { p: {} })) && !!(await er(ua, 'salvar_pagamento', { p: { data: '2026-02-30' } })) && !!(await er(ua, 'salvar_pagamento', { p: { data: 'amanhã' } })), 'pagamentos: sem data e data que não existe no calendário são recusadas');
+    ok(/não encontrado/.test(await er(ua, 'salvar_pagamento', { p: { id: '99999999-9999-4999-8999-999999999999', data: '2027-03-05' } })), 'pagamentos: alterar um registro que não existe é recusado');
+    // isolamento
+    ok((await uo('listar_pagamentos', {})).length === 0, 'RLS: outro usuário não vê os pagamentos');
+    ok(/não encontrado/.test(await er(uo, 'salvar_pagamento', { p: { id: p1.id, data: '2026-12-06' } })) && (await ua('listar_pagamentos', {}))[0].data === '2026-12-05', 'RLS: outro usuário não altera o pagamento alheio');
+    await uo('excluir_pagamento', { p_id: p1.id });
+    ok((await ua('listar_pagamentos', {})).length === 2, 'RLS: outro usuário não exclui o pagamento alheio (a chamada não faz nada)');
+    ok((await uo('salvar_pagamento', { p: { data: '2026-12-05' } })).id !== p1.id, 'RLS: cada usuário pode ter a mesma data (a unicidade é por usuário)');
+    ok(!!(await er(ux, 'salvar_pagamento', { p: { data: '2026-12-05' } })) && (await a.query(`select count(*)::int n from public.pagamentos where user_id = '${X}'`)).rows[0].n === 0, 'conta fora da lista autorizada: não grava pagamento (terceira camada)');
+    const anon = await a.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_pagamentos()'); return null; } catch (e) { return e.message; } });
+    const anonT = await a.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select * from public.pagamentos'); return null; } catch (e) { return e.message; } });
+    ok(/permission denied/i.test(anon || '') && /permission denied/i.test(anonT || ''), 'pagamentos: sem login (papel anon) não executa as funções nem lê a tabela');
+    const pv = JSON.parse(privDepois)[0];
+    ok(pv.an === false && pv.au === true && pv.ean === false && pv.lau === true && pv.ts === false && pv.tas === true, 'pagamentos: só o usuário logado executa as funções; anon não lê a tabela');
+    // excluir
+    const ex = await ua('excluir_pagamento', { p_id: p2.id });
+    ok(ex.excluido === true && (await ua('listar_pagamentos', {})).length === 1, 'pagamentos: exclui a data');
+    ok((await ua('excluir_pagamento', { p_id: p2.id })).excluido === true && (await ua('listar_pagamentos', {})).length === 1, 'pagamentos: excluir de novo (resposta perdida) não é erro nem mexe no resto');
+    // reaplicar a migração não muda nada
+    const fotoFim = await foto(), listaFim = JSON.stringify(await ua('listar_pagamentos', {}));
+    await a.exec(readFileSync(join('supabase/migrations', m23), 'utf8'));
+    ok(await foto() === fotoFim && JSON.stringify(await ua('listar_pagamentos', {})) === listaFim && await privilegios() === privDepois, 'migração 23: aplicar de novo não muda eventos, pagamentos nem privilégios');
+    await a.close();
+  } finally { rmSync(pasta, { recursive: true, force: true }); }
+}
+
+// ---------- cópia versão 5 (pagamentos): exporta e restaura ----------
+{
+  const SQL = readFileSync('supabase/restaurar-copia.sql', 'utf8');
+  const O = 'f1f1f1f1-4444-4444-8444-f1f1f1f1f1f1', N = 'f2f2f2f2-4444-4444-8444-f2f2f2f2f2f2';
+  const preparar = async (d, id, email) => { await d.query('insert into auth.users (id, email) values ($1, $2)', [id, email]); await d.query('insert into dmanda_privado.acesso_autorizado (email) values ($1) on conflict do nothing', [email]); return d; };
+  const origem = await preparar(await abrirBancoTeste(), O, 'c5o@teste');
+  const co = (f, a) => chamarComoUsuario(origem, O, f, a);
+  await co('salvar_pagamento', { p: { data: '2026-12-05' } }); await co('salvar_pagamento', { p: { data: '2027-01-05' } });
+  await co('criar_evento', { p: { titulo: 'Externo', tipo: 'Evento externo', data: '2026-12-02', dia_inteiro: true } });
+  const copia = JSON.parse(JSON.stringify({ formato: 'dmanda-exportacao', versao: 5, exportado_em: new Date().toISOString(), fuso: 'America/Sao_Paulo', demandas: [], arquivadas: [], dias_indisponiveis: [], entradas: [], entradas_arquivadas: [],
+    eventos: await co('listar_eventos', {}), pagamentos: await co('listar_pagamentos', {}) }));
+  const destino = await preparar(await abrirBancoTeste(), N, 'c5n@teste');
+  const rodar = async (d, j) => { try { await d.exec(SQL.replace('__COLE_AQUI_O_JSON__', () => JSON.stringify(j))); return null; } catch (e) { return e.message || String(e); } };
+  ok(await rodar(destino, copia) === null, 'cópia v5: restaura sem erro (pagamentos e evento externo)');
+  const dp = await chamarComoUsuario(destino, N, 'listar_pagamentos', {}), de = await chamarComoUsuario(destino, N, 'listar_eventos', {});
+  ok(dp.map((x) => x.data).join() === '2026-12-05,2027-01-05' && dp.map((x) => x.id).join() === copia.pagamentos.map((x) => x.id).join() && de.length === 1 && de[0].tipo === 'Evento externo', 'cópia v5: as datas de pagamento e o evento externo voltam como estavam');
+  ok(await rodar(destino, copia) === null && (await chamarComoUsuario(destino, N, 'listar_pagamentos', {})).length === 2, 'cópia v5: restaurar de novo não duplica as datas de pagamento');
+  const antiga = { ...copia, versao: 4 }; delete antiga.pagamentos;
+  ok(await rodar(await preparar(await abrirBancoTeste(), 'f3f3f3f3-4444-4444-8444-f3f3f3f3f3f3', 'c5v@teste'), antiga) === null, 'cópia v4 (sem a lista de pagamentos) continua restaurável no schema atual');
+  ok(/versão 1, 2, 3, 4 ou 5/.test(await rodar(await preparar(await abrirBancoTeste(), 'f4f4f4f4-4444-4444-8444-f4f4f4f4f4f4', 'c5x@teste'), { ...copia, versao: 6 }) || ''), 'cópia: a versão 6 é recusada com mensagem clara');
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

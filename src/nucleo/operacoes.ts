@@ -5,11 +5,12 @@ import { ETAPAS, type DadosDemanda, type Demanda, type Etapa } from '@/lib/deman
 import type { DiaIndisponivel } from '@/lib/prazos';
 import type { Entrada } from '@/lib/entradas';
 import type { DadosEvento, Evento } from '@/lib/eventos';
+import type { Pagamento } from '@/lib/pagamentos';
 import { registrosValidos, type RegistroDia } from '@/lib/registros';
 import type { Opcao } from '@/lib/documentos';
 import type { Vaga } from '@/lib/para-hoje';
-import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
-export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarRegistros };
+import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPagamento, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
+export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPagamento, validarRegistros };
 export type { TarefaEdicao };
 
 export type Chamar = (funcao: string, args: Record<string, unknown>) => Promise<unknown>;
@@ -64,6 +65,11 @@ export function criarOperacoes(chamar: Chamar) {
     /** Só os campos enviados mudam; `versao` é a que a janela viu por último (se mudou, o banco recusa com ErroConflito em vez de sobrescrever). */
     salvarEvento: (eventoId: string, dados: DadosEvento, versao: number) => evento('salvar_evento', { p_id: id(eventoId, 'Evento'), p: validarEvento(dados, { criando: false }), p_versao: versaoDe(versao) }),
     excluirEvento: async (eventoId: string, confirmado: boolean) => (await chamar('excluir_evento', { p_id: id(eventoId, 'Evento'), p_confirmado: confirmado === true })) as { id: string; excluido: true },
+    // ---------- Pagamentos (data do salário, decisão 64) ----------
+    listarPagamentos: async () => (await chamar('listar_pagamentos', {})) as Pagamento[],
+    /** Sem `id` cria (a mesma data de novo devolve a que já existe); com `id` altera a data. */
+    salvarPagamento: async (dados: unknown) => (await chamar('salvar_pagamento', { p: validarPagamento(dados) })) as Pagamento,
+    excluirPagamento: async (pagamentoId: string) => (await chamar('excluir_pagamento', { p_id: id(pagamentoId, 'Pagamento') })) as { id: string; excluido: true },
     // ---------- Origem, tipo do documento e Para hoje (decisão 60) ----------
     /** As opções de origem e de tipo de documento (as padrão e as antigas entram sozinhas, sem duplicar). */
     listarOpcoes: async () => (await chamar('listar_opcoes', {})) as Opcao[],

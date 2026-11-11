@@ -1,7 +1,8 @@
 // Eventos e lembretes próprios da Agenda (decisão 47). Regras puras, sem banco nem relógio: a data de hoje e a hora de agora vêm sempre de fora.
 // Datas são datas do calendário (AAAA-MM-DD) e horários são "HH:MM" sem fuso: nada passa por Date local, então não há deslocamento por UTC.
 
-export const TIPOS_EVENTO = ['Reunião', 'Compromisso', 'Lembrete'] as const;
+// 'Evento externo' (decisão 64) é só um tipo de lançamento da Agenda: não muda vencimento. Quem antecipa prazos é o cadastro de Dias indisponíveis (Configurações).
+export const TIPOS_EVENTO = ['Reunião', 'Compromisso', 'Lembrete', 'Evento externo'] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 export type Evento = {
   id: string;
