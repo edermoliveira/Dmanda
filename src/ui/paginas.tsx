@@ -1,11 +1,11 @@
 'use client';
 // Telas do aplicativo funcional: Início (resumos e Foco do dia), Demandas (quatro visões), Arquivo, Mais e as áreas ainda não construídas.
-import { useEffect, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { Capsula } from './Capsula';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Icone } from './Icone';
-import { useApp, type EstadoRotina } from './contexto';
+import { useApp, useFiltro, type EstadoRotina } from './contexto';
 import { CardDemanda, ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
 import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
@@ -71,7 +71,7 @@ const VISOES = [['cards', 'Cards', 'vis-cards'], ['quadro', 'Quadro', 'columns']
 const PRAZOS_FILTRO = [['', 'Todos'], ['sem', 'Sem prazo'], ['atrasadas', 'Atrasadas'], ['hoje', 'Vencem hoje'], ['sete', 'Próximos 7 dias']] as const;
 
 function PainelFiltros({ pos, fechar }: { pos: { x: number; y: number }; fechar: () => void }) {
-  const { filtro, setFiltro } = useApp();
+  const { filtro, setFiltro } = useFiltro();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const m = ref.current; if (!m) return;
@@ -94,10 +94,13 @@ function PainelFiltros({ pos, fechar }: { pos: { x: number; y: number }; fechar:
 }
 
 export function PaginaDemandas() {
-  const { demandas, carregando, visao, setVisao, filtro, setFiltro, abrirJanela, hoje, setAbaArquivo, dias } = useApp();
+  const { demandas, carregando, visao, setVisao, abrirJanela, hoje, setAbaArquivo, dias } = useApp();
+  const { filtro, setFiltro } = useFiltro();
   const router = useRouter();
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-  const lista = filtrar(demandas, filtro, hoje, dias);
+  // o campo de texto responde na hora; a lista acompanha logo depois (React interrompe a renderização longa se vier outra tecla)
+  const filtroAdiado = useDeferredValue(filtro);
+  const lista = useMemo(() => filtrar(demandas, filtroAdiado, hoje, dias), [demandas, filtroAdiado, hoje, dias]);
   const nAt = demandas.filter((d) => grupoFiltro(d, hoje, dias) === 'atrasadas').length;
   const nFiltros = (filtro.tipo ? 1 : 0) + (filtro.prazo ? 1 : 0);
   const [toque, setToque] = useState(false);

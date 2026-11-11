@@ -82,8 +82,6 @@ type Ctx = {
   alternarMenu: () => void;
   visao: Visao;
   setVisao: (v: Visao) => void;
-  filtro: Filtro;
-  setFiltro: (f: Partial<Filtro>) => void;
   ordem: { coluna: Coluna; sentido: 1 | -1 };
   ordenarPor: (c: Coluna) => void;
   gruposFechados: Record<string, boolean>;
@@ -113,6 +111,8 @@ type Ctx = {
 };
 
 const Contexto = createContext<Ctx | null>(null);
+type CtxFiltro = { filtro: Filtro; setFiltro: (f: Partial<Filtro>) => void };
+const ContextoFiltro = createContext<CtxFiltro | null>(null);
 
 // Falha ao falar com o servidor (sem internet, servidor fora do ar, sessão encerrada pelo proxy): a chamada lança em vez de devolver { ok: false }.
 // Nenhuma dessas falhas vira sucesso: a tela mostra o motivo, nada muda e o que foi digitado continua nos campos e nos rascunhos.
@@ -134,6 +134,7 @@ const protegido = async <T,>(f: () => Promise<Resultado<T>>): Promise<Resultado<
 const assinarConexao = (aviso: () => void) => { addEventListener('online', aviso); addEventListener('offline', aviso); return () => { removeEventListener('online', aviso); removeEventListener('offline', aviso); }; };
 /** true enquanto o navegador diz que há conexão (no servidor e na hidratação vale true, para as duas telas serem iguais). */
 export const useOnline = () => useSyncExternalStore(assinarConexao, () => navigator.onLine, () => true);
+export const useFiltro = () => { const c = useContext(ContextoFiltro); if (!c) throw new Error('useFiltro fora do ProvedorApp'); return c; };
 export const useApp = () => { const c = useContext(Contexto); if (!c) throw new Error('useApp fora do ProvedorApp'); return c; };
 
 /** Um aviso dispensado vale só para aquele evento, naquela data e horário: mudar o horário traz o aviso de volta. */
@@ -167,7 +168,9 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [tema, setTema] = useState<'claro' | 'escuro'>('claro');
   const [menuAberto, setMenuAberto] = useState(false);
   const [visao, setVisaoE] = useState<Visao>('cards');
+  // O filtro das Demandas fica em um contexto SEPARADO: cada tecla digitada muda só ele, e não o contexto grande (que faria todos os cards e telas renderizarem de novo).
   const [filtro, setFiltroE] = useState<Filtro>(FILTRO_VAZIO);
+  const valorFiltro = useMemo(() => ({ filtro, setFiltro: (f: Partial<Filtro>) => setFiltroE((x) => ({ ...x, ...f })) }), [filtro]);
   const [ordem, setOrdem] = useState<{ coluna: Coluna; sentido: 1 | -1 }>({ coluna: 'prazo', sentido: 1 });
   const [gruposFechados, setGrupos] = useState<Record<string, boolean>>({});
   const [janela, setJanela] = useState<Janela>(null);
@@ -371,7 +374,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     alternarTema: () => setTema((t) => (t === 'claro' ? 'escuro' : 'claro')),
     menuAberto,
     alternarMenu: () => setMenuAberto((v) => { gravarLS('dmanda:menu-aberto', !v); return !v; }),
-    visao, setVisao: setVisaoE, filtro, setFiltro: (f) => setFiltroE((x) => ({ ...x, ...f })),
+    visao, setVisao: setVisaoE,
     ordem, ordenarPor: (coluna) => setOrdem((o) => ({ coluna, sentido: o.coluna === coluna ? (o.sentido === 1 ? -1 : 1) : 1 })),
     gruposFechados, alternarGrupo: (e) => setGrupos((g) => ({ ...g, [e]: !g[e] })),
     janela, abrirJanela: setJanela, fecharJanela: () => setJanela(null),
@@ -429,7 +432,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario]);
+  }), [eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, menuAberto, visao, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario]);
 
-  return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
+  return <Contexto.Provider value={valor}><ContextoFiltro.Provider value={valorFiltro}>{children}</ContextoFiltro.Provider></Contexto.Provider>;
 }

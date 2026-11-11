@@ -13,11 +13,19 @@ import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordemDaEtapa, ordenar, o
 const TETO_TITULO = 4;
 const MINIMO_TITULO = 2;
 /** Ajuste ao espaço (card e nota nunca têm barra de rolagem). */
-export function ajustar() {
+// Cada card/lista já ajustado guarda a "assinatura" do estado em que ficou (conteúdo já com o resultado do ajuste, tamanho da caixa e aparência do aplicativo). Se nada mudou, o ajuste é
+// pulado: antes ele refazia a medição de TODOS os cards a cada renderização (cada tecla no filtro, cada tique do relógio), com leituras de layout forçadas em sequência.
+const ajustados = new WeakMap<HTMLElement, string>();
+const aparencia = (app: Element) => `${document.documentElement.dataset.tema}|${Array.from(app.attributes).map((a) => a.name + '=' + a.value).join(';')}|${devicePixelRatio}`;
+/** `forcar`: ignora as assinaturas (mudança de tamanho da janela, fontes carregadas). */
+export function ajustar(forcar = false) {
   const app = document.querySelector('.app');
   if (!app) return;
   const cw = (document.querySelector('.frame') as HTMLElement | null)?.clientWidth ?? 0;
+  const base = `${cw}|${aparencia(app)}`;
+  const assinatura = (el: HTMLElement) => `${base}|${el.clientWidth}x${el.clientHeight}|${el.innerHTML}`;
   app.querySelectorAll<HTMLElement>('.face.front').forEach((f) => {
+    if (!forcar && ajustados.get(f) === assinatura(f)) return;
     f.querySelectorAll('.oculto').forEach((x) => x.classList.remove('oculto'));
     const ds = f.querySelector<HTMLElement>('.desc');
     const t = f.querySelector<HTMLElement>('.assunto.fit');
@@ -35,8 +43,10 @@ export function ajustar() {
     { const x = f.querySelector('.tempo'); if (x && sobra()) x.classList.add('oculto'); }
     while (t && tit > minT && sobra()) tirarLinhaDoTitulo();
     for (const q of ['.tags .chip', '.prog']) { const x = f.querySelector(q); if (x && sobra()) x.classList.add('oculto'); }
+    ajustados.set(f, assinatura(f));
   });
   app.querySelectorAll<HTMLElement>('.face.back .tarefas').forEach((ul) => {
+    if (!forcar && ajustados.get(ul) === assinatura(ul)) return;
     const mais = ul.querySelector<HTMLElement>('.mais-t');
     const lis = Array.from(ul.querySelectorAll<HTMLElement>('li:not(.mais-t)'));
     lis.forEach((l) => { l.style.display = ''; });
@@ -49,19 +59,20 @@ export function ajustar() {
       while (n < lis.length - 1 && sobra()) { lis[lis.length - 1 - n].style.display = 'none'; n++; }
       mais.textContent = `+${n} ${n === 1 ? 'tarefa' : 'tarefas'}, abra em Editar`;
     }
+    ajustados.set(ul, assinatura(ul));
   });
 }
 export function useAjustar(dep: unknown) {
   useLayoutEffect(() => { ajustar(); });
   useEffect(() => {
     let t: ReturnType<typeof setTimeout>;
-    const f = () => { clearTimeout(t); t = setTimeout(ajustar, 120); };
+    const f = () => { clearTimeout(t); t = setTimeout(() => ajustar(true), 120); };
     window.addEventListener('resize', f);
     // a largura dos cards também muda sem a janela mudar (menu lateral recolhido ou aberto, zoom, rotação): observa o próprio quadro de conteúdo
     const quadro = document.querySelector('.frame');
     const ro = quadro && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(f) : null;
     if (quadro) ro?.observe(quadro);
-    void document.fonts?.ready.then(ajustar);
+    void document.fonts?.ready.then(() => ajustar(true));
     return () => { window.removeEventListener('resize', f); ro?.disconnect(); clearTimeout(t); };
   }, [dep]);
 }

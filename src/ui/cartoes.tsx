@@ -1,6 +1,6 @@
 'use client';
 // Peças das demandas (cards, chips, tarefas) com o mesmo desenho e as mesmas classes do protótipo aprovado.
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { memo, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { useTentativa } from './campos';
@@ -137,7 +137,8 @@ export function AcaoCard({ d }: { d: Demanda }) {
 
 const Desc = ({ d }: { d: Demanda }) => (d.descricao.trim() ? <div className="desc">{d.descricao.trim()}</div> : null);
 
-export function CardDemanda({ d }: { d: Demanda }) {
+// memo: o filtro e outros estados da página não renderizam de novo os cards cuja demanda não mudou (o contexto continua acordando o card quando o dia muda)
+export const CardDemanda = memo(function CardDemanda({ d }: { d: Demanda }) {
   const { abrirJanela, arquivar, mover, abrirMenuMover, hoje } = useApp();
   const [fixo, setFixo] = useState<'frente' | 'verso' | undefined>();
   const fin = d.etapa === 'Finalizado';
@@ -184,7 +185,7 @@ export function CardDemanda({ d }: { d: Demanda }) {
       </div>
     </article>
   );
-}
+});
 
 export function MiniCard({ d }: { d: Demanda }) {
   const { abrirJanela, abrirMenuMover, hoje } = useApp();

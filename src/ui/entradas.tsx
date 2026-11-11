@@ -25,31 +25,39 @@ const camposDe = (e: Entrada): CamposEntrada => ({ titulo: e.titulo, texto: e.te
 const resumoOuVazio = (e: Entrada) => resumoDe(e) || '(só tags)';
 
 /** Ajuste ao espaço do post-it: nunca há barra de rolagem. O texto ocupa as linhas que couberem; se sobra pouco, as tags saem antes do texto. */
-export function ajustarNotas() {
-  document.querySelectorAll<HTMLElement>('.app .postit').forEach((p) => {
+// Como nos cards: o post-it já ajustado guarda a assinatura do estado em que ficou e só é medido de novo se o conteúdo, a caixa ou a aparência mudarem.
+const notasAjustadas = new WeakMap<HTMLElement, string>();
+export function ajustarNotas(forcar = false) {
+  const app = document.querySelector('.app');
+  if (!app) return;
+  const base = `${document.documentElement.dataset.tema}|${Array.from(app.attributes).map((a) => a.name + '=' + a.value).join(';')}|${devicePixelRatio}`;
+  const assinatura = (el: HTMLElement) => `${base}|${el.clientWidth}x${el.clientHeight}|${el.innerHTML}`;
+  app.querySelectorAll<HTMLElement>('.postit').forEach((p) => {
+    if (!forcar && notasAjustadas.get(p) === assinatura(p)) return;
     const tags = p.querySelector<HTMLElement>('.p-tags'), x = p.querySelector<HTMLElement>('.p-txt.fit, .p-desc.fit');
     tags?.classList.remove('oculto'); x?.classList.remove('oculto'); if (x) x.style.maxHeight = '';
-    if (!x) return;
+    if (!x) { notasAjustadas.set(p, assinatura(p)); return; }
     x.style.webkitLineClamp = 'none';
     const cs = getComputedStyle(x), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.4;
     // sem título, o texto é o conteúdo e as tags saem antes dele se faltar espaço; com título, as tags ficam e a descrição é que cede
     if (tags && !x.classList.contains('p-desc') && tags.textContent?.trim() && x.clientHeight < lh * 3.2) { tags.classList.add('oculto'); }
     const linhas = Math.floor((x.clientHeight + 1) / lh);
-    if (x.classList.contains('p-desc') && linhas < 1) { x.classList.add('oculto'); return; } // a descrição só aparece se couber ao menos uma linha inteira
+    if (x.classList.contains('p-desc') && linhas < 1) { x.classList.add('oculto'); notasAjustadas.set(p, assinatura(p)); return; } // a descrição só aparece se couber ao menos uma linha inteira
     x.style.webkitLineClamp = String(Math.max(1, linhas));
     x.style.maxHeight = `${Math.max(1, linhas) * lh}px`; // a caixa tem exatamente as linhas inteiras que couberam (nunca meia linha)
+    notasAjustadas.set(p, assinatura(p));
   });
 }
 function useAjustarNotas(dep: unknown) {
   useLayoutEffect(() => { ajustarNotas(); });
   useEffect(() => {
     let t: ReturnType<typeof setTimeout>;
-    const f = () => { clearTimeout(t); t = setTimeout(ajustarNotas, 120); };
+    const f = () => { clearTimeout(t); t = setTimeout(() => ajustarNotas(true), 120); };
     window.addEventListener('resize', f);
     const quadro = document.querySelector('.frame');
     const ro = quadro && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(f) : null;
     if (quadro) ro?.observe(quadro);
-    void document.fonts?.ready.then(ajustarNotas);
+    void document.fonts?.ready.then(() => ajustarNotas(true));
     return () => { window.removeEventListener('resize', f); ro?.disconnect(); clearTimeout(t); };
   }, [dep]);
 }
