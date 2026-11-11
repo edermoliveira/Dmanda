@@ -971,8 +971,9 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
   const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova15 = todas.find((f) => f.includes('alinha_regras_agenda')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
   const nova20 = todas.find((f) => f.includes('origem_documento_para_hoje'));   // depende da migração 8: entra depois dela, não no banco antigo
+  const nova22 = todas.find((f) => f.includes('para_hoje_quatro_vagas'));   // depende da 20 (tabela para_hoje): entra depois dela
   const nova21 = todas.find((f) => f.includes('prazo_base_do_atalho'));   // também depende da migração 8 (ajustar_prazo): entra depois dela
-  for (const f of todas.filter((f) => f !== nova20 && f !== nova21 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  for (const f of todas.filter((f) => f !== nova20 && f !== nova21 && f !== nova22 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -1728,6 +1729,66 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
     ok(await q('select max(length(assunto))::int n from public.demandas') > 150 && await q('select max(c)::int n from (select count(*) c from public.tarefas group by demanda_id) t') === 6, 'exemplos: assunto longo e uma demanda com seis tarefas');
     await x.close();
   } finally { apagar(pasta, { recursive: true, force: true }); }
+}
+
+// ---------- migração 22: Para hoje com quatro vagas (decisão 63), sobre um banco da migração 21 com as três vagas já ocupadas ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m22 = todas.find((f) => f.includes('para_hoje_quatro_vagas')), m21 = todas.find((f) => f.includes('prazo_base_do_atalho'));
+  ok(!!m22 && !!m21 && todas.indexOf(m22) === todas.indexOf(m21) + 1, 'migração 22: existe, vem logo depois da 21 e as anteriores não foram reescritas (arquivo à parte)');
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig22-'));
+  try {
+    for (const f of todas.filter((f) => f < m22)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    const a = await abrirBancoTeste({ raizMigracoes: pasta });
+    const U = 'd1d1d1d1-2222-4222-8222-d1d1d1d1d1d1', O = 'd2d2d2d2-2222-4222-8222-d2d2d2d2d2d2';
+    for (const [id, e] of [[U, 'p22@teste'], [O, 'p22b@teste']]) { await a.exec(`insert into auth.users (id, email) values ('${id}', '${e}')`); await a.exec(`insert into dmanda_privado.acesso_autorizado (email) values ('${e}')`); }
+    const ua = (f, x) => chamarComoUsuario(a, U, f, x);
+    const mk = async (n) => (await ua('criar_demanda', { p: { assunto: n } })).id;
+    const [d1, d2, d3, d4, d5, d6] = [await mk('Q1'), await mk('Q2'), await mk('Q3'), await mk('Q4'), await mk('Q5'), await mk('Q6')];
+    const txt = (l) => l.map((v) => `${v.posicao}:${v.demanda_id}`).join();
+    const lista = async () => txt(await ua('listar_para_hoje', {}));
+    const privilegios = async () => JSON.stringify((await a.query("select has_function_privilege('anon', 'public.atualizar_para_hoje(jsonb)', 'execute') an, has_function_privilege('authenticated', 'public.atualizar_para_hoje(jsonb)', 'execute') au, has_table_privilege('authenticated', 'public.para_hoje', 'select') s, has_table_privilege('authenticated', 'public.para_hoje', 'insert') i, has_table_privilege('authenticated', 'public.para_hoje', 'update') u, has_table_privilege('authenticated', 'public.para_hoje', 'delete') d, has_table_privilege('anon', 'public.para_hoje', 'select') ans")).rows[0]);
+    const antes = await ua('atualizar_para_hoje', { p_candidatas: [d1, d2, d3, d4, d5] });
+    const fotoAntes = txt(antes);
+    ok(antes.length === 3 && fotoAntes === `1:${d1},2:${d2},3:${d3}`, 'migração 22 (antes): no banco da 21 só há três vagas, mesmo com cinco candidatas');
+    const privAntes = await privilegios();
+    const erroPos = await a.query(`insert into public.para_hoje (user_id, posicao, demanda_id) values ('${U}', 4, '${d4}')`).then(() => null, (e) => e.message);
+    ok(/check/i.test(erroPos || ''), 'migração 22 (antes): a posição 4 é recusada pela restrição do banco');
+
+    await a.exec(readFileSync(join('supabase/migrations', m22), 'utf8'));
+    ok(await lista() === fotoAntes, 'migração 22 (upgrade): as três posições existentes continuam com as mesmas demandas');
+    ok(await privilegios() === privAntes, 'migração 22: os privilégios da função e da tabela não mudaram');
+    const cheio = await ua('atualizar_para_hoje', { p_candidatas: [d1, d2, d3, d4, d5] });
+    ok(txt(cheio) === `${fotoAntes},4:${d4}`, 'migração 22: a quarta vaga é preenchida pela primeira candidata livre, sem mexer nas posições 1 a 3');
+    ok(await lista() === `${fotoAntes},4:${d4}` && (await ua('atualizar_para_hoje', { p_candidatas: [d5, d6] })).length === 4, 'migração 22: com quatro vagas cheias nada muda e a quinta candidata fica de fora (persistência após nova leitura)');
+    const erro5 = await a.query(`insert into public.para_hoje (user_id, posicao, demanda_id) values ('${U}', 5, '${d5}')`).then(() => null, (e) => e.message);
+    ok(/check/i.test(erro5 || ''), 'migração 22: a posição 5 continua recusada');
+    const dupPos = await a.query(`insert into public.para_hoje (user_id, posicao, demanda_id) values ('${U}', 1, '${d6}')`).then(() => null, (e) => e.message);
+    ok(!!dupPos && await lista() === `${fotoAntes},4:${d4}`, 'migração 22: uma posição ocupada não é sobrescrita');
+    await ua('concluir_demanda', { p_id: d2 });
+    const rep = await ua('atualizar_para_hoje', { p_candidatas: [d1, d3, d4, d5, d6] });
+    ok(txt(rep) === `1:${d1},2:${d5},3:${d3},4:${d4}`, 'migração 22: ao concluir uma demanda só a vaga liberada (2) é reposta; as vagas 1, 3 e 4 ficam');
+    await ua('arquivar_demanda', { p_id: d4 });
+    const rep4 = await ua('atualizar_para_hoje', { p_candidatas: [d6] });
+    ok(txt(rep4) === `1:${d1},2:${d5},3:${d3},4:${d6}`, 'migração 22: arquivar a demanda da quarta vaga libera só a posição 4');
+    const antesVazia = await lista();
+    ok(txt(await ua('atualizar_para_hoje', { p_candidatas: [] })) === antesVazia && (await ua('atualizar_para_hoje', { p_candidatas: null })).length === 4, 'migração 22: sem candidatas nada muda');
+    // concorrência: três sessões simultâneas preenchem uma única vaga livre uma só vez
+    await ua('concluir_demanda', { p_id: d3 });
+    const n1 = await mk('Q7'), n2 = await mk('Q8');
+    const conc = await Promise.all([ua('atualizar_para_hoje', { p_candidatas: [n1, n2] }), ua('atualizar_para_hoje', { p_candidatas: [n2, n1] }), ua('atualizar_para_hoje', { p_candidatas: [n1, n2] })]);
+    const fim = await ua('listar_para_hoje', {});
+    ok(fim.length === 4 && new Set(fim.map((v) => v.posicao)).size === 4 && new Set(fim.map((v) => v.demanda_id)).size === 4 && conc.every((v) => v.length === 4), 'migração 22: sessões simultâneas ocupam a vaga livre uma só vez, sem posição nem demanda repetida');
+    const dono = await chamarComoUsuario(a, O, 'atualizar_para_hoje', { p_candidatas: [n1] });
+    ok(dono.length === 0 && (await chamarComoUsuario(a, O, 'listar_para_hoje', {})).length === 0, 'migração 22: outro usuário não vê nem ocupa as vagas do primeiro');
+    const foto = await lista();
+    await a.exec(readFileSync(join('supabase/migrations', m22), 'utf8'));
+    ok(await lista() === foto && await privilegios() === privAntes, 'migração 22: aplicar de novo não muda vagas nem privilégios');
+    await a.close();
+  } finally { rmSync(pasta, { recursive: true, force: true }); }
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

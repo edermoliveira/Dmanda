@@ -1,10 +1,10 @@
-// Para hoje: o painel de execução do Início, com até 3 vagas. Aqui ficam só as regras de quem pode ocupar uma vaga e em que ordem (o banco guarda as vagas e impede duplicação).
+// Para hoje: o painel de execução do Início, com até 4 vagas (decisão 63). Aqui ficam só as regras de quem pode ocupar uma vaga e em que ordem (o banco guarda as vagas e impede duplicação).
 // Humor e produtividade não entram no cálculo. Sem relógio: a data de hoje vem de fora.
 import { contagemRetorno, dataFiltro, diasAte, esperaPrefeita, permanencia, type Demanda } from './demandas.ts';
 import type { DiaIndisponivel } from './prazos.ts';
 import { demandaPrioritaria } from './prioridade.ts';
 
-export const VAGAS_PARA_HOJE = 3;
+export const VAGAS_PARA_HOJE = 4;
 export type ClasseUrgencia = 'atrasada' | 'hoje' | 'proxima' | 'sem-prazo';
 /** `prioritaria`: pedido da Prefeita ou do Gabinete (campo Origem, decisão 61): vai antes de todas as outras candidatas, inclusive das vencidas. */
 export type Elegivel = { demanda: Demanda; classe: ClasseUrgencia; data: string | null; cobranca: boolean; prioritaria: boolean };
@@ -69,7 +69,7 @@ export const novasUrgencias = (vagas: readonly Vaga[], lista: readonly Demanda[]
 
 /**
  * O que o painel Para hoje mostra, em ordem de exibição (as vagas guardadas no banco NÃO mudam: só a ordem na tela):
- *  1. as prioritárias que ocupam vagas (na ordem das posições) e, em seguida, as prioritárias que não ocupam vaga ("fora das vagas": as 3 vagas estão cheias, e nenhuma vaga ocupada é substituída);
+ *  1. as prioritárias que ocupam vagas (na ordem das posições) e, em seguida, as prioritárias que não ocupam vaga ("fora das vagas": as 4 vagas estão cheias, e nenhuma vaga ocupada é substituída);
  *  2. as demais demandas das vagas, na ordem das posições;
  *  3. a "nova urgência" comum (atrasadas e que vencem hoje sem vaga), sem as prioritárias, que já estão no primeiro grupo.
  * Cada demanda aparece uma só vez.
