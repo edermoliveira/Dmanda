@@ -6,6 +6,7 @@ import type { DiaIndisponivel } from '@/lib/prazos';
 import type { Entrada } from '@/lib/entradas';
 import type { DadosEvento, Evento } from '@/lib/eventos';
 import type { Pagamento } from '@/lib/pagamentos';
+import { calcularMetricas, type Metricas, type TransicoesDoBanco } from '@/lib/metricas';
 import { registrosValidos, type RegistroDia } from '@/lib/registros';
 import type { Opcao } from '@/lib/documentos';
 import type { Vaga } from '@/lib/para-hoje';
@@ -69,6 +70,14 @@ export function criarOperacoes(chamar: Chamar) {
     listarPagamentos: async () => (await chamar('listar_pagamentos', {})) as Pagamento[],
     /** Sem `id` cria (a mesma data de novo devolve a que já existe); com `id` altera a data. */
     salvarPagamento: async (dados: unknown) => (await chamar('salvar_pagamento', { p: validarPagamento(dados) })) as Pagamento,
+    // ---------- Dados para acompanhar a evolução (decisão 65): só coleta e agregação, sem gráficos ----------
+    /** As transições gravadas (conclusão e reabertura) e a data em que a coleta começou. Só leitura: quem grava é o gatilho do banco, na mesma transação da mudança de etapa. */
+    listarTransicoes: async () => (await chamar('listar_transicoes_demanda', {})) as TransicoesDoBanco,
+    /** Séries por dia, permanência das abertas e tempo da chegada à conclusão, calculados das abertas, das arquivadas e das transições. `hoje` vem de quem chama (America/Sao_Paulo). */
+    metricasDemandas: async (hoje: string): Promise<Metricas> => {
+      const [abertas, arquivadas, coleta] = await Promise.all([chamar('listar_demandas', { p_arquivadas: false }), chamar('listar_demandas', { p_arquivadas: true }), chamar('listar_transicoes_demanda', {})]);
+      return calcularMetricas([...(abertas as Demanda[]), ...(arquivadas as Demanda[])], coleta as TransicoesDoBanco, hoje);
+    },
     excluirPagamento: async (pagamentoId: string) => (await chamar('excluir_pagamento', { p_id: id(pagamentoId, 'Pagamento') })) as { id: string; excluido: true },
     // ---------- Origem, tipo do documento e Para hoje (decisão 60) ----------
     /** As opções de origem e de tipo de documento (as padrão e as antigas entram sozinhas, sem duplicar). */

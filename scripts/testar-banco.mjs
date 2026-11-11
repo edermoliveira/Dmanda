@@ -972,9 +972,10 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova15 = todas.find((f) => f.includes('alinha_regras_agenda')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
   const nova20 = todas.find((f) => f.includes('origem_documento_para_hoje'));   // depende da migração 8: entra depois dela, não no banco antigo
   const nova22 = todas.find((f) => f.includes('para_hoje_quatro_vagas'));   // depende da 20 (tabela para_hoje): entra depois dela
+  const nova24 = todas.find((f) => f.includes('transicoes_demanda'));   // a prova dela tem o próprio bloco: fora do banco antigo
   const nova23 = todas.find((f) => f.includes('evento_externo_e_pagamentos'));   // depende da 14 (tabela eventos): fora do banco antigo
   const nova21 = todas.find((f) => f.includes('prazo_base_do_atalho'));   // também depende da migração 8 (ajustar_prazo): entra depois dela
-  for (const f of todas.filter((f) => f !== nova20 && f !== nova21 && f !== nova22 && f !== nova23 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  for (const f of todas.filter((f) => f !== nova20 && f !== nova21 && f !== nova22 && f !== nova23 && f !== nova24 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -1899,6 +1900,90 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const antiga = { ...copia, versao: 4 }; delete antiga.pagamentos;
   ok(await rodar(await preparar(await abrirBancoTeste(), 'f3f3f3f3-4444-4444-8444-f3f3f3f3f3f3', 'c5v@teste'), antiga) === null, 'cópia v4 (sem a lista de pagamentos) continua restaurável no schema atual');
   ok(/versão 1, 2, 3, 4 ou 5/.test(await rodar(await preparar(await abrirBancoTeste(), 'f4f4f4f4-4444-4444-8444-f4f4f4f4f4f4', 'c5x@teste'), { ...copia, versao: 6 }) || ''), 'cópia: a versão 6 é recusada com mensagem clara');
+}
+
+// ---------- migração 24: transições de conclusão e reabertura para os dados de evolução (decisão 65) ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { calcularMetricas } = await import('../src/lib/metricas.ts');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m24 = todas.find((f) => f.includes('transicoes_demanda')), m23 = todas.find((f) => f.includes('evento_externo_e_pagamentos'));
+  ok(!!m24 && !!m23 && todas.indexOf(m24) === todas.indexOf(m23) + 1, 'migração 24: existe, vem logo depois da 23 e as anteriores não foram reescritas (arquivo à parte)');
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig24-'));
+  try {
+    for (const f of todas.filter((f) => f < m24)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    const a = await abrirBancoTeste({ raizMigracoes: pasta });
+    const U = 'd1d1d1d1-5555-4555-8555-d1d1d1d1d1d1', O = 'd2d2d2d2-5555-4555-8555-d2d2d2d2d2d2', X = 'd3d3d3d3-5555-4555-8555-d3d3d3d3d3d3';
+    for (const [id, e] of [[U, 'p24@teste'], [O, 'p24b@teste'], [X, 'p24x@teste']]) await a.exec(`insert into auth.users (id, email) values ('${id}', '${e}')`);
+    await a.exec("insert into dmanda_privado.acesso_autorizado (email) values ('p24@teste'), ('p24b@teste')");   // X não é autorizado
+    const ua = (f, x) => chamarComoUsuario(a, U, f, x), uo = (f, x) => chamarComoUsuario(a, O, f, x), ux = (f, x) => chamarComoUsuario(a, X, f, x);
+    const er = async (fn, f, x) => { try { await fn(f, x); return null; } catch (e) { return e.message || String(e); } };
+    const hoje = (await a.query('select public.hoje()::text as h')).rows[0].h;
+    // antes da migração: uma demanda já finalizada (legado, sem histórico), uma aberta e uma de outro usuário
+    const legado = await ua('criar_demanda', { p: { assunto: 'Legado finalizada', chegou_em: '2026-10-01' } }); await ua('concluir_demanda', { p_id: legado.id });
+    const viva = await ua('criar_demanda', { p: { assunto: 'Viva', chegou_em: '2026-10-20' } });
+    const alheia = await uo('criar_demanda', { p: { assunto: 'Do outro usuário' } });
+    ok((await er(ua, 'listar_transicoes_demanda', {}) || '').length > 0, 'migração 24 (antes): a função de leitura ainda não existe');
+    const fotoAntes = JSON.stringify(await ua('listar_demandas', { p_arquivadas: false }));
+    await a.exec(readFileSync(join('supabase/migrations', m24), 'utf8'));
+    const t0 = await ua('listar_transicoes_demanda', {});
+    ok(t0.transicoes.length === 0 && t0.desde === hoje && JSON.stringify(await ua('listar_demandas', { p_arquivadas: false })) === fotoAntes, 'migração 24: nenhum dado existente é tocado e nenhuma transição antiga é inventada; a coleta ganha a data de início (hoje)');
+    // concluir grava uma conclusão (ciclo 1), no dia de Brasília, na mesma transação
+    await ua('mover_etapa', { p_id: viva.id, p_etapa: 'Fazendo' });
+    ok((await ua('listar_transicoes_demanda', {})).transicoes.length === 0, 'mudar de etapa sem concluir nem reabrir não grava nada');
+    await ua('concluir_demanda', { p_id: viva.id });
+    let t = (await ua('listar_transicoes_demanda', {})).transicoes;
+    ok(t.length === 1 && t[0].tipo === 'conclusao' && t[0].ciclo === 1 && t[0].dia === hoje && t[0].etapa_anterior === 'Fazendo' && t[0].etapa_nova === 'Finalizado' && t[0].concluida_em_anterior === null, 'concluir grava uma conclusão (ciclo 1) com o dia de Brasília e as etapas');
+    await ua('concluir_demanda', { p_id: viva.id }); await ua('concluir_demanda', { p_id: viva.id });
+    ok((await ua('listar_transicoes_demanda', {})).transicoes.length === 1, 'concluir de novo uma demanda já finalizada (clique repetido, resposta perdida) não duplica a conclusão');
+    // reabrir grava a reabertura do ciclo 1 e preserva a data da conclusão desfeita
+    await ua('reabrir_demanda', { p_id: viva.id, p_etapa: 'Fazendo' });
+    t = (await ua('listar_transicoes_demanda', {})).transicoes;
+    ok(t.length === 2 && t[1].tipo === 'reabertura' && t[1].ciclo === 1 && t[1].concluida_em_anterior === hoje && t[1].etapa_anterior === 'Finalizado' && t[1].etapa_nova === 'Fazendo', 'reabrir grava a reabertura do ciclo 1 e guarda a data da conclusão desfeita');
+    ok((await ua('listar_demandas', { p_arquivadas: false })).find((d) => d.id === viva.id).concluida_em === null, 'o estado da demanda continua como era (concluida_em volta a vazio), mas o histórico fica na tabela');
+    // outro caminho (mover_etapa para Finalizado e depois para outra etapa) vale igual; segunda conclusão é o ciclo 2
+    await ua('mover_etapa', { p_id: viva.id, p_etapa: 'Finalizado' }); await ua('mover_etapa', { p_id: viva.id, p_etapa: 'Vistos' });
+    t = (await ua('listar_transicoes_demanda', {})).transicoes;
+    ok(t.length === 4 && t[2].tipo === 'conclusao' && t[2].ciclo === 2 && t[3].tipo === 'reabertura' && t[3].ciclo === 2, 'a segunda conclusão é o ciclo 2 e a reabertura seguinte também (mover_etapa vale como concluir e reabrir)');
+    // salvar a demanda sem mudar a etapa não grava
+    await ua('salvar_demanda', { p_id: viva.id, p: { assunto: 'Viva editada' }, p_tarefas: null, p_versao: (await ua('listar_demandas', { p_arquivadas: false })).find((d) => d.id === viva.id).versao });
+    ok((await ua('listar_transicoes_demanda', {})).transicoes.length === 4, 'editar a demanda sem mudar a etapa não grava transição');
+    // demanda que já estava finalizada antes da coleta: a reabertura leva ciclo 0 e a data comprovada da conclusão antiga
+    const dataLegado = (await ua('listar_demandas', { p_arquivadas: false })).find((d) => d.id === legado.id).concluida_em;
+    await ua('reabrir_demanda', { p_id: legado.id, p_etapa: 'Fazendo' });
+    t = (await ua('listar_transicoes_demanda', {})).transicoes.filter((x) => x.demanda_id === legado.id);
+    ok(t.length === 1 && t[0].tipo === 'reabertura' && t[0].ciclo === 0 && t[0].concluida_em_anterior === dataLegado, 'demanda finalizada antes da coleta: a reabertura tem ciclo 0 e guarda a data comprovada (sem inventar uma conclusão que não foi gravada)');
+    await ua('concluir_demanda', { p_id: legado.id }); await ua('reabrir_demanda', { p_id: legado.id, p_etapa: 'Vistos' });
+    t = (await ua('listar_transicoes_demanda', {})).transicoes.filter((x) => x.demanda_id === legado.id);
+    ok(t.map((x) => `${x.tipo}:${x.ciclo}`).join() === 'reabertura:0,conclusao:1,reabertura:1', `depois disso o legado segue a numeração normal (${t.map((x) => `${x.tipo}:${x.ciclo}`).join()})`);
+    // unicidade: a mesma transição não entra duas vezes, mesmo por outro caminho
+    const dup = (await a.query("select count(*)::int as n from (select demanda_id, tipo, ciclo from public.demanda_transicoes group by 1, 2, 3 having count(*) > 1) x")).rows[0].n;
+    let semDup = null; try { await a.query("insert into public.demanda_transicoes (user_id, demanda_id, tipo, ciclo, dia, etapa_anterior, etapa_nova) values ($1, $2, 'conclusao', 1, public.hoje(), 'Fazendo', 'Finalizado')", [U, viva.id]); } catch (e) { semDup = e.message; }
+    ok(dup === 0 && /unique|duplicate|demanda_transicoes_unica/i.test(semDup || ''), 'a unicidade (demanda, tipo, ciclo) impede a mesma transição de entrar duas vezes');
+    // isolamento e permissões: só lê as próprias; ninguém grava direto; conta não autorizada não lê
+    const ids = (r) => r.transicoes.map((x) => x.demanda_id);
+    await uo('concluir_demanda', { p_id: alheia.id });
+    ok(ids(await uo('listar_transicoes_demanda', {})).join() === alheia.id && !ids(await ua('listar_transicoes_demanda', {})).includes(alheia.id), 'cada usuário lê só as próprias transições');
+    ok((await ux('listar_transicoes_demanda', {})).transicoes.length === 0, 'a conta não autorizada não lê nenhuma transição (RLS)');
+    const sql = async (q) => a.transaction(async (tx) => { await entrarComo(tx, U); try { await tx.query(q); return null; } catch (e) { return e.message; } });
+    ok(/permission denied|row-level/i.test(await sql(`insert into public.demanda_transicoes (user_id, demanda_id, tipo, ciclo, dia, etapa_anterior, etapa_nova) values ('${U}', '${viva.id}', 'conclusao', 9, public.hoje(), 'a', 'b')`)) && /permission denied|row-level/i.test(await sql(`update public.demanda_transicoes set ciclo = 8`)) && /permission denied|row-level/i.test(await sql('delete from public.demanda_transicoes')) && /permission denied|row-level/i.test(await sql("update public.coleta_marcos set dia = '2020-01-01'")), 'o usuário não grava, altera nem apaga transições nem o marco da coleta (só o gatilho grava)');
+    const anon = await a.transaction(async (tx) => { await tx.exec('set local role anon'); try { await tx.query('select * from public.demanda_transicoes'); return null; } catch (e) { return e.message; } });
+    ok(/permission denied/i.test(anon || '') && /permission denied/i.test(await er(async () => { await a.transaction(async (tx) => { await tx.exec('set local role anon'); await tx.query('select public.listar_transicoes_demanda()'); }); })), 'sem login (papel anon) não lê as transições');
+    // métricas calculadas dos dados reais do teste (abertas e arquivadas)
+    const dems = [...await ua('listar_demandas', { p_arquivadas: false }), ...await ua('listar_demandas', { p_arquivadas: true })];
+    const m = calcularMetricas(dems, await ua('listar_transicoes_demanda', {}), hoje);
+    ok(m.totais.conclusoesCiclos === 3 && m.totais.conclusoesDemandas === 2 && m.totais.reaberturasCiclos === 4 && m.totais.reaberturasDemandas === 2 && m.totais.conclusoesLegadasCiclos === 1 && m.confiavelDesde.conclusoesRegistradas === hoje, `métricas do banco: 2 demandas com 3 ciclos de conclusão registrados, 4 reaberturas, 1 conclusão legada comprovada, coleta confiável desde hoje (${JSON.stringify(m.totais)})`);
+    // excluir a demanda leva o histórico junto
+    await ua('excluir_demanda', { p_id: viva.id, p_confirmado: true });
+    ok(!ids(await ua('listar_transicoes_demanda', {})).includes(viva.id), 'excluir a demanda leva as transições dela junto (sem linhas soltas)');
+    // reaplicar a migração não muda nada (nem a data de início da coleta)
+    const antesRe = JSON.stringify(await ua('listar_transicoes_demanda', {}));
+    await a.exec(readFileSync(join('supabase/migrations', m24), 'utf8'));
+    ok(JSON.stringify(await ua('listar_transicoes_demanda', {})) === antesRe, 'migração 24: aplicar de novo não muda as transições nem a data de início da coleta');
+    await a.close();
+  } finally { rmSync(pasta, { recursive: true, force: true }); }
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
