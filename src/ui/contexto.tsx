@@ -267,7 +267,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setSistemaEscuro(matchMedia('(prefers-color-scheme: dark)').matches);
     setAparencia(aparenciaGuardada(lerLS<unknown>('dmanda:aparencia', null)));
     setPrefsPerfil(preferenciasGuardadas(lerLS<unknown>(CHAVE_PREFERENCIAS, null)));
-    { const m = lerLS<unknown>('dmanda:menu-aberto', null); setMenuAberto(m === null ? true : m === true); } // sem escolha guardada o menu começa aberto (decisão 64); só vale a partir de 1100 px
+    { const m = lerLS<unknown>('dmanda:menu-aberto', null); setMenuAberto(m === null ? matchMedia('(min-width: 1500px)').matches : m === true); } // sem escolha guardada o menu começa aberto só em janela larga (1500 px ou mais, como na imagem de referência da decisão 64); a escolha do usuário vale sempre
     // o que está guardado pode estar corrompido ou ser de outra versão: só entra o que tem a forma esperada (ver lib/armazenamento.ts)
     const ui = lerLS<Record<string, unknown> | null>('dmanda:ui', null) ?? {};
     const visaoUi = visaoGuardada(ui.visao), ordemUi = ordemGuardada(ui.ordem);

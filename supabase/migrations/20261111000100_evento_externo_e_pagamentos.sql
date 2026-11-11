@@ -57,14 +57,14 @@ $$;
 -- Cria (sem "id") ou altera (com "id") uma data de pagamento. Criar uma data que já existe devolve a que existe (clique repetido ou resposta perdida não duplicam nem dão erro);
 -- mudar uma data para outra que já está cadastrada é recusado. Sem valor, sem recorrência: só a data.
 create or replace function public.salvar_pagamento(p jsonb) returns jsonb language plpgsql set search_path = '' as $$
-declare v_id uuid := nullif(p ->> 'id', '')::uuid; v_data date; v_outro uuid;
+declare v_id uuid := nullif(p ->> 'id', '')::uuid; v_data date;
 begin
   if coalesce(p ->> 'data', '') = '' then perform public.erro_dmanda('Informe a data do pagamento.'); end if;
   v_data := (p ->> 'data')::date;
   if v_id is null then
-    select id into v_outro from public.pagamentos where data = v_data;
-    if v_outro is not null then return public.pagamento_json(v_outro); end if;
-    insert into public.pagamentos (data) values (v_data) returning id into v_id;
+    -- duas gravações da mesma data ao mesmo tempo (dois aparelhos): a segunda não dá erro, devolve a que a primeira criou
+    insert into public.pagamentos (data) values (v_data) on conflict (user_id, data) do nothing returning id into v_id;
+    if v_id is null then select id into v_id from public.pagamentos where data = v_data; end if;
   else
     perform 1 from public.pagamentos where id = v_id for update;
     if not found then perform public.erro_dmanda('Pagamento não encontrado. Ele pode ter sido excluído em outro aparelho.'); end if;

@@ -33,7 +33,7 @@ export const rotuloAviso = (m: number | null) => (m === null ? 'Sem aviso' : m >
 export const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const minutosDe = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
-const dataExiste = (v: string) => { if (!DATA.test(v)) return false; const [a, m, d] = v.split('-').map(Number); const x = new Date(Date.UTC(a, m - 1, d)); return x.getUTCFullYear() === a && x.getUTCMonth() === m - 1 && x.getUTCDate() === d; };
+export const dataExiste = (v: string) => { if (!DATA.test(v)) return false; const [a, m, d] = v.split('-').map(Number); const x = new Date(Date.UTC(a, m - 1, d)); return x.getUTCFullYear() === a && x.getUTCMonth() === m - 1 && x.getUTCDate() === d; };
 
 /** Confere um evento (a mesma regra da tela e do servidor). Devolve a mensagem para a pessoa, ou nulo quando está certo. */
 export function erroDoEvento(e: DadosEvento): string | null {

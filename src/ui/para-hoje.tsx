@@ -107,6 +107,8 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
   const guardarOrdem = useCallback((novos: string[]) => { const o = { dia: hoje, ids: novos }; setGuardada(o); gravarOrdem(o); }, [hoje]);
   const porId = useMemo(() => new Map(vagas.map((v) => [v.demanda.id, v] as const)), [vagas]);
   const ativa = porId.get(ordem[0]) ?? null;
+  // uma confirmação aberta para um card que já não é o ativo (a lista mudou por baixo, por exemplo ao voltar à aba) não pode travar a pilha
+  const confirmarAtivo = confirmar && ativa && confirmar.id === ativa.demanda.id ? confirmar : null;
 
   // card que foi para a escolha de etapa no menu: quando a etapa mudar de verdade, a pilha avança (depois da gravação confirmada)
   useEffect(() => {
@@ -119,9 +121,9 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
   }, [demandas, ordem, guardarOrdem]);
 
   const passar = useCallback(() => {
-    if (ocupado || confirmar || ordem.length < 2) return;
+    if (ocupado || confirmarAtivo || ordem.length < 2) return;
     guardarOrdem(ativoParaOFim(ordem)); setAviso(`Passado para o fim. Agora: ${porId.get(ordem[1])?.demanda.assunto ?? ''}`);
-  }, [ocupado, confirmar, ordem, guardarOrdem, porId]);
+  }, [ocupado, confirmarAtivo, ordem, guardarOrdem, porId]);
 
   const gravar = useCallback(async (d: Demanda, destino: 'Vistos' | 'Fazendo' | 'Finalizado') => {
     setOcupado(true);
@@ -132,7 +134,7 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
   }, [concluir, mover, ordem, guardarOrdem]);
 
   const avancar = useCallback(() => {
-    if (ocupado || confirmar || !ativa) return;
+    if (ocupado || confirmarAtivo || !ativa) return;
     const d = ativa.demanda;
     if (etapaDeEspera(d.etapa)) { observando.current = { id: d.id, etapa: d.etapa, ate: Date.now() + 60_000 }; if (botaoAvancar.current) abrirMenuMover(d.id, botaoAvancar.current); return; }
     const destino = ETAPA_SEGUINTE[d.etapa];
@@ -142,9 +144,9 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
       if (pendentes > 0) { setConfirmar({ id: d.id, pendentes }); return; }
     }
     void gravar(d, destino as 'Vistos' | 'Fazendo' | 'Finalizado');
-  }, [ocupado, confirmar, ativa, abrirMenuMover, gravar]);
+  }, [ocupado, confirmarAtivo, ativa, abrirMenuMover, gravar]);
 
-  const { ref, props } = useArrasto(passar, avancar, ocupado || !!confirmar);
+  const { ref, props } = useArrasto(passar, avancar, ocupado || !!confirmarAtivo);
   if (!ativa) return null;
   const d = ativa.demanda, destino = ETAPA_SEGUINTE[d.etapa];
   const rotuloAvancar = etapaDeEspera(d.etapa) ? 'Escolher a etapa' : destino ? (destino === 'Finalizado' ? 'Finalizar' : `Avançar para ${destino}`) : 'Sem etapa seguinte';
@@ -157,12 +159,12 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
           <CardDemanda d={d} mostrarRapida />
         </div>
       </div>
-      {confirmar && confirmar.id === d.id ? (
+      {confirmarAtivo ? (
         <div className="ph-confirma" role="alertdialog" aria-label="Finalizar a demanda" data-confirma-finalizar>
-          <p>Ao finalizar, {confirmar.pendentes === 1 ? '1 tarefa pendente será marcada' : `${confirmar.pendentes} tarefas pendentes serão marcadas`} como concluída{confirmar.pendentes === 1 ? '' : 's'}.</p>
+          <p>Ao finalizar, {confirmarAtivo.pendentes === 1 ? '1 tarefa pendente será marcada' : `${confirmarAtivo.pendentes} tarefas pendentes serão marcadas`} como concluída{confirmarAtivo.pendentes === 1 ? '' : 's'}.</p>
           <div className="acoes">
             <button type="button" className="btn" autoFocus onClick={() => setConfirmar(null)}>Cancelar</button>
-            <button type="button" className="btn pri" disabled={ocupado} onClick={async () => { await gravar(d, 'Finalizado'); setConfirmar(null); }}>Finalizar e concluir {plural(confirmar.pendentes, 'tarefa')}</button>
+            <button type="button" className="btn pri" disabled={ocupado} onClick={async () => { await gravar(d, 'Finalizado'); setConfirmar(null); }}>Finalizar e concluir {plural(confirmarAtivo.pendentes, 'tarefa')}</button>
           </div>
         </div>
       ) : (
