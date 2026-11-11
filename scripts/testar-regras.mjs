@@ -399,7 +399,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   // vagas
   const vg = [{ posicao: 1, demanda_id: 'rapida' }, { posicao: 2, demanda_id: 'fin' }, { posicao: 3, demanda_id: 'sumiu' }];
   ok(vagasAbertas(vg, lista2).map((v) => `${v.posicao}:${v.demanda.id}`).join() === '1:rapida', 'vagas: as de demanda finalizada, arquivada ou inexistente ficam livres e as outras continuam nas suas posições');
-  ok(precisaCompletar(vg, lista2, e) === true && precisaCompletar([1, 2, 3, 4].map((p, i) => ({ posicao: p, demanda_id: ['rapida', 'lenta', 'hojeR', 'hoje'][i] })), lista2, e) === false && precisaCompletar(vg, lista2, []) === false, 'vagas: só chama o banco quando há vaga livre e candidata');
+  ok(precisaCompletar(vg, lista2, e) === true && precisaCompletar([1, 2, 3].map((p, i) => ({ posicao: p, demanda_id: ['rapida', 'lenta', 'hojeR'][i] })), lista2, e) === false && precisaCompletar(vg, lista2, []) === false, 'vagas: só chama o banco quando há vaga livre e candidata');
   const nu = novasUrgencias([{ posicao: 1, demanda_id: 'rapida' }, { posicao: 2, demanda_id: 'lenta' }, { posicao: 3, demanda_id: 'hojeR' }], lista2, e).map((x) => x.demanda.id);
   ok(nu.includes('hoje') && nu.includes('cobr') && !nu.includes('rapida') && !nu.includes('prox') && !nu.includes('sem'), 'nova urgência: só atrasadas e as que vencem hoje fora das vagas aparecem à parte');
   // filtros
@@ -658,17 +658,17 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
     D('comumVencida', { prazo: '2026-11-01' })], H, []);
   ok(espera.map((e) => e.demanda.id).join() === 'esperaPrefCobranca,apPrefLonga,comumVencida,apComumLonga' && espera.filter((e) => e.cobranca).length === 3, `Para hoje: nas etapas de espera só entra com cobrança devida, mesmo com origem prioritária (${espera.map((e) => e.demanda.id).join()})`);
 
-  // ---- painel com as quatro vagas: exibição separada das vagas guardadas
-  const vcomum = [D('v1', { prazo: '2026-11-04' }), D('v2', { prazo: '2026-11-05' }), D('v3', { prazo: '2026-11-06' }), D('v4', { prazo: '2026-11-07' })];
+  // ---- painel com as três vagas: exibição separada das vagas guardadas
+  const vcomum = [D('v1', { prazo: '2026-11-04' }), D('v2', { prazo: '2026-11-05' }), D('v3', { prazo: '2026-11-06' })];
   const P1 = D('p1', { origem: 'Prefeita' }), P2 = D('p2', { origem: 'Pedido do Gabinete', prazo: '2026-12-01' });
   const lista = [...vcomum, P1, P2, D('u1', { prazo: '2026-11-07' }), D('u2', { prazo: H })];
   const eleg = elegiveisParaHoje(lista, H, []);
-  const vagasCheias = [{ posicao: 1, demanda_id: 'v1' }, { posicao: 2, demanda_id: 'v2' }, { posicao: 3, demanda_id: 'v3' }, { posicao: 4, demanda_id: 'v4' }];
+  const vagasCheias = [{ posicao: 1, demanda_id: 'v1' }, { posicao: 2, demanda_id: 'v2' }, { posicao: 3, demanda_id: 'v3' }];
   const fotoVagas = JSON.stringify(vagasCheias);
   const pa = organizarPainel(vagasCheias, lista, eleg);
-    ok(pa.prioritariasNasVagas.length === 0 && pa.prioritariasFora.map((e) => e.demanda.id).join() === 'p2,p1' && pa.comunsNasVagas.map((v) => v.demanda.id).join() === 'v1,v2,v3,v4', 'Para hoje: com as 4 vagas cheias de comuns, as prioritárias aparecem fora das vagas, acima das comuns, sem substituir nenhuma');
-  ok(JSON.stringify(vagasCheias) === fotoVagas && vagasAbertas(vagasCheias, lista).map((v) => v.demanda.id).join() === 'v1,v2,v3,v4', 'Para hoje: as vagas guardadas não mudam (a prioridade só ordena a exibição)');
-  ok(!precisaCompletar(vagasCheias, lista, eleg), 'Para hoje: com as 4 vagas cheias nada é gravado (não há vaga para repor)');
+    ok(pa.prioritariasNasVagas.length === 0 && pa.prioritariasFora.map((e) => e.demanda.id).join() === 'p2,p1' && pa.comunsNasVagas.map((v) => v.demanda.id).join() === 'v1,v2,v3', 'Para hoje: com as 3 vagas cheias de comuns, as prioritárias aparecem fora das vagas, acima das comuns, sem substituir nenhuma');
+  ok(JSON.stringify(vagasCheias) === fotoVagas && vagasAbertas(vagasCheias, lista).map((v) => v.demanda.id).join() === 'v1,v2,v3', 'Para hoje: as vagas guardadas não mudam (a prioridade só ordena a exibição)');
+  ok(!precisaCompletar(vagasCheias, lista, eleg), 'Para hoje: com as 3 vagas cheias nada é gravado (não há vaga para repor)');
   const todosIds = [...pa.prioritariasNasVagas.map((v) => v.demanda.id), ...pa.prioritariasFora.map((e) => e.demanda.id), ...pa.comunsNasVagas.map((v) => v.demanda.id), ...pa.urgenciasComuns.map((e) => e.demanda.id)];
   ok(new Set(todosIds).size === todosIds.length, 'Para hoje: nenhuma demanda aparece duas vezes (vagas, fora das vagas e nova urgência)');
   ok(pa.urgenciasComuns.every((e) => !e.prioritaria) && pa.urgenciasComuns.map((e) => e.demanda.id).includes('u2'), 'Para hoje: a nova urgência mostra só as comuns (as prioritárias já estão acima)');
@@ -688,11 +688,11 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   // vagas com demanda finalizada: libera só a vaga dela
   const fin = lista.map((d) => (d.id === 'v2' ? { ...d, etapa: 'Finalizado' } : d));
   const pd = organizarPainel(vagasCheias, fin, elegiveisParaHoje(fin, H, []));
-  ok(pd.comunsNasVagas.map((v) => v.demanda.id).join() === 'v1,v3,v4' && pd.prioritariasNasVagas.length === 0, 'Para hoje: a vaga de uma demanda finalizada some da exibição e as outras ficam como estão (a reposição é só da vaga liberada)');
+  ok(pd.comunsNasVagas.map((v) => v.demanda.id).join() === 'v1,v3' && pd.prioritariasNasVagas.length === 0, 'Para hoje: a vaga de uma demanda finalizada some da exibição e as outras ficam como estão (a reposição é só da vaga liberada)');
   // alterar a origem muda a prioridade (derivada): comum vira prioritária e volta a comum
   const virou = lista.map((d) => (d.id === 'v2' ? { ...d, origem: 'Prefeita' } : d));
   const pe = organizarPainel(vagasCheias, virou, elegiveisParaHoje(virou, H, []));
-  ok(pe.prioritariasNasVagas.map((v) => `${v.demanda.id}@${v.posicao}`).join() === 'v2@2' && pe.comunsNasVagas.map((v) => v.demanda.id).join() === 'v1,v3,v4', 'origem alterada para Prefeita: a demanda da 2ª vaga passa a ser exibida como prioritária, sem mudar de vaga');
+  ok(pe.prioritariasNasVagas.map((v) => `${v.demanda.id}@${v.posicao}`).join() === 'v2@2' && pe.comunsNasVagas.map((v) => v.demanda.id).join() === 'v1,v3', 'origem alterada para Prefeita: a demanda da 2ª vaga passa a ser exibida como prioritária, sem mudar de vaga');
   const voltou = virou.map((d) => (d.id === 'v2' ? { ...d, origem: 'Reunião' } : d));
   ok(organizarPainel(vagasCheias, voltou, elegiveisParaHoje(voltou, H, [])).prioritariasNasVagas.length === 0, 'origem alterada para outra: a prioridade some (nada fica guardado)');
 }
