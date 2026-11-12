@@ -807,3 +807,7 @@ Três pastas no computador do trabalho: `Dmanda` (clone principal, em `bloco/con
 **Prévia:** `node scripts/semear-inicio.mjs completo` (servidor parado), depois `$env:DMANDA_PASTA_TESTE='.dados-teste/inicio-completo'; npm.cmd run dev:exemplos`. Endereços: http://localhost:7100 e o IP da rede do computador na porta 7100.
 
 **Pendências:** testar no iPhone e no iPad reais (balão por toque, baralho, faixa do iPad); redesenho da Agenda depois da aprovação do Início; migrações 21 a 24 em produção, em etapa própria.
+
+### AG. Aprovação do Início e envio da branch (11/11/2026, decisão 67)
+
+**Estado:** o Éder aprovou expressamente a prévia do Início e os três ajustes da decisão 66 (commit `887b116`) e autorizou o envio da branch `bloco/inicio-perfil-clima` ao GitHub (avanço direto, sem force). **Não confirmado em aparelho real:** balão por toque, baralho e faixa do iPad (testes emulados). **Pendências de publicação, cada uma com autorização específica:** PR da branch, merge na `main`, deploy na Vercel e aplicação das migrações 21 a 24 no Supabase real (cada uma com dry-run, sem `db reset`, antes de publicar o código; o real está na 20). **Próximo bloco:** redesenho da Agenda, a partir da versão aprovada do Início (preservar cores, mapa de carga, tipos de marcação e semana de segunda a domingo). Andamento oficial: 45%.
