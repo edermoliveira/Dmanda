@@ -6,6 +6,7 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 **Andamento do projeto: 45%** (cálculo item a item em `ANDAMENTO.md`, reavaliado em 04/11/2026 com a aprovação da Agenda; era 37%, 33%, 29% e 18% antes).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 **Retomada de 11/11/2026 (branch `bloco/inicio-perfil-clima`, só local):** decisões 64 e 65 implementadas e validadas em banco de teste; ler `CONTINUIDADE-DMANDA.md`, seções AC e AD (hashes, testes, desempenho, migrações 21 a 24 pendentes no real, validação em aparelhos reais). Próximo bloco: redesenho da Agenda principal.
+**Retomada de 12/11/2026 (branch `bloco/agenda-retomada`, a partir de `574249c`):** decisão 71 aplicada (skill `dmanda-design-por-referencias`, Impeccable removido) e prévia da Semana da Agenda versionada em `prototipo/agenda-semana/`, **aguardando a aprovação visual do Éder** (nada integrado ao app, nada no Supabase real). Abrir: `npm ci`, `node prototipo/agenda-semana/testes/servidor.mjs`, http://127.0.0.1:7201/index.html. Ler `CONTINUIDADE-DMANDA.md`, seção AL. O `fd3b101` (reprovado) existe só na branch `bloco/inicio-perfil-clima` do computador do trabalho.
 
 ---
 

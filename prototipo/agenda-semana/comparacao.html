@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><title>Comparação da Semana</title>
+<style>
+body { margin: 0; padding: 24px; background: #fff; font-family: Inter, "Segoe UI", system-ui, sans-serif; color: #0a0a0a; }
+h2 { margin: 28px 0 6px; font-size: 20px; } h2 span { font-weight: 400; color: #5f5f66; font-size: 14px; margin-left: 8px; }
+.q { width: 1335px; overflow: hidden; border: 1px solid #c8c8d0; border-radius: 6px; background: #f2f2f7; }
+.q img { display: block; width: 1335px; }
+.rec { width: 1335px; overflow: hidden; height: 990px; position: relative; }
+.rec img { position: absolute; left: -100px; top: -118px; width: 1440px; }
+.cols { display: flex; gap: 32px; align-items: flex-start; }
+.col { border: 1px solid #c8c8d0; border-radius: 6px; overflow: hidden; background: #f2f2f7; }
+.col img { display: block; }
+.rot { font-weight: 700; margin: 0 0 6px; }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; margin-bottom: 6px; }
+.t1 { background: #dfe3ea; } .t2 { background: #ffd9d6; color: #7d0012; } .t3 { background: #d4e8ff; color: #00418f; }
+</style></head><body>
+<div id="pc">
+<h2>1. Referência <span>tela-agenda-semana.png, 1570 px (reduzida para 1335 px)</span></h2>
+<div class="q"><img src="ref/referencia.png" alt="Referência"></div>
+<h2>2. Semana reprovada <span>fd3b101, área de conteúdo do computador, recortada em 1335 px (sem o menu lateral)</span></h2>
+<div class="q"><div class="rec"><img src="ref/reprovada-computador.png" alt="Semana reprovada"></div></div>
+<h2>3. Proposta <span>prévia isolada, 1335 px, mesma escala</span></h2>
+<div class="q"><img src="capturas/computador-claro-semana.png" alt="Proposta"></div>
+</div>
+
+<div id="mv">
+<div class="cols">
+  <div><p class="rot"><span class="tag t2">Reprovada</span> iPad em pé (820 px)</p><div class="col"><img src="ref/reprovada-ipad.png" width="820" alt=""></div></div>
+  <div><p class="rot"><span class="tag t3">Proposta</span> iPad em pé (820 px)</p><div class="col"><img src="capturas/ipad-claro-semana.png" width="820" alt=""></div></div>
+</div>
+<div class="cols" style="margin-top:32px">
+  <div><p class="rot"><span class="tag t2">Reprovada</span> celular (390 px)</p><div class="col"><img src="ref/reprovada-celular.png" width="390" alt=""></div></div>
+  <div><p class="rot"><span class="tag t3">Proposta</span> celular (390 px)</p><div class="col"><img src="capturas/celular-claro-semana.png" width="390" alt=""></div></div>
+</div>
+</div>
+</body></html>

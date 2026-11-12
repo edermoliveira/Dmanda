@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prévia da Semana (dados fictícios)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Tokens copiados do Catalyst (src/estilos/catalyst.css). Prévia isolada: não toca o código da Agenda. */
+:root { --esc: .85; --r-card: 22px; --r-field: 14px; --font: "Inter", -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace; --amar: hsl(46 90% 50%); }
+:root, :root[data-tema="claro"] {
+  --bgbase: #F2F2F7; --card: #FCFCFC; --card-brd: rgba(60,60,67,.1); --glass: rgba(246,246,248,.7); --glass-brd: rgba(60,60,67,.14);
+  --text: #0A0A0A; --text2: #5F5F66; --brd: rgba(60,60,67,.2); --track: rgba(118,118,128,.14);
+  --acc: #0071E3; --acc-ink: #FCFCFC; --acc-soft: rgba(0,113,227,.1); --acc-text: #0062C4; --foco: #0071E3;
+  --perigo: #C4001A; --perigo-soft: rgba(196,0,26,.09); --amar-tx: #6B4E00; --linha: rgba(60,60,67,.12);
+}
+:root[data-tema="escuro"] {
+  --bgbase: #0A0A0A; --card: #1C1C1E; --card-brd: rgba(84,84,88,.45); --glass: rgba(28,28,30,.7); --glass-brd: rgba(84,84,88,.5);
+  --text: #FCFCFC; --text2: #A1A1A8; --brd: rgba(84,84,88,.6); --track: rgba(118,118,128,.26);
+  --acc: #3D9BFF; --acc-ink: #04152B; --acc-soft: rgba(61,155,255,.16); --acc-text: #6DB3FF; --foco: #6DB3FF;
+  --perigo: #FF6961; --perigo-soft: rgba(255,105,97,.16); --amar-tx: #F5D565; --linha: rgba(84,84,88,.45);
+}
+* { box-sizing: border-box; }
+html { color-scheme: light; } :root[data-tema="escuro"] { color-scheme: dark; }
+body { margin: 0; background: var(--bgbase); color: var(--text); font-family: var(--font); font-size: calc(14px * var(--esc)); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
+:focus-visible { outline: 2px solid var(--foco); outline-offset: 2px; }
+svg { width: 1.25em; height: 1.25em; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+.agd { max-width: 1200px; margin: 0 auto; padding: 20px 16px 40px; }
+.agd[data-largo] { max-width: none; padding-inline: 20px; }
+
+/* ---------- cabeçalho: duas linhas ---------- */
+.topo { display: flex; align-items: center; gap: 12px; min-height: 52px; }
+.topo .ico-t { color: var(--acc-text); font-size: calc(26px * var(--esc)); display: grid; place-items: center; }
+.topo h1 { margin: 0; font-size: calc(38px * var(--esc)); line-height: 1.1; font-weight: 600; letter-spacing: -.02em; }
+.topo .acoes { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.barra { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.barra .visoes { margin-left: auto; }
+
+.btn { min-height: 40px; padding: 0 16px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: calc(13px * var(--esc)); background: var(--card); box-shadow: inset 0 0 0 1px var(--card-brd); color: var(--text); white-space: nowrap; }
+.btn:hover:not(:disabled) { background: var(--track); }
+.btn.pri { background: var(--acc); color: var(--acc-ink); box-shadow: none; }
+.btn.pri:hover { filter: brightness(1.08); background: var(--acc); }
+.btn:disabled { color: var(--text2); opacity: .65; cursor: default; }
+.btn.redondo { width: 40px; padding: 0; justify-content: center; }
+.btn.mais-m { display: none; }
+.seta { width: 40px; min-height: 40px; }
+.periodo { font-size: calc(22px * var(--esc)); font-weight: 600; letter-spacing: -.01em; padding: 0 4px; }
+
+.visoes { display: inline-flex; background: var(--card); box-shadow: inset 0 0 0 1px var(--card-brd); border-radius: 999px; padding: 4px; gap: 2px; }
+.visoes button { min-height: 32px; padding: 0 14px; border-radius: 999px; display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: calc(13px * var(--esc)); color: var(--text2); }
+.visoes button[aria-pressed="true"] { background: var(--acc); color: var(--acc-ink); }
+.visoes button:disabled { opacity: .7; cursor: default; }
+.visoes button:not(:disabled):not([aria-pressed="true"]):hover { background: var(--track); }
+
+/* ---------- painel único com sete linhas ---------- */
+.painel { margin-top: 18px; background: var(--card); border-radius: 28px; box-shadow: inset 0 0 0 1px var(--card-brd); overflow: hidden; }
+.dia { display: grid; grid-template-columns: 190px 1fr; align-items: start; min-height: 64px; border-top: 1px solid var(--linha); position: relative; transition: background .15s; }
+.dia:first-child { border-top: 0; }
+.dia[data-fds] .nome, .dia[data-fds] .livre { opacity: .85; }
+.dia[data-hoje] { background: var(--acc-soft); }
+.dia[data-sel]:not([data-hoje]) { background: var(--track); }
+.dia[data-sel]::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--acc); }
+.rotulo { display: flex; align-items: center; gap: 14px; padding: 14px 8px 14px 20px; text-align: left; width: 100%; min-height: 64px; }
+.num { width: 36px; height: 36px; border-radius: 50%; background: var(--track); display: grid; place-items: center; font-size: calc(20px * var(--esc)); font-weight: 500; flex: none; font-variant-numeric: tabular-nums; }
+.dia[data-hoje] .num { background: var(--acc); color: var(--acc-ink); font-weight: 600; }
+.dia[data-sel]:not([data-hoje]) .num { box-shadow: 0 0 0 2px var(--acc); background: var(--card); }
+.nome { font-size: calc(12px * var(--esc)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text2); line-height: 1.25; }
+.nome small { display: block; font-size: calc(12px * var(--esc)); letter-spacing: 0; text-transform: none; font-weight: 600; color: var(--acc-text); }
+.dia[data-hoje] .nome { color: var(--acc-text); }
+.conteudo { padding: 14px 20px 14px 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; cursor: pointer; align-self: stretch; }
+.livre { color: var(--text2); font-size: calc(13px * var(--esc)); padding-top: 3px; }
+
+/* ---------- itens: pílula fina, uma linha ---------- */
+.item { display: flex; align-items: center; gap: 10px; min-height: 32px; max-width: 560px; padding: 0 14px; border-radius: 999px; background: var(--track); font-size: calc(13px * var(--esc)); min-width: 0; }
+.dia[data-hoje] .item { background: var(--card); box-shadow: inset 0 0 0 1px var(--card-brd); }
+.ponto { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.ponto.evento { background: var(--acc); }
+.ponto.venc { background: var(--amar); }
+.ponto.atraso { background: var(--perigo); }
+.ponto.retorno { background: transparent; box-shadow: inset 0 0 0 2px var(--text2); }
+.hora { font-family: var(--mono); font-weight: 600; font-size: calc(12px * var(--esc)); white-space: nowrap; }
+.tit { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.tag { font-size: calc(12px * var(--esc)); font-weight: 600; white-space: nowrap; color: var(--text2); }
+.tag.atraso { color: var(--perigo); }
+.mais { align-self: flex-start; font-size: calc(12px * var(--esc)); font-weight: 600; color: var(--acc-text); padding: 4px 8px; border-radius: 999px; min-height: 28px; }
+.mais:hover { background: var(--acc-soft); }
+
+/* ---------- dia selecionado: os itens se abrem na própria linha ---------- */
+.ficha { display: flex; flex-direction: column; gap: 6px; max-width: 720px; padding: 4px 0 6px; }
+.ficha + .ficha { border-top: 1px solid var(--linha); padding-top: 12px; }
+.ficha .item { align-self: flex-start; max-width: 100%; }
+.ficha .meta { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: calc(12px * var(--esc)); color: var(--text2); padding-left: 14px; }
+.ficha .meta b { color: var(--text); font-weight: 600; }
+.ficha .desc { margin: 0; padding-left: 14px; font-size: calc(13px * var(--esc)); line-height: 1.45; color: var(--text2); }
+.ficha .acoes-f { display: flex; gap: 8px; padding-left: 8px; margin-top: 2px; }
+.btn.mini { min-height: 32px; padding: 0 12px; font-size: calc(12px * var(--esc)); }
+.novo-dia { align-self: flex-start; margin-top: 2px; }
+.vazio-sel { color: var(--text2); font-size: calc(13px * var(--esc)); }
+
+.rodape { margin-top: 14px; color: var(--text2); font-size: calc(12px * var(--esc)); display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 0 6px; }
+.rodape kbd { font-family: var(--mono); font-size: calc(11px * var(--esc)); background: var(--track); border-radius: 6px; padding: 1px 6px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- iPad em pé ---------- */
+@media (max-width: 900px) {
+  .dia { grid-template-columns: 150px 1fr; }
+  .rotulo { padding-left: 16px; gap: 12px; }
+  .topo h1 { font-size: calc(34px * var(--esc)); }
+}
+/* ---------- celular: a mesma composição, trilho mais estreito ---------- */
+@media (max-width: 640px) {
+  .agd { padding: 14px 12px 32px; }
+  .topo { min-height: 44px; }
+  .topo .acoes .btn:not(.redondo) { display: none; }
+  .btn.mais-m { display: inline-flex; }
+  .topo .acoes .btn.pri.redondo { display: inline-flex; }
+  .barra { gap: 8px; }
+  .barra .visoes { margin-left: 0; width: 100%; }
+  .visoes button { flex: 1; justify-content: center; min-height: 36px; }
+  .periodo { font-size: calc(20px * var(--esc)); }
+  .painel { margin-top: 14px; border-radius: 22px; }
+  .dia { grid-template-columns: 68px 1fr; min-height: 60px; }
+  .rotulo { flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; padding: 12px 0 12px 10px; min-height: 60px; }
+  .num { width: 34px; height: 34px; font-size: calc(19px * var(--esc)); }
+  .nome { font-size: calc(10px * var(--esc)); text-align: center; letter-spacing: .03em; }
+  .nome small { font-size: calc(10px * var(--esc)); }
+  .conteudo { padding: 12px 12px 12px 6px; }
+  .livre { padding-top: 7px; }
+  .item { min-height: 36px; padding: 0 12px; }
+  .ficha .meta, .ficha .desc { padding-left: 12px; }
+  .rodape { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="agd" id="agd">
+  <header class="topo">
+    <span class="ico-t" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg></span>
+    <h1>Agenda</h1>
+    <div class="acoes">
+      <button class="btn" type="button" title="Dias indisponíveis (fora deste protótipo)"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M9 12.5l6 5M15 12.5l-6 5M8 3v4M16 3v4"/></svg>Dias indisponíveis</button>
+      <button class="btn pri" type="button" id="novo-topo"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo evento</button>
+      <button class="btn pri redondo mais-m" type="button" aria-label="Novo evento" id="novo-topo-m"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="btn redondo" type="button" aria-label="Mais opções"><svg viewBox="0 0 24 24"><circle cx="12" cy="5.5" r=".8"/><circle cx="12" cy="12" r=".8"/><circle cx="12" cy="18.5" r=".8"/></svg></button>
+    </div>
+  </header>
+  <div class="barra">
+    <button class="btn redondo seta" type="button" id="ant" aria-label="Semana anterior"><svg viewBox="0 0 24 24"><path d="M14.5 6l-6 6 6 6"/></svg></button>
+    <button class="btn redondo seta" type="button" id="prox" aria-label="Próxima semana"><svg viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></svg></button>
+    <span class="periodo" id="periodo" aria-live="polite"></span>
+    <button class="btn" type="button" id="hoje">Hoje</button>
+    <div class="visoes" role="group" aria-label="Visão da agenda">
+      <button type="button" disabled title="Fora deste protótipo">Dia</button>
+      <button type="button" aria-pressed="true">Semana</button>
+      <button type="button" disabled title="Fora deste protótipo">Mês</button>
+    </div>
+  </div>
+  <section class="painel" id="painel" aria-label="Semana de segunda a domingo"></section>
+  <p class="rodape"><span><kbd>←</kbd> <kbd>→</kbd> trocam de semana</span><span><kbd>↑</kbd> <kbd>↓</kbd> trocam de dia</span><span><kbd>T</kbd> volta para hoje</span></p>
+</main>
+
+<script>
+/* Dados FICTÍCIOS. Hoje = quinta, 12/11/2026. Semana de segunda a domingo. */
+const HOJE = '2026-11-12';
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const DIAS = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+const iso = (d) => d.toISOString().slice(0, 10);
+const dt = (s) => new Date(s + 'T00:00:00Z');
+const soma = (s, n) => { const d = dt(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
+const segunda = (s) => soma(s, -((dt(s).getUTCDay() + 6) % 7));
+
+const E = (hora, fim, titulo, o = {}) => ({ t: 'evento', hora, fim, titulo, ...o });
+const V = (titulo, o = {}) => ({ t: 'venc', titulo, ...o });
+const FIXOS = {
+  '2026-11-09': [V('Parecer sobre o reajuste do contrato de limpeza urbana', { atraso: 3, doc: 'Processo 250/2026', origem: 'Prefeita', desc: 'Falta a manifestação da Procuradoria sobre o índice. Prazo original 06/11.' })],
+  '2026-11-11': [
+    E('08:30', '09:30', 'Conferir o parecer da Procuradoria', { local: 'Sala da Secretaria', desc: 'Levar a planilha de custos impressa.' }),
+    E('14:00', '15:00', 'Reunião com o Gabinete', { local: 'Gabinete', desc: 'Pauta: calendário de reuniões e reajuste do contrato.' }),
+    V('Ofício sobre a reforma do telhado da escola', { atraso: 1, doc: 'Ofício 32/2026', origem: 'Secretaria de Educação', desc: 'Resposta pendente desde o vencimento de ontem.' }),
+  ],
+  '2026-11-12': [
+    E('10:00', '11:00', 'Despacho com a Procuradoria', { local: 'Procuradoria', desc: 'Assinatura dos pareceres da semana.' }),
+    V('Memorando de férias do setor de compras', { doc: 'Memorando 14/2026', origem: 'Iniciativa própria', desc: 'Vence hoje. Falta confirmar os períodos.' }),
+    E('19:00', '21:00', 'Audiência pública na Câmara', { local: 'Câmara Municipal', desc: 'Sessão aberta sobre o orçamento 2027.' }),
+  ],
+  '2026-11-13': [
+    E('', '', 'Congresso regional de administração', { diaInteiro: true, local: 'Novo Hamburgo', desc: 'Dia inteiro fora do gabinete.' }),
+    E('10:00', '11:00', 'Despacho com a Procuradoria', { local: 'Procuradoria', desc: 'Segundo despacho da semana.' }),
+    E('15:00', '16:00', 'Reunião do secretariado', { local: 'Sala de reuniões', desc: 'Pauta aberta; trazer as pendências de cada pasta.' }),
+    V('Pedido do Gabinete sobre o calendário de reuniões', { doc: 'Pedido 91/2026', origem: 'Gabinete', desc: 'Vence nesta sexta.' }),
+    { t: 'retorno', titulo: 'Retorno da Contabilidade: empenhos do exercício', doc: 'Memorando 104/2026', origem: 'Contabilidade', desc: 'Acompanhar: enviado há 6 dias, retorno esperado em até 10.' },
+  ],
+};
+/* Outras semanas: conjunto fictício determinístico, para a navegação mostrar dias cheios e vazios. */
+const POOL = [
+  () => E('09:00', '10:00', 'Atendimento de servidores', { local: 'Secretaria', desc: 'Horário aberto.' }),
+  () => E('11:00', '12:00', 'Reunião com a Contabilidade', { local: 'Contabilidade', desc: 'Fechamento do mês.' }),
+  () => E('14:30', '15:30', 'Visita à escola municipal', { local: 'Escola', desc: 'Conferir o andamento da reforma.' }),
+  () => V('Relatório de horas extras', { doc: 'Memorando 102/2026', origem: 'Reunião', desc: 'Entregar ao Gabinete.' }),
+  () => V('Resposta ao Tribunal', { doc: 'Processo 101/2026', origem: 'Tribunal', desc: 'Prazo legal.' }),
+  () => ({ t: 'retorno', titulo: 'Retorno da Procuradoria: minuta do contrato', doc: 'Ofício 45/2026', origem: 'Procuradoria', desc: 'Acompanhar.' }),
+  () => E('16:00', '17:00', 'Alinhamento com a Prefeita', { local: 'Gabinete', desc: 'Pontos da semana.' }),
+];
+const hash = (s) => { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+function itensDe(d) {
+  if (FIXOS[d]) return FIXOS[d];
+  const wd = dt(d).getUTCDay(), h = hash(d);
+  if (wd === 0 || wd === 6) return h % 7 === 0 ? [POOL[3]()] : [];
+  const n = [0, 1, 2, 1, 3, 0, 2, 5][h % 8];
+  const r = []; for (let i = 0; i < n; i++) r.push(POOL[(h + i * 3) % POOL.length]());
+  return r;
+}
+const ordem = (a, b) => (a.diaInteiro ? 0 : a.t === 'evento' ? 1 : 2) - (b.diaInteiro ? 0 : b.t === 'evento' ? 1 : 2) || (a.hora || '').localeCompare(b.hora || '');
+
+let ini = segunda(HOJE), sel = null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const NOMES = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+
+function periodo() {
+  const a = dt(ini), b = dt(soma(ini, 6));
+  const ano = a.getUTCFullYear() !== 2026 || b.getUTCFullYear() !== 2026 ? ` de ${b.getUTCFullYear()}` : '';
+  return a.getUTCMonth() === b.getUTCMonth() ? `${a.getUTCDate()} a ${b.getUTCDate()} de ${MESES[b.getUTCMonth()]}${ano}`
+    : `${a.getUTCDate()} de ${MESES[a.getUTCMonth()].slice(0, 3)} a ${b.getUTCDate()} de ${MESES[b.getUTCMonth()].slice(0, 3)}${ano}`;
+}
+function pilula(i) {
+  const ponto = i.t === 'evento' ? 'evento' : i.t === 'retorno' ? 'retorno' : i.atraso ? 'atraso' : 'venc';
+  const quando = i.t === 'evento' ? `<span class="hora">${i.diaInteiro ? 'Dia inteiro' : i.hora}</span>` : i.t === 'retorno' ? '<span class="tag">Retorno</span>' : i.atraso ? `<span class="tag atraso">Atrasada ${i.atraso} d</span>` : '<span class="tag">Vence</span>';
+  return `<div class="item"><span class="ponto ${ponto}" aria-hidden="true"></span>${quando}<span class="tit">${esc(i.titulo)}</span></div>`;
+}
+function ficha(i) {
+  const meta = [];
+  if (i.t === 'evento' && !i.diaInteiro) meta.push(`<span><b>Horário</b> ${i.hora} às ${i.fim}</span>`);
+  if (i.local) meta.push(`<span><b>Local</b> ${esc(i.local)}</span>`);
+  if (i.doc) meta.push(`<span><b>Documento</b> ${esc(i.doc)}</span>`);
+  if (i.origem) meta.push(`<span><b>Origem</b> ${esc(i.origem)}</span>`);
+  const abrir = i.t === 'evento' ? 'Editar evento' : 'Abrir demanda';
+  return `<div class="ficha">${pilula(i)}<div class="meta">${meta.join('')}</div><p class="desc">${esc(i.desc || '')}</p><div class="acoes-f"><button class="btn mini" type="button">${abrir}</button></div></div>`;
+}
+function desenha() {
+  $('periodo').textContent = periodo();
+  $('hoje').disabled = ini === segunda(HOJE);
+  let html = '';
+  for (let k = 0; k < 7; k++) {
+    const d = soma(ini, k), wd = dt(d).getUTCDay(), its = itensDe(d).slice().sort(ordem);
+    const eh = d === HOJE, s = d === sel;
+    let corpo;
+    if (!its.length) corpo = s ? `<span class="vazio-sel">Nada marcado para ${NOMES[wd]}.</span><button class="btn mini novo-dia" type="button">Novo evento neste dia</button>` : '<span class="livre">Livre</span>';
+    else if (s) corpo = its.map(ficha).join('') + '<button class="btn mini novo-dia" type="button">Novo evento neste dia</button>';
+    else corpo = its.slice(0, 3).map(pilula).join('') + (its.length > 3 ? `<button class="mais" type="button" data-d="${d}">+${its.length - 3} mais</button>` : '');
+    html += `<div class="dia" data-d="${d}" ${eh ? 'data-hoje' : ''} ${s ? 'data-sel' : ''} ${wd === 0 || wd === 6 ? 'data-fds' : ''}>
+      <button class="rotulo" type="button" aria-expanded="${s}" aria-label="${NOMES[wd]}, ${dt(d).getUTCDate()} de ${MESES[dt(d).getUTCMonth()]}${eh ? ', hoje' : ''}: ${its.length ? its.length + ' item(ns)' : 'livre'}" data-d="${d}"><span class="num">${dt(d).getUTCDate()}</span><span class="nome">${DIAS[wd]}${eh ? '<small>Hoje</small>' : ''}</span></button>
+      <div class="conteudo" data-d="${d}">${corpo}</div></div>`;
+  }
+  $('painel').innerHTML = html;
+}
+function ir(n) { ini = soma(ini, n * 7); sel = sel && soma(sel, n * 7); desenha(); }
+function foco(d) { desenha(); const b = document.querySelector(`.rotulo[data-d="${d}"]`); if (b) b.focus(); }
+$('ant').onclick = () => ir(-1);
+$('prox').onclick = () => ir(1);
+$('hoje').onclick = () => { ini = segunda(HOJE); sel = null; desenha(); };
+$('painel').addEventListener('click', (e) => {
+  if (e.target.closest('.btn,.acoes-f')) return;
+  const alvo = e.target.closest('[data-d]'); if (!alvo) return;
+  const d = alvo.dataset.d; sel = sel === d && !e.target.closest('.conteudo') ? null : d; desenha();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const fim = ['ArrowLeft', 'ArrowRight'].includes(e.key);
+  if (e.key === 'ArrowLeft') ir(-1); else if (e.key === 'ArrowRight') ir(1);
+  else if (e.key === 't' || e.key === 'T') $('hoje').click();
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault(); const cur = sel ?? (ini === segunda(HOJE) ? HOJE : ini); const n = soma(cur, e.key === 'ArrowDown' ? 1 : -1);
+    if (n < ini) { ini = soma(ini, -7); } else if (n > soma(ini, 6)) { ini = soma(ini, 7); }
+    sel = n; foco(n);
+  }
+  void fim;
+});
+const h = new URLSearchParams(location.hash.slice(1));
+if (h.get('tema')) document.documentElement.dataset.tema = h.get('tema');
+if (h.get('largo')) $('agd').dataset.largo = '';
+if (h.get('sel')) sel = h.get('sel');
+if (h.get('semana')) { ini = soma(ini, 7 * Number(h.get('semana'))); sel = h.get('sel') || null; }
+desenha();
+</script>
+</body>
+</html>
