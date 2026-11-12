@@ -1,5 +1,6 @@
-/* Agenda (decisões 46 a 49): Catalyst com calendário em heatmap. Todas as cores vêm dos tokens do Catalyst (tema claro e escuro e as dez paletas); nenhuma família tipográfica,
-   escala de texto ou paleta é nova. Tamanhos de texto sempre pela escala (--esc), alvos de toque de 44 px, nada de transform nas células (a grade não se mexe). */
+/* Agenda (decisões 46 a 49, refinada em 12/11/2026): Catalyst com calendário em heatmap. Todas as cores vêm dos tokens do Catalyst (tema claro e escuro e as dez paletas); nenhuma família tipográfica,
+   escala de texto ou paleta é nova. Tamanhos de texto sempre pela escala (--esc), alvos de toque de 44 px, nada de transform nas células (a grade não se mexe).
+   Identidade dos itens: forma + rótulo + cor (compromisso quadrado azul; vencimento losango, acompanhamento círculo vazado e retorno do setor triângulo, em amarelo; atraso é destaque vermelho). */
 
 /* ---------- tokens da Agenda (derivados do acento e do cartão do Catalyst) ---------- */
 .app[data-dir="d"] {
@@ -29,23 +30,50 @@
 /* ---------- moldura da página ---------- */
 .agd { container-type: inline-size; container-name: agd; display: grid; gap: 14px; min-width: 0; }
 .agd .pagehead { margin: 0; }
-.agd-barra, .agd-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
-.agd-nav { display: flex; align-items: center; gap: 6px; }
-.agd-ant .ic { transform: rotate(180deg); }
-.agd-data input { min-height: 40px; border-radius: var(--r-field, 14px); border: 1px solid var(--brd); background: var(--grp-campo); color: var(--text); padding: 0 10px; font: inherit; font-size: max(16px, calc(14px * var(--esc))); }
-.agd-novo { margin-inline-start: auto; }
 .agd-chk { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: calc(14px * var(--esc)); color: var(--text); cursor: pointer; }
 .agd-chk input { margin: 0; }
 
+/* barra: visão, período entre as setas, "Ir para hoje", data, Mostrar e Novo evento. No computador tudo numa linha; no celular, duas linhas compactas */
+.agd-barra { position: relative; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.agd-topo, .agd-base { display: contents; }
+.agd-barra .opcoes { order: 1; flex-wrap: nowrap; gap: 4px; }
+.agd-barra .opcoes button { min-height: 40px; padding: 0 14px; }
+.agd-nav { order: 2; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.agd-irhoje { order: 3; }
+.agd-data { order: 4; }
+.agd-mostrar-w { order: 5; position: relative; }
+.agd-novo { order: 6; margin-inline-start: auto; }
+.agd-periodo { margin: 0; min-width: 16ch; text-align: center; font-size: calc(17px * var(--esc)); font-weight: 700; color: var(--text); text-transform: none; letter-spacing: -.01em; line-height: 1.2; }
+.agd-ant .ic { transform: rotate(180deg); }
+/* "Ir para hoje" é um botão de contorno com o ícone de calendário, diferente do botão de visão "Hoje" */
+.app[data-dir="d"] .agd-irhoje { background: transparent; box-shadow: inset 0 0 0 1px var(--brd); gap: 6px; }
+.app[data-dir="d"] .agd-irhoje[disabled] { box-shadow: inset 0 0 0 1px var(--card-brd); }
+.agd-irhoje .ic, .agd-mostrar-b .ic { width: 16px; height: 16px; }
+/* seletor de data: o ícone é o botão e o campo nativo, transparente, cobre tudo (abre o seletor do aparelho ao tocar) */
+.agd-data { position: relative; flex: none; cursor: pointer; }
+.agd-data input { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; font-size: 16px; }
+.agd-data::after { pointer-events: none; }
+.app[data-dir="d"] .agd-data:focus-within { outline: 3px dashed var(--foco); outline-offset: 3px; }
+.agd-novo .ic { width: 18px; height: 18px; }
+
+/* menu Mostrar */
+.agd-mostrar-b { gap: 6px; }
+.agd-mostrar-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--acc); color: var(--acc-ink); font-style: normal; font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; }
+.agd-mostrar { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; display: grid; gap: 10px; min-width: 260px; max-width: min(340px, calc(100vw - 32px)); padding: 12px 14px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd), 0 18px 44px rgba(10, 10, 10, .22); }
+.agd-mostrar fieldset { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; gap: 0; }
+.agd-mostrar legend { padding: 0 0 2px; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; }
+.agd-op { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: calc(14px * var(--esc)); color: var(--text); cursor: pointer; }
+.agd-op input { margin: 0; width: 18px; height: 18px; flex: none; accent-color: var(--acc); }
+.app[data-dir="d"] .agd-op:has(input:focus-visible) { outline: 3px dashed var(--foco); outline-offset: 2px; border-radius: 10px; }
+
 /* informação principal do período: dados reais, sem enfeite */
-.agd-resumo { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
-.agd-periodo { margin: 0; font-size: calc(22px * var(--esc)); font-weight: 700; color: var(--text); text-transform: none; letter-spacing: -.01em; }
-.agd-grande { margin: 2px 0 0; font-size: calc(18px * var(--esc)); color: var(--text); }
-.agd-grande b { font-size: calc(34px * var(--esc)); font-weight: 700; font-variant-numeric: tabular-nums; margin-inline-end: 4px; }
+.agd-resumo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
+.agd-grande { margin: 0; font-size: calc(15px * var(--esc)); color: var(--text); }
+.agd-grande b { font-size: calc(26px * var(--esc)); font-weight: 700; font-variant-numeric: tabular-nums; margin-inline-end: 4px; }
 .agd-chips-res { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 
 /* ---------- painel de vidro fosco ---------- */
-.agd-painel { position: relative; isolation: isolate; min-width: 0; border-radius: 28px; padding: 16px clamp(10px, 3.4cqw, 36px) 18px; border: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--lq-edge), var(--lq-sh); color: var(--text); }
+.agd-painel { position: relative; isolation: isolate; min-width: 0; border-radius: 28px; padding: 16px clamp(10px, 2.2cqw, 28px) 18px; border: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--lq-edge), var(--lq-sh); color: var(--text); }
 /* o desfoque fica só na superfície de fundo (pseudo-elemento): textos e controles ficam nítidos e o contêiner nunca recebe opacity */
 .agd-painel::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
   background: linear-gradient(180deg, color-mix(in srgb, var(--lq-edge) 16%, transparent), transparent 42%), var(--agd-vidro);
@@ -53,23 +81,44 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .agd-painel::before { background: var(--solido); } }
 .agd-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .agd-cab h3 { margin: 0; font-size: calc(17px * var(--esc)); font-weight: 650; }
+.agd-cab h3:focus-visible { outline: 3px dashed var(--foco); outline-offset: 3px; border-radius: 6px; }
+.agd-eyebrow { margin: 0 0 2px; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
 .agd-sub { margin: 2px 0 0; font-size: calc(13px * var(--esc)); color: var(--text2); }
-.agd-h4 { margin: 14px 0 6px; font-size: calc(13px * var(--esc)); font-weight: 650; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; }
-.agd-h4-atr { color: var(--perigo); }
+.agd-h4 { margin: 12px 0 6px; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; }
 .agd-vazio { margin: 8px 0; font-size: calc(14px * var(--esc)); color: var(--text2); }
 
 .agd-corpo { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
-@container agd (min-width: 960px) { .agd-corpo { grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); } }
-.agd-aux-par { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
-@container agd (min-width: 760px) { .agd-aux-par { grid-template-columns: repeat(2, minmax(0, 1fr)); } .agd-aux-par .agd-aux { min-height: 168px; } }
+.agd-lado { display: grid; gap: 14px; min-width: 0; align-content: start; }
+@container agd (min-width: 960px) { .agd-corpo { grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); } }
+.agd-aux-par { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@container agd (min-width: 760px) { .agd-aux-par { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* painéis auxiliares recolhíveis (Onde aperta e Pendências sem prazo) */
+.agd-aux { padding-block: 6px 12px; }
+.agd-aux-t { margin: 0; }
+.agd-aux-t button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-size: calc(17px * var(--esc)); font-weight: 650; text-align: start; cursor: pointer; border-radius: 10px; }
+.app[data-dir="d"] .agd-aux-t button:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
+.agd-aux-t .ic { width: 18px; height: 18px; flex: none; color: var(--text2); }
+.agd-aux[data-aberto="true"] .agd-aux-t .ic { transform: rotate(90deg); }
+.agd-aux-c[hidden] { display: none; }
+
+/* ---------- formas ---------- */
+.agd-forma { display: inline-block; flex: none; width: 10px; height: 10px; background: var(--agd-forma, currentColor); }
+.agd-forma[data-forma="quadrado"] { --agd-forma: var(--agd-evento-tx); border-radius: 2px; }
+.agd-forma[data-forma="faixa"] { --agd-forma: var(--agd-evento-tx); width: 16px; height: 5px; border-radius: 3px; }
+.agd-forma[data-forma="losango"] { --agd-forma: var(--agd-demanda-tx); width: 11px; height: 11px; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.agd-forma[data-forma="circulo"] { --agd-forma: var(--agd-demanda-tx); border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 2px var(--agd-forma); }
+.agd-forma[data-forma="triangulo"] { --agd-forma: var(--agd-demanda-tx); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.agd-forma[data-atrasado] { --agd-forma: var(--perigo); }
 
 /* ---------- grade do mês ---------- */
-.agd-grade { --g: clamp(3px, 1.4cqw, 11px); display: grid; gap: var(--g); max-width: 760px; margin-inline: auto; container-type: inline-size; }
+.agd-grade { --g: clamp(3px, 1.4cqw, 11px); display: grid; gap: var(--g); margin-inline: auto; container-type: inline-size; }
 .agd-linha-sem { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--g); }
-.agd-cabsem { text-align: center; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; color: var(--text2); padding-block: 2px 4px; }
+.agd-cabsem { text-align: center; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; color: var(--text2); padding-block: 2px 4px; text-transform: uppercase; letter-spacing: .03em; }
 .agd-cabsem abbr { text-decoration: none; cursor: default; }
 .agd-vaz { aspect-ratio: 1; }
 .agd-linha-sem > [role="gridcell"] { min-width: 0; }
+.agd-gc { position: relative; }
 .agd-cel { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 1; padding: 0; margin: 0; border: 0; border-radius: 22%; cursor: pointer; font: inherit;
   background: var(--calendar-cell-idle); color: var(--calendar-cell-idle-fg); font-variant-numeric: tabular-nums;
   transition: background-color var(--agd-dur) ease, box-shadow var(--agd-dur) ease, filter var(--agd-dur) ease; }
@@ -92,12 +141,38 @@
 .agd-ev { position: absolute; top: 9%; right: 9%; width: 8px; height: 8px; border-radius: 2px; background: var(--agd-evento-tx); box-shadow: 0 0 0 2px var(--card); }
 .agd-cel[data-indisp]::after { content: ""; position: absolute; bottom: 4px; left: 28%; right: 28%; height: 3px; border-radius: 3px; background: currentColor; opacity: .55; }
 .agd-cel[data-indisp] .agd-qtd { bottom: 12%; }
+/* as linhas curtas e o "+N" só existem nas células largas (abaixo, por consulta de contêiner) */
+.agd-linhas, .agd-mais { display: none; }
+.agd-cel .agd-forma { --agd-forma: currentColor; }
+
+/* célula larga (computador e iPad): número no canto, até duas linhas curtas e o "+N" que leva ao dia completo */
+@container (min-width: 640px) {
+  .agd-cel { aspect-ratio: auto; min-height: 104px; place-items: start; align-content: start; justify-items: start; border-radius: 16px; padding: 7px 8px 24px; text-align: start; }
+  .agd-num { justify-self: start; }
+  .agd-qtd { top: 8px; bottom: auto; left: auto; right: 8px; width: auto; min-width: 18px; padding: 2px 6px; border-radius: 999px; background: color-mix(in srgb, currentColor 14%, transparent); }
+  .agd-cel[data-indisp] .agd-qtd { bottom: auto; }
+  .agd-atr { top: 14px; left: auto; right: 50px; }
+  .agd-ev { top: 14px; left: auto; right: 34px; }
+  .agd-cel[data-indisp]::after { left: 8px; right: auto; width: 22px; bottom: 7px; }
+  .agd-linhas { display: grid; gap: 2px; width: 100%; min-width: 0; margin-top: 5px; }
+  .agd-l { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: max(10px, calc(12.5px * var(--esc))); font-weight: 600; line-height: 1.3; color: inherit; }
+  .agd-l-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .agd-mais { position: absolute; z-index: 1; right: 6px; bottom: 5px; display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border: 0; border-radius: 999px; background: var(--text); color: var(--card); font: inherit; font-size: max(10px, calc(12px * var(--esc))); font-weight: 700; cursor: pointer; }
+  .agd-mais::after { content: ""; position: absolute; inset: -12px -8px; }
+  .app[data-dir="d"] .agd-mais:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
+}
+
+/* onde estão os itens do dia selecionado (só quando o painel do dia fica abaixo da grade) */
+.agd-sel-info { display: none; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 44px; margin-top: 12px; padding: 0 12px; border: 0; border-radius: 14px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); font: inherit; font-size: calc(14px * var(--esc)); text-align: start; cursor: pointer; }
+.agd-sel-info .ic { width: 18px; height: 18px; flex: none; transform: rotate(90deg); }
+.app[data-dir="d"] .agd-sel-info:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
+@container agd (max-width: 959px) { .agd-sel-info { display: flex; } }
 
 /* legenda */
 .agd-leg { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; margin-top: 14px; font-size: calc(12px * var(--esc)); color: var(--text2); }
-.agd-marcas, .agd-escala ul { display: flex; align-items: center; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.agd-marcas, .agd-escala ul { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; padding: 0; list-style: none; }
 .agd-marcas li, .agd-escala li { display: inline-flex; align-items: center; gap: 6px; }
-.agd-escala { display: inline-flex; align-items: center; gap: 8px; margin-inline-start: auto; }
+.agd-escala { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-inline-start: auto; }
 .agd-escala ul { gap: 6px; }
 .agd-escala small { font-size: max(10px, calc(11px * var(--esc))); }
 .agd-amostra { display: inline-block; width: 18px; height: 18px; border-radius: 6px; background: var(--calendar-cell-idle); box-shadow: inset 0 0 0 1px var(--brd); flex: none; }
@@ -106,30 +181,61 @@
 .agd-amostra[data-nivel="alta"] { background: var(--calendar-cell-high); }
 .agd-m-hoje { width: 14px; height: 14px; border-radius: 50%; background: var(--text); }
 .agd-m-atr { width: 9px; height: 9px; border-radius: 50%; background: var(--perigo); }
-.agd-m-ev { width: 8px; height: 8px; border-radius: 2px; background: var(--agd-evento-tx); }
 .agd-marcas i { display: inline-block; flex: none; }
 
 /* ---------- itens (dia, semana, hoje) ---------- */
 .agd-item { margin: 0 0 8px; padding: 10px 12px; border-radius: 16px; background: color-mix(in srgb, var(--card) 70%, transparent); box-shadow: 0 0 0 1px var(--card-brd); min-width: 0; }
-.agd-item[data-atrasada] { box-shadow: 0 0 0 1.5px var(--perigo); background: var(--perigo-soft); }
-.agd-evento { background: var(--agd-evento-bg); color: var(--agd-evento-tx); box-shadow: none; }
-.agd-evento[data-dia] { background: var(--cz-bg); color: var(--cz-tx); }
-.agd-demanda:not([data-atrasada]) { background: var(--agd-demanda-bg); color: var(--agd-demanda-tx); box-shadow: none; }
-.agd-indisp { display: flex; align-items: center; gap: 8px; background: var(--cz-bg); box-shadow: none; font-size: calc(14px * var(--esc)); color: var(--cz-tx); }
+/* compromisso: azul, com a barra lateral e o quadrado; de dia inteiro, com a faixa no topo */
+.agd-evento { background: var(--agd-evento-bg); color: var(--agd-evento-tx); box-shadow: inset 4px 0 0 var(--agd-evento-tx); }
+.agd-evento[data-dia] { box-shadow: inset 0 4px 0 var(--agd-evento-tx); }
+/* demanda: amarela; atraso é destaque por cima (borda e barra vermelhas), sem trocar a cor nem a forma da demanda */
+.agd-demanda { background: var(--agd-demanda-bg); color: var(--agd-demanda-tx); box-shadow: none; }
+.agd-demanda[data-atrasada] { box-shadow: 0 0 0 2px var(--perigo), inset 5px 0 0 var(--perigo); }
+/* feriado: listrado; dia indisponível por evento externo: tracejado. Nenhum dos dois é compromisso */
+.agd-indisp { display: flex; align-items: center; gap: 8px; font-size: calc(14px * var(--esc)); box-shadow: none; }
+.agd-indisp .ic { width: 16px; height: 16px; flex: none; }
+.agd-indisp[data-cat="feriado"] { background: repeating-linear-gradient(135deg, var(--cz-bg) 0 8px, color-mix(in srgb, var(--cz-bg) 82%, var(--cz-tx)) 8px 16px); color: var(--cz-tx); }
+.agd-indisp[data-cat="indisponivel"] { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text2) 70%, transparent); border-radius: 16px; outline: 1.5px dashed color-mix(in srgb, var(--text2) 80%, transparent); outline-offset: -1.5px; }
 .agd-abrir { display: grid; gap: 2px; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: start; cursor: pointer; border-radius: 10px; }
 .app[data-dir="d"] .agd-abrir:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
 .agd-tit { font-size: calc(15px * var(--esc)); font-weight: 650; overflow-wrap: anywhere; }
-.agd-hora { font-size: calc(13px * var(--esc)); font-weight: 650; font-variant-numeric: tabular-nums; }
+.agd-hora { display: inline-flex; align-items: center; gap: 6px; font-size: calc(13px * var(--esc)); font-weight: 650; font-variant-numeric: tabular-nums; }
 .agd-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.agd-tag { display: inline-flex; padding: 1px 8px; border-radius: 999px; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
+.agd-tag { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
+.agd-demanda .agd-tag { background: color-mix(in srgb, var(--agd-demanda-tx) 12%, transparent); color: var(--agd-demanda-tx); }
 .agd-tag[data-atrasado] { background: var(--perigo-soft); color: var(--perigo); }
+/* o rótulo de atraso é a única peça vermelha cheia: contraste garantido pelo par do Catalyst (perigo e on-perigo) nos dois temas */
+.agd-demanda .agd-tag[data-atrasado] { background: var(--perigo); color: var(--on-perigo); }
+.agd-demanda .agd-tag[data-atrasado] .agd-forma { --agd-forma: var(--on-perigo); }
 .agd-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.agd-chips:empty { display: none; }
 .agd-nota { margin: 6px 0 0; font-size: calc(13px * var(--esc)); color: var(--text2); }
 .agd-tarefas { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 2px; }
 .agd-tarefas label { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: calc(14px * var(--esc)); cursor: pointer; }
 .agd-tarefas .feita { text-decoration: line-through; color: var(--text2); }
 .agd-alerta { display: flex; align-items: flex-start; gap: 6px; margin: 6px 0 0; font-size: calc(13px * var(--esc)); color: var(--text); }
 .agd-alerta .ic { flex: none; width: 16px; height: 16px; margin-top: 1px; }
+
+/* linhas compactas (Hoje): rótulo e título na mesma linha, tarefas recolhidas */
+.agd-item[data-dens="linha"] { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; margin-bottom: 6px; padding: 4px 10px; }
+.agd-item[data-dens="linha"] .agd-abrir { flex: 1 1 260px; min-height: 44px; display: flex; flex-wrap: wrap; align-items: baseline; align-content: center; gap: 2px 10px; }
+.agd-item[data-dens="linha"] .agd-alerta { flex-basis: 100%; margin: 0 0 6px; }
+.agd-item[data-dens="linha"] .agd-tags { flex: none; }
+.agd-item[data-dens="linha"] .agd-tit { flex: 1 1 12ch; font-size: calc(14px * var(--esc)); }
+.agd-evento[data-dens="linha"] .agd-sub { margin: 0; margin-inline-start: auto; font-size: max(10px, calc(12px * var(--esc))); }
+.agd-demanda[data-dens="linha"] .agd-sub { flex-basis: 100%; margin: 0; font-size: max(10px, calc(12px * var(--esc))); }
+.agd-item[data-dens="linha"] .agd-chips { flex: none; margin: 0; }
+.agd-tdet { flex: none; }
+.agd-tdet[open] { flex-basis: 100%; }
+.agd-tdet summary { display: flex; align-items: center; min-height: 44px; font-size: calc(13px * var(--esc)); font-weight: 650; cursor: pointer; border-radius: 10px; }
+.app[data-dir="d"] .agd-tdet summary:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
+.agd-tdet .agd-tarefas { margin-top: 0; }
+/* itens mínimos (semana): só o rótulo e o assunto, com no máximo três linhas */
+.agd-item[data-dens="mini"] { margin-bottom: 6px; padding: 6px 8px; border-radius: 12px; }
+.agd-item[data-dens="mini"] .agd-abrir { min-height: 36px; align-content: start; }
+.agd-item[data-dens="mini"] .agd-tit { font-size: calc(13.5px * var(--esc)); display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.agd-item[data-dens="mini"] .agd-sub { font-size: max(10px, calc(11.5px * var(--esc))); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agd-item[data-dens="mini"] .agd-tag { padding-inline: 6px; }
 
 .agd-lista { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
 .agd-linha { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 14px; background: color-mix(in srgb, var(--card) 70%, transparent); box-shadow: 0 0 0 1px var(--card-brd); color: var(--text); font: inherit; text-align: start; cursor: pointer; transition: background-color var(--agd-dur) ease; }
@@ -139,17 +245,34 @@
 .agd-linha-t small { font-size: calc(13px * var(--esc)); color: var(--text2); }
 
 /* ---------- semana ---------- */
+/* faixa dos sete dias: só no iPad em pé e no celular, onde a semana vira uma lista agrupada por dia */
+.agd-faixa { display: none; }
+@container agd (max-width: 959px) {
+  .agd-faixa { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+}
+.agd-faixa-d { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 60px; padding: 4px 0 6px; border: 0; border-radius: 14px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); font: inherit; cursor: pointer; }
+.agd-faixa-d[data-fds] { color: var(--text2); }
+.agd-faixa-d[data-sel] { box-shadow: inset 0 0 0 2px var(--text); }
+.app[data-dir="d"] .agd-faixa-d:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
+.agd-faixa-l { font-size: max(10px, calc(11px * var(--esc))); text-transform: uppercase; letter-spacing: .03em; }
+.agd-faixa-n { display: grid; place-items: center; min-width: 1.8em; min-height: 1.8em; border-radius: 999px; font-size: calc(16px * var(--esc)); font-weight: 700; font-variant-numeric: tabular-nums; }
+.agd-faixa-d[data-hoje] .agd-faixa-n { background: var(--text); color: var(--card); }
+.agd-faixa-b { position: relative; display: inline-flex; align-items: center; gap: 4px; min-height: 12px; }
+.agd-faixa-b .agd-amostra { width: 14px; height: 8px; border-radius: 4px; }
+.agd-faixa-b .agd-ev, .agd-faixa-b .agd-atr { position: static; box-shadow: none; }
+
 .agd-sem { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
-@container agd (min-width: 880px) { .agd-sem { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
-@container agd (min-width: 560px) and (max-width: 879px) { .agd-sem { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.agd-dia { position: relative; isolation: isolate; min-width: 0; border-radius: 22px; padding: 10px 10px 6px; border: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--lq-edge); }
+@container agd (min-width: 960px) { .agd-sem { grid-template-columns: repeat(5, minmax(0, 1.15fr)) repeat(2, minmax(0, .85fr)); align-items: stretch; } }
+.agd-dia { position: relative; isolation: isolate; min-width: 0; scroll-margin-top: 84px; border-radius: 22px; padding: 10px 10px 8px; border: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--lq-edge); }
 .agd-dia::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--agd-vidro); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .agd-dia::before { background: var(--solido); } }
 .agd-dia[data-fds] { background: color-mix(in srgb, var(--text2) 6%, transparent); }
 .agd-dia[data-sel] { box-shadow: inset 0 0 0 2px var(--text); }
 .agd-dia[data-hoje] .agd-dia-num { background: var(--text); color: var(--card); }
-.agd-dia-cab { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 6px; margin-bottom: 8px; }
-.agd-dia-cab .agd-dia-carga { grid-column: 1 / -1; margin: 0 4px 2px; }
+.agd-dia-cab { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px 6px; margin-bottom: 0; }
+.agd-dia-cab .agd-dia-sel { order: 1; }
+.agd-dia-cab .agd-dia-carga { order: 2; margin: 0 4px; justify-self: start; }
+.agd-dia-cab .icbtn-s { order: 3; justify-self: end; grid-column: 3; }
 .agd-dia-sel { display: inline-flex; align-items: baseline; gap: 6px; min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: var(--text); font: inherit; cursor: pointer; border-radius: 12px; }
 .app[data-dir="d"] .agd-dia-sel:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
 .agd-dia-nome { font-size: calc(13px * var(--esc)); color: var(--text2); text-transform: capitalize; }
@@ -157,12 +280,31 @@
 .agd-dia-carga { display: inline-flex; align-items: center; gap: 5px; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; }
 .agd-dia-carga .agd-amostra { width: 12px; height: 12px; border-radius: 4px; }
 .agd-dia-carga .agd-atr { position: static; box-shadow: none; }
-.agd-dia .agd-item { padding: 8px 10px; }
 .agd-dia .agd-vazio { margin: 4px 2px 8px; }
+.agd-mais-dia { display: none; }
+/* iPad em pé e celular: um dia por linha, com os compromissos e os prazos lado a lado quando há espaço; dia livre vira uma linha só */
+.agd-dia-corpo { display: grid; gap: 0 12px; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); align-items: start; }
+.agd-dia-corpo > .agd-indisp, .agd-dia-corpo > .agd-vazio, .agd-dia-corpo > .agd-mais-dia { grid-column: 1 / -1; }
+.agd-dia[data-vazio] { display: flex; align-items: center; gap: 12px; padding-block: 4px; }
+.agd-dia[data-vazio] .agd-dia-cab { margin: 0; flex: none; }
+.agd-dia[data-vazio] .agd-dia-corpo { flex: 1; display: block; }
+.agd-dia[data-vazio] .agd-vazio { margin: 0; }
+/* computador: sete colunas alinhadas, sem rolagem; passando de três itens por seção, o "+N mais" abre o resto na própria coluna */
+@container agd (min-width: 960px) {
+  .agd-dia, .agd-dia[data-vazio] { display: block; padding: 10px 10px 8px; }
+  .agd-dia-corpo, .agd-dia[data-vazio] .agd-dia-corpo { display: block; }
+  .agd-dia-cab { grid-template-columns: minmax(0, 1fr) auto; margin-bottom: 8px; }
+  .agd-dia-cab .agd-dia-carga { order: 3; grid-column: 1 / -1; margin: 0 4px 2px; }
+  .agd-dia-cab .icbtn-s { order: 2; grid-column: 2; }
+  .agd-dia:not([data-aberto]) .agd-dia-sec > .agd-item:nth-of-type(n+4) { display: none; }
+  .agd-mais-dia { display: inline-flex; margin-top: 2px; }
+}
 
 /* ---------- hoje ---------- */
 .agd-hoje { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
-@container agd (min-width: 880px) { .agd-hoje { grid-template-columns: repeat(2, minmax(0, 1fr)); } .agd-hoje > .agd-aux { grid-column: 1 / -1; } }
+.agd-col { display: grid; gap: 14px; min-width: 0; align-content: start; }
+@container agd (min-width: 880px) { .agd-hoje { grid-template-columns: repeat(2, minmax(0, 1fr)); } .agd-hoje > .agd-largo { grid-column: 1 / -1; } }
+.agd-atrasadas .agd-cab h3 { color: var(--perigo); }
 
 /* ---------- avisos dentro do aplicativo ---------- */
 .agd-avisos { display: grid; gap: 8px; margin: 0 0 12px; }
@@ -172,6 +314,39 @@
 .app .sino { position: relative; }
 .sino-n { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--acc); color: var(--acc-ink); font-style: normal; font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; line-height: 16px; text-align: center; }
 
+/* ---------- balão de Humor ---------- */
+/* O balão do registro de humor flutua no alto, à direita, e cobria a barra da Agenda (o Novo evento no computador e no iPad; a troca de visão no celular). Enquanto ele existe, a barra
+   deixa a faixa dele livre; onde ele ocupa a largura toda (telas até 899 px), a página desce a altura dele. Só a Agenda é afetada. */
+.app:has(.balao) .agd-barra { padding-inline-end: 352px; }
+@container tela (max-width: 899px) {
+  .app:has(.balao) .agd-barra { padding-inline-end: 0; }
+  .app:has(.balao) .agd { padding-top: 172px; }
+}
+
+/* ---------- iPad em pé e celular: Novo evento só com o ícone (o nome continua no rótulo de acessibilidade) ---------- */
+@container agd (max-width: 959px) {
+  .agd-novo { width: var(--bt, 40px); padding: 0; justify-content: center; flex: none; }
+  .agd-novo span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .agd-periodo { min-width: 0; }
+}
+
+/* ---------- celular: duas linhas compactas ---------- */
+@container agd (max-width: 639px) {
+  .agd-barra { display: grid; gap: 6px; }
+  .agd-topo, .agd-base { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .agd-nav { flex: 1 1 auto; justify-content: space-between; }
+  .agd-periodo { flex: 1 1 auto; min-width: 0; font-size: calc(16px * var(--esc)); }
+  .agd-barra .opcoes { gap: 2px; }
+  .agd-barra .opcoes button { padding: 0 8px; }
+  .app[data-dir="d"] .agd-irhoje { padding-inline: 8px; gap: 4px; }
+  .agd-item[data-dens="linha"] .agd-tags { flex-basis: 100%; }
+  .agd-item[data-dens="linha"] .agd-tit { flex-basis: 100%; }
+  .agd-base { flex-wrap: wrap; row-gap: 4px; }
+  .agd-mostrar-b .ic { display: none; }
+  .agd-dia { padding: 6px 10px 4px; }
+  .agd-dia-sec .agd-h4 { margin-top: 4px; }
+  .agd-mostrar { left: auto; right: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
   .agd-cel, .agd-linha { transition: none; }
 }

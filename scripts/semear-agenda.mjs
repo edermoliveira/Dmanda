@@ -31,6 +31,7 @@ export async function semearAgenda(pasta, ref = null) {
   const g = await dem('Já finalizada', { numero: '107/2026', prazo_original: await mais(1), etapa: 'Fazendo' }); await tarefas(g.id, 2); await c('concluir_demanda', { p_id: g.id }); r.g = await c('buscar_demanda', { p_id: g.id });
   const h = await dem('Pacote grande de tarefas', { numero: '108/2026', prazo_original: await mais(9), etapa: 'Fazendo' }); await tarefas(h.id, 9); r.h = await c('buscar_demanda', { p_id: h.id });
   const dia = await c('salvar_dia_indisponivel', { p: { data: await mais(7), descricao: 'Feriado de teste', categoria: 'Feriado' } }); r.dia = dia.dia;
+  const dia2 = await c('salvar_dia_indisponivel', { p: { data: await mais(15), descricao: 'Congresso externo de teste', categoria: 'Evento externo' } }); r.dia2 = dia2.dia; // dia indisponível por evento externo (sem demanda nesta data)
 
   await db.query(`update public.demandas set etapa_desde = ${instante(0)} where id not in ('${e.id}', '${f.id}')`, [hoje]);
   for (const k of ['a', 'b', 'sem', 'd', 'e', 'f', 'g', 'h']) r[k] = await c('buscar_demanda', { p_id: r[k].id }); // relê: a etapa_desde mudou

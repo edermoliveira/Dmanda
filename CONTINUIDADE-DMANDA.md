@@ -824,3 +824,8 @@ Três pastas no computador do trabalho: `Dmanda` (clone principal, em `bloco/con
 
 **Prévia:** `node scripts/semear-inicio.mjs completo` (servidor parado, só se a pasta não existir), depois `$env:DMANDA_PASTA_TESTE='.dados-teste/inicio-completo'; npm.cmd run dev:exemplos`, em http://localhost:7100. Para ver: abrir "Resposta ao pedido de informação sobre horas extras" (Memorando 2026/250).
 **Aprovação e envio (12/11/2026):** o Éder aprovou expressamente a nova janela de consulta (commit `ecc8de0`) e autorizou o envio da branch `bloco/inicio-perfil-clima` ao GitHub para continuar no computador do trabalho (avanço direto, sem force). Sem confirmação de teste em aparelho real. PR, merge na `main`, deploy e migrações 21 a 24 em produção seguem para etapas próprias; o próximo bloco é o redesenho da Agenda.
+
+
+### AI. Refinamento visual da Agenda (12/11/2026, decisão 69, validação local)
+
+Implementado sobre `914c435` na branch `bloco/inicio-perfil-clima`, só em banco de teste e com dados fictícios; nada enviado, publicado nem aplicado no Supabase real. Detalhes, medições e testes na decisão 69. Resumo: barra única com período entre as setas, "Ir para hoje" diferente da visão "Hoje" e menu Mostrar (escolha única mais dois controles); mês com duas linhas curtas e "+N"; Semana em sete colunas alinhadas no computador e agrupada por dia no iPad em pé e no celular; Hoje em linhas compactas com contadores que dizem o que medem; formas, rótulos e cores por tipo de item, com atraso como destaque; balão de Humor deixa de cobrir a barra. `node scripts/medir-agenda.mjs <rótulo>` mede as alturas na prévia. Pendências: avaliação visual do Éder, balão com texto em 125% e aparelho real. Andamento oficial: 45%.
