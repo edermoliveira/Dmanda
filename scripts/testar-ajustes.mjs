@@ -127,7 +127,7 @@ const desk = await abrir(nav, { viewport: { width: 1360, height: 800 } });
   await pg.click('.tabela tbody tr:has-text("Compra de papel") td >> nth=1').catch(() => {}); 
   await pg.evaluate(() => localStorage.setItem('dmanda:ui', JSON.stringify({ visao: 'lista' }))); await ir(pg, '/demandas'); await pg.waitForSelector('.lista-dem .linha');
   await pg.click('.lista-dem .linha:has(.ld-ass:has-text("Compra de papel")) .ld-abrir'); await pg.waitForSelector('.modal .resumo-chips');
-  ok(await pg.evaluate(() => !!document.querySelector('.modal .resumo-chips .selo')) && /Prazo|Legal|Próprio/.test(await pg.textContent('.modal .resumo-chips')), 'consulta da demanda: o tipo do prazo continua nos detalhes');
+  ok(/Tipo de prazo\s*(Legal|Próprio)/.test((await pg.textContent('.modal [data-secao="chegada"] .ler')) ?? '') && !(await pg.$('.modal .resumo-chips .selo')), 'consulta da demanda: o tipo do prazo continua nos detalhes (em Chegada e prazo, fora do resumo)');
   await pg.keyboard.press('Escape'); await janelaFechada(pg);
   await ir(pg, '/');
   ok(await pg.evaluate(() => document.querySelectorAll('.main .dcard .selo, .main .mini-card .selo').length === 0), 'Início: os cards reaproveitados também estão sem o selo');

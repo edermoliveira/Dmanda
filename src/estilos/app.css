@@ -75,7 +75,6 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app[data-dir="d"] .modal .rascunho-tarefas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; background: var(--grp-campo); font-size: calc(13px * var(--esc)); }
 .app[data-dir="d"] .modal .confirma-fechar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .app[data-dir="d"] .modal .ler-texto { text-align: left; margin: 0; padding: 6px 14px; font-size: calc(14px * var(--esc)); white-space: pre-wrap; overflow-wrap: anywhere; }
-.app[data-dir="d"] .modal .ler-texto.vazio { color: var(--text2); }
 @media (max-width: 520px) {
   .app[data-dir="d"] .modal .passos li span { display: none; }
   .app[data-dir="d"] .modal .passos li[aria-current="step"] { flex: 3 1 0; }
@@ -471,26 +470,44 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app[data-dir="d"] .modal .grp-doc .dois { gap: 0 12px; }
 .app[data-dir="d"] .modal .fld:not(.fld-assunto) > label small.data { font-weight: 400; }
 
-/* ---------- consulta da demanda (decisão 62) ----------
-   Assunto como título (fonte dos títulos, quebra natural), documento como referência secundária, chips de etapa, prazo e prioridade no cabeçalho; Tarefas e Descrição logo depois
-   (lado a lado quando a janela é larga; no estreito, uma sobre a outra com Tarefas primeiro), e então Chegada e prazo, Identificação e Andamento. */
-.app[data-dir="d"] .modal.ed .m-h { position: relative; -webkit-backdrop-filter: none; backdrop-filter: none; background: none; align-items: flex-start; margin-bottom: 2px; }
-.app[data-dir="d"] .modal.ed .m-h h3 { flex: 1 1 auto; min-width: 0; margin-right: 0; padding-top: 6px; text-align: left; font-family: var(--font-h); font-size: calc(28px * var(--esc)); font-weight: 700; line-height: 1.2; letter-spacing: -.01em; text-wrap: balance; overflow-wrap: anywhere; }
-.app[data-dir="d"] .modal .cons-cab { margin: 0 0 14px; }
-.app[data-dir="d"] .modal .cons-doc { margin: 0 0 8px; font-family: var(--font-n); font-size: var(--t-rotulo); font-weight: 600; color: var(--text2); overflow-wrap: anywhere; }
-.app[data-dir="d"] .modal .cons-doc.sem { font-family: var(--font); font-weight: 400; }
-.app[data-dir="d"] .modal .cons-duo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 22px; align-items: start; }
-@container tela (min-width: 1000px) { .app[data-dir="d"] .modal .cons-duo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+/* ---------- consulta da demanda (decisões 62 e 68) ----------
+   Três regiões posicionadas pelo layout (coluna flexível), sem sticky, sem top e sem margem negativa: a barra de controles (Fechar e o menu de mais ações), o corpo (a única parte que rola) e o rodapé.
+   O corpo começa pelo assunto inteiro (o texto de maior destaque da janela, na largura útil e com quebra natural), o documento e o resumo (vencimento efetivo e etapa); depois a grade: Tarefas e
+   Descrição na coluna principal e Chegada e prazo, Andamento e Identificação na coluna de consulta. A grade empilha pela largura interna do corpo (contêiner "corpo"), não pela largura da tela.
+   As regras gerais de .m-h, .m-f e .m-mais (catalyst.css) seguem valendo para as outras janelas; aqui elas são anuladas só para a variante .ed. */
+.app[data-dir="d"] .modal.ed { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.app[data-dir="d"] .modal.ed .m-barra { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px 6px; }
+.app[data-dir="d"] .modal.ed .m-mais { display: grid; position: relative; top: auto; right: auto; transform: none; }
+.app[data-dir="d"] .modal.ed .m-corpo { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; padding: 4px 24px 18px; container: corpo / inline-size; }
+.app[data-dir="d"] .modal.ed .m-corpo:focus, .app[data-dir="d"] .modal.ed .m-corpo:focus-visible { outline: none; }
+.app[data-dir="d"] .modal.ed .m-f { flex: none; position: static; bottom: auto; margin: 0; padding: 12px 24px max(18px, env(safe-area-inset-bottom)); }
+.app[data-dir="d"] .modal.ed .m-f:has(.perigo) { flex-wrap: wrap; }
+@container tela (max-width: 520px) { .app[data-dir="d"] .modal.ed .m-f { margin: 0; padding: 10px 16px max(14px, env(safe-area-inset-bottom)); } }
+.app[data-dir="d"] .modal.ed .m-assunto { margin: 0 0 6px; text-align: left; font-family: var(--font-h); font-size: calc(24px * var(--esc)); font-weight: 700; line-height: 1.2; letter-spacing: -.01em; text-wrap: balance; overflow-wrap: anywhere; }
+.app[data-dir="d"] .modal .cons-cab { margin: 0 0 18px; text-align: left; }
+.app[data-dir="d"] .modal .cons-doc { margin: 0 0 10px; font-family: var(--font-n); font-size: var(--t-rotulo); font-weight: 600; color: var(--text2); overflow-wrap: anywhere; }
+.app[data-dir="d"] .modal .cons-cab .resumo-chips { align-items: center; gap: 8px; margin: 0; }
+.app[data-dir="d"] .modal .cons-venc { padding: 6px 12px; font-size: var(--t-rotulo); font-weight: 700; white-space: normal; }
+.app[data-dir="d"] .modal .cons-venc .ic { flex: none; width: 16px; height: 16px; }
+.app[data-dir="d"] .modal .cons-grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 28px; align-items: start; }
+.app[data-dir="d"] .modal .cons-principal, .app[data-dir="d"] .modal .cons-consulta { min-width: 0; }
+@container corpo (min-width: 720px) {
+  .app[data-dir="d"] .modal.ed .m-assunto { font-size: calc(28px * var(--esc)); }
+  .app[data-dir="d"] .modal .cons-grade { grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); }
+  /* coluna de consulta: estreita, então o rótulo fica sobre o valor (como já acontece no celular) */
+  .app[data-dir="d"] .modal .cons-consulta .ler { grid-template-columns: minmax(0, 1fr); }
+  .app[data-dir="d"] .modal .cons-consulta .ler dt { padding-bottom: 0; }
+}
 .app[data-dir="d"] .modal.ed .sec-h h4 { font-size: var(--t-leitura); font-weight: 700; color: var(--text); letter-spacing: 0; }
+.app[data-dir="d"] .modal.ed .cons-consulta .sec-h h4 { font-size: var(--t-rotulo); color: var(--text2); }
+.app[data-dir="d"] .modal .sec-h h4:has(+ .sec-cont) { flex: none; }
+.app[data-dir="d"] .modal .sec-h .sec-cont { flex: 1 1 auto; min-width: 0; margin-left: 2px; color: var(--text2); }
+.app[data-dir="d"] .modal .ler dd.sec { color: var(--text2); font-size: var(--t-meta); }
+.app[data-dir="d"] .modal .cons-add { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 14px; }
+.app[data-dir="d"] .modal .cons-add .btn[aria-disabled="true"] { opacity: .5; cursor: default; }
 .app[data-dir="d"] .modal .t-ler li[data-proxima] { background: var(--acc-soft); border-radius: 12px; padding-inline: 10px; margin-inline: -10px; }
 .app[data-dir="d"] .modal .t-ler li[data-proxima] + li { border-top-color: transparent; }
 .app[data-dir="d"] .modal .t-ler .prox-rot { margin-left: auto; flex: none; font-size: var(--t-meta); font-weight: 700; color: var(--acc-text); }
-@container tela (max-width: 899px) {
-  /* celular e tablet em pé: o botão de mais ações fica no canto do cabeçalho e o título não passa por baixo dele */
-  .app[data-dir="d"] .modal.ed .m-mais { top: 22px; transform: none; }
-  .app[data-dir="d"] .modal.ed .m-h h3 { padding-right: 48px; font-size: calc(24px * var(--esc)); }
-}
-.app[data-dir="d"] .modal .cons-cab { text-align: left; }
 /* Configurações em tela estreita: a prévia de aparência fica abaixo dos controles (ao lado deles quando há espaço, ver acima) */
 .app[data-dir="d"] .cfg-controles { order: 1; }
 .app[data-dir="d"] .cfg-lado { order: 2; margin: 4px 0 16px; }

@@ -110,7 +110,7 @@ await A.pg.waitForFunction(() => /Sem prazo com acao/.test(document.querySelecto
 // ================= 3) arquivar em outro aparelho: ao recarregar, só a vaga 3 muda (quatro vagas) =================
 await ir(B.pg, '/demandas');
 await B.pg.click('.dcard:has-text("Vence hoje") .assunto'); await B.pg.waitForSelector('.modal .ler');
-await B.pg.click('.modal .m-sec:has-text("Arquivar")'); await B.pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 });
+await B.pg.click('.modal .m-mais'); await B.pg.click('.mv-menu [role="menuitem"]:has-text("Arquivar")'); await B.pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 });
 await ir(A.pg, '/'); await esperarVagas(A.pg);
 {
   const v = await vagas(A.pg);

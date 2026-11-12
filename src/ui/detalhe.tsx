@@ -1,5 +1,7 @@
 'use client';
-// Consulta da demanda (decisão 27): ao abrir um card, a pessoa vê tudo organizado e com rótulos claros, numa única janela com rolagem vertical.
+// Consulta da demanda (decisões 27 e 68): ao abrir um card, a pessoa vê tudo organizado e com rótulos claros. A janela tem três regiões (barra de controles, corpo que rola e rodapé): o corpo começa
+// pelo assunto, o documento e o resumo (vencimento efetivo e etapa); depois Tarefas e Descrição na coluna principal e Chegada e prazo, Andamento e Identificação na coluna de consulta (uma coluna só
+// quando a janela é estreita, na mesma ordem). É uma única estrutura: nenhum campo, id ou controle é repetido entre as larguras.
 // Cada seção tem um lápis: ele abre a edição daquela seção no próprio lugar, com Cancelar (descarta) e Salvar. O cadastro guiado serve só para criar.
 // Regras herdadas do desenho aprovado: clicar fora não fecha se há texto novo; Esc, X e Fechar guardam o rascunho; só Cancelar descarta; salvar é atômico no banco e
 // recusado (nada gravado, edição local mantida) se a demanda mudou em outro aparelho depois que a edição começou.
@@ -9,11 +11,11 @@ import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { Janela } from './janela-base';
 import { OrigemEntrada } from './entradas';
-import { ChipEspera, ChipPrazo, ChipSelo, SeloPrioridade } from './cartoes';
+import { ChipEspera, SeloPrioridade } from './cartoes';
 import {
   CAMPOS_DA_SECAO, comAtalhoCoerente, CamposChegadaPrazo, CamposIdentificacao, chaveTarefa, Descricao, doCampos, EditorTarefas, mudou, paraDadosSecao, paraEnvio, type Campos, type Secao, type TarefaForm,
 } from './campos';
-import { dataBR, diasAte, diasDesde, diasDesdeInstante, ETAPAS, numeroDe, origemDe, permanencia, plural, temArea, titulo, type DadosDemanda, type Demanda, type Etapa } from '@/lib/demandas';
+import { atrasada, dataBR, dataCurta, diasAte, diasDesde, diasDesdeInstante, ETAPAS, numeroDe, origemDe, permanencia, plural, temArea, titulo, type DadosDemanda, type Demanda, type Etapa } from '@/lib/demandas';
 import { dataComSemana } from '@/lib/prazos';
 import type { TarefaEdicao } from '@/nucleo/operacoes';
 
@@ -84,6 +86,11 @@ function Detalhe({ d }: { d: Demanda }) {
     else setC((x) => ({ ...x, ...Object.fromEntries(CAMPOS_DA_SECAO[s].map((k) => [k, original[k]])) }));
     setErro(''); setAbertas((l) => [...l, s]);
   };
+  // "Adicionar descrição" e "Adicionar tarefa": o mesmo editor do lápis da seção (e a mesma trava: uma seção em edição por vez). O botão some ao abrir, então o foco vai ao primeiro campo da seção.
+  const adicionar = (s: Secao, rotulo: string) => (
+    <button type="button" className="btn mini" data-adicionar={s} aria-disabled={abertas.length > 0 || undefined} title={abertas.length > 0 ? 'Salve ou cancele a edição aberta antes de editar outra seção' : undefined}
+      onClick={() => { if (abertas.length > 0) return; abrir(s); requestAnimationFrame(() => document.querySelector<HTMLElement>(`.modal [data-secao="${s}"] :is(textarea, input:not([type=checkbox]))`)?.focus()); }}><Icone nome="plus" />{rotulo}</button>
+  );
   const cancelarSecao = (s: Secao) => {
     const resto = abertas.filter((x) => x !== s);
     setAbertas(resto); setErro('');
@@ -124,7 +131,9 @@ function Detalhe({ d }: { d: Demanda }) {
   // ---------- leitura ----------
   const perm = permanencia(d, hoje);
   const k = d.prazo ? diasAte(d.prazo, hoje) : null;
-  const situacaoPrazo = k === null ? '' : fin ? '' : k < 0 ? ` (vencida há ${plural(-k, 'dia')})` : k === 0 ? ' (vence hoje)' : ` (faltam ${plural(k, 'dia')})`;
+  // Vencimento efetivo no resumo: a situação aparece uma vez só, aqui (a linha Vencimento, mais abaixo, fica com a data completa). Vermelho só para demanda aberta e vencida.
+  const resumoPrazo = !d.prazo || k === null ? '' : fin ? `Prazo em ${dataCurta(d.prazo)}` : k < 0 ? `Venceu em ${dataCurta(d.prazo)} · há ${plural(-k, 'dia')}` : k === 0 ? `Vence hoje · ${dataCurta(d.prazo)}` : `Vence em ${dataCurta(d.prazo)} · faltam ${plural(k, 'dia')}`;
+  const feitas = d.tarefas.filter((t) => t.concluida).length;
   const dias0 = diasDesdeInstante(d.etapa_desde, hoje);
   const documento = d.tipo || numeroDe(d) ? titulo(d) : '';
   const proximaId = d.tarefas.find((t) => !t.concluida)?.id;
@@ -133,12 +142,10 @@ function Detalhe({ d }: { d: Demanda }) {
     <>
       <span className="data">Excluir de vez? Não dá para desfazer.</span>
       <button className="btn perigo" onClick={async () => { if (await excluir(d.id)) { guardarRascunho(chave, null); fecharJanela(); } }}><Icone nome="trash" />Confirmar exclusão</button>
-      <span className="esp" /><button className="btn" onClick={() => setConf(false)}>Cancelar</button>
+      <span className="esp" />{/* a chave faz o React montar um botão novo (o rodapé normal tem um botão na mesma posição), para o foco ir de fato à ação menos destrutiva */}<button key="cancelar-exclusao" className="btn" autoFocus onClick={() => { setConf(false); requestAnimationFrame(() => document.querySelector<HTMLElement>('.modal .m-mais')?.focus()); }}>Cancelar</button>
     </>
   ) : (
     <>
-      <button className="btn mini m-sec" disabled={sujo} onClick={async () => { const r = await arquivar(d.id); if (r) { guardarRascunho(chave, null); fecharJanela(); } }}><Icone nome="archive" />{d.arquivada_em ? 'Arquivada' : 'Arquivar'}</button>
-      <button className="btn mini m-sec" onClick={() => setConf(true)}><Icone nome="trash" />Excluir</button>
       <span className="esp" />
       {sujo ? <span className="data">Salve ou cancele a edição aberta para mudar a etapa.</span> : null}
       <button className="btn" onClick={fecharGuardando}>Fechar</button>
@@ -149,8 +156,8 @@ function Detalhe({ d }: { d: Demanda }) {
   );
 
   return (
-    <Janela titulo={d.assunto} larga editorial aoFechar={fecharGuardando} sujo={sujo} rodape={rodape}
-      extraCab={conf ? null : <button type="button" className="icbtn-s m-mais" aria-haspopup="menu" aria-label="Mais ações da demanda: arquivar ou excluir" title="Mais ações" onClick={(e) => { const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setMenuAcoes((m) => (m ? null : { x: b.right - a.left, y: b.bottom - a.top })); }}><Icone nome="ellipsis" /></button>}>
+    <Janela titulo={d.assunto} larga editorial foco={abertas.length ? 'campo' : 'janela'} aoFechar={fecharGuardando} sujo={sujo} rodape={rodape}
+      extraCab={conf ? null : <button type="button" className="icbtn-s m-mais" aria-haspopup="menu" aria-expanded={!!menuAcoes} aria-label="Mais ações da demanda: arquivar ou excluir" title="Mais ações" onClick={(e) => { const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setMenuAcoes((m) => (m ? null : { x: b.right - a.left, y: b.bottom - a.top })); }}><Icone nome="ellipsis" /></button>}>
       {recuperado ? <p className="data rec">Rascunho recuperado nas seções abertas. Cancelar descarta as alterações da seção.</p> : null}
       {desatualizada ? (
         <p className="data rec" role="alert" id="m-conflito">
@@ -160,12 +167,16 @@ function Detalhe({ d }: { d: Demanda }) {
       ) : null}
       {d.entrada_id ? <OrigemEntrada id={d.entrada_id} /> : null}
       <div className="cons-cab">
-        <p className={`cons-doc${documento ? '' : ' sem'}`} data-documento>{documento || 'Sem documento associado'}</p>
-        <div className="resumo-chips"><span className="chip neutro">{fin ? 'Finalizada' : d.etapa}</span><ChipEspera d={d} /><ChipPrazo d={d} /><ChipSelo d={d} /><SeloPrioridade d={d} />{d.arquivada_em ? <span className="chip neutro">Arquivada</span> : null}</div>
+        {documento ? <p className="cons-doc" data-documento>{documento}</p> : null}
+        <div className="resumo-chips">
+          {resumoPrazo ? <span className={`pz cons-venc${atrasada(d, hoje) ? ' venc' : ''}`} data-resumo-prazo><Icone nome="calendar" />{resumoPrazo}</span> : null}
+          <span className="chip neutro" data-resumo-etapa>{fin ? 'Finalizada' : d.etapa}</span><ChipEspera d={d} /><SeloPrioridade d={d} />{d.arquivada_em ? <span className="chip neutro">Arquivada</span> : null}
+        </div>
       </div>
 
-      <div className="cons-duo">
-      <Bloco ctx={ctx} s="tarefas" editor={<>{erro ? <p className="data" role="alert" style={{ color: 'var(--perigo)' }}>{erro}</p> : null}<EditorTarefas tarefas={tarefas} setTarefas={setTarefas} nt={nt} setNt={setNt} /></>}>
+      <div className="cons-grade">
+      <div className="cons-principal">
+      <Bloco ctx={ctx} s="tarefas" extra={d.tarefas.length ? <small className="data sec-cont" data-contagem>{feitas} de {d.tarefas.length} concluídas</small> : null} editor={<>{erro ? <p className="data" role="alert" style={{ color: 'var(--perigo)' }}>{erro}</p> : null}<EditorTarefas tarefas={tarefas} setTarefas={setTarefas} nt={nt} setNt={setNt} /></>}>
         {d.tarefas.length ? (
           <ul className="t-ler">
             {d.tarefas.map((t) => (
@@ -175,14 +186,14 @@ function Detalhe({ d }: { d: Demanda }) {
               </li>
             ))}
           </ul>
-        ) : <div className="proxima vazia"><span>Nenhuma tarefa cadastrada</span></div>}
-        <p className="data m-prog">{d.tarefas.length ? `${d.tarefas.filter((t) => t.concluida).length} de ${d.tarefas.length} concluídas. ` : ''}Toque no lápis para adicionar, alterar ou remover tarefas.</p>
+        ) : <div className="cons-add"><span className="data">Nenhuma tarefa cadastrada</span>{adicionar('tarefas', 'Adicionar tarefa')}</div>}
       </Bloco>
       <Bloco ctx={ctx} s="descricao" editor={<Descricao c={c} mudar={mudar} prefixo="d" />}>
-        <p className={`ler-texto${d.descricao.trim() ? '' : ' vazio'}`}>{d.descricao.trim() || 'Sem descrição'}</p>
+        {d.descricao.trim() ? <p className="ler-texto">{d.descricao.trim()}</p> : <div className="cons-add">{adicionar('descricao', 'Adicionar descrição')}</div>}
       </Bloco>
-
       </div>
+
+      <aside className="cons-consulta" aria-label="Dados da demanda">
       <Bloco ctx={ctx} s="chegada" editor={<CamposChegadaPrazo c={c} mudar={mudar} prefixo="d" hoje={hoje} dias={dias} legado={d.prazo_legado} />}>
         <dl className="ler">
           <Linha rotulo="Chegou em" valor={d.chegou_em ? dataBR(d.chegou_em) : null} />
@@ -190,20 +201,12 @@ function Detalhe({ d }: { d: Demanda }) {
           <Linha rotulo="Tipo de prazo" valor={d.prazo ? d.prazo_tipo : null} />
           {d.prazo ? (
             <>
-              <dt>Vencimento</dt><dd><b>{dataComSemana(d.prazo)}</b>{situacaoPrazo}</dd>
-              {d.prazo_original && d.prazo_original !== d.prazo ? <><dt>Prazo original</dt><dd>{dataComSemana(d.prazo_original)}</dd><dt>Ajuste</dt><dd>Antecipado para o dia disponível anterior. Dias pulados: {d.prazo_ajuste}.</dd></> : null}
-              {d.prazo_dias && d.prazo_base_em ? <><dt>Contagem</dt><dd>{d.prazo_dias} dias corridos a partir de {dataBR(d.prazo_base_em)}</dd></> : null}
-              {d.prazo_legado ? <><dt>Origem do prazo</dt><dd>Já existia antes do cálculo por prazo original e foi mantido como referência.</dd></> : null}
+              <dt>Vencimento</dt><dd><b>{dataComSemana(d.prazo)}</b></dd>
+              {d.prazo_original && d.prazo_original !== d.prazo ? <><dt>Prazo original</dt><dd className="sec">{dataComSemana(d.prazo_original)}</dd><dt>Ajuste</dt><dd className="sec">Antecipado para o dia disponível anterior. Dias pulados: {d.prazo_ajuste}.</dd></> : null}
+              {d.prazo_dias && d.prazo_base_em ? <><dt>Contagem</dt><dd className="sec">{d.prazo_dias} dias corridos a partir de {dataBR(d.prazo_base_em)}</dd></> : null}
+              {d.prazo_legado ? <><dt>Origem do prazo</dt><dd className="sec">Já existia antes do cálculo por prazo original e foi mantido como referência.</dd></> : null}
             </>
           ) : <><dt>Vencimento</dt><dd className="vazio">Sem prazo</dd></>}
-        </dl>
-      </Bloco>
-
-      <Bloco ctx={ctx} s="identificacao" editor={<CamposIdentificacao c={c} mudar={mudar} prefixo="d" />}>
-        <dl className="ler">
-          <Linha rotulo="Origem da solicitação" valor={origemDe(d)} />
-          {temArea(d.tipo) ? <Linha rotulo="Área" valor={d.area} /> : null}
-          {d.rapida ? <Linha rotulo="Marca" valor="Rápida" /> : null}
         </dl>
       </Bloco>
 
@@ -235,24 +238,35 @@ function Detalhe({ d }: { d: Demanda }) {
         </dl>
       </Bloco>
 
-      {menuAcoes ? <MenuAcoes pos={menuAcoes} fechar={() => setMenuAcoes(null)} aoArquivar={async () => { setMenuAcoes(null); const r = await arquivar(d.id); if (r) { guardarRascunho(chave, null); fecharJanela(); } }} aoExcluir={() => { setMenuAcoes(null); setConf(true); }} /> : null}
+      <Bloco ctx={ctx} s="identificacao" editor={<CamposIdentificacao c={c} mudar={mudar} prefixo="d" />}>
+        <dl className="ler">
+          <Linha rotulo="Origem da solicitação" valor={origemDe(d)} />
+          {temArea(d.tipo) ? <Linha rotulo="Área" valor={d.area} /> : null}
+          {d.rapida ? <Linha rotulo="Marca" valor="Rápida" /> : null}
+        </dl>
+      </Bloco>
+      </aside>
+      </div>
+
+      {menuAcoes ? <MenuAcoes pos={menuAcoes} fechar={() => setMenuAcoes(null)} rotuloArquivar={d.arquivada_em ? 'Arquivada' : 'Arquivar'} bloqueado={sujo} aoArquivar={async () => { setMenuAcoes(null); const r = await arquivar(d.id); if (r) { guardarRascunho(chave, null); fecharJanela(); } }} aoExcluir={() => { setMenuAcoes(null); setConf(true); }} /> : null}
     </Janela>
   );
 }
 
 type CtxBloco = { abertas: Secao[]; lapis: (s: Secao) => ReactNode; acoes: (s: Secao) => ReactNode; erro: string };
 /** Uma seção da consulta: leitura com o lápis no cabeçalho ou, em edição, o editor com Cancelar e Salvar. Fica fora do componente principal para os campos não perderem o foco a cada tecla. */
-function Bloco({ ctx, s, editor, children }: { ctx: CtxBloco; s: Secao; editor: ReactNode; children: ReactNode }) {
+function Bloco({ ctx, s, editor, extra, children }: { ctx: CtxBloco; s: Secao; editor: ReactNode; extra?: ReactNode; children: ReactNode }) {
   const editando = ctx.abertas.includes(s);
   return (
     <section className="sec" aria-label={NOME_SECAO[s]} data-secao={s}>
-      <div className="sec-h"><h4>{NOME_SECAO[s]}</h4>{editando ? null : ctx.lapis(s)}</div>
+      <div className="sec-h"><h4>{NOME_SECAO[s]}</h4>{editando ? null : extra}{editando ? null : ctx.lapis(s)}</div>
       {editando ? <>{ctx.erro && s !== 'tarefas' ? <p className="data" role="alert" style={{ color: 'var(--perigo)' }}>{ctx.erro}</p> : null}{editor}{ctx.acoes(s)}</> : children}
     </section>
   );
 }
 
-function MenuAcoes({ pos, fechar, aoArquivar, aoExcluir }: { pos: { x: number; y: number }; fechar: () => void; aoArquivar: () => void; aoExcluir: () => void }) {
+/** Menu "⋯" da barra: as ações secundárias da janela. Arquivar segue a regra que o botão do rodapé tinha: bloqueado enquanto há edição não salva (continua focável, para a explicação ser lida). */
+function MenuAcoes({ pos, fechar, rotuloArquivar, bloqueado, aoArquivar, aoExcluir }: { pos: { x: number; y: number }; fechar: () => void; rotuloArquivar: string; bloqueado: boolean; aoArquivar: () => void; aoExcluir: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const m = ref.current; if (!m) return;
@@ -271,7 +285,7 @@ function MenuAcoes({ pos, fechar, aoArquivar, aoExcluir }: { pos: { x: number; y
   if (!alvo) return null;
   return createPortal(
     <div ref={ref} className="mv-menu" role="menu" aria-label="Ações da demanda">
-      <button type="button" role="menuitem" onClick={aoArquivar}><Icone nome="archive" />Arquivar</button>
+      <button type="button" role="menuitem" aria-disabled={bloqueado || undefined} title={bloqueado ? 'Salve ou cancele a edição aberta antes de arquivar' : undefined} onClick={() => { if (!bloqueado) aoArquivar(); }}><Icone nome="archive" />{rotuloArquivar}</button>
       <button type="button" role="menuitem" className="perigo" onClick={aoExcluir}><Icone nome="trash" />Excluir</button>
     </div>, alvo);
 }

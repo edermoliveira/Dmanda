@@ -811,3 +811,15 @@ Três pastas no computador do trabalho: `Dmanda` (clone principal, em `bloco/con
 ### AG. Aprovação do Início e envio da branch (11/11/2026, decisão 67)
 
 **Estado:** o Éder aprovou expressamente a prévia do Início e os três ajustes da decisão 66 (commit `887b116`) e autorizou o envio da branch `bloco/inicio-perfil-clima` ao GitHub (avanço direto, sem force). **Não confirmado em aparelho real:** balão por toque, baralho e faixa do iPad (testes emulados). **Pendências de publicação, cada uma com autorização específica:** PR da branch, merge na `main`, deploy na Vercel e aplicação das migrações 21 a 24 no Supabase real (cada uma com dry-run, sem `db reset`, antes de publicar o código; o real está na 20). **Próximo bloco:** redesenho da Agenda, a partir da versão aprovada do Início (preservar cores, mapa de carga, tipos de marcação e semana de segunda a domingo). Andamento oficial: 45%.
+
+### AH. Janela de consulta da demanda em três regiões (12/11/2026, decisão 68, validação local)
+
+**Estado:** implementado e validado só em banco local de teste, na branch `bloco/inicio-perfil-clima`, em um commit local **sem envio** (o remoto da branch segue em `f8bd562`). Texto completo em `DECISOES.md` (decisão 68). Andamento oficial: 45%. Agenda, push, deploy e Supabase real seguem para etapas próprias.
+
+**O que mudou:** `src/ui/janela-base.tsx` (variante `editorial` com barra, corpo rolável e rodapé; as outras janelas ficam iguais), `src/ui/detalhe.tsx` (resumo com o vencimento efetivo, grade de duas colunas, Adicionar descrição e Adicionar tarefa, Arquivar e Excluir no menu da barra, foco inicial dentro da janela) e `src/estilos/app.css` (bloco "consulta da demanda"). `catalyst.css` não foi alterado. Sem migração e sem mudança de dados.
+
+**Testes:** `testar:visual` 112, `testar:app` 132, `testar:interface` 161, `testar:ajustes` 604, `testar:origem` 58; `tsc`, `eslint` e `verificar:cores` limpos. Não rodaram (nenhum seletor atingido): prioridade, config, agenda, entradas, perfil, resistencia, inicio.
+
+**Pendências:** avaliação do Éder na prévia; Safari em iPhone e iPad reais (barras do navegador, área segura inferior, teclado virtual ao editar); limpeza opcional das regras gerais de `.m-mais` em `catalyst.css`; redesenho da Agenda como próximo bloco; migrações 21 a 24 em produção, em etapa própria.
+
+**Prévia:** `node scripts/semear-inicio.mjs completo` (servidor parado, só se a pasta não existir), depois `$env:DMANDA_PASTA_TESTE='.dados-teste/inicio-completo'; npm.cmd run dev:exemplos`, em http://localhost:7100. Para ver: abrir "Resposta ao pedido de informação sobre horas extras" (Memorando 2026/250).

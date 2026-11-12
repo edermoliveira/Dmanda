@@ -129,7 +129,7 @@ async function capturar({ tela, vpNome, tema, texto, fraunces }) {
       await pg.locator('.dcard', { hasText: alvo }).first().locator('.assunto').click(); await pg.waitForSelector('.modal [data-secao]', { timeout: 15000 });
     }
     await estavel(pg); await caberTudo(pg, vp);
-    await pg.evaluate(() => document.querySelectorAll('.modal, .main').forEach((e) => { e.scrollTop = 0; })); // o foco da janela pode ter rolado o conteúdo alguns pixels
+    await pg.evaluate(() => document.querySelectorAll('.modal, .modal .m-corpo, .main').forEach((e) => { e.scrollTop = 0; })); // o foco da janela pode ter rolado o conteúdo alguns pixels
     await new Promise((r) => setTimeout(r, 200));
     await pg.screenshot({ path: `${PASTA_LADO}/${nome}.png` });
     feitas.push({ nome, tela, vp: vpNome, tema, texto, fraunces });
