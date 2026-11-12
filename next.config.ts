@@ -9,7 +9,14 @@ const cabecalhosSeguranca = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
 ];
 
+// Prévia local no celular pelo IP da rede (Safari do iPhone): o Next em desenvolvimento bloqueia origens que não sejam localhost, e a tela ficava em "Carregando".
+// Vale só no banco de teste (npm run dev:teste e dev:exemplos) e nunca em produção; a lista pode ser trocada por DMANDA_ORIGENS_DEV (hosts separados por vírgula).
+const origensDevPrevia = process.env.NODE_ENV !== 'production' && process.env.DMANDA_BANCO === 'teste'
+  ? (process.env.DMANDA_ORIGENS_DEV?.split(',').map((h) => h.trim()).filter(Boolean) ?? ['192.168.*.*', '10.*.*.*'])
+  : [];
+
 const nextConfig: NextConfig = {
+  allowedDevOrigins: origensDevPrevia,
   async headers() {
     return [{ source: '/:path*', headers: cabecalhosSeguranca }];
   },

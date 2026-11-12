@@ -124,7 +124,7 @@ export function MiniCalendario() {
               const itens = mapa.get(data) ?? [], cats = categoriasDoDia(itens), selecionado = data === sel, mistura = corMisturada(cats, corDa);
               return (
                 <div key={data} role="gridcell" aria-selected={selecionado}>
-                  <button type="button" className="mc-dia" data-data={data} data-hoje={data === hoje || undefined} data-sel={selecionado || undefined} data-fora={!doMes || undefined} data-cats={cats.join(' ') || undefined} data-n={cats.length || undefined}
+                  <button type="button" className="mc-dia" data-data={data} data-hoje={data === hoje || undefined} data-sel={selecionado || undefined} data-fora={!doMes || undefined} data-fim-semana={indiceSemana(data) >= 5 || undefined} data-cats={cats.join(' ') || undefined} data-n={cats.length || undefined}
                     style={mistura ? ({ backgroundColor: mistura } as CSSProperties) : undefined} tabIndex={data === diaTabulavel ? 0 : -1} aria-current={data === hoje ? 'date' : undefined}
                     aria-label={descreverDiaMini(data, itens, { hoje, selecionado })} aria-describedby={cartao?.data === data && itens.length ? 'mc-cartao' : undefined}
                     onClick={() => escolher(data)}

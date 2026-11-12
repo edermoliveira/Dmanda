@@ -130,6 +130,7 @@ São regras de trabalho. A configuração de plugins do projeto está em `.claud
 - Ao instalar plugins, skills ou MCPs a pedido do usuário, informar o que ficou instalado, o escopo (usuário ou projeto) e que o outro computador precisa repetir a instalação.
 - Antes de excluir qualquer pasta ou arquivo, olhar o alvo e conferir que nada exclusivo se perde. Excluir só com pedido ou autorização. Não apagar dados locais do usuário.
 - Cards e post-its nunca têm barra de rolagem: se não couber, mostrar só o título.
+- Cards de demanda (decisão 66): na mesma fila, grade ou pilha, todos têm a mesma largura e a mesma altura (`--cardh`); o conteúdo se ajusta ao card, nunca o card ao conteúdo (a Nova urgência usa a medida do Para hoje).
 - Texto digitado nunca se perde: clicar fora de uma janela com texto não fecha, Esc e X guardam rascunho, só Cancelar descarta.
 - Toda informação incluída pelo usuário (tarefa, nota, evento, demanda, perfil) precisa ser alterável de forma fácil, de preferência no próprio lugar.
 - Tom dos textos: simpático e direto, sem bajulação, com tom de alerta quando necessário.

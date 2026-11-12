@@ -109,6 +109,8 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 /* ---------- card: o título nunca é espremido (decisão 35) ----------
    A altura do título é decidida só pelo ajuste de visoes.tsx (linhas inteiras, de MINIMO a TETO); ele não encolhe por flexão e não cede espaço à descrição. */
 .app .dcard .face.front .assunto.fit { flex: 0 0 auto; min-height: 0; }
+/* Tamanho dos cards de demanda (decisão 66, regra compartilhada): a altura é única (--cardh, no .dcard de estilo.css) e a largura é a da célula da fila, grade ou pilha; o conteúdo se ajusta ao card (ajuste de espaço), nunca o card ao conteúdo, e sem barra de rolagem. */
+.app[data-dir="d"] .dcard { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; }
 
 /* ---------- exceção à escala: campos de texto no toque ----------
    Com menos de 16 px o Safari do iPhone e do iPad dá zoom ao focar o campo e desloca a tela. No toque (pointer: coarse) os campos de digitação ficam em 16 px; no computador seguem a escala. */

@@ -127,6 +127,46 @@ await subir(pastaCompleto);
   ok(ordemApoio.join() === 'humor,clima,calendario', `Humor, Clima e mini calendário, nessa ordem (${ordemApoio.join()})`);
   const sem = await pg.evaluate(() => ({ x: document.documentElement.scrollWidth - document.documentElement.clientWidth, comBarra: [...document.querySelectorAll('.ph .dcard')].filter((c) => c.scrollHeight > c.clientHeight + 1).length }));
   ok(sem.x <= 0 && sem.comBarra === 0, 'sem rolagem horizontal da página e sem barra de rolagem em card');
+  // --- decisão 66: tamanho único dos cards, ajuda do Para hoje e fim de semana no mini calendário
+  {
+    const medidasCards = await pg.$$eval('[data-painel="para-hoje"] .dcard', (l) => l.map((e) => { const r = e.getBoundingClientRect(); return `${r.width.toFixed(1)}x${r.height.toFixed(1)}`; }));
+    ok(medidasCards.length === 7 && new Set(medidasCards).size === 1, `Para hoje e Nova urgência: os sete cards têm a mesma largura e a mesma altura (${[...new Set(medidasCards)].join(', ')})`);
+    ok((await pg.$$eval('[data-painel="para-hoje"] h3 small, [data-painel="para-hoje"] > h3 + .data', (l) => l.length)) === 0 && (await pg.$eval('[data-painel="para-hoje"] > h3', (e) => e.firstElementChild.textContent)) === 'Para hoje', 'o título do Para hoje é só "Para hoje", seguido do botão de ajuda');
+    const bt = pg.getByRole('button', { name: 'Sobre o Para hoje' });
+    const topo = async () => pg.$$eval('[data-painel="para-hoje"] .dcard', (l) => l.map((e) => Math.round(e.getBoundingClientRect().y * 10) / 10).join());
+    const antes = await topo();
+    ok((await bt.getAttribute('aria-expanded')) === 'false' && (await pg.locator('.ajuda-balao').count()) === 0, 'a ajuda começa fechada, com nome acessível "Sobre o Para hoje"');
+    await bt.click(); await esperar(150);
+    const balao = await pg.$eval('.ajuda-balao', (e) => { const r = e.getBoundingClientRect(); return { t: e.textContent, ok: r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight, role: e.getAttribute('role'), liga: document.querySelector('.ajuda-b').getAttribute('aria-controls') === e.id }; });
+    ok((await bt.getAttribute('aria-expanded')) === 'true' && balao.t === 'Até quatro demandas em foco. Pedidos da Prefeita e do Gabinete têm prioridade. Ao concluir uma demanda, a vaga é liberada.' && balao.ok && balao.liga, 'o clique abre o balão curto, ligado ao botão e dentro da janela');
+    ok((await topo()) === antes, 'abrir o balão não desloca os cards');
+    await pg.locator('.ajuda-balao').click(); await esperar(100);
+    ok((await pg.locator('.ajuda-balao').count()) === 1, 'clicar no texto do balão não o fecha');
+    await pg.keyboard.press('Escape'); await esperar(100);
+    ok((await pg.locator('.ajuda-balao').count()) === 0 && (await bt.evaluate((e) => e === document.activeElement)), 'Esc fecha o balão e devolve o foco ao botão');
+    await bt.focus(); await pg.keyboard.press('Enter'); await esperar(100);
+    const porEnter = await pg.locator('.ajuda-balao').count();
+    await pg.mouse.click(900, 200); await esperar(100);
+    ok(porEnter === 1 && (await pg.locator('.ajuda-balao').count()) === 0, 'Enter abre e o clique fora fecha');
+    await pg.locator('.ini-contadores .stat').last().focus(); await pg.keyboard.press('Tab');
+    ok(await pg.evaluate(() => document.activeElement.classList.contains('ajuda-b') && document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).outlineStyle !== 'none'), 'o botão de ajuda recebe foco visível pelo teclado');
+
+    const sem = await pg.$$eval('.mc-dia', (l) => l.map((b) => { const dia = new Date(`${b.dataset.data}T00:00:00Z`).getUTCDay(); return { fim: dia === 0 || dia === 6, marca: b.hasAttribute('data-fim-semana'), estilo: b.hasAttribute('style'), bg: getComputedStyle(b).backgroundColor, depois: getComputedStyle(b, '::after').content }; }));
+    ok(sem.length === 42 && sem.every((c) => c.fim === c.marca) && sem.filter((c) => c.marca).length === 12, 'só sábados e domingos (12 das 42 células) levam a marca de fim de semana');
+    const semMarca = sem.filter((c) => c.marca && !c.estilo), comMarca = sem.filter((c) => c.marca && c.estilo);
+    ok(semMarca.length > 0 && semMarca.every((c) => /\/ 0\.06\)$/.test(c.bg)) && sem.filter((c) => !c.marca && !c.estilo).every((c) => /(transparent|\/ 0\)|rgba\(0, 0, 0, 0\))/.test(c.bg)), 'fim de semana sem marcação: cinza neutro discreto; dia útil sem marcação continua sem fundo');
+    ok(comMarca.length > 0 && comMarca.every((c) => c.depois !== 'none' && !/\/ 0\.06\)$/.test(c.bg)) && sem.filter((c) => !c.marca && c.estilo).every((c) => c.depois === 'none'), 'fim de semana com marcação: mantém a cor da categoria ou a mistura e ganha só um traço cinza; dia útil marcado não tem traço');
+    const dataSab = await pg.$eval('.mc-dia[data-fim-semana]:not([style]):not([data-fora])', (e) => e.dataset.data), sab = pg.locator(`.mc-dia[data-data="${dataSab}"]`);
+    await sab.click(); await esperar(150);
+    ok((await sab.getAttribute('data-sel')) === 'true' && (await pg.locator('.mc-dia-lista').count()) === 1, 'sábado e domingo continuam selecionáveis (a lista do dia abre)');
+    await pg.locator('.mc-recolher').click(); await esperar(100);
+    await pg.locator('button[aria-label="Alternar tema claro e escuro"]').click(); await esperar(500);
+    const claro = await pg.$eval('.mc-dia[data-fim-semana]:not([style])', (b) => getComputedStyle(b).backgroundColor);
+    await pg.locator('button[aria-label="Alternar tema claro e escuro"]').click(); await esperar(300);
+    const escuro = await pg.$eval('.mc-dia[data-fim-semana]:not([style])', (b) => getComputedStyle(b).backgroundColor);
+    ok(claro !== escuro && /\/ 0\.06\)$/.test(claro) && /\/ 0\.06\)$/.test(escuro), 'o cinza do fim de semana existe nos dois temas (derivado do texto de cada tema)');
+    await pg.$eval('.main', (e) => { e.scrollTop = 0; }); await esperar(200);   // o foco por teclado pode ter rolado a página: o bloco da coluna lateral parte do topo
+  }
   const menu = await pg.$eval('.app', (e) => e.dataset.aberto);
   ok(menu === 'true' && (await R(pg, '.side')).w > 220 && (await pg.$$eval('.side .navi .tx', (l) => l.filter((e) => e.offsetParent && e.textContent.trim()).length)) >= 7, 'menu lateral aberto, com ícones e rótulos, quando não há escolha guardada');
 

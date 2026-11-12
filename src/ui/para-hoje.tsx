@@ -7,6 +7,7 @@
 // A vaga, a etapa e a prioridade nunca mudam pelo gesto da esquerda. O primeiro desenho é o mesmo no servidor e no navegador: a ordem guardada só entra depois de montar.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icone } from './Icone';
+import { Ajuda } from './ajuda';
 import { useApp } from './contexto';
 import { CardDemanda } from './cartoes';
 import { Baralho, BaralhoSimples, useModo } from './baralho';
@@ -128,12 +129,12 @@ export function ParaHoje() {
   const rolar = (sentido: 1 | -1) => { const f = faixa.current; if (f) f.scrollBy({ left: sentido * (f.clientWidth + 14), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };
   return (
     <section ref={secao} className="sec ph" data-painel="para-hoje" data-modo={modo} aria-labelledby="ph-t">
-      <h3 id="ph-t">Para hoje <small>até {VAGAS_PARA_HOJE} demandas para tocar hoje: pedidos da Prefeita e do Gabinete primeiro, depois atrasadas e as que vencem hoje</small></h3>
-      {vazio ? <div className="vazio-c">Nada para tocar hoje por enquanto.</div> : modo === 'pilha' ? <Pilha vagas={vagas} vagaDe={(id) => vagas.find((v) => v.demanda.id === id)?.posicao} /> : (
+      <h3><span id="ph-t">Para hoje</span><Ajuda rotulo="Sobre o Para hoje">Até quatro demandas em foco. Pedidos da Prefeita e do Gabinete têm prioridade. Ao concluir uma demanda, a vaga é liberada.</Ajuda></h3>
+      {vazio ? <div className="vazio-c">Nada para hoje.</div> : modo === 'pilha' ? <Pilha vagas={vagas} vagaDe={(id) => vagas.find((v) => v.demanda.id === id)?.posicao} /> : (
         <>
           {modo === 'duas' && vagas.length > 2 ? (
             <div className="ph-nav" role="group" aria-label="Ver outras vagas">
-              <span className="data">Deslize para o lado: mais {vagas.length - 2} {vagas.length - 2 === 1 ? 'vaga' : 'vagas'}</span>
+              <span className="data">Mais {vagas.length - 2} {vagas.length - 2 === 1 ? 'vaga' : 'vagas'} ao lado</span>
               <button type="button" className="icbtn-s ph-ant" aria-label="Vagas anteriores" onClick={() => rolar(-1)}><Icone nome="chevron-right" /></button>
               <button type="button" className="icbtn-s" aria-label="Próximas vagas" onClick={() => rolar(1)}><Icone nome="chevron-right" /></button>
             </div>
@@ -145,7 +146,7 @@ export function ParaHoje() {
       )}
       {urgencias.length ? (
         <div className="nova-urgencia" role="status" data-nova-urgencia>
-          <h4>Nova urgência <small>fora das suas vagas, sem trocar a seleção</small></h4>
+          <h4>Nova urgência <small>fora das vagas</small></h4>
           {modo === 'pilha' ? <BaralhoSimples lista={urgencias.map((e) => e.demanda)} nome="Nova urgência" foraDaVaga={new Set(urgencias.filter((e) => e.prioritaria).map((e) => e.demanda.id))} />
             : <div className="cards ph-cards-urg">{urgencias.map((e) => <div key={e.demanda.id} className="vaga" {...(e.prioritaria ? { 'data-fora-vaga': '' } : {})}><CardDemanda d={e.demanda} mostrarRapida /></div>)}</div>}
         </div>

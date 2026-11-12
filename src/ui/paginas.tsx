@@ -72,7 +72,7 @@ export function PaginaInicio() {
         ) : null}
         {carregando && !demandas.length ? <Carregando /> : null}
         {!carregando && !erroCarga && !demandas.length ? (
-          <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para ver aqui os prazos e o Para hoje.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
+          <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda ainda</h3><p>Cadastre a primeira para começar.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
         ) : null}
         {demandas.length ? <ParaHoje /> : null}
         <p className="rotina-estado">{textoRotina(rotina)}</p>

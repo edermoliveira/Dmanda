@@ -29,6 +29,7 @@
     "testar:config": "node scripts/testar-config.mjs",
     "testar:busca": "node scripts/testar-busca.mjs",
     "testar:perfil": "node scripts/testar-perfil.mjs",
+    "testar:inicio": "node scripts/testar-inicio.mjs",
     "testar:origem": "node scripts/testar-origem.mjs",
     "testar:prioridade": "node scripts/testar-prioridade.mjs",
     "capturar:comparacao": "node scripts/capturar-comparacao.mjs",

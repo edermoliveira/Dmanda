@@ -24,7 +24,7 @@
 .app[data-dir="d"] .chk-l { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 14px; font-size: calc(15px * var(--esc)); color: var(--text); cursor: pointer; }
 .app[data-dir="d"] .chk-l input { flex: none; }
 /* Para hoje: a urgência nova aparece à parte, sem trocar as vagas (cor de perigo só aqui, por ser atrasada ou vencendo hoje) */
-.app[data-dir="d"] .nova-urgencia { margin-top: 14px; padding: 12px; border-radius: 18px; background: var(--perigo-soft); }
+.app[data-dir="d"] .nova-urgencia { margin: 14px -12px 0; padding: 12px; border-radius: 18px; background: var(--perigo-soft); }
 .app[data-dir="d"] .nova-urgencia h4 { margin: 0 0 8px; font-size: calc(14px * var(--esc)); color: var(--text); }
 .app[data-dir="d"] .nova-urgencia h4 small { font-weight: 400; color: var(--text2); }
 .app[data-dir="d"] .vaga { min-width: 0; }
