@@ -57,9 +57,6 @@ next-env.d.ts
 **/.playwright-mcp/
 /.taste-skill/
 
-# Impeccable: binário do motor (por sistema, reinstalado por computador) e arquivos locais
-/.claude/skills/impeccable/scripts/bin/
-/.impeccable/config.local.json
 
 # banco local de teste (descartável)
 /.dados-teste/
