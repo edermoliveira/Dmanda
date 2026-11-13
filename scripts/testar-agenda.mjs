@@ -68,6 +68,31 @@ const contraste = (pg, sel) => pg.evaluate((s) => {
   return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }, sel);
 
+// área efetiva de toque: quantos pixels, em cada eixo pelo centro, respondem ao toque como o próprio controle (inclui a extensão por pseudo-elemento); rola o miolo até o centro antes
+const areaEfetiva = async (pg, sel) => {
+  await pg.evaluate((s) => { const m = document.querySelector('.main'), b = document.querySelector(s).getBoundingClientRect(); m.scrollTo({ top: m.scrollTop + b.y + b.height / 2 - innerHeight / 2, behavior: 'instant' }); }, sel); await pg.waitForTimeout(400);
+  return pg.evaluate((s) => {
+    const el = document.querySelector(s), b = el.getBoundingClientRect(), cx = Math.round(b.x + b.width / 2), cy = Math.round(b.y + b.height / 2);
+    const dono = (x, y) => { if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return false; const t = document.elementFromPoint(x, y); return !!t && el.contains(t); };
+    if (!dono(cx, cy)) return { w: 0, h: 0 };
+    let x0 = cx, x1 = cx, y0 = cy, y1 = cy;
+    while (dono(x0 - 1, cy) && cx - x0 < 80) x0--; while (dono(x1 + 1, cy) && x1 - cx < 80) x1++; while (dono(cx, y0 - 1) && cy - y0 < 80) y0--; while (dono(cx, y1 + 1) && y1 - cy < 80) y1++;
+    return { w: x1 - x0 + 1, h: y1 - y0 + 1 };
+  }, sel);
+};
+// contraste de cada peça do Mês: novembro (hoje), o mês da demanda atrasada e dezembro (dia de carga alta), porque o selo "alta" e a linha de atraso só existem nesses meses
+const contrastesDeTudo = async (pg) => { const r = {}; for (const d of [HOJE, S.b.prazo, S.mes.alta]) { await paraData(pg, d); Object.assign(r, await contrastesDoMes(pg)); } await paraData(pg, HOJE); return r; };
+// as linhas da grade têm altura fixa (o que não cabe vira "+N"): no maior tamanho de texto que o usuário pode escolher (125%), nenhuma célula pode cortar a última linha nem o "+N"
+const semCorte = (pg) => pg.evaluate(() => new Promise((res) => {
+  const app = document.querySelector('.app'), antes = app.style.getPropertyValue('--esc'), fonte = () => parseFloat(getComputedStyle(document.querySelector('.agd-it-t') ?? document.querySelector('.agd-num')).fontSize);
+  const f0 = fonte(); app.style.setProperty('--esc', String(0.85 * 1.25));
+  setTimeout(() => {
+    const cortados = [];
+    for (const c of document.querySelectorAll('.agd-cel')) { const its = c.querySelector('.agd-its'); if (its?.lastElementChild && its.lastElementChild.getBoundingClientRect().bottom > c.getBoundingClientRect().bottom - 1) cortados.push(c.dataset.data); }
+    const f1 = fonte(); if (antes) app.style.setProperty('--esc', antes); else app.style.removeProperty('--esc');
+    res({ cortados, f0, f1 });
+  }, 600);
+}));
 // contraste do texto com o fundo de cada peça do Mês que existir na tela (selo de carga por nível, itens da célula, abas)
 const contrastesDoMes = async (pg) => {
   const alvos = { 'selo baixa': '.agd-cel[data-nivel="baixa"] .agd-qtd', 'selo média': '.agd-cel[data-nivel="media"] .agd-qtd', 'selo alta': '.agd-cel[data-nivel="alta"] .agd-qtd', compromisso: '.agd-it[data-k="evento"]:not([data-dia])', 'dia inteiro': '.agd-it[data-k="evento"][data-dia]', demanda: '.agd-it[data-k="demanda"]:not([data-atrasado])', atrasada: '.agd-it[data-atrasado]', 'aba atual': '.agd-mes-aba[aria-current="true"]', aba: '.agd-mes-aba:not([aria-current])', hoje: '.agd-cel[data-hoje] .agd-num' };
@@ -81,7 +106,7 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
 {
   const { pg } = t1;
   await ir(pg);
-  ok(!!(await pg.$('.agd[data-modo="mes"]')) && (await pg.$$('.agd-barra .opcoes button')).length === 3, 'a Agenda abre no computador em Mês, com as três visões Hoje, Semana e Mês');
+  ok(!!(await pg.$('.agd[data-modo="mes"]')) && (await pg.$$('.agd-barra .opcoes button')).length === 3, 'a Agenda abre no computador em Mês, com as três visões Dia, Semana e Mês, e a visão diária (antes chamada Hoje) mantém o identificador guardado');
   const { ano, mes } = anoMes(HOJE), g = gradeMes(ano, mes);
   // --- grade ---
   ok((await pg.getAttribute('.agd-grade', 'role')) === 'grid' && (await pg.$$('.agd-cabsem')).length === 7 && (await pg.$$('.agd-grade [role="row"]')).length === g.length + 1, 'calendário semântico: grade com sete cabeçalhos e uma linha por semana do mês');
@@ -100,8 +125,8 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok(css.pad >= 10 && css.pad <= 40, `margem lateral do painel de ${css.pad} px`);
   const pos = await pg.$eval(`.agd-cel[data-data="${HOJE}"]`, (e) => { const n = e.querySelector('.agd-num').getBoundingClientRect(), c = e.getBoundingClientRect(); return { dir: c.right - n.right, topo: n.top - c.top }; });
   ok(pos.dir >= 0 && pos.dir <= 16 && pos.topo >= 0 && pos.topo <= 14, `o número do dia fica no canto superior direito da célula (${pos.dir.toFixed(0)} px da direita, ${pos.topo.toFixed(0)} px do topo)`);
-  const recuada = await pg.$eval('.agd-vaz', (e) => { const s = getComputedStyle(e); return { bg: s.backgroundColor, cel: e.getBoundingClientRect().height }; });
-  ok(!!(await pg.$('.agd-vaz')) && (await pg.$$('.agd-vaz')).length === g.flat().filter((x) => x === null).length && recuada.bg !== 'rgba(0, 0, 0, 0)' && (await pg.$$('.agd-vaz .agd-num')).length === 0, 'as seis posições antes do dia 1 aparecem recuadas e sem número');
+  const recuada = await pg.$eval('.agd-vaz', (e) => { const s = getComputedStyle(e); return { bg: s.backgroundColor, sombra: s.boxShadow, cel: e.getBoundingClientRect().height }; });
+  ok(!!(await pg.$('.agd-vaz')) && (await pg.$$('.agd-vaz')).length === g.flat().filter((x) => x === null).length && recuada.bg === 'rgba(0, 0, 0, 0)' && recuada.sombra !== 'none' && (await pg.$$('.agd-vaz .agd-num')).length === 0, 'as seis posições antes do dia 1 aparecem recuadas (sem preenchimento, só um contorno quase invisível) e sem número');
   const painel = await pg.$eval('.agd-cal', (e) => { const s = getComputedStyle(e), p = getComputedStyle(e, '::before'); return { raio: parseFloat(s.borderTopLeftRadius), opac: s.opacity, bf: p.backdropFilter || p.webkitBackdropFilter, bfPai: s.backdropFilter, borda: s.borderTopWidth, sombra: s.boxShadow }; });
   ok(painel.raio >= 24 && painel.opac === '1' && /blur/.test(painel.bf) && (painel.bfPai === 'none' || painel.bfPai === '') && painel.borda === '1px' && painel.sombra !== 'none', 'painel de vidro fosco: cantos amplos, contorno fino, sombra, desfoque só na superfície de fundo e opacity 1 no contêiner');
   // --- heatmap: níveis e contagens contra o que foi semeado ---
@@ -241,13 +266,13 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   // espera de Prefeita e cores de evento
   const diaE = S.e.prazo, diaF = S.f.prazo;
   await paraData(pg, diaE);
-  await modo(pg, 'Hoje');
+  await modo(pg, 'Dia');
   await modo(pg, 'Semana');
   ok(true, 'semana navegada sem erro');
   void diaF;
 
   // --- Hoje ---
-  await pg.click('.agd-nav .btn.mini:has-text("Hoje")'); await modo(pg, 'Hoje');
+  await pg.click('.agd-nav .btn.mini:has-text("Hoje")'); await modo(pg, 'Dia');
   const secoes = await pg.$$eval('.agd-hoje > .agd-painel h3', (h) => h.map((x) => x.textContent.trim()));
   ok(secoes[0] === 'Compromissos e lembretes' && secoes[1] === 'Demandas e acompanhamentos' && secoes.includes('Pendências sem prazo'), 'Hoje separa os compromissos (cronológicos) das demandas e acompanhamentos e traz as pendências sem prazo');
   const horasH = await pg.$$eval('.agd-hoje .agd-evento .agd-hora', (h) => h.map((x) => x.textContent.trim()));
@@ -299,6 +324,30 @@ const t5 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   ok((await periodo()) === 'Dezembro 2026' && (await selTxt()) === '2026-12-03' && (await pg.getAttribute('.agd-mes-aba[aria-current="true"]', 'data-mes')) === '12' && !(await pg.$('.agd-detalhe')), 'a aba DEZ leva direto a dezembro de 2026, mantendo o dia, sem abrir a gaveta');
   const cheio = await itens(M.cheio);
   ok(cheio.length === 3 && (await pg.textContent(`.agd-cel[data-data="${M.cheio}"] .agd-mais`)) === '+3' && (await pg.getAttribute(`.agd-cel[data-data="${M.cheio}"] .agd-mais`, 'data-mais')) === '3', 'dia cheio (seis itens): três linhas visíveis e "+3" com a contagem certa');
+  ok(cheio.some((t) => /^\d\d:\d\d /.test(t)) && cheio.some((t) => /^Parecer de dezembro/.test(t)), 'o dia cheio (três compromissos e três vencimentos) mostra pelo menos um compromisso e um vencimento na grade: ' + JSON.stringify(cheio.map((t) => t.slice(0, 24))));
+  // "+N" com filtros: só os itens realmente ocultos depois do filtro entram na conta; com uma linha só, o vencimento tem prioridade (a célula é reduzida por estilo para provar o limite de uma linha)
+  const celCheio = `.agd-cel[data-data="${M.cheio}"]`, mais = async () => ((await pg.textContent(`${celCheio} .agd-mais`, { timeout: 1500 }).catch(() => null)) ?? '').trim();
+  const fil = async (n) => { await pg.click(`.agd-filtros .opcoes button:has-text("${n}")`); await pg.waitForTimeout(300); };
+  await fil('Demandas');
+  const soDem = await itens(M.cheio);
+  ok(soDem.length === 3 && soDem.every((t) => !/^\d\d:\d\d /.test(t)) && (await mais()) === '', 'filtro Demandas: o dia cheio mostra as três demandas e nenhum "+N" (o que o filtro tirou não conta como oculto)');
+  await fil('Compromissos');
+  const soEv = await itens(M.cheio);
+  ok(soEv.length === 3 && soEv.every((t) => /^\d\d:\d\d /.test(t)) && (await mais()) === '', 'filtro Compromissos: os três compromissos e nenhum "+N"');
+  await fil('Tudo');
+  const estilo = await pg.addStyleTag({ content: '.agd .agd-cal { --agd-cel-h: 50px !important; } .agd-mes-aba { min-height: 6px !important; }' });
+  await pg.waitForFunction((s) => document.querySelectorAll(`${s} .agd-it`).length === 1, celCheio, { timeout: 8000 }).catch(() => {});
+  const um = await itens(M.cheio);
+  ok(um.length === 1 && /^Parecer de dezembro/.test(um[0]) && (await mais()) === '+5', 'quando só cabe uma linha, o vencimento tem prioridade sobre os compromissos e o resto vira "+5": ' + JSON.stringify(um.map((t) => t.slice(0, 24))));
+  await fil('Demandas'); const umD = await itens(M.cheio);
+  ok(umD.length === 1 && (await mais()) === '+2', 'uma linha e filtro Demandas: a primeira demanda e "+2" (as outras duas)');
+  await fil('Compromissos'); const umE = await itens(M.cheio);
+  ok(umE.length === 1 && /^\d\d:\d\d /.test(umE[0]) && (await mais()) === '+2', 'uma linha e filtro Compromissos: o primeiro compromisso e "+2"');
+  await fil('Tudo'); await estilo.evaluate((e) => e.remove());
+  await pg.waitForFunction((s) => document.querySelectorAll(`${s} .agd-it`).length === 3, celCheio, { timeout: 8000 });
+  ok((await mais()) === '+3', 'ao voltar ao tamanho normal e a Tudo, a célula volta a três linhas e "+3"');
+  const cD = await semCorte(pg);
+  ok(cD.f1 > cD.f0 && cD.cortados.length === 0, `computador, no texto a 125%: nenhuma célula corta a última linha nem o "+N" (fonte de ${cD.f0} para ${cD.f1} px)`);
   ok((await itens(M.vazio)).length === 0 && (await pg.$$(`.agd-cel[data-data="${M.vazio}"] .agd-mais`)).length === 0, 'dia vazio: nenhuma linha e nenhum "+N"');
   const aj = M.ajustado;
   ok(aj.prazo === '2026-12-04' && aj.prazo_original === '2026-12-05' && (await itens('2026-12-04')).some((t) => /Prazo ajustado de dezembro/.test(t)) && !(await itens('2026-12-05')).some((t) => /Prazo ajustado/.test(t)), 'o prazo que cairia no sábado aparece na sexta, o vencimento efetivo que o Dmanda já calcula');
@@ -322,7 +371,7 @@ const t5 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   const gradeAntes = await caixa(pg, '.agd-cel'), rolAntes = await rolagem();
   await pg.click(`.agd-cel[data-data="${M.cheio}"] .agd-mais`); await pg.waitForSelector('.agd-detalhe'); await pg.waitForTimeout(500);
   const gc = await pg.$eval('.agd-gv', (e) => { const r = e.getBoundingClientRect(); return { esq: r.left, dir: window.innerWidth - r.right, larg: r.width, vw: window.innerWidth, topo: r.top, base: window.innerHeight - r.bottom }; });
-  ok(/^Terça-feira, 15 de dezembro de 2026$/.test(await pg.textContent('#agd-gv-t')) && (await pg.$$('.agd-detalhe .agd-evento')).length === 3 && (await pg.$$('.agd-detalhe .agd-demanda')).length === 3, 'tocar no "+N" abre a lista completa do dia: data por extenso, três compromissos e três demandas');
+  ok(/^Terça, 15 de dezembro$/.test(await pg.textContent('#agd-gv-t')) && (await pg.getAttribute('#agd-gv-t', 'aria-label')) === 'Terça-feira, 15 de dezembro de 2026' && (await pg.$$('.agd-detalhe .agd-evento')).length === 3 && (await pg.$$('.agd-detalhe .agd-demanda')).length === 3, 'tocar no "+N" abre a lista completa do dia: data por extenso, três compromissos e três demandas');
   ok(/Audiência pública para revisão do plano diretor e do zoneamento urbano do município/.test(await pg.textContent('.agd-detalhe')) && (await pg.$$eval('.agd-detalhe .agd-tit', (t) => t.every((x) => getComputedStyle(x).textOverflow !== 'ellipsis' && getComputedStyle(x).whiteSpace !== 'nowrap'))), 'a gaveta mostra os títulos por inteiro, inclusive o longo');
   ok(/Reunião A de dezembro/.test(await pg.textContent('.agd-detalhe')) && /08:00 às 09:00/.test(await pg.textContent('.agd-detalhe')) && /Vencimento/.test(await pg.textContent('.agd-detalhe')) && /Compromisso/.test(await pg.textContent('.agd-detalhe')), 'cada item mostra o horário ou o tipo');
   ok(gc.dir <= 1 && gc.esq > gc.vw / 2 && gc.larg <= 470 && gc.topo >= 0 && gc.base >= 0, `no computador a gaveta fica à direita (${Math.round(gc.larg)} px de largura, a partir de ${Math.round(gc.esq)} px)`);
@@ -344,7 +393,7 @@ const t5 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   ok((await pg.evaluate(() => document.activeElement?.getAttribute('data-data'))) === M.cheio && (await periodo()) === 'Dezembro 2026' && (await selTxt()) === M.cheio && (await rolagem()) === rolAntes, 'Esc fecha a gaveta e devolve o foco à célula: o mês, a data escolhida e a posição da página ficam como estavam');
   // dia vazio, criação a partir da gaveta e fechamento pelo clique fora
   await pg.click(`.agd-cel[data-data="${M.vazio}"] .agd-num`); await pg.waitForSelector('.agd-detalhe'); await pg.waitForTimeout(300);
-  ok(/Nada programado para este dia/.test(await pg.textContent('.agd-detalhe')) && /Terça-feira|Quarta-feira/.test(await pg.textContent('#agd-gv-t')) && /Daqui a \d+ dias?/.test(await pg.textContent('.agd-detalhe')), 'tocar no número do dia vazio abre a gaveta com "Nada programado para este dia."');
+  ok(/Nada programado para este dia/.test(await pg.textContent('.agd-detalhe')) && /^(Terça|Quarta), 1[56] de dezembro$/.test(await pg.textContent('#agd-gv-t')) && /Daqui a \d+ dias?/.test(await pg.textContent('.agd-detalhe')), 'tocar no número do dia vazio abre a gaveta com "Nada programado para este dia."');
   await pg.click('.agd-detalhe .agd-gv-rod .btn'); await pg.waitForSelector('#ev-titulo');
   ok((await pg.inputValue('#ev-data')) === M.vazio, '"Novo evento neste dia" abre o evento já com a data do dia');
   await pg.keyboard.press('Escape'); await janelaFechada(pg);
@@ -360,6 +409,16 @@ const t5 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   ok(!(await pg.$('.agd-detalhe')) && (await selTxt()) === somarDias(M.cheio, 1), 'as setas do teclado movem a seleção sem abrir a gaveta');
   await pg.click('.agd-nav .btn.mini:has-text("Hoje")'); await pg.waitForTimeout(300);
   await t5.ctx.close();
+}
+
+// a visão diária passou a se chamar Dia, mas o identificador guardado continua 'hoje': quem já tinha a preferência salva abre na mesma visão
+{
+  const { ctx, pg } = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { modo: 'hoje' } });
+  await ir(pg);
+  ok(!!(await pg.$('.agd[data-modo="hoje"]')) && (await pg.getAttribute('.agd-barra .opcoes button:has-text("Dia")', 'aria-pressed')) === 'true' && !(await pg.$('.agd-barra .opcoes button:has-text("Hoje")')), 'a preferência antiga (hoje) abre na visão Dia, e o rótulo Hoje só existe no atalho de voltar à data atual');
+  await pg.click('.agd-barra .opcoes button:has-text("Semana")'); await pg.click('.agd-barra .opcoes button:has-text("Dia")'); await pg.waitForTimeout(300);
+  ok(JSON.parse(await pg.evaluate(() => localStorage.getItem('dmanda:agenda'))).modo === 'hoje' && (await pg.$$eval('.agd-hoje .agd-painel', (l) => l.length)) >= 2, 'escolher Dia grava o mesmo identificador de sempre e mostra a visão diária com os compromissos e as demandas');
+  await ctx.close();
 }
 
 // falha só da leitura das demandas: a grade e os compromissos continuam, e o aviso diz o que está indisponível
@@ -528,7 +587,7 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   await ctx.setOffline(true); await pg.click('[data-salvar-evento]'); await pg.waitForTimeout(1200);
   ok(!!(await pg.$('.modal')) && (await pg.inputValue('#ev-titulo')) === 'Evento durante a queda' && /conexão|gravado/i.test(await pg.textContent('.modal [role="alert"]')), 'sem conexão: o evento não é criado, a janela explica e o texto digitado continua');
   await ctx.setOffline(false); await pg.click('[data-salvar-evento]'); await janelaFechada(pg); await pg.waitForTimeout(500);
-  await modo(pg, 'Hoje');
+  await modo(pg, 'Dia');
   ok((await pg.$$eval('.agd-hoje .agd-evento .agd-tit', (t) => t.map((x) => x.textContent))).filter((x) => x === 'Evento durante a queda').length === 1, 'com a conexão de volta, repetir cria o evento uma única vez');
 }
 
@@ -558,13 +617,29 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
   ok(!!(await pg.$('.agd[data-modo="hoje"]')), 'no celular, sem preferência salva, a Agenda abre em Hoje');
   await modo(pg, 'Mês');
   const cx = await caixa(pg, '.agd-cel');
-  ok(cx.length > 27 && cx.every((c) => c.w >= 40 && c.h >= 70) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1)), `iPhone emulado: sete colunas, células de pelo menos 40 por 70 px (${Math.round(Math.min(...cx.map((c) => c.w)))} por ${Math.round(Math.min(...cx.map((c) => c.h)))} px, a faixa de meses ocupa o resto da largura) e sem rolagem horizontal`);
+  ok(cx.length > 27 && cx.every((c) => c.w >= 44 && c.h >= 90) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1)), `iPhone emulado: sete colunas, células de pelo menos 40 por 70 px (${Math.round(Math.min(...cx.map((c) => c.w)))} por ${Math.round(Math.min(...cx.map((c) => c.h)))} px, a faixa de meses ocupa o resto da largura) e sem rolagem horizontal`);
   const cols = await pg.$$eval('.agd-linha-sem:nth-child(2) > [role="gridcell"]', (c) => c.length);
   ok(cols === 7 && (await pg.$$('.agd-mes-aba')).length === 12 && (await pg.$$eval('.agd-cabsem', (c) => c.length)) === 7, 'o celular mantém as sete colunas, com os cabeçalhos, e a faixa de meses JAN a DEZ');
   const faixa = await pg.$eval('.agd-meses', (e) => { const r = e.getBoundingClientRect(), g = document.querySelector('.agd-grade').getBoundingClientRect(); return { esq: r.left - g.right, dir: window.innerWidth - r.right, largura: r.width, abas: [...e.querySelectorAll('.agd-mes-aba')].map((a) => a.getBoundingClientRect().height), topo: r.top, base: r.bottom, alt: window.innerHeight }; });
   ok(faixa.esq > 0 && faixa.dir > 0 && faixa.largura >= 22 && faixa.abas.every((h) => h >= 40), `no celular a faixa de meses fica à direita da grade, legível (${Math.round(faixa.largura)} px de largura, abas de pelo menos ${Math.round(Math.min(...faixa.abas))} px de altura)`);
   const aux = await caixa(pg, '.agd-aux-par .agd-aux');
   ok(aux.length === 2 && aux[1].y > aux[0].b - 2, 'no celular os dois painéis auxiliares ficam empilhados');
+  // cabeçalho compacto: a grade começa bem mais perto do topo (antes do ajuste ela começava a 533 px, com a faixa de teste terminando em 126 px)
+  const topo = await pg.evaluate(() => ({ grade: document.querySelector('.agd-grade').getBoundingClientRect().top, cab: document.querySelector('.agd-cab-pag').getBoundingClientRect().top, faixa: document.querySelector('.faixa-teste')?.getBoundingClientRect().bottom ?? null }));
+  ok(topo.faixa !== null && topo.grade - topo.cab <= 260, `iPhone 390 com a faixa de teste visível: a grade começa a ${Math.round(topo.grade - topo.cab)} px do título da página (${Math.round(topo.grade)} px do topo, com a faixa terminando em ${Math.round(topo.faixa)} px); antes do ajuste eram cerca de 395 px`);
+  // filtros num controle compacto, com indicação de filtros ativos
+  const vis = (sel) => pg.isVisible(sel);
+  ok(!(await vis('.agd-filtros')) && (await vis('.agd-filtros-bt')) && (await pg.getAttribute('.agd-filtros-bt', 'aria-expanded')) === 'false' && (await vis('.agd-novo')) && (await vis('.agd-data input')) && !(await pg.$('.agd-filtros-bt[data-ativos]')), 'no celular os filtros ficam recolhidos num botão Filtros, sem indicação enquanto nada está filtrado; Novo evento e a data continuam à vista');
+  await pg.click('.agd-filtros-bt'); await pg.waitForTimeout(250);
+  ok((await vis('.agd-filtros')) && (await pg.getAttribute('.agd-filtros-bt', 'aria-expanded')) === 'true' && (await pg.$$eval('.agd-filtros .opcoes button', (b) => b.map((x) => x.textContent))).join() === 'Tudo,Demandas,Compromissos' && (await pg.$$('.agd-filtros .agd-chk input')).length === 2, 'abrir Filtros mostra Tudo, Demandas, Compromissos, Tarefas concluídas e Demandas finalizadas');
+  await pg.click('.agd-filtros .opcoes button:has-text("Compromissos")'); await pg.check('.agd-filtros .agd-chk:has-text("Demandas finalizadas") input'); await pg.waitForTimeout(300);
+  ok((await pg.getAttribute('.agd-filtros-bt', 'data-ativos')) === '2' && /2 ativos/.test(await pg.getAttribute('.agd-filtros-bt', 'aria-label')) && (await pg.textContent('.agd-filtros-n')) === '2' && (await pg.$$('.agd-cel .agd-it[data-k="demanda"]')).length === 0, 'com dois filtros ativos o botão mostra o número 2 e a grade só tem compromissos');
+  await pg.click('.agd-filtros .opcoes button:has-text("Tudo")'); await pg.uncheck('.agd-filtros .agd-chk:has-text("Demandas finalizadas") input'); await pg.click('.agd-filtros-bt'); await pg.waitForTimeout(250);
+  ok(!(await vis('.agd-filtros')) && !(await pg.$('.agd-filtros-bt[data-ativos]')) && (await pg.$$('.agd-cel .agd-it[data-k="demanda"]')).length > 0, 'desfeitos os filtros, a indicação some, o painel recolhe e as demandas voltam à grade');
+  // alvos de toque de 44 px na data e na faixa de meses, sem sobrepor os vizinhos
+  const aCel = await areaEfetiva(pg, '.agd-cel[data-data="2026-11-11"]'), aAba = await areaEfetiva(pg, '.agd-mes-aba[data-mes="6"]');
+  const sobre = await pg.evaluate(() => { const c = document.querySelector('.agd-cel[data-data="2026-11-08"]').getBoundingClientRect(), t = document.elementFromPoint(c.right - 0.5, c.top + c.height / 2); return !!t && !!t.closest('.agd-mes-aba'); });
+  ok(aCel.w >= 44 && aCel.h >= 44 && aAba.w >= 44 && aAba.h >= 44 && !sobre, `iPhone 390: área efetiva de toque da data ${aCel.w}x${aCel.h} px e da aba ${aAba.w}x${aAba.h} px (a aba não cobre a coluna de domingo)`);
   await verDia(pg, S.h.prazo);
   ok(/Pacote grande/.test(await pg.textContent('.agd-detalhe')), 'tocar no dia mostra os detalhes no celular');
   const gv = await pg.$eval('.agd-gv', (e) => { const r = e.getBoundingClientRect(); return { esq: r.left, dir: window.innerWidth - r.right, base: window.innerHeight - r.bottom, topo: r.top, larg: r.width, alt: r.height, vh: window.innerHeight }; });
@@ -575,15 +650,40 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
   await pg.evaluate((s) => document.querySelector(s).scrollIntoView({ block: 'center' }), cheioCel); await pg.waitForTimeout(200);
   ok((await pg.$$eval(`${cheioCel} .agd-it`, (l) => l.length)) === 2 && (await pg.textContent(`${cheioCel} .agd-mais`)) === '+4' && (await pg.$eval(`${cheioCel} .agd-it[data-k="evento"] .agd-it-h`, (e) => getComputedStyle(e).display)) === 'none', 'no celular a célula mostra duas linhas (só o título, sem a hora) e "+4" para os outros quatro itens do dia cheio');
   ok((await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)) && (await pg.$$eval('.agd-it', (l) => l.every((e) => e.getBoundingClientRect().height >= 10))), 'em dezembro, no celular, continua sem rolagem horizontal e com as linhas legíveis');
+  const cP = await semCorte(pg);
+  ok(cP.f1 > cP.f0 && cP.cortados.length === 0, `iPhone, no texto a 125%: nenhuma célula corta a última linha nem o "+N" (fonte de ${cP.f0} para ${cP.f1} px)`);
   await pg.click(`${cheioCel} .agd-mais`); await pg.waitForSelector('.agd-detalhe'); await pg.waitForTimeout(400);
   ok((await pg.$$('.agd-detalhe .agd-evento')).length === 3 && (await pg.$$('.agd-detalhe .agd-demanda')).length === 3 && /Audiência pública para revisão do plano diretor e do zoneamento urbano do município/.test(await pg.textContent('.agd-detalhe')) && (await pg.$$eval('.agd-detalhe button', (b) => b.filter((x) => x.getClientRects().length).every((x) => x.getBoundingClientRect().height >= 32))), 'tocar no "+4" no celular abre a gaveta inferior com os seis itens e os títulos inteiros');
+  ok(/^Terça, 15 de dezembro$/.test(await pg.textContent('#agd-gv-t')) && (await pg.getAttribute('#agd-gv-t', 'aria-label')) === 'Terça-feira, 15 de dezembro de 2026' && (await pg.getAttribute('.agd-gv', 'aria-labelledby')) === 'agd-gv-t', 'no celular o cabeçalho da gaveta é curto ("Terça, 15 de dezembro") e o nome acessível traz a data completa');
+  const gvAntes = await pg.evaluate(() => { const c = document.querySelector('.agd-gv-corpo'); return c.scrollHeight > c.clientHeight; });
+  await pg.evaluate(() => { const c = document.querySelector('.agd-gv-corpo'); c.scrollTop = c.scrollHeight; }); await pg.waitForTimeout(300);
+  const gvFim = await pg.evaluate(() => { const l = [...document.querySelectorAll('.agd-detalhe .agd-item')], u = l[l.length - 1].getBoundingClientRect(), bt = document.querySelector('.agd-gv-rod .btn').getBoundingClientRect(), corpo = document.querySelector('.agd-gv-corpo').getBoundingClientRect(), pad = parseFloat(getComputedStyle(document.querySelector('.agd-gv-rod')).paddingBottom); return { baseUltimo: u.bottom, topoUltimo: u.top, topoBt: bt.top, baseBt: bt.bottom, topoCorpo: corpo.top, baseCorpo: corpo.bottom, vh: innerHeight, pad }; });
+  ok(gvAntes && gvFim.baseUltimo <= gvFim.topoBt + 0.5 && gvFim.baseUltimo <= gvFim.baseCorpo + 0.5 && gvFim.topoUltimo >= gvFim.topoCorpo && gvFim.baseBt <= gvFim.vh && gvFim.pad >= 14, `no dia cheio do iPhone o último cartão rola até aparecer inteiro acima do botão "Novo evento neste dia" (folga de ${Math.round(gvFim.topoBt - gvFim.baseUltimo)} px; o rodapé reserva ${Math.round(gvFim.pad)} px embaixo para a área segura)`);
   await fecharDia(pg);
   ok((await pg.evaluate(() => document.activeElement?.getAttribute('data-data'))) === S.mes.cheio, 'no celular, fechar a gaveta devolve o foco à célula');
   await pg.click('.agd-mes-aba[data-mes="11"]'); await pg.waitForTimeout(300);
   await modo(pg, 'Semana');
   ok((await caixa(pg, '.agd-dia')).every((c) => c.w > 300) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)), 'semana no celular: um dia por linha, sem rolagem horizontal');
-  await modo(pg, 'Hoje');
+  await modo(pg, 'Dia');
   ok(!(await pg.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), 'Hoje no celular sem rolagem horizontal');
+}
+// 375 px (iPhone menor) e 320 px (limite da composição): sete colunas, sem rolagem horizontal; as medidas reais ficam no texto de cada verificação
+// Abaixo de uns 363 px é a casca do aplicativo (a barra do topo, fora da Agenda) que fica mais larga que a tela e é cortada pela lateral: a Agenda é conferida dentro dessa casca.
+for (const [w, alvo] of [[375, 44], [360, 0], [320, 0]]) {
+  const { ctx, pg } = await novo({ viewport: { width: w, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, { prefs: { modo: 'mes' } });
+  await ir(pg);
+  const cx = await caixa(pg, '.agd-cel'), minW = Math.min(...cx.map((c) => c.w));
+  const aCel = await areaEfetiva(pg, '.agd-cel[data-data="2026-11-11"]'), aAba = await areaEfetiva(pg, '.agd-mes-aba[data-mes="6"]');
+  const semRol = await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1);
+  // nada fica para fora da tela escondido pelo corte lateral: a faixa de meses e o botão Novo evento terminam dentro da largura
+  const casca = await pg.evaluate(() => document.querySelector('.main').getBoundingClientRect().right);
+  const dentro = await pg.evaluate((lim) => [...document.querySelectorAll('.agd-mes-aba, .agd-novo, .agd-cel, .agd-nav .btn, .agd-data input')].every((e) => e.getBoundingClientRect().right <= lim + 0.5), alvo ? w : casca);
+  ok(dentro, `${w} px: a faixa de meses, as células e os botões do topo terminam dentro da ${alvo ? 'largura da tela' : `casca do aplicativo (${Math.round(casca)} px, mais larga que a tela por causa da barra do topo, que não é da Agenda)`}, sem nada cortado pela Agenda`);
+  const cols = await pg.$$eval('.agd-linha-sem:nth-child(2) > [role="gridcell"]', (c) => c.length), abas = (await pg.$$('.agd-mes-aba')).length;
+  ok(semRol && cols === 7 && abas === 12 && (await pg.$$eval('.agd-cabsem', (c) => c.length)) === 7, `${w} px: sete colunas de segunda a domingo e JAN a DEZ, sem rolagem horizontal da página`);
+  if (alvo) ok(minW >= alvo - 0.5 && aCel.w >= alvo && aAba.w >= 44 && aAba.h >= 44, `${w} px: a célula mede ${minW.toFixed(1)} px de largura (área de toque ${aCel.w}x${aCel.h}) e a aba tem área de toque de ${aAba.w}x${aAba.h} px`);
+  else ok(minW >= 34, `${w} px (limite da composição): a célula mede ${minW.toFixed(1)} px de largura (área de toque ${aCel.w}x${aCel.h}), abaixo dos 44 px; a aba tem ${aAba.w}x${aAba.h} px de área de toque`);
+  await ctx.close();
 }
 const t4 = await novo({ viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true }, { tema: 'escuro', prefs: { modo: 'mes' } });
 {
@@ -591,11 +691,14 @@ const t4 = await novo({ viewport: { width: 820, height: 1180 }, isMobile: true, 
   await ir(pg);
   const cx = await caixa(pg, '.agd-cel');
   ok(cx.every((c) => c.w >= 80 && c.h >= 80) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)), `iPad vertical emulado, escuro: células de pelo menos ${Math.round(Math.min(...cx.map((c) => c.w)))} por ${Math.round(Math.min(...cx.map((c) => c.h)))} px, sem rolagem horizontal`);
+  ok((await pg.$$eval('.agd-cel .agd-it-h', (l) => l.length > 0 && l.every((e) => getComputedStyle(e).display === 'none'))) && (await pg.$$eval('.agd-cel .agd-it-t', (l) => l.every((e) => getComputedStyle(e).whiteSpace === 'normal'))), 'no iPad em pé os títulos da célula usam a largura toda (até duas linhas) e a hora fica na gaveta');
+  const vaz = await pg.$$eval('.agd-vaz', (l) => l.map((e) => getComputedStyle(e).backgroundColor)), cel0 = await pg.$eval('.agd-cel[data-nivel="zero"]', (e) => getComputedStyle(e).backgroundColor);
+  ok(vaz.length > 0 && vaz.every((c) => c === 'rgba(0, 0, 0, 0)') && cel0 !== 'rgba(0, 0, 0, 0)', 'no escuro as posições fora do mês ficam sem preenchimento, menos destacadas do que os dias válidos (que têm o fundo do cartão)');
   const cs = {};
   for (const n of ['zero', 'baixa', 'media', 'alta']) { const el = await pg.$(`.agd-cel[data-nivel="${n}"]`); if (el) cs[n] = await contraste(pg, `.agd-cel[data-nivel="${n}"]`); }
   ok(Object.keys(cs).length >= 3 && Object.values(cs).every((v) => v >= 4.5), 'contraste do texto com o tom da célula de cada nível (escuro) é de pelo menos 4,5:1: ' + JSON.stringify(Object.fromEntries(Object.entries(cs).map(([k, v]) => [k, +v.toFixed(1)]))));
-  const cc = await contrastesDoMes(pg);
-  ok(Object.values(cc).every((v) => v >= 4.5), 'contraste (escuro) dos selos de carga e dos itens da célula (compromisso, dia inteiro, demanda, atrasada) é de pelo menos 4,5:1: ' + JSON.stringify(Object.fromEntries(Object.entries(cc).map(([k, v]) => [k, +v.toFixed(1)]))));
+  const cc = await contrastesDeTudo(pg);
+  ok('selo alta' in cc && 'atrasada' in cc && Object.values(cc).every((v) => v >= 4.5), 'contraste (escuro) dos selos de carga (inclusive o alto) e dos itens da célula (compromisso, dia inteiro, demanda, linha de atraso) é de pelo menos 4,5:1: ' + JSON.stringify(Object.fromEntries(Object.entries(cc).map(([k, v]) => [k, +v.toFixed(1)]))));
   await pg.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'), null, { timeout: 5000 }).catch(() => {});
   const lum = await pg.evaluate(() => { const c =document.createElement('canvas').getContext('2d', { willReadFrequently: true }); const m = {}; for (const n of ['zero', 'baixa', 'media', 'alta']) { const e = document.querySelector(`.agd-amostra[data-nivel="${n}"]`); c.fillStyle = '#111'; c.fillRect(0, 0, 1, 1); c.fillStyle = getComputedStyle(e).backgroundColor; c.fillRect(0, 0, 1, 1); const [r, g, b] = c.getImageData(0, 0, 1, 1).data; m[n] = 0.2126 * r + 0.7152 * g + 0.0722 * b; } return m; });
   ok(lum.zero < lum.baixa && lum.baixa < lum.media && lum.media < lum.alta, 'a escala do escuro cresce em luminosidade do zero ao alto: ' + JSON.stringify(Object.fromEntries(Object.entries(lum).map(([k, v]) => [k, Math.round(v)]))));
@@ -603,6 +706,8 @@ const t4 = await novo({ viewport: { width: 820, height: 1180 }, isMobile: true, 
   const cheioIpad = `.agd-cel[data-data="${S.mes.cheio}"]`;
   await pg.evaluate((s) => document.querySelector(s).scrollIntoView({ block: 'center' }), cheioIpad); await pg.waitForTimeout(200);
   ok((await pg.$$eval(`${cheioIpad} .agd-it`, (l) => l.length)) === 2 && (await pg.textContent(`${cheioIpad} .agd-mais`)) === '+4', 'no iPad vertical a célula mostra duas linhas e "+4": o limite acompanha a largura da grade');
+  const cI = await semCorte(pg);
+  ok(cI.f1 > cI.f0 && cI.cortados.length === 0, `iPad em pé, no texto a 125%: nenhuma célula corta a última linha nem o "+N" (fonte de ${cI.f0} para ${cI.f1} px)`);
   await pg.click(`${cheioIpad} .agd-mais`); await pg.waitForSelector('.agd-detalhe'); await pg.waitForTimeout(500);
   const gi = await pg.$eval('.agd-gv', (e) => { const r = e.getBoundingClientRect(); return { dir: window.innerWidth - r.right, larg: r.width, esq: r.left, vw: window.innerWidth }; });
   ok(gi.dir <= 1 && gi.larg <= 440 && gi.esq > gi.vw * 0.4 && (await pg.$$('.agd-detalhe .agd-item')).length === 6, `no iPad a gaveta fica à direita (${Math.round(gi.larg)} px) com os seis itens, sobre a grade`);
@@ -626,8 +731,8 @@ const t4 = await novo({ viewport: { width: 820, height: 1180 }, isMobile: true, 
   const cs = {};
   for (const n of ['zero', 'baixa', 'media', 'alta']) { if (await pg.$(`.agd-cel[data-nivel="${n}"]`)) cs[n] = await contraste(pg, `.agd-cel[data-nivel="${n}"]`); }
   ok(Object.keys(cs).length >= 3 && Object.values(cs).every((v) => v >= 4.5), 'contraste do texto com o tom da célula de cada nível (claro) é de pelo menos 4,5:1: ' + JSON.stringify(Object.fromEntries(Object.entries(cs).map(([k, v]) => [k, +v.toFixed(1)]))));
-  const cc = await contrastesDoMes(pg);
-  ok(Object.values(cc).every((v) => v >= 4.5), 'contraste (claro) dos selos de carga e dos itens da célula (compromisso, dia inteiro, demanda, atrasada) é de pelo menos 4,5:1: ' + JSON.stringify(Object.fromEntries(Object.entries(cc).map(([k, v]) => [k, +v.toFixed(1)]))));
+  const cc = await contrastesDeTudo(pg);
+  ok('selo alta' in cc && 'atrasada' in cc && Object.values(cc).every((v) => v >= 4.5), 'contraste (claro) dos selos de carga (inclusive o alto) e dos itens da célula (compromisso, dia inteiro, demanda, linha de atraso) é de pelo menos 4,5:1: ' + JSON.stringify(Object.fromEntries(Object.entries(cc).map(([k, v]) => [k, +v.toFixed(1)]))));
 }
 
 // ================= 7) fuso horário: aparelho em Auckland, referência de São Paulo (decisão 51) =================

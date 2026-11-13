@@ -1,7 +1,7 @@
 // Regras puras da Agenda (src/lib/agenda.ts, eventos.ts e a etapa Aguardando Prefeita de demandas.ts), sem navegador nem banco. Uso: node scripts/testar-agenda-regras.mjs
 import {
   gradeMes, somarMeses, semanaDe, diasNoMes, tituloMes, rotuloSemana, dataPorExtenso, contagemRetorno, marcosDaDemanda, dataAplicavel, cargaDaDemanda, nivelDaCarga, cargaPorDia,
-  pendenciasSemPrazo, itensDoDia, descreverDia, diaMaisLivre, panorama, marcosPorDia, LIMIARES_CARGA, colunaNaSemana, trocarMes, itensParaGrade, recortarItens, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES,
+  pendenciasSemPrazo, itensDoDia, descreverDia, diaMaisLivre, panorama, marcosPorDia, LIMIARES_CARGA, colunaNaSemana, trocarMes, itensParaGrade, recortarItensGrade, dataCurta, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES,
 } from '../src/lib/agenda.ts';
 import { esperaPrefeita, ordemDaEtapa, ETAPAS, ETAPA_COR } from '../src/lib/demandas.ts';
 import { diaDaSemana, ajustarPrazo, somarDias } from '../src/lib/prazos.ts';
@@ -128,10 +128,20 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
   ok(itensParaGrade('2026-11-17', o).length === 0, 'dia vazio não tem itens');
   const ret = itensParaGrade('2026-11-13', { ...o, demandas: [dem('r', { assunto: 'Aguardando', etapa: 'Aguardando retorno', etapa_desde: '2026-11-03T15:00:00Z' })] });
   ok(ret.length === 1 && ret[0].marco === 'retorno', 'o retorno do setor aparece na própria data (10 dias depois), como marco diferente do vencimento');
-  const r3 = recortarItens(it, 3), r6 = recortarItens(it, 6), r9 = recortarItens(it, 9), r0 = recortarItens(it, 0);
-  ok(r3.visiveis.length === 3 && r3.restantes === 3 && r3.visiveis.map((x) => x.id).join() === 'todo,cedo,almoco', 'com seis itens e limite de três, aparecem três e o "+N" conta os três que ficaram de fora');
-  ok(r6.restantes === 0 && r6.visiveis.length === 6 && r9.restantes === 0 && r0.visiveis.length === 1 && r0.restantes === it.length - 1 && recortarItens([], 3).restantes === 0, 'sem excesso não há "+N"; limite menor que 1 conta como 1; lista vazia não tem "+N"');
-  ok(recortarItens(it, 2).restantes === 4 && recortarItens(it.slice(0, 3), 3).restantes === 0 && recortarItens(it.slice(0, 4), 3).restantes === 1, 'o "+N" acompanha o limite da tela (duas ou três linhas) e só nasce quando passa dele');
+  const ids = (r) => r.visiveis.map((x) => x.id).join();
+  const r3 = recortarItensGrade(it, 3), r2 = recortarItensGrade(it, 2), r1 = recortarItensGrade(it, 1), r6 = recortarItensGrade(it, 6), r9 = recortarItensGrade(it, 9), r0 = recortarItensGrade(it, 0);
+  ok(ids(r3) === 'todo,cedo,d1' && r3.restantes === 3, 'com três compromissos e três demandas e limite de três, entram o primeiro compromisso, o primeiro vencimento e a próxima linha da ordem do dia; o "+N" conta os três ocultos');
+  ok(ids(r2) === 'todo,d1' && r2.restantes === 4, 'com duas linhas, uma é do primeiro compromisso e a outra do primeiro vencimento: nenhum tipo some');
+  ok(ids(r1) === 'd1' && r1.restantes === 5 && ids(r0) === 'd1' && r0.restantes === 5, 'com uma linha só, o vencimento tem prioridade; limite menor que 1 conta como 1');
+  ok(r6.restantes === 0 && r6.visiveis.length === 6 && ids(r6) === it.map((x) => x.id).join() && r9.restantes === 0 && recortarItensGrade([], 3).restantes === 0, 'sem excesso não há "+N" e a ordem do dia é mantida; lista vazia não tem "+N"');
+  ok(recortarItensGrade(it.slice(0, 3), 3).restantes === 0 && recortarItensGrade(it.slice(0, 4), 3).restantes === 1 && recortarItensGrade(it, 2).restantes === 4, 'o "+N" só nasce quando passa do limite da tela (duas ou três linhas)');
+  const gev = (id) => ({ tipo: 'evento', id, titulo: id, diaInteiro: false, hora: '09:00' }), gdm = (id, marco, atrasado = false) => ({ tipo: 'demanda', id, titulo: id, marco, marcos: [marco], atrasado });
+  const so = (l, n) => recortarItensGrade(l, n);
+  ok(ids(so([gev('a'), gev('b'), gdm('r', 'retorno')], 2)) === 'a,r' && ids(so([gev('a'), gev('b'), gdm('x', 'acompanhamento'), gdm('v', 'vencimento')], 2)) === 'a,v', 'sem vencimento no dia, a linha de demanda vai para a primeira demanda; com vencimento, ele é o escolhido antes do acompanhamento');
+  ok(ids(so([gdm('a1', 'acompanhamento', true), gdm('v1', 'vencimento'), gev('e')].sort((x, y) => (x.tipo === 'evento' ? -1 : 1) - (y.tipo === 'evento' ? -1 : 1)), 1)) === 'v1', 'uma linha só: o vencimento vem antes de um acompanhamento atrasado e de um compromisso');
+  ok(ids(so([gev('a'), gev('b'), gev('c')], 2)) === 'a,b' && ids(so([gdm('v1', 'vencimento'), gdm('v2', 'vencimento'), gdm('v3', 'vencimento')], 2)) === 'v1,v2' && ids(so([gev('a'), gev('b'), gev('c')], 1)) === 'a', 'só de um tipo: vale a ordem do dia');
+  ok(ids(so([gev('a'), gev('b'), gdm('v1', 'vencimento'), gdm('v2', 'vencimento')], 3)) === 'a,b,v1' && so([gev('a'), gev('b'), gdm('v1', 'vencimento'), gdm('v2', 'vencimento')], 3).restantes === 1, 'o "+N" é sempre o número de itens realmente ocultos');
+  ok(dataCurta('2026-11-18', '2026-11-03') === 'Quarta, 18 de novembro' && dataCurta('2026-12-15', '2026-11-03') === 'Terça, 15 de dezembro' && dataCurta('2027-01-05', '2026-11-03') === 'Terça, 5 de janeiro de 2027' && dataCurta('2026-11-21', '2026-11-03') === 'Sábado, 21 de novembro', 'o cabeçalho curto da gaveta é "Quarta, 18 de novembro" e só traz o ano quando ele não é o de hoje');
   const sem = descreverDia(dia, { carga: undefined, eventos: 3, indisponiveis: [], hoje: '2026-11-03', semDemandas: true });
   ok(/pendências indisponíveis/.test(sem) && !/sem pendências/.test(sem) && /3 compromissos/.test(sem) && /sem pendências/.test(descreverDia(dia, { eventos: 0, indisponiveis: [], hoje: '2026-11-03' })), 'com a leitura das demandas falha a descrição diz "pendências indisponíveis", nunca "sem pendências"; os compromissos continuam contados');
 }

@@ -59,6 +59,8 @@ export async function semearAgenda(pasta, ref = null, { mes = false } = {}) {
     await evm({ titulo: 'Brinde de fim de ano', tipo: 'Compromisso', data: r.mes.ultimo, inicio: '17:00' });
     await dm('Plano de trabalho 2027', { numero: '306/2027', prazo_original: '2027-01-04' });
     await evm({ titulo: 'Reunião de planejamento 2027', data: r.mes.janeiro, inicio: '09:00', fim: '10:30' });
+    // dia de carga alta em dezembro (oito tarefas pendentes num só dia), fora de novembro para não mexer nos números do resto da suíte: serve para medir o contraste do selo "alta"
+    const al = await dm('Pacote de dezembro com muitas tarefas', { numero: '308/2026', prazo_original: '2026-12-10' }); await tarefas(al.id, 8); r.mes.alta = '2026-12-10';
   }
   await db.close();
   return r;

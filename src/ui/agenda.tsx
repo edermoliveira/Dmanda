@@ -12,15 +12,16 @@ import { somarDias, type DiaIndisponivel } from '@/lib/prazos';
 import { horarioDe, sobrepostosA, type Evento } from '@/lib/eventos';
 import { eObjeto } from '@/lib/armazenamento';
 import {
-  anoMes, cargaPorDia, colunaNaSemana, dataPorExtenso, descreverDia, diaDoMes, fimDeSemana, gradeMes, itensDoDia, itensParaGrade, LIMIARES_CARGA, marcosPorDia, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES, nivelDaCarga, nomeLongoDoDia, NOMES_MES, panorama,
-  pendenciasSemPrazo, primeiroDoMes, recortarItens, ROTULO_MARCO, ROTULO_NIVEL, rotuloSemana, semanaDe, somarMeses, tituloMes, trocarMes, diasNoMes, type CargaDia, type ItemGrade, type Marco, type NivelCarga, type OpcoesAgenda, type TipoMarco,
+  anoMes, cargaPorDia, colunaNaSemana, dataCurta, dataPorExtenso, descreverDia, diaDoMes, fimDeSemana, gradeMes, itensDoDia, itensParaGrade, LIMIARES_CARGA, marcosPorDia, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES, nivelDaCarga, nomeLongoDoDia, NOMES_MES, panorama,
+  pendenciasSemPrazo, primeiroDoMes, recortarItensGrade, ROTULO_MARCO, ROTULO_NIVEL, rotuloSemana, semanaDe, somarMeses, tituloMes, trocarMes, diasNoMes, type CargaDia, type ItemGrade, type Marco, type NivelCarga, type OpcoesAgenda, type TipoMarco,
 } from '@/lib/agenda';
 
 type Modo = 'hoje' | 'semana' | 'mes';
 type Categoria = 'tudo' | 'demandas' | 'eventos';
 type Preferencias = { modo?: Modo; cat?: Categoria; concluidas?: boolean; finalizadas?: boolean };
 const CHAVE = 'dmanda:agenda';
-const MODOS: [Modo, string][] = [['hoje', 'Hoje'], ['semana', 'Semana'], ['mes', 'Mês']];
+// o identificador 'hoje' (e o valor já guardado na preferência) continua; só o rótulo da visão diária passou a ser "Dia" (o atalho que volta à data atual segue se chamando Hoje)
+const MODOS: [Modo, string][] = [['hoje', 'Dia'], ['semana', 'Semana'], ['mes', 'Mês']];
 const CATEGORIAS: [Categoria, string][] = [['tudo', 'Tudo'], ['demandas', 'Demandas'], ['eventos', 'Compromissos']];
 const pl = (n: number, s: string, p: string) => `${n} ${n === 1 ? s : p}`;
 const maiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
@@ -130,7 +131,7 @@ function GavetaDia({ data, o, concluidas, semDemandas, aoFechar }: { data: strin
     <div className="dr-ov entra agd-gv-ov" onMouseDown={(e) => { if (e.target === e.currentTarget) { e.preventDefault(); aoFechar(); } }}>
       <aside ref={ref} className="dr agd-gv agd-detalhe" role="dialog" aria-modal="true" aria-labelledby="agd-gv-t" tabIndex={-1} data-data={data}>
         <header className="agd-gv-cab">
-          <div><h3 id="agd-gv-t">{maiuscula(dataPorExtenso(data))}</h3><p className="agd-sub">{data === hoje ? 'Hoje' : data < hoje ? 'Dia que já passou' : `Daqui a ${plural(diasDesde(hoje, data), 'dia')}`}</p></div>
+          <div><h3 id="agd-gv-t" aria-label={maiuscula(dataPorExtenso(data))}>{dataCurta(data, hoje)}</h3><p className="agd-sub">{data === hoje ? 'Hoje' : data < hoje ? 'Dia que já passou' : `Daqui a ${plural(diasDesde(hoje, data), 'dia')}`}</p></div>
           <button type="button" className="icbtn-s" aria-label="Fechar a lista do dia" onClick={aoFechar}><Icone nome="x" /></button>
         </header>
         {semDemandas ? <div className="erro-carga" role="alert"><b>As demandas não carregaram.</b><span>Vencimentos, retornos e a carga deste dia ficam indisponíveis; os compromissos aparecem normalmente.</span><button type="button" className="btn mini" onClick={() => void recarregar()}>Tentar de novo</button></div> : null}
@@ -232,12 +233,13 @@ function GradeMes({ dia, hoje, carga, o, indispPorData, semDemandas, escolher, a
   const itensPorDia = useMemo(() => { const m = new Map<string, ItemGrade[]>(); for (const d of semanas.flat()) if (d) m.set(d, itensParaGrade(d, o)); return m; }, [semanas, o]);
   const gridRef = useRef<HTMLDivElement>(null);
   const focar = useRef(false);
-  // quantos itens cabem por célula: três quando a grade é larga, dois nas menores (o resto vira "+N"); no primeiro desenho vale o do computador, igual ao do servidor
+  // quantos itens cabem por célula: três quando a grade é larga, dois nas menores e um só quando a célula é muito baixa (o resto vira "+N", e recortarItensGrade garante um compromisso e
+  // um vencimento quando há duas linhas ou mais); no primeiro desenho vale o do computador, igual ao do servidor
   const [limite, setLimite] = useState(3);
   useEffect(() => {
     const el = gridRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(() => setLimite(el.clientWidth >= 760 ? 3 : 2));
+    const ro = new ResizeObserver(() => setLimite((el.querySelector<HTMLElement>('.agd-cel')?.clientHeight ?? 999) < 84 ? 1 : el.clientWidth >= 760 ? 3 : 2));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -258,7 +260,7 @@ function GradeMes({ dia, hoje, carga, o, indispPorData, semDemandas, escolher, a
           {sem.map((d, j) => {
             if (!d) return <div key={j} className="agd-vaz" role="gridcell" aria-hidden="true" />;
             const c = carga.get(d), sel = d === dia, ind = indispPorData.get(d) ?? [];
-            const itens = itensPorDia.get(d) ?? [], { visiveis, restantes } = recortarItens(itens, limite);
+            const itens = itensPorDia.get(d) ?? [], { visiveis, restantes } = recortarItensGrade(itens, limite);
             const nEv = itens.filter((x) => x.tipo === 'evento').length;
             const nivel = nivelDaCarga(c?.carga ?? 0);
             return (
@@ -317,6 +319,7 @@ export function PaginaAgenda() {
   const [data, setData] = useState<string | null>(null);
   const [pronto, setPronto] = useState(false);
   const [gavetaAberta, setGavetaAberta] = useState(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false); // só vale nas telas estreitas, onde os filtros ficam num controle compacto
   const abridor = useRef<HTMLElement | null>(null);
   const dia = data ?? hoje;
   const setModo = (m: Modo) => { setGavetaAberta(false); setModoBruto(m); };
@@ -337,6 +340,7 @@ export function PaginaAgenda() {
   /* eslint-enable react-hooks/set-state-in-effect */
   useEffect(() => { if (pronto) gravarPrefs({ modo, cat, concluidas, finalizadas }); }, [pronto, modo, cat, concluidas, finalizadas]);
 
+  const filtrosAtivos = (cat !== 'tudo' ? 1 : 0) + (concluidas ? 1 : 0) + (finalizadas ? 1 : 0);
   const verDemandas = cat !== 'eventos', verEventos = cat !== 'demandas';
   const opcoes: OpcoesAgenda = useMemo(() => ({ demandas, eventos, indisponiveis: dias, hoje, comFinalizadas: finalizadas }), [demandas, eventos, dias, hoje, finalizadas]);
   const carga = useMemo(() => (verDemandas ? cargaPorDia(demandas, dias, hoje) : new Map<string, CargaDia>()), [verDemandas, demandas, dias, hoje]);
@@ -360,14 +364,19 @@ export function PaginaAgenda() {
 
   return (
     <div className="agd" data-modo={modo}>
-      <div className="pagehead"><h1>Agenda</h1><p>Prazos, retornos e compromissos, juntos.</p></div>
+      <div className="agd-cab-pag">
+        <div className="pagehead"><h1>Agenda</h1><p>Prazos, retornos e compromissos, juntos.</p></div>
+        <button type="button" className="btn mini agd-filtros-bt" aria-expanded={filtrosAbertos} aria-controls="agd-filtros-p" aria-label={filtrosAtivos ? `Filtros, ${plural(filtrosAtivos, 'ativo')}` : 'Filtros'} data-ativos={filtrosAtivos || undefined} onClick={() => setFiltrosAbertos((v) => !v)}>
+          <Icone nome="filtro" />Filtros{filtrosAtivos ? <span className="agd-filtros-n" aria-hidden="true">{filtrosAtivos}</span> : null}
+        </button>
+      </div>
 
       <div className="agd-barra">
         <div className="opcoes" role="group" aria-label="Visão da agenda">{MODOS.map(([k, n]) => <button key={k} type="button" aria-pressed={modo === k} onClick={() => setModo(k)}>{n}</button>)}</div>
         <button type="button" className="btn pri agd-novo" onClick={() => abrirJanela({ t: 'evento', data: dia })}><Icone nome="plus" />Novo evento</button>
       </div>
 
-      <div className="agd-filtros">
+      <div className="agd-filtros" id="agd-filtros-p" data-aberto={filtrosAbertos || undefined}>
         <div className="opcoes" role="group" aria-label="Mostrar na agenda">{CATEGORIAS.map(([k, n]) => <button key={k} type="button" aria-pressed={cat === k} onClick={() => setCat(k)}>{n}</button>)}</div>
         <label className="agd-chk"><input type="checkbox" checked={concluidas} onChange={(e) => setConcluidas(e.target.checked)} />Tarefas concluídas</label>
         <label className="agd-chk"><input type="checkbox" checked={finalizadas} onChange={(e) => setFinalizadas(e.target.checked)} />Demandas finalizadas</label>

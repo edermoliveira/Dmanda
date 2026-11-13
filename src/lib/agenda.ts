@@ -46,6 +46,8 @@ export const nomeLongoDoDia = (iso: string) => NOMES_DIA_LONGO[diaDaSemana(iso)]
 /** "terça-feira, 3 de novembro de 2026" */
 export const dataPorExtenso = (iso: string) => `${nomeLongoDoDia(iso)}, ${Number(iso.slice(8, 10))} de ${NOMES_MES[Number(iso.slice(5, 7)) - 1]} de ${iso.slice(0, 4)}`;
 export const diaDoMes = (iso: string) => Number(iso.slice(8, 10));
+/** "Quarta, 18 de novembro": o cabeçalho curto da gaveta do dia (o ano só aparece quando não é o de hoje). A data completa fica no nome acessível, com `dataPorExtenso`. */
+export const dataCurta = (iso: string, hoje: string) => { const n = nomeLongoDoDia(iso).replace('-feira', ''); return `${n.charAt(0).toUpperCase()}${n.slice(1)}, ${diaDoMes(iso)} de ${NOMES_MES[Number(iso.slice(5, 7)) - 1]}${iso.slice(0, 4) === hoje.slice(0, 4) ? '' : ` de ${iso.slice(0, 4)}`}`; };
 export const rotuloSemana = (dias: readonly string[]) => {
   const a = dias[0], b = dias[6], mA = NOMES_MES[Number(a.slice(5, 7)) - 1], mB = NOMES_MES[Number(b.slice(5, 7)) - 1];
   return a.slice(0, 7) === b.slice(0, 7) ? `${diaDoMes(a)} a ${diaDoMes(b)} de ${mA} de ${a.slice(0, 4)}` : `${diaDoMes(a)} de ${mA.slice(0, 3)} a ${diaDoMes(b)} de ${mB.slice(0, 3)} de ${b.slice(0, 4)}`;
@@ -139,10 +141,21 @@ export function itensParaGrade(data: string, o: OpcoesAgenda): ItemGrade[] {
   const demandas: ItemGrade[] = [...porDemanda.values()].map((ms) => ({ tipo: 'demanda', id: ms[0].demanda.id, titulo: ms[0].demanda.assunto, marco: ms[0].tipo, marcos: ms.map((m) => m.tipo), atrasado: ms.some((m) => m.atrasado) }));
   return [...eventos, ...demandas];
 }
-/** Os primeiros `limite` itens e quantos ficaram de fora (o "+N" da célula). Limite menor que 1 conta como 1. */
-export function recortarItens<T>(itens: readonly T[], limite: number): { visiveis: T[]; restantes: number } {
+/**
+ * O que a célula do Mês mostra quando o dia tem mais itens do que linhas (`limite`, no mínimo 1) e quantos ficaram de fora (o "+N", sempre dos itens realmente ocultos).
+ * Com uma linha só, o vencimento tem prioridade. Com duas ou mais, nenhum tipo some: reserva-se uma linha para um compromisso e outra para uma demanda (o vencimento ou,
+ * se o dia não tem vencimento, a primeira demanda do dia). As demais linhas seguem a ordem do dia (compromissos por horário, depois as demandas, atrasadas primeiro),
+ * e o resultado sai nessa mesma ordem, estável. A lista completa do dia fica na gaveta.
+ */
+export function recortarItensGrade(itens: readonly ItemGrade[], limite: number): { visiveis: ItemGrade[]; restantes: number } {
   const n = Math.max(1, Math.floor(limite));
-  return { visiveis: itens.slice(0, n), restantes: Math.max(0, itens.length - n) };
+  if (itens.length <= n) return { visiveis: [...itens], restantes: 0 };
+  const venc = itens.findIndex((x) => x.tipo === 'demanda' && x.marco === 'vencimento');
+  const escolhidos = new Set<number>(n === 1 ? [venc] : [itens.findIndex((x) => x.tipo === 'evento'), venc >= 0 ? venc : itens.findIndex((x) => x.tipo === 'demanda')]);
+  escolhidos.delete(-1);
+  for (let i = 0; i < itens.length && escolhidos.size < n; i++) escolhidos.add(i);
+  const visiveis = itens.filter((_, i) => escolhidos.has(i));
+  return { visiveis, restantes: itens.length - visiveis.length };
 }
 
 /** Marcos de um intervalo de datas (inclusive), agrupados por dia: usado pela semana e pelo mês. */
