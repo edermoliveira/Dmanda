@@ -12,6 +12,10 @@
   --calendar-cell-low-fg: var(--text);
   --calendar-cell-medium-fg: var(--text);
   --calendar-cell-high-fg: var(--acc-ink);
+  /* tom da célula do Mês pela carga: discreto, para os itens do dia continuarem legíveis (o selo da carga mostra a escala forte) */
+  --agd-heat-baixa: color-mix(in srgb, var(--acc) 7%, var(--card));
+  --agd-heat-media: color-mix(in srgb, var(--acc) 14%, var(--card));
+  --agd-heat-alta: color-mix(in srgb, var(--acc) 22%, var(--card));
   /* vidro fosco de alta densidade: preenchimento estável para a leitura, contorno fino, realce no topo */
   --agd-vidro: color-mix(in srgb, var(--card) 82%, transparent);
   --agd-evento-bg: var(--azul-bg, color-mix(in srgb, var(--acc) 16%, var(--card)));
@@ -38,11 +42,13 @@
 .agd-chk input { margin: 0; }
 
 /* informação principal do período: dados reais, sem enfeite */
-.agd-resumo { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
-.agd-periodo { margin: 0; font-size: calc(22px * var(--esc)); font-weight: 700; color: var(--text); text-transform: none; letter-spacing: -.01em; }
+.agd-resumo { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; }
+.agd-resumo-t { display: grid; gap: 2px; min-width: 0; }
+.agd-periodo { margin: 0; font-size: calc(26px * var(--esc)); font-weight: 700; color: var(--text); text-transform: none; letter-spacing: -.01em; }
+.agd-ano { margin-inline-start: .15em; font-size: .62em; font-weight: 600; color: var(--text2); font-variant-numeric: tabular-nums; }
 .agd-grande { margin: 2px 0 0; font-size: calc(18px * var(--esc)); color: var(--text); }
 .agd-grande b { font-size: calc(34px * var(--esc)); font-weight: 700; font-variant-numeric: tabular-nums; margin-inline-end: 4px; }
-.agd-chips-res { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.agd-chips-res { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
 
 /* ---------- painel de vidro fosco ---------- */
 .agd-painel { position: relative; isolation: isolate; min-width: 0; border-radius: 28px; padding: 16px clamp(10px, 3.4cqw, 36px) 18px; border: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--lq-edge), var(--lq-sh); color: var(--text); }
@@ -58,44 +64,89 @@
 .agd-h4-atr { color: var(--perigo); }
 .agd-vazio { margin: 8px 0; font-size: calc(14px * var(--esc)); color: var(--text2); }
 
-.agd-corpo { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
-@container agd (min-width: 960px) { .agd-corpo { grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); } }
 .agd-aux-par { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
 @container agd (min-width: 760px) { .agd-aux-par { grid-template-columns: repeat(2, minmax(0, 1fr)); } .agd-aux-par .agd-aux { min-height: 168px; } }
 
-/* ---------- grade do mês ---------- */
-.agd-grade { --g: clamp(3px, 1.4cqw, 11px); display: grid; gap: var(--g); max-width: 760px; margin-inline: auto; container-type: inline-size; }
-.agd-linha-sem { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--g); }
-.agd-cabsem { text-align: center; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; color: var(--text2); padding-block: 2px 4px; }
+/* ---------- mês (decisão 72): segunda a domingo, semanas numeradas à esquerda, JAN a DEZ na vertical à direita, células grandes com os itens do dia ---------- */
+.agd-cal { --agd-cel-h: 124px; --agd-semw: 24px; --agd-gm: 12px; --agd-aba-w: 34px; padding: 14px clamp(10px, 2.2cqw, 26px) 16px; }
+@container agd (max-width: 899px) { .agd-cal { --agd-cel-h: 112px; --agd-semw: 20px; } }
+@container agd (max-width: 560px) { .agd-cal { --agd-cel-h: 96px; --agd-gm: 10px; --agd-aba-w: 24px; padding-inline: 6px; } }
+.agd-mes { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--agd-gm); align-items: stretch; }
+.agd-grade { --g: clamp(4px, .9cqw, 10px); display: grid; grid-template-rows: auto repeat(var(--sem, 5), minmax(var(--agd-cel-h), 1fr)); gap: var(--g); min-width: 0; }
+.agd-linha-sem { display: grid; grid-template-columns: var(--agd-semw) repeat(7, minmax(0, 1fr)); gap: var(--g); min-width: 0; }
+.agd-cabsem { text-align: center; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; letter-spacing: .04em; color: var(--text2); padding-block: 2px 4px; }
 .agd-cabsem abbr { text-decoration: none; cursor: default; }
-.agd-vaz { aspect-ratio: 1; }
-.agd-linha-sem > [role="gridcell"] { min-width: 0; }
-.agd-cel { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 1; padding: 0; margin: 0; border: 0; border-radius: 22%; cursor: pointer; font: inherit;
-  background: var(--calendar-cell-idle); color: var(--calendar-cell-idle-fg); font-variant-numeric: tabular-nums;
+.agd-semn { align-self: center; text-align: center; font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; color: var(--text2); font-variant-numeric: tabular-nums; }
+.agd-linha-sem > [role="gridcell"] { min-width: 0; display: flex; }
+/* fora do mês: posição recuada, sem número nem borda */
+.agd-vaz { min-width: 0; border-radius: 18px; background: color-mix(in srgb, var(--text) 4%, transparent); }
+.agd-cel { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 4px; flex: 1; width: 100%; min-width: 0; padding: 6px 7px 7px; margin: 0; border: 0; border-radius: 18px; cursor: pointer; overflow: hidden; font: inherit; text-align: start; font-variant-numeric: tabular-nums;
+  background: var(--card); color: var(--text); box-shadow: inset 0 0 0 1px var(--card-brd);
   transition: background-color var(--agd-dur) ease, box-shadow var(--agd-dur) ease, filter var(--agd-dur) ease; }
-.agd-cel[data-nivel="baixa"] { background: var(--calendar-cell-low); color: var(--calendar-cell-low-fg); }
-.agd-cel[data-nivel="media"] { background: var(--calendar-cell-medium); color: var(--calendar-cell-medium-fg); }
-.agd-cel[data-nivel="alta"] { background: var(--calendar-cell-high); color: var(--calendar-cell-high-fg); }
-.agd-cel[data-fds]:not([data-nivel="media"]):not([data-nivel="alta"]) { color: var(--text2); }
-.agd-cel:hover { filter: brightness(.95); box-shadow: inset 0 0 0 1px var(--brd); }
-.agd-cel:active { filter: brightness(.9); }
+/* o heatmap continua, em tom discreto: o número da carga (selo) mostra a escala forte */
+.agd-cel[data-nivel="baixa"] { background: var(--agd-heat-baixa); }
+.agd-cel[data-nivel="media"] { background: var(--agd-heat-media); }
+.agd-cel[data-nivel="alta"] { background: var(--agd-heat-alta); }
+.agd-cel:hover { filter: brightness(.96); box-shadow: inset 0 0 0 1px var(--brd); }
+.agd-cel:active { filter: brightness(.92); }
 /* seleção: contorno persistente de 2 px por dentro (a grade não se mexe); foco do teclado: anel tracejado por fora, bem diferente da seleção */
 .agd-cel[data-sel] { box-shadow: inset 0 0 0 2px var(--text), inset 0 0 0 4px var(--card); }
 .app[data-dir="d"] .agd-cel:focus-visible { outline: 3px dashed var(--foco); outline-offset: 3px; }
-.agd-num { font-size: calc(15px * var(--esc)); font-weight: 650; line-height: 1; display: grid; place-items: center; min-width: 1.9em; min-height: 1.9em; border-radius: 999px; }
-@container agd (min-width: 560px) { .agd-num { font-size: calc(19px * var(--esc)); } }
+.agd-topo { display: flex; align-items: center; gap: 5px; min-height: 26px; flex: none; }
+.agd-num { margin-inline-start: auto; font-size: calc(15px * var(--esc)); font-weight: 700; line-height: 1; display: grid; place-items: center; min-width: 1.9em; min-height: 1.9em; border-radius: 999px; }
+.agd-cel[data-fds]:not([data-hoje]) .agd-num { color: var(--text2); }
 /* Hoje: o número fica dentro de um disco cheio, marca que a cor da carga nunca usa */
 .agd-cel[data-hoje] .agd-num { background: var(--text); color: var(--card); }
-.agd-qtd { position: absolute; bottom: 7%; left: 0; right: 0; text-align: center; font-size: max(11px, calc(12px * var(--esc))); font-weight: 650; line-height: 1; }
-/* atraso: ponto vermelho no canto; compromisso: quadradinho azul no outro canto (formas diferentes, para não depender só de cor) */
-.agd-atr { position: absolute; top: 9%; left: 9%; width: 9px; height: 9px; border-radius: 50%; background: var(--perigo); box-shadow: 0 0 0 2px var(--card); }
-.agd-ev { position: absolute; top: 9%; right: 9%; width: 8px; height: 8px; border-radius: 2px; background: var(--agd-evento-tx); box-shadow: 0 0 0 2px var(--card); }
-.agd-cel[data-indisp]::after { content: ""; position: absolute; bottom: 4px; left: 28%; right: 28%; height: 3px; border-radius: 3px; background: currentColor; opacity: .55; }
-.agd-cel[data-indisp] .agd-qtd { bottom: 12%; }
+.agd-qtd { flex: none; min-width: 1.7em; padding: 2px 6px; border-radius: 999px; text-align: center; font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; line-height: 1.2; background: var(--calendar-cell-low); color: var(--calendar-cell-low-fg); }
+.agd-cel[data-nivel="media"] .agd-qtd { background: var(--calendar-cell-medium); color: var(--calendar-cell-medium-fg); }
+.agd-cel[data-nivel="alta"] .agd-qtd { background: var(--calendar-cell-high); color: var(--calendar-cell-high-fg); }
+/* atraso: ponto vermelho ao lado da carga (a cor sozinha não conta: a descrição acessível diz "com atraso") */
+.agd-atr { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--perigo); box-shadow: 0 0 0 2px var(--card); }
+.agd-cel[data-indisp]::after { content: ""; position: absolute; bottom: 4px; left: 28%; right: 28%; height: 3px; border-radius: 3px; background: currentColor; opacity: .45; }
+/* os itens do dia: só texto, truncado; o título inteiro está na gaveta */
+.agd-its { display: grid; gap: 3px; min-width: 0; align-content: start; }
+.agd-it { display: flex; align-items: baseline; gap: 5px; min-width: 0; padding: 2px 6px; border-radius: 7px; font-size: max(10px, calc(11px * var(--esc))); line-height: 1.3; border-inline-start: 3px solid transparent; }
+.agd-it b { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; }
+.agd-it-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agd-it[data-k="evento"] { background: var(--agd-evento-bg); color: var(--agd-evento-tx); border-inline-start-color: transparent; }
+.agd-it[data-k="evento"][data-dia] { background: var(--cz-bg); color: var(--cz-tx); }
+/* demanda: uma barra à esquerda no tom do texto, e a forma diz o marco (cheia: vencimento; tracejada: acompanhar; pontilhada: retorno do setor) */
+.agd-it[data-k="demanda"] { background: var(--agd-demanda-bg); color: var(--agd-demanda-tx); border-inline-start-color: color-mix(in srgb, currentColor 65%, transparent); }
+.agd-it[data-marco="acompanhamento"] { border-inline-start-style: dashed; }
+.agd-it[data-marco="retorno"] { border-inline-start-style: dotted; }
+.agd-it[data-atrasado] { background: var(--perigo-soft); color: var(--perigo); border-inline-start-color: var(--perigo); }
+.agd-mais { padding: 0 6px; font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; color: var(--text2); }
+/* abas de meses */
+.agd-meses { display: flex; flex-direction: column; gap: 4px; width: var(--agd-aba-w); }
+.agd-mes-aba { position: relative; flex: 1 1 0; min-height: 44px; display: grid; place-items: center; width: 100%; padding: 0; border: 0; border-radius: 12px; cursor: pointer; font: inherit; font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; letter-spacing: .08em; writing-mode: vertical-rl;
+  background: var(--calendar-cell-idle); color: var(--text2); transition: background-color var(--agd-dur) ease; }
+/* área de toque de 44 px de largura mesmo com a aba mais estreita */
+.agd-mes-aba::after { content: ""; position: absolute; inset: 0 calc((44px - var(--agd-aba-w)) / -2); }
+.agd-mes-aba:hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.agd-mes-aba[aria-current="true"] { background: var(--text); color: var(--card); }
+.app[data-dir="d"] .agd-mes-aba:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
+/* a falha de leitura das demandas não apaga o Mês: o aviso diz o que está indisponível */
+.agd-aviso-carga { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; padding: 10px 14px; border-radius: 14px; background: var(--cat-venc); color: var(--text); font-size: calc(14px * var(--esc)); }
+.agd-aviso-carga .ic { width: 18px; height: 18px; flex: none; }
+.agd-aviso-carga span { flex: 1 1 220px; min-width: 0; }
+/* celular: sete colunas e a faixa de meses continuam; sem a hora, o resto do título e o rótulo do marco, que ficam na gaveta */
+@container agd (max-width: 560px) {
+  /* a largura do iPhone é de sete colunas e da faixa de meses: a numeração das semanas sai, para as células ficarem o mais largas possível */
+  .agd-linha-sem { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .agd-semn, .agd-semn-cab { display: none; }
+  .agd-cel { padding: 4px 3px 4px; border-radius: 12px; gap: 3px; }
+  .agd-vaz { border-radius: 12px; }
+  .agd-topo { min-height: 20px; gap: 2px; }
+  .agd-num { font-size: max(10px, calc(12px * var(--esc))); min-width: 1.7em; min-height: 1.7em; }
+  .agd-qtd { padding: 1px 4px; min-width: 1.4em; }
+  .agd-it { padding: 1px 3px; gap: 2px; border-inline-start-width: 2px; }
+  .agd-it-h, .agd-it-m { display: none; }
+  .agd-mais { padding: 0 2px; }
+}
 
 /* legenda */
 .agd-leg { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; margin-top: 14px; font-size: calc(12px * var(--esc)); color: var(--text2); }
-.agd-marcas, .agd-escala ul { display: flex; align-items: center; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.agd-marcas, .agd-escala ul { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0; padding: 0; list-style: none; }
 .agd-marcas li, .agd-escala li { display: inline-flex; align-items: center; gap: 6px; }
 .agd-escala { display: inline-flex; align-items: center; gap: 8px; margin-inline-start: auto; }
 .agd-escala ul { gap: 6px; }
@@ -106,8 +157,25 @@
 .agd-amostra[data-nivel="alta"] { background: var(--calendar-cell-high); }
 .agd-m-hoje { width: 14px; height: 14px; border-radius: 50%; background: var(--text); }
 .agd-m-atr { width: 9px; height: 9px; border-radius: 50%; background: var(--perigo); }
-.agd-m-ev { width: 8px; height: 8px; border-radius: 2px; background: var(--agd-evento-tx); }
+.agd-m-ev { width: 14px; height: 10px; border-radius: 4px; background: var(--agd-evento-bg); box-shadow: inset 0 0 0 1px var(--agd-evento-tx); }
+.agd-m-dem { width: 14px; height: 10px; border-radius: 4px; background: var(--agd-demanda-bg); border-inline-start: 3px solid color-mix(in srgb, var(--text) 65%, transparent); }
+.agd-m-dem[data-marco="acompanhamento"] { border-inline-start-style: dashed; }
+.agd-m-dem[data-marco="retorno"] { border-inline-start-style: dotted; }
 .agd-marcas i { display: inline-block; flex: none; }
+
+/* ---------- gaveta do dia: à direita no computador e no iPad, inferior no celular; sobre a grade, que não se mexe ---------- */
+.agd-gv { gap: 10px; }
+.agd-gv-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.agd-gv-cab h3 { margin: 0; font-size: calc(20px * var(--esc)); font-weight: 700; overflow-wrap: anywhere; }
+.agd-gv-corpo { flex: 1 1 auto; min-height: 0; }
+.agd-gv-rod { position: sticky; bottom: 0; margin-top: auto; padding-top: 10px; background: linear-gradient(to bottom, transparent, var(--solido) 36%); }
+.agd-gv-rod .btn { width: 100%; }
+@container tela (max-width: 599px) {
+  .app[data-dir="d"] .agd-gv-ov { align-items: flex-end; justify-content: stretch; }
+  .app[data-dir="d"] .agd-gv-ov .agd-gv.dr { width: 100%; height: auto; max-height: 86%; margin: 0; border-radius: 34px 34px 0 0; border-left: 0; box-shadow: 0 -18px 50px var(--lg-sh); }
+  .app[data-dir="d"] .agd-gv-ov.entra .agd-gv.dr { animation: agd-gv-sobe .28s cubic-bezier(.2, .7, .2, 1) both; }
+}
+@keyframes agd-gv-sobe { from { transform: translateY(100%); } to { transform: none; } }
 
 /* ---------- itens (dia, semana, hoje) ---------- */
 .agd-item { margin: 0 0 8px; padding: 10px 12px; border-radius: 16px; background: color-mix(in srgb, var(--card) 70%, transparent); box-shadow: 0 0 0 1px var(--card-brd); min-width: 0; }
@@ -178,4 +246,5 @@
 @media (max-width: 480px) {
   .agd-painel { border-radius: 24px; padding-inline: 10px; }
   .agd-grade { --g: 3px; }
+  .agd-cal { padding-inline: 6px; }
 }

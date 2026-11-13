@@ -10,6 +10,7 @@
     "verificar:cores": "node scripts/verificar-cores.mjs",
     "gerar:logo": "node scripts/gerar-logo.mjs",
     "capturar": "node scripts/capturar.mjs",
+    "capturar:agenda-mes": "node scripts/capturar-agenda-mes.mjs",
     "dev:teste": "node scripts/dev-teste.mjs",
     "testar:banco": "node scripts/testar-banco.mjs",
     "testar:regras": "node scripts/testar-regras.mjs",

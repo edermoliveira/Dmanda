@@ -7,8 +7,11 @@ import { ordenarEventos, type Evento } from './eventos.ts';
 
 // ---------- calendário ----------
 export const NOMES_MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-export const SEMANA_INICIAIS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-export const SEMANA_NOMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+/** Cabeçalho do Mês, de segunda a domingo (a Semana e o Hoje seguem como estavam). */
+export const MES_DIAS_ABREV = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
+export const MES_DIAS_NOMES = ['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado', 'domingo'];
+/** As abas de meses (JAN a DEZ), na ordem do ano. */
+export const MES_ABREV = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 const NOMES_DIA_LONGO = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
 
 export const anoMes = (iso: string) => ({ ano: Number(iso.slice(0, 4)), mes: Number(iso.slice(5, 7)) });
@@ -24,9 +27,14 @@ export function somarMeses(iso: string, n: number): string {
   return `${a}-${dois(m)}-${dois(Math.min(Number(iso.slice(8, 10)), diasNoMes(a, m)))}`;
 }
 
-/** Grade do mês: semanas de domingo a sábado; as posições antes do dia 1 e depois do último dia são nulas (vazias). O número de semanas muda com o mês (4 a 6). */
+/** Posição do dia na semana do Mês: 0 é segunda-feira e 6 é domingo. */
+export const colunaNaSemana = (iso: string) => (diaDaSemana(iso) + 6) % 7;
+/** Troca só o mês, no mesmo ano, mantendo o dia ou o último dia do mês de destino quando ele não existe (31 de janeiro, aba FEV, vira 28 ou 29). */
+export const trocarMes = (iso: string, mes: number): string => somarMeses(iso, mes - anoMes(iso).mes);
+
+/** Grade do mês: semanas de segunda a domingo; as posições antes do dia 1 e depois do último dia são nulas (vazias). O número de semanas muda com o mês (4 a 6). */
 export function gradeMes(ano: number, mes: number): (string | null)[][] {
-  const primeiro = `${ano}-${dois(mes)}-01`, inicio = diaDaSemana(primeiro), total = diasNoMes(ano, mes);
+  const primeiro = `${ano}-${dois(mes)}-01`, inicio = colunaNaSemana(primeiro), total = diasNoMes(ano, mes);
   const celulas: (string | null)[] = [...Array<null>(inicio).fill(null), ...Array.from({ length: total }, (_, i) => `${ano}-${dois(mes)}-${dois(i + 1)}`)];
   while (celulas.length % 7) celulas.push(null);
   return Array.from({ length: celulas.length / 7 }, (_, i) => celulas.slice(i * 7, i * 7 + 7));
@@ -115,6 +123,28 @@ export function itensDoDia(data: string, o: OpcoesAgenda): ItensDoDia {
     .sort((a, b) => Number(b.atrasado) - Number(a.atrasado) || ordem[a.tipo] - ordem[b.tipo] || a.demanda.criado_em.localeCompare(b.demanda.criado_em));
   return { data, eventos: ordenarEventos(o.eventos.filter((e) => e.data === data)), indisponiveis: o.indisponiveis.filter((x) => x.data === data), marcos };
 }
+/**
+ * O que a célula do Mês mostra de um dia: primeiro os compromissos (dia inteiro antes, depois por horário) e então as demandas, uma linha por demanda mesmo com mais de um marco no dia.
+ * O título da demanda é o assunto, no dia do marco (o vencimento ajustado, o "Acompanhar em" ou o retorno do setor, cada um na própria data); `marco` é o primeiro do dia na ordem
+ * atrasados, vencimento, retorno, acompanhamento. Os dias indisponíveis não são itens: a célula só os marca.
+ */
+export type ItemGrade =
+  | { tipo: 'evento'; id: string; titulo: string; diaInteiro: boolean; hora: string | null }
+  | { tipo: 'demanda'; id: string; titulo: string; marco: TipoMarco; marcos: TipoMarco[]; atrasado: boolean };
+export function itensParaGrade(data: string, o: OpcoesAgenda): ItemGrade[] {
+  const dia = itensDoDia(data, o);
+  const eventos: ItemGrade[] = dia.eventos.map((e) => ({ tipo: 'evento', id: e.id, titulo: e.titulo, diaInteiro: e.dia_inteiro, hora: e.dia_inteiro ? null : e.inicio }));
+  const porDemanda = new Map<string, Marco[]>();
+  for (const m of dia.marcos) porDemanda.set(m.demanda.id, [...(porDemanda.get(m.demanda.id) ?? []), m]);
+  const demandas: ItemGrade[] = [...porDemanda.values()].map((ms) => ({ tipo: 'demanda', id: ms[0].demanda.id, titulo: ms[0].demanda.assunto, marco: ms[0].tipo, marcos: ms.map((m) => m.tipo), atrasado: ms.some((m) => m.atrasado) }));
+  return [...eventos, ...demandas];
+}
+/** Os primeiros `limite` itens e quantos ficaram de fora (o "+N" da célula). Limite menor que 1 conta como 1. */
+export function recortarItens<T>(itens: readonly T[], limite: number): { visiveis: T[]; restantes: number } {
+  const n = Math.max(1, Math.floor(limite));
+  return { visiveis: itens.slice(0, n), restantes: Math.max(0, itens.length - n) };
+}
+
 /** Marcos de um intervalo de datas (inclusive), agrupados por dia: usado pela semana e pelo mês. */
 export function marcosPorDia(o: OpcoesAgenda, de: string, ate: string): Map<string, Marco[]> {
   const mapa = new Map<string, Marco[]>();
@@ -124,11 +154,12 @@ export function marcosPorDia(o: OpcoesAgenda, de: string, ate: string): Map<stri
 
 const plural = (n: number, s: string, p = `${s}s`) => `${n} ${n === 1 ? s : p}`;
 /** Descrição acessível de um dia: a quantidade, o atraso, os compromissos e as marcas que a cor sozinha não conta. */
-export function descreverDia(data: string, o: { carga?: CargaDia; eventos: number; indisponiveis: readonly DiaIndisponivel[]; hoje: string; selecionado?: boolean }): string {
+export function descreverDia(data: string, o: { carga?: CargaDia; eventos: number; indisponiveis: readonly DiaIndisponivel[]; hoje: string; selecionado?: boolean; semDemandas?: boolean }): string {
   const p: string[] = [dataPorExtenso(data)];
   if (data === o.hoje) p.push('hoje');
   const c = o.carga;
-  p.push(c && c.carga ? `${plural(c.carga, 'pendência')} em ${plural(c.demandas, 'demanda')}, ${ROTULO_NIVEL[nivelDaCarga(c.carga)]}${c.atrasada ? ', com atraso' : ''}` : 'sem pendências');
+  // com a leitura das demandas falha, "sem pendências" seria mentira: o número é desconhecido
+  p.push(o.semDemandas ? 'pendências indisponíveis' : c && c.carga ? `${plural(c.carga, 'pendência')} em ${plural(c.demandas, 'demanda')}, ${ROTULO_NIVEL[nivelDaCarga(c.carga)]}${c.atrasada ? ', com atraso' : ''}` : 'sem pendências');
   if (o.eventos) p.push(plural(o.eventos, 'compromisso'));
   for (const x of o.indisponiveis) p.push(`${x.categoria === 'Feriado' ? 'feriado' : 'evento externo'}: ${x.descricao}`);
   if (o.selecionado) p.push('selecionado');

@@ -5,7 +5,7 @@ import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-
 export const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
 
 /** `ref` (AAAA-MM-DD) é a data de referência: todas as datas e os instantes ("parada há N dias") nascem dela, não do relógio. Sem ela vale a data do banco (hoje, em Brasília). */
-export async function semearAgenda(pasta, ref = null) {
+export async function semearAgenda(pasta, ref = null, { mes = false } = {}) {
   const db = await abrirBancoTeste({ pasta });
   await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO_TESTE]);
   await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
@@ -40,6 +40,26 @@ export async function semearAgenda(pasta, ref = null) {
   r.ev2 = await ev({ titulo: 'Visita técnica', tipo: 'Compromisso', data: hoje, inicio: '09:30', fim: '11:00', aviso_min: null });
   r.ev3 = await ev({ titulo: 'Dia do servidor', tipo: 'Lembrete', data: await mais(1), dia_inteiro: true, aviso_min: 0 });
   r.ev4 = await ev({ titulo: 'Almoço com a prefeita', tipo: 'Compromisso', data: hoje, inicio: '12:30', fim: null, aviso_min: 30 });
+
+  // Cenário do Mês (decisão 72), em dezembro e janeiro (datas fixas, fora do mês de novembro de que o resto da suíte depende): um dia cheio (6 itens), um dia vazio, um prazo que cai no
+  // sábado e é antecipado para a sexta, um compromisso de dia inteiro e a virada de dezembro para janeiro.
+  if (mes) {
+    const evm = (o) => ev({ aviso_min: null, ...o });
+    const dm = (assunto, o) => dem(assunto, { etapa: 'Fazendo', ...o });
+    r.mes = { cheio: '2026-12-15', vazio: '2026-12-16', longo: 'Audiência pública para revisão do plano diretor e do zoneamento urbano do município', ultimo: '2026-12-31', janeiro: '2027-01-05' };
+    await evm({ titulo: 'Reunião A de dezembro', data: r.mes.cheio, inicio: '08:00', fim: '09:00' });
+    await evm({ titulo: 'Reunião B de dezembro', data: r.mes.cheio, inicio: '10:00', fim: '11:00' });
+    await evm({ titulo: r.mes.longo, tipo: 'Compromisso', data: r.mes.cheio, inicio: '14:00', fim: '16:00' });
+    await dm('Parecer de dezembro sobre o contrato de limpeza urbana e coleta seletiva do exercício', { numero: '301/2026', prazo_original: r.mes.cheio });
+    await dm('Ofício de dezembro', { numero: '302/2026', prazo_original: r.mes.cheio });
+    await dm('Memorando de dezembro', { numero: '303/2026', prazo_original: r.mes.cheio });
+    const aj = await dm('Prazo ajustado de dezembro', { numero: '304/2026', prazo_original: '2026-12-05', prazo_tipo: 'Legal' }); r.mes.ajustado = await c('buscar_demanda', { p_id: aj.id });
+    await evm({ titulo: 'Recesso do funcionalismo', tipo: 'Lembrete', data: '2026-12-24', dia_inteiro: true, aviso_min: 0 });
+    await dm('Prestação de contas anual', { numero: '305/2026', prazo_original: r.mes.ultimo, prazo_tipo: 'Legal' });
+    await evm({ titulo: 'Brinde de fim de ano', tipo: 'Compromisso', data: r.mes.ultimo, inicio: '17:00' });
+    await dm('Plano de trabalho 2027', { numero: '306/2027', prazo_original: '2027-01-04' });
+    await evm({ titulo: 'Reunião de planejamento 2027', data: r.mes.janeiro, inicio: '09:00', fim: '10:30' });
+  }
   await db.close();
   return r;
 }

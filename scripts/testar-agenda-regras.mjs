@@ -1,7 +1,7 @@
 // Regras puras da Agenda (src/lib/agenda.ts, eventos.ts e a etapa Aguardando Prefeita de demandas.ts), sem navegador nem banco. Uso: node scripts/testar-agenda-regras.mjs
 import {
   gradeMes, somarMeses, semanaDe, diasNoMes, tituloMes, rotuloSemana, dataPorExtenso, contagemRetorno, marcosDaDemanda, dataAplicavel, cargaDaDemanda, nivelDaCarga, cargaPorDia,
-  pendenciasSemPrazo, itensDoDia, descreverDia, diaMaisLivre, panorama, marcosPorDia, LIMIARES_CARGA,
+  pendenciasSemPrazo, itensDoDia, descreverDia, diaMaisLivre, panorama, marcosPorDia, LIMIARES_CARGA, colunaNaSemana, trocarMes, itensParaGrade, recortarItens, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES,
 } from '../src/lib/agenda.ts';
 import { esperaPrefeita, ordemDaEtapa, ETAPAS, ETAPA_COR } from '../src/lib/demandas.ts';
 import { diaDaSemana, ajustarPrazo, somarDias } from '../src/lib/prazos.ts';
@@ -22,18 +22,22 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
 
 // ---------- calendário ----------
 {
-  const fev26 = gradeMes(2026, 2), fev24 = gradeMes(2024, 2), ago26 = gradeMes(2026, 8);
-  ok(fev26.length === 4 && fev26[0][0] === '2026-02-01' && fev26[3][6] === '2026-02-28' && fev26.flat().every(Boolean), 'fevereiro de 2026 começa no domingo e tem 4 semanas completas, sem espaços vazios');
-  ok(fev24.length === 5 && fev24[0].slice(0, 4).every((x) => x === null) && fev24[0][4] === '2024-02-01' && fev24.flat().includes('2024-02-29') && fev24[4].slice(5).every((x) => x === null), 'ano bissexto: fevereiro de 2024 começa na quinta, tem o dia 29 e completa a última semana com vazios');
-  ok(ago26.length === 6 && ago26[0].slice(0, 6).every((x) => x === null) && ago26[0][6] === '2026-08-01', 'agosto de 2026 começa no sábado: seis posições vazias e 6 semanas');
+  const fev27 = gradeMes(2027, 2), fev26 = gradeMes(2026, 2), fev24 = gradeMes(2024, 2), ago26 = gradeMes(2026, 8), nov26 = gradeMes(2026, 11);
+  ok(fev27.length === 4 && fev27[0][0] === '2027-02-01' && fev27[3][6] === '2027-02-28' && fev27.flat().every(Boolean), 'fevereiro de 2027 começa na segunda e termina no domingo: 4 semanas completas, sem espaços vazios');
+  ok(fev26.length === 5 && fev26[0].slice(0, 6).every((x) => x === null) && fev26[0][6] === '2026-02-01' && fev26[1][0] === '2026-02-02' && fev26[4][5] === '2026-02-28' && fev26[4][6] === null, 'fevereiro de 2026 começa no domingo: o dia 1 fica na última coluna, em uma semana quase vazia, e o mês fecha em 5 semanas');
+  ok(fev24.length === 5 && fev24[0].slice(0, 3).every((x) => x === null) && fev24[0][3] === '2024-02-01' && fev24.flat().includes('2024-02-29') && fev24[4][3] === '2024-02-29' && fev24[4].slice(4).every((x) => x === null), 'ano bissexto: fevereiro de 2024 começa na quinta, tem o dia 29 e completa a última semana com vazios');
+  ok(ago26.length === 6 && ago26[0].slice(0, 5).every((x) => x === null) && ago26[0][5] === '2026-08-01' && ago26[0][6] === '2026-08-02', 'agosto de 2026 começa no sábado: cinco posições vazias e 6 semanas');
+  ok(nov26.length === 6 && nov26[0].slice(0, 6).every((x) => x === null) && nov26[0][6] === '2026-11-01' && nov26[1][0] === '2026-11-02' && nov26[5][0] === '2026-11-30' && nov26[5].slice(1).every((x) => x === null), 'novembro de 2026: o dia 1 (domingo) fica sozinho na primeira semana, a segunda 2 abre a segunda e a segunda 30 abre a sexta semana, com o resto vazio');
   let tudo = true, qtd = 0;
   for (let a = 2024; a <= 2030; a++) for (let m = 1; m <= 12; m++) {
     const g = gradeMes(a, m), nn = g.flat().filter(Boolean);
     if (!g.every((s) => s.length === 7) || nn.length !== diasNoMes(a, m) || nn[0] !== `${a}-${String(m).padStart(2, '0')}-01`) tudo = false;
-    g.forEach((s) => s.forEach((x, i) => { if (x && diaDaSemana(x) !== i) tudo = false; }));
+    g.forEach((s) => s.forEach((x, i) => { if (x && colunaNaSemana(x) !== i) tudo = false; }));
     qtd++;
   }
-  ok(tudo && qtd === 84, 'em 84 meses (2024 a 2030) toda semana tem 7 posições, cada data cai na coluna do seu dia da semana (domingo na primeira) e a quantidade de dias confere');
+  ok(tudo && qtd === 84, 'em 84 meses (2024 a 2030) toda semana tem 7 posições, cada data cai na coluna do seu dia da semana (segunda na primeira, domingo na última) e a quantidade de dias confere');
+  ok(colunaNaSemana('2026-11-02') === 0 && colunaNaSemana('2026-11-08') === 6 && colunaNaSemana('2026-11-01') === 6 && colunaNaSemana('2026-11-07') === 5 && MES_DIAS_ABREV.join() === 'SEG,TER,QUA,QUI,SEX,SÁB,DOM' && MES_DIAS_NOMES.length === 7 && MES_ABREV.join('') === 'JANFEVMARABRMAIJUNJULAGOSETOUTNOVDEZ', 'colunas de segunda a domingo e os rótulos do cabeçalho do Mês e das abas JAN a DEZ');
+  ok(trocarMes('2026-11-18', 1) === '2026-01-18' && trocarMes('2026-11-18', 12) === '2026-12-18' && trocarMes('2026-01-31', 2) === '2026-02-28' && trocarMes('2024-01-31', 2) === '2024-02-29' && trocarMes('2026-03-31', 4) === '2026-04-30' && trocarMes('2026-12-31', 12) === '2026-12-31', 'a aba de mês leva ao mês escolhido do mesmo ano, mantendo o dia ou usando o último dia do mês (28, 29 ou 30)');
   ok(diasNoMes(2024, 2) === 29 && diasNoMes(2026, 2) === 28 && diasNoMes(2100, 2) === 28 && diasNoMes(2000, 2) === 29 && diasNoMes(2026, 4) === 30, 'meses de tamanhos diferentes e anos bissextos (2100 não é bissexto, 2000 é)');
   ok(somarMeses('2026-01-31', 1) === '2026-02-28' && somarMeses('2024-01-31', 1) === '2024-02-29' && somarMeses('2026-12-15', 1) === '2027-01-15' && somarMeses('2026-01-15', -1) === '2025-12-15' && somarMeses('2026-03-31', -1) === '2026-02-28', 'somar meses mantém o dia ou usa o último dia do mês de destino, e cruza o ano nos dois sentidos');
   ok(semanaDe('2026-11-04')[0] === '2026-11-01' && semanaDe('2026-11-04')[6] === '2026-11-07' && semanaDe('2026-11-01')[0] === '2026-11-01' && semanaDe('2026-11-07')[0] === '2026-11-01' && semanaDe('2026-12-02')[0] === '2026-11-29' && semanaDe('2026-12-02')[6] === '2026-12-05', 'semana de domingo a sábado, inclusive quando atravessa o mês');
@@ -97,6 +101,39 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
   ok(diaMaisLivre('2026-11-18', cc, [], hoje) === '2026-11-17' && diaMaisLivre('2026-11-18', cc, [{ id: 'z', data: '2026-11-17', descricao: 'x', categoria: 'Feriado' }], hoje) === '2026-11-16' && diaMaisLivre('2026-11-18', new Map(['2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-23'].map((x) => [x, { carga: x === '2026-11-18' ? 1 : 2, demandas: 1, atrasada: false }])), [], hoje) === null, 'sugestão de dia mais livre: o disponível mais leve e próximo, pulando fim de semana e dia indisponível; nulo se nada for mais leve');
   const pan = panorama(cc, [ev('x', { data: '2026-11-18' }), ev('y', { data: '2026-12-01' })], [], hoje, '2026-11-01', '2026-11-30');
   ok(pan.pendencias === 15 && pan.demandas === 6 && pan.compromissos === 1 && pan.cheios.map((x) => x.data).join() === '2026-11-18,2026-11-19' && /17 de novembro/.test(pan.cheios[0].sugestao), 'panorama do mês: pendências, demandas, compromissos e os dias cheios (média ou alta) com a sugestão de redistribuir');
+}
+
+// ---------- o que a célula do Mês mostra e o "+N" ----------
+{
+  const dia = '2026-11-10';
+  const eventos = [ev('almoco', { data: dia, inicio: '14:00', fim: '15:00' }), ev('todo', { data: dia, dia_inteiro: true, inicio: null, fim: null, aviso_min: 0 }), ev('cedo', { data: dia, inicio: '09:00', fim: null }), ev('outro', { data: '2026-11-11' })];
+  const demandas = [
+    dem('d1', { assunto: 'Prazo ajustado', prazo: dia, prazo_original: '2026-11-14' }),
+    dem('d2', { assunto: 'Vence e acompanha no mesmo dia', prazo: dia, prazo_original: dia, acompanhar_em: dia }),
+    dem('d3', { assunto: 'Só acompanha', acompanhar_em: dia }),
+    dem('d4', { assunto: 'Outro dia', prazo: '2026-11-05', prazo_original: '2026-11-05' }),
+    dem('d5', { assunto: 'Já finalizada', etapa: 'Finalizado', prazo: dia, prazo_original: dia }),
+    dem('d6', { assunto: 'Arquivada', arquivada_em: '2026-11-01T10:00:00Z', prazo: dia, prazo_original: dia }),
+  ];
+  const o = { demandas, eventos, indisponiveis: [], hoje: '2026-11-03' };
+  const it = itensParaGrade(dia, o);
+  ok(it.map((x) => `${x.tipo}:${x.id}`).join() === 'evento:todo,evento:cedo,evento:almoco,demanda:d1,demanda:d2,demanda:d3', 'a célula lista primeiro os compromissos (dia inteiro, depois por horário) e então as demandas, uma linha por demanda, sem finalizada, arquivada nem itens de outro dia');
+  ok(it[0].diaInteiro === true && it[0].hora === null && it[1].hora === '09:00' && it[2].hora === '14:00', 'o compromisso de dia inteiro é indicado como tal e os demais mostram a hora de início');
+  ok(it[3].titulo === 'Prazo ajustado' && it[3].marco === 'vencimento' && it[3].atrasado === false, 'a demanda aparece pelo assunto, no dia do vencimento efetivo (o ajustado já gravado, não o prazo original)');
+  ok(it[4].marcos.join() === 'vencimento,acompanhamento' && it[4].marco === 'vencimento' && it[5].marco === 'acompanhamento' && it[5].marcos.length === 1, 'dois marcos da mesma demanda no mesmo dia viram uma linha só, e o acompanhamento fica distinto do vencimento na sua própria data');
+  const tarde = itensParaGrade(dia, { ...o, hoje: '2026-11-12' });
+  ok(tarde.filter((x) => x.tipo === 'demanda').every((x) => x.atrasado) && !tarde.some((x) => x.tipo === 'evento' && x.atrasado), 'marco que já passou fica no dia em que ocorreu, marcado como atrasado; compromisso não tem atraso');
+  const comFin = itensParaGrade(dia, { ...o, comFinalizadas: true });
+  ok(comFin.some((x) => x.id === 'd5') && !comFin.some((x) => x.id === 'd6'), 'com o filtro de finalizadas a finalizada aparece no vencimento; a arquivada nunca aparece');
+  ok(itensParaGrade('2026-11-17', o).length === 0, 'dia vazio não tem itens');
+  const ret = itensParaGrade('2026-11-13', { ...o, demandas: [dem('r', { assunto: 'Aguardando', etapa: 'Aguardando retorno', etapa_desde: '2026-11-03T15:00:00Z' })] });
+  ok(ret.length === 1 && ret[0].marco === 'retorno', 'o retorno do setor aparece na própria data (10 dias depois), como marco diferente do vencimento');
+  const r3 = recortarItens(it, 3), r6 = recortarItens(it, 6), r9 = recortarItens(it, 9), r0 = recortarItens(it, 0);
+  ok(r3.visiveis.length === 3 && r3.restantes === 3 && r3.visiveis.map((x) => x.id).join() === 'todo,cedo,almoco', 'com seis itens e limite de três, aparecem três e o "+N" conta os três que ficaram de fora');
+  ok(r6.restantes === 0 && r6.visiveis.length === 6 && r9.restantes === 0 && r0.visiveis.length === 1 && r0.restantes === it.length - 1 && recortarItens([], 3).restantes === 0, 'sem excesso não há "+N"; limite menor que 1 conta como 1; lista vazia não tem "+N"');
+  ok(recortarItens(it, 2).restantes === 4 && recortarItens(it.slice(0, 3), 3).restantes === 0 && recortarItens(it.slice(0, 4), 3).restantes === 1, 'o "+N" acompanha o limite da tela (duas ou três linhas) e só nasce quando passa dele');
+  const sem = descreverDia(dia, { carga: undefined, eventos: 3, indisponiveis: [], hoje: '2026-11-03', semDemandas: true });
+  ok(/pendências indisponíveis/.test(sem) && !/sem pendências/.test(sem) && /3 compromissos/.test(sem) && /sem pendências/.test(descreverDia(dia, { eventos: 0, indisponiveis: [], hoje: '2026-11-03' })), 'com a leitura das demandas falha a descrição diz "pendências indisponíveis", nunca "sem pendências"; os compromissos continuam contados');
 }
 
 // ---------- Aguardando Prefeita ----------
