@@ -1,5 +1,5 @@
 'use client';
-// Janelas do aplicativo: o cadastro guiado de demanda (cadastro.tsx), a consulta e edição da demanda (detalhe.tsx) e a nova tarefa do menu "+".
+// Janelas do aplicativo: o cadastro guiado de demanda (cadastro.tsx), a consulta e edição da demanda (detalhe.tsx), o dia indisponível da Agenda (dia-indisponivel.tsx) e a nova tarefa do menu "+".
 // Regras de rascunho do protótipo aprovado: clicar fora não fecha se houver texto novo; Esc e X fecham e guardam o rascunho; Cancelar descarta.
 import { useEffect, useState } from 'react';
 import { useApp } from './contexto';
@@ -9,6 +9,7 @@ import { JanelaNova } from './cadastro';
 import { JanelaDemanda } from './detalhe';
 import { JanelaEntradaRoteada } from './entradas';
 import { JanelaEventoRoteada } from './evento';
+import { JanelaDiaIndisponivel } from './dia-indisponivel';
 import { titulo } from '@/lib/demandas';
 
 // ---------- nova tarefa (menu "+") ----------
@@ -61,5 +62,6 @@ export function Janelas() {
   if (janela.t === 'nova') return carregando || (janela.entradaId && carregandoEntradas) ? null : janela.entradaId ? <JanelaNovaDeEntrada entradaId={janela.entradaId} /> : <JanelaNova />;
   if (janela.t === 'entrada') return carregandoEntradas ? null : <JanelaEntradaRoteada id={janela.id} />;
   if (janela.t === 'evento') return <JanelaEventoRoteada id={janela.id} data={janela.data} />;
+  if (janela.t === 'dia') return <JanelaDiaIndisponivel data={janela.data} />;
   return <JanelaTarefa />;
 }

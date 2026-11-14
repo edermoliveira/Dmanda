@@ -100,6 +100,7 @@ const semCorte = (pg) => pg.evaluate(() => new Promise((res) => {
 const contrastesDoMes = async (pg) => {
   const alvos = { 'selo baixa': '.agd-cel[data-nivel="baixa"] .agd-qtd', 'selo média': '.agd-cel[data-nivel="media"] .agd-qtd', 'selo alta': '.agd-cel[data-nivel="alta"] .agd-qtd', compromisso: '.agd-it[data-k="evento"]:not([data-dia])', 'dia inteiro': '.agd-it[data-k="evento"][data-dia]', demanda: '.agd-it[data-k="demanda"]:not([data-atrasado])', atrasada: '.agd-it[data-atrasado]', 'aba atual': '.agd-mes-aba[aria-current="true"]', aba: '.agd-mes-aba:not([aria-current])', hoje: '.agd-cel[data-hoje] .agd-num' };
   const r = {};
+  await pg.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'), null, { timeout: 5000 }).catch(() => {});
   for (const [nome, sel] of Object.entries(alvos)) if (await pg.$(sel)) r[nome] = await contraste(pg, sel);
   return r;
 };
@@ -113,7 +114,7 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   const { ano, mes } = anoMes(HOJE), g = gradeMes(ano, mes);
   // --- grade ---
   ok((await pg.getAttribute('.agd-grade', 'role')) === 'grid' && (await pg.$$('.agd-cabsem')).length === 7 && (await pg.$$('.agd-grade [role="row"]')).length === g.length + 1, 'calendário semântico: grade com sete cabeçalhos e uma linha por semana do mês');
-  ok((await pg.$$eval('.agd-cabsem', (c) => c.map((x) => x.textContent.trim()).join())) === 'SEG,TER,QUA,QUI,SEX,SÁB,DOM' && (await pg.$$eval('.agd-semn', (c) => c.map((x) => x.textContent.trim()).join())) === g.map((_, i) => i + 1).join(), 'o cabeçalho vai de segunda a domingo e as semanas do mês são numeradas à esquerda');
+  ok((await pg.$$eval('.agd-cabsem', (c) => c.map((x) => x.textContent.trim()).join())) === 'DOM,SEG,TER,QUA,QUI,SEX,SÁB' && (await pg.$$eval('.agd-semn', (c) => c.map((x) => x.textContent.trim()).join())) === g.map((_, i) => i + 1).join(), 'o cabeçalho vai de domingo a sábado e as semanas do mês são numeradas à esquerda');
   ok((await pg.$$eval('.agd-mes-aba', (b) => b.map((x) => x.textContent.trim()).join(''))) === 'JANFEVMARABRMAIJUNJULAGOSETOUTNOVDEZ' && (await pg.getAttribute('.agd-mes-aba[aria-current="true"]', 'data-mes')) === String(mes) && (await pg.getAttribute('.agd-meses', 'aria-label')) === `Meses de ${ano}`, 'as abas JAN a DEZ ficam à direita, na ordem do ano, com o mês exibido marcado');
   const botoes = await pg.$$eval('.agd-cel', (b) => b.map((x) => x.getAttribute('data-data')));
   ok(botoes.length === diasNoMes(ano, mes) && botoes[0] === `${mesDe(HOJE)}-01`, 'a quantidade de dias do mês confere e o primeiro é o dia 1');
@@ -180,9 +181,9 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok(mesDe(await selAtual()) !== mesDe(somarDias(proximo, 7)) && (await pg.textContent('.agd-periodo')).length > 5, 'Page Down vai para o mês seguinte (a grade é refeita)');
   await pg.keyboard.press('Home'); await pg.waitForTimeout(200);
   const colunaDe = (d) => celula(pg, d).evaluate((e) => [...e.closest('[role=row]').children].filter((x) => x.getAttribute('role') === 'gridcell').indexOf(e.closest('[role=gridcell]')));
-  const h = await selAtual(); ok((await colunaDe(h)) === 0 && new Date(`${h}T00:00:00Z`).getUTCDay() === 1, 'Home leva à segunda-feira da semana');
+  const h = await selAtual(); ok((await colunaDe(h)) === 0 && new Date(`${h}T00:00:00Z`).getUTCDay() === 0, 'Home leva ao domingo da semana');
   await pg.keyboard.press('End'); await pg.waitForTimeout(200);
-  const fim = await selAtual(); ok((await colunaDe(fim)) === 6 && new Date(`${fim}T00:00:00Z`).getUTCDay() === 0 && fim === somarDias(h, 6), 'End leva ao domingo da semana');
+  const fim = await selAtual(); ok((await colunaDe(fim)) === 6 && new Date(`${fim}T00:00:00Z`).getUTCDay() === 6 && fim === somarDias(h, 6), 'End leva ao sábado da semana');
   // --- navegação de período ---
   await pg.click('.agd-nav .btn.mini:has-text("Hoje")'); await pg.waitForTimeout(300);
   ok((await selAtual()) === HOJE && !(await pg.isEnabled('.agd-nav .btn.mini:has-text("Hoje")')), 'o botão Hoje volta ao dia de hoje (e fica desativado quando já está nele)');
@@ -194,9 +195,9 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   const fev28 = await pg.$$eval('.agd-cel', (b) => b.map((x) => x.getAttribute('data-data')));
   ok(fev28.length === 29 && fev28.includes('2028-02-29') && (await pg.$$('.agd-grade [role="row"]')).length === 6, 'fevereiro de 2028 (bissexto): 29 dias e 5 semanas (mais o cabeçalho)');
   await paraData(pg, '2027-02-10');
-  ok((await pg.$$('.agd-cel')).length === 28 && (await pg.$$('.agd-vaz')).length === 0 && /Fevereiro\s+2027/i.test(await pg.textContent('.agd-periodo')), 'fevereiro de 2027 começa na segunda e termina no domingo: 4 semanas, sem espaços vazios');
+  ok((await pg.$$('.agd-cel')).length === 28 && (await pg.$$('.agd-vaz')).length === 7 && (await pg.$$('.agd-grade [role="row"]')).length === 6 && /Fevereiro\s+2027/i.test(await pg.textContent('.agd-periodo')), 'fevereiro de 2027 começa na segunda: uma posição vazia antes do dia 1 (domingo), seis depois do dia 28 e 5 semanas');
   await paraData(pg, '2026-02-10');
-  ok((await pg.$$('.agd-cel')).length === 28 && (await pg.$$('.agd-vaz')).length === 7 && (await pg.$$('.agd-grade [role="row"]')).length === 6, 'fevereiro de 2026 começa no domingo: seis posições vazias antes do dia 1, uma depois do dia 28 e 5 semanas');
+  ok((await pg.$$('.agd-cel')).length === 28 && (await pg.$$('.agd-vaz')).length === 0 && (await pg.$$('.agd-grade [role="row"]')).length === 5, 'mês que começa no domingo: fevereiro de 2026 abre na primeira célula e fecha em 4 semanas, sem espaços vazios');
   await pg.click('.agd-nav .btn.mini:has-text("Hoje")');
   // --- legenda ---
   const leg = await pg.$eval('.agd-leg', (e) => ({ t: e.textContent, n: e.querySelectorAll('.agd-escala .agd-amostra').length, dir: e.querySelector('.agd-escala').getBoundingClientRect().right, pai: e.getBoundingClientRect().right }));
@@ -283,7 +284,7 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   const horasH = await pg.$$eval('.agd-hoje .agd-evento .agd-hora', (h) => h.map((x) => x.textContent.trim()));
   ok(horasH.join() === '09:00 às 10:00,09:30 às 11:00,12:30', 'em Hoje os compromissos seguem a ordem cronológica');
   ok(/Atrasadas \(continuam no dia em que venceram\)/i.test(await pg.textContent('.agd-hoje')) && /Relatório atrasado/.test(await pg.textContent('.agd-hoje')), 'em Hoje as atrasadas aparecem à parte, lembrando que continuam no dia em que venceram');
-  ok(!!(await pg.$('.agd-hoje .agd-painel .btn:has-text("Novo evento hoje")')), 'a visão Hoje tem o botão "Novo evento hoje"');
+  ok(!!(await pg.$('.agd-dia-info .btn:has-text("Novo evento hoje")')) && !!(await pg.$('.agd-dia-info [data-acao="dia-indisponivel"]')), 'a visão Dia tem "Novo evento hoje" e "Cadastrar dia indisponível" junto da data');
 }
 
 // ================= 2b) Mês (decisão 72): itens da célula, "+N", abas, setas, gaveta do dia e falha só das demandas =================
@@ -361,7 +362,7 @@ const t5 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   ok(longoCel, 'o título longo é cortado na célula (a gaveta o mostra inteiro)');
   await pg.click('.agd-nav [aria-label="Próximo mês"]'); await pg.waitForTimeout(350);
   const cabsJan = await caixa(pg, '.agd-cabsem'), jan1 = (await caixa(pg, '.agd-cel[data-data="2027-01-01"]'))[0];
-  ok((await periodo()) === 'Janeiro 2027' && (await pg.getAttribute('.agd-meses', 'aria-label')) === 'Meses de 2027' && Math.abs((jan1.x + jan1.w / 2) - (cabsJan[4].x + cabsJan[4].w / 2)) <= 2 && (await selTxt()) === '2027-01-03', 'a seta atravessa dezembro e vai para janeiro de 2027: o ano das abas muda e 1º de janeiro (sexta) fica sob SEX');
+  ok((await periodo()) === 'Janeiro 2027' && (await pg.getAttribute('.agd-meses', 'aria-label')) === 'Meses de 2027' && Math.abs((jan1.x + jan1.w / 2) - (cabsJan[5].x + cabsJan[5].w / 2)) <= 2 && (await selTxt()) === '2027-01-03', 'a seta atravessa dezembro e vai para janeiro de 2027: o ano das abas muda e 1º de janeiro (sexta) fica sob SEX, a sexta coluna');
   ok((await itens('2027-01-04')).some((t) => /Plano de trabalho 2027/.test(t)) && (await itens('2027-01-05')).join() === '09:00 Reunião de planejamento 2027', 'janeiro de 2027 traz a demanda e o compromisso nas suas datas');
   await pg.click('.agd-nav [aria-label="Mês anterior"]'); await pg.waitForTimeout(350);
   ok((await periodo()) === 'Dezembro 2026' && (await itens(M.ultimo)).length === 2 && (await selTxt()) === '2026-12-03', 'a seta volta de janeiro a dezembro e 31 de dezembro mostra o vencimento e o compromisso');
@@ -489,10 +490,10 @@ const t5 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   const grupos = await pg.$$eval('.stats.tres .stat', (b) => b.map((x) => Number(x.querySelector('.n').textContent)));
   ok(grupos[0] === 1, 'Início: Atrasadas conta só o Relatório atrasado (a Prefeita com 12 dias de espera não é atrasada)');
   await pg.click('.stats.tres .st-atrasadas');
-  const naoAtrasadas = await pg.$$eval('.sub-f + .cards .assunto', (c) => c.map((x) => x.textContent));
+  const naoAtrasadas = await pg.$$eval('.sub-f + .cartas .assunto', (c) => c.map((x) => x.textContent));
   ok(naoAtrasadas.join() === 'Relatório atrasado', 'Início: a lista de atrasadas traz só quem tem data aplicável vencida');
   await pg.click('.stats.tres .st-sete'); await pg.waitForTimeout(250);
-  const sete = await pg.$$eval('.sub-f + .cards .assunto', (c) => c.map((x) => x.textContent));
+  const sete = await pg.$$eval('.sub-f + .cartas .assunto', (c) => c.map((x) => x.textContent));
   ok(sete.includes('Aguarda a Contabilidade') && !sete.some((t) => /Prefeita/.test(t)), 'Início: quem aguarda retorno entra pelo "Acompanhar em" mais próximo e a Prefeita não aparece nos prazos');
   await ir(pg, '/demandas');
   await pg.click('.toolbar .btn[aria-label^="Só atrasadas"]'); await pg.waitForTimeout(350);
@@ -596,6 +597,107 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   ok((await pg.$$eval('.agd-hoje .agd-evento .agd-tit', (t) => t.map((x) => x.textContent))).filter((x) => x === 'Evento durante a queda').length === 1, 'com a conexão de volta, repetir cria o evento uma única vez');
 }
 
+// ================= 2c) domingo a sábado, cinza de dia sem trabalho, Semana e Dia na direção do Mês e cadastro de dia indisponível pela Agenda (14/11/2026) =================
+{
+  const { ctx, pg } = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { modo: 'mes' } });
+  let bloquear = false;
+  await pg.route('**/*', (r) => (bloquear && r.request().method() === 'POST' && r.request().headers()['next-action'] ? r.abort() : r.continue()));
+  await ir(pg);
+  const dow = (d) => new Date(`${d}T00:00:00Z`).getUTCDay();
+  const g = await pg.evaluate(() => ({ cab: [...document.querySelectorAll('.agd-cabsem')].map((e) => e.hasAttribute('data-nao-util')), cels: [...document.querySelectorAll('.agd-cel')].map((e) => ({ d: e.dataset.data, n: e.dataset.naoUtil !== undefined, f: e.dataset.feriado !== undefined, nivel: e.dataset.nivel, hoje: e.dataset.hoje !== undefined, sel: e.dataset.sel !== undefined, bg: getComputedStyle(e).backgroundColor })) }));
+  ok(g.cab.join() === 'true,false,false,false,false,false,true', 'Mês: o cabeçalho de domingo (primeira coluna) e o de sábado (última) têm o tom cinza');
+  ok(g.cels.every((c) => c.n === (dow(c.d) === 0 || dow(c.d) === 6 || c.d === S.dia.data)) && g.cels.find((c) => c.d === S.dia.data)?.f && dow(S.dia.data) > 0 && dow(S.dia.data) < 6, `Mês: sábados, domingos e o feriado cadastrado num dia útil (${S.dia.data}) têm o tratamento de dia sem trabalho, e só eles`);
+  const livre = (c) => c.nivel === 'zero' && !c.hoje && !c.sel, fer = g.cels.find((c) => c.d === S.dia.data), sab = g.cels.find((c) => dow(c.d) === 6 && livre(c)), util = g.cels.find((c) => !c.n && livre(c));
+  ok(fer.bg === sab.bg && sab.bg !== util.bg, `Mês: o feriado em dia útil é tão reconhecível quanto o sábado (mesmo cinza ${fer.bg}, diferente do dia útil ${util.bg})`);
+  // Semana: domingo a sábado em sete colunas, com o dia escolhido inteiro abaixo; o teclado anda pelos dias
+  await modo(pg, 'Semana'); await paraData(pg, S.dia.data);
+  const sem = await pg.evaluate(() => ({ cols: [...document.querySelectorAll('.agd-sem .agd-dia')].map((e) => ({ d: e.dataset.data, n: e.dataset.naoUtil !== undefined })), faixa: !!document.querySelector('.agd-sem-faixa'), det: document.querySelector('#agd-sem-detalhe')?.dataset.data, detTxt: document.querySelector('#agd-sem-detalhe')?.textContent ?? '' }));
+  ok(sem.cols.length === 7 && dow(sem.cols[0].d) === 0 && dow(sem.cols[6].d) === 6 && !sem.faixa && sem.cols.filter((c) => c.n).length === 3, 'Semana larga: sete colunas de domingo a sábado; domingo, sábado e o feriado da semana em cinza');
+  ok(sem.det === S.dia.data && /Feriado: Feriado de teste/.test(sem.detTxt) && /Cadastrar dia indisponível/.test(sem.detTxt) && /Novo evento neste dia/.test(sem.detTxt), 'Semana: o dia escolhido aparece inteiro abaixo, com a identificação do feriado e as duas ações da data');
+  await pg.focus(`.agd-dia-sel[data-sem-dia="${S.dia.data}"]`); await pg.keyboard.press('Home'); await pg.waitForTimeout(250);
+  const selS = () => pg.$eval('.agd-dia[data-sel]', (e) => e.dataset.data), focoS = () => pg.evaluate(() => document.activeElement?.dataset?.semDia ?? null);
+  ok((await selS()) === sem.cols[0].d && (await focoS()) === sem.cols[0].d, 'Semana: Home leva ao domingo da semana, com o foco');
+  await pg.keyboard.press('End'); await pg.waitForTimeout(250);
+  ok((await selS()) === sem.cols[6].d && (await focoS()) === sem.cols[6].d, 'Semana: End leva ao sábado da semana');
+  await pg.keyboard.press('ArrowRight'); await pg.waitForTimeout(350);
+  ok((await selS()) === somarDias(sem.cols[6].d, 1) && dow(await selS()) === 0 && (await pg.$eval('#agd-sem-detalhe', (e) => e.dataset.data)) === somarDias(sem.cols[6].d, 1), 'Semana: a seta depois do sábado passa ao domingo da semana seguinte, e o detalhe acompanha');
+  // o painel de carga da Semana escolhe o dia na própria Semana
+  await paraData(pg, S.h.prazo);
+  await pg.click('.agd-aux-par .agd-linha'); await pg.waitForTimeout(400);
+  ok((await pg.$('.agd[data-modo="semana"]')) !== null && (await pg.$eval('#agd-sem-detalhe', (e) => e.dataset.data)) === S.h.prazo, 'Semana: "Onde a semana aperta" escolhe o dia cheio dentro da própria Semana');
+  // Dia: a data é o título, com o cinza e a identificação textual; dois painéis lado a lado
+  await modo(pg, 'Dia'); await paraData(pg, S.dia.data);
+  const dia = await pg.evaluate(() => { const p = [...document.querySelectorAll('.agd-hoje > .agd-painel')].map((e) => e.getBoundingClientRect()); return { nu: document.querySelector('.agd-resumo')?.dataset.naoUtil !== undefined, titulo: document.querySelector('.agd-periodo')?.textContent, marca: document.querySelector('.agd-dia-info .agd-marca-dia')?.textContent ?? '', lado: p.length >= 2 && Math.abs(p[0].top - p[1].top) < 2 && p[1].left > p[0].right - 1 }; });
+  ok(dia.nu && /^Terça-feira, 10 de novembro de 2026$/.test(dia.titulo) && /Feriado: Feriado de teste/.test(dia.marca) && dia.lado, `Dia: a data é o título (${dia.titulo}), o cabeçalho fica cinza e diz "Feriado: Feriado de teste"; Compromissos e Demandas lado a lado`);
+  await paraData(pg, '2026-11-07');
+  ok((await pg.$eval('.agd-resumo', (e) => e.dataset.naoUtil !== undefined)) && /Sábado, fim de semana/.test(await pg.textContent('.agd-dia-info')), 'Dia: o sábado tem o cabeçalho cinza e a identificação "Sábado, fim de semana"');
+  await paraData(pg, '2026-11-05');
+  ok(!(await pg.$eval('.agd-resumo', (e) => e.dataset.naoUtil !== undefined)) && !(await pg.$('.agd-dia-info .agd-marca-dia')), 'Dia: num dia útil comum não há cinza nem marca');
+  // alternar a visão mantém a data; as setas andam um dia, sete dias ou um mês
+  await pg.click('.agd-nav [aria-label="Próximo dia"]'); await pg.waitForTimeout(250);
+  ok((await pg.inputValue('.agd-data input')) === '2026-11-06', 'Dia: a seta avança um dia');
+  await modo(pg, 'Semana');
+  ok((await pg.$eval('#agd-sem-detalhe', (e) => e.dataset.data)) === '2026-11-06', 'de Dia para Semana a data escolhida continua');
+  await pg.click('.agd-nav [aria-label="Próxima semana"]'); await pg.waitForTimeout(250);
+  ok((await pg.inputValue('.agd-data input')) === '2026-11-13', 'Semana: a seta avança sete dias');
+  await modo(pg, 'Mês');
+  ok((await selAtualDe(pg)) === '2026-11-13', 'de Semana para Mês a data escolhida continua selecionada');
+  await pg.click('.agd-nav [aria-label="Próximo mês"]'); await pg.waitForTimeout(250);
+  ok((await pg.inputValue('.agd-data input')) === '2026-12-13', 'Mês: a seta avança um mês');
+
+  // ---- cadastro pela Agenda: Dia (com falha, validação, clique duplo, rascunho e foco), Semana (outra data) e gaveta do Mês ----
+  await modo(pg, 'Dia'); await paraData(pg, '2027-03-05');
+  await pg.click('.agd-dia-info [data-acao="dia-indisponivel"]'); await pg.waitForSelector('#di-data');
+  ok((await pg.inputValue('#di-data')) === '2027-03-05' && (await pg.inputValue('#di-cat')) === 'Feriado' && /Cadastrar dia indisponível/.test(await pg.textContent('.modal #m-tit')), 'Dia: "Cadastrar dia indisponível" abre o formulário de Data, Tipo e Descrição com a data do dia, editável');
+  await pg.click('[data-salvar-dia]'); await pg.waitForTimeout(250);
+  ok(/Descreva o dia/.test(await pg.textContent('.modal')) && (await pg.evaluate(() => document.activeElement?.id)) === 'di-desc', 'sem descrição: a mensagem de sempre e o foco no campo');
+  await pg.fill('#di-desc', 'Ponto facultativo de teste');
+  bloquear = true; await pg.click('[data-salvar-dia]'); await pg.waitForTimeout(1500);
+  ok(!!(await pg.$('.modal')) && (await pg.inputValue('#di-desc')) === 'Ponto facultativo de teste' && /Não foi possível salvar agora/.test(await pg.textContent('.modal')), 'falha de gravação: a janela continua aberta com o que foi digitado e diz que não salvou');
+  bloquear = false; await pg.waitForTimeout(300);
+  await pg.dblclick('[data-salvar-dia]'); await janelaFechada(pg); await pg.waitForTimeout(800);
+  ok((await pg.evaluate(() => document.activeElement?.dataset?.acao)) === 'dia-indisponivel', 'ao fechar, o foco volta ao botão que abriu a janela');
+  ok((await pg.$eval('.agd-resumo', (e) => e.dataset.naoUtil !== undefined)) && /Ponto facultativo de teste/.test(await pg.textContent('.agd-dia-info')) && (await pg.$('.agd[data-modo="hoje"]')) !== null, 'depois da gravação confirmada o Dia continua aberto e já mostra o feriado, com o cinza');
+  ok(/Dia indisponível cadastrado em sexta-feira, 5 de março de 2027/.test(await pg.textContent('#toast')), 'o aviso diz em que data o dia foi salvo');
+  // rascunho: Esc guarda, reabrir recupera, Cancelar descarta
+  await pg.click('.agd-dia-info [data-acao="dia-indisponivel"]'); await pg.waitForSelector('#di-desc');
+  await pg.fill('#di-desc', 'Rascunho que não se perde'); await pg.waitForTimeout(700); await pg.keyboard.press('Escape'); await janelaFechada(pg);
+  await pg.click('.agd-dia-info [data-acao="dia-indisponivel"]'); await pg.waitForSelector('#di-desc');
+  ok((await pg.inputValue('#di-desc')) === 'Rascunho que não se perde' && /Rascunho recuperado/.test(await pg.textContent('.modal')), 'Esc guarda o rascunho e reabrir o recupera');
+  await pg.click('.modal .btn:has-text("Cancelar")'); await janelaFechada(pg);
+  await pg.click('.agd-dia-info [data-acao="dia-indisponivel"]'); await pg.waitForSelector('#di-desc');
+  ok((await pg.inputValue('#di-desc')) === '', 'Cancelar descarta o rascunho');
+  await pg.click('.modal .btn:has-text("Cancelar")'); await janelaFechada(pg);
+  // Semana: a data muda no formulário e a janela e o aviso dizem onde o registro ficou
+  await modo(pg, 'Semana'); await paraData(pg, '2027-03-09');
+  await pg.click('#agd-sem-detalhe [data-acao="dia-indisponivel"]'); await pg.waitForSelector('#di-data');
+  ok((await pg.inputValue('#di-data')) === '2027-03-09', 'Semana: o detalhe do dia escolhido abre o mesmo formulário com a data dele');
+  await pg.fill('#di-data', '2027-03-10'); await pg.selectOption('#di-cat', 'Evento externo'); await pg.fill('#di-desc', 'Congresso de teste'); await pg.waitForTimeout(200);
+  ok(/Vai ser salvo em Quarta-feira, 10 de março de 2027, não no dia aberto na Agenda/.test(await pg.textContent('[data-outra-data]')), 'com a data alterada, a janela diz onde o registro vai ser salvo');
+  await pg.click('[data-salvar-dia]'); await janelaFechada(pg); await pg.waitForTimeout(800);
+  ok(/cadastrado em quarta-feira, 10 de março de 2027 \(a Agenda estava em terça-feira, 9 de março de 2027\)/.test(await pg.textContent('#toast')) && (await pg.$('.agd[data-modo="semana"]')) !== null && (await pg.$eval('#agd-sem-detalhe', (e) => e.dataset.data)) === '2027-03-09', 'o aviso diz a data salva e a da Agenda; a Semana continua no dia em que a ação começou');
+  ok(/Congresso de teste/.test(await pg.textContent('.agd-dia[data-data="2027-03-10"]')) && (await pg.$eval('.agd-dia[data-data="2027-03-10"]', (e) => e.dataset.naoUtil === undefined)), 'o evento externo aparece na coluna do dia certo, sem o cinza (só o Feriado deixa o dia cinza)');
+  // Mês: gaveta do dia
+  await modo(pg, 'Mês'); await paraData(pg, '2027-03-15'); await abrirDia(pg, '2027-03-15');
+  await pg.click('.agd-gv [data-acao="dia-indisponivel"]'); await pg.waitForSelector('#di-data');
+  ok((await pg.inputValue('#di-data')) === '2027-03-15', 'Mês: a gaveta do dia abre o formulário com a data dela');
+  await pg.fill('#di-desc', 'Recesso de teste'); await pg.click('[data-salvar-dia]'); await janelaFechada(pg); await pg.waitForTimeout(800);
+  ok(!!(await pg.$('.agd-gv')) && /Recesso de teste/.test(await pg.textContent('.agd-gv')) && (await celula(pg, '2027-03-15').getAttribute('data-nao-util')) !== null, 'depois de salvar, a gaveta continua aberta com o feriado e a célula ganha o cinza');
+  await fecharDia(pg);
+  // Configurações: a lista cronológica traz os três, e editar e excluir funcionam
+  await ir(pg, '/config'); await pg.waitForSelector('.cfg-lista');
+  const lista = await pg.$$eval('.cfg-lista li', (l) => l.map((e) => e.querySelector('.cfg-desc').textContent));
+  const i1 = lista.indexOf('Ponto facultativo de teste'), i2 = lista.indexOf('Congresso de teste'), i3 = lista.indexOf('Recesso de teste');
+  ok(i1 >= 0 && i1 < i2 && i2 < i3 && lista.filter((x) => x === 'Ponto facultativo de teste').length === 1, 'Configurações: os dias cadastrados pela Agenda aparecem uma vez cada, em ordem de data (o clique duplo gravou uma vez só)');
+  ok(/Cadastrar dia indisponível/.test(await pg.textContent('#cfg-novo-t')) && (await pg.$$eval('.cfg-form label', (l) => l.map((x) => x.textContent).join())) === 'Data,Tipo,Descrição', 'Configurações: o mesmo formulário de Data, Tipo e Descrição, com o título "Cadastrar dia indisponível"');
+  await pg.click('[aria-label="Editar Ponto facultativo de teste"]'); await pg.fill('#cfg-desc', 'Ponto facultativo editado'); await pg.click('.cfg-form .btn.pri');
+  await pg.waitForFunction(() => document.querySelector('.cfg-lista')?.textContent.includes('Ponto facultativo editado'), null, { timeout: 15000 });
+  ok(true, 'Configurações: editar o dia cadastrado pela Agenda funciona');
+  for (const d of ['Ponto facultativo editado', 'Congresso de teste', 'Recesso de teste']) { await pg.click(`[aria-label="Excluir ${d}"]`); await pg.click('.cfg-lista .btn:has-text("Confirmar exclusão")'); await pg.waitForFunction((x) => !document.querySelector('.cfg-lista')?.textContent.includes(x), d, { timeout: 15000 }); }
+  ok(!/Ponto facultativo|Congresso de teste|Recesso de teste/.test((await pg.textContent('.cfg-dias')) ?? ''), 'Configurações: excluir tira os três dias (o calendário volta ao que era)');
+  await ctx.close();
+}
+
 // ================= 5) avisos dentro do aplicativo =================
 {
   const { pg } = t2;
@@ -622,21 +724,21 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
   ok(!!(await pg.$('.agd[data-modo="hoje"]')), 'no celular, sem preferência salva, a Agenda abre em Hoje');
   await modo(pg, 'Mês');
   const cx = await caixa(pg, '.agd-cel');
-  ok(cx.length > 27 && cx.every((c) => c.w >= 44 && c.h >= 50) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1)), `iPhone emulado: sete colunas, cartões de heatmap de pelo menos 44 por 50 px (${Math.round(Math.min(...cx.map((c) => c.w)))} por ${Math.round(Math.min(...cx.map((c) => c.h)))} px, a faixa de meses ocupa o resto da largura) e sem rolagem horizontal`);
-  // heatmap compacto (decisão 73): sem pílulas com título nem "+N"; a carga é o preenchimento, o compromisso um ponto, o atraso um ponto vermelho no canto
+  ok(cx.length > 27 && cx.every((c) => c.w >= 44 && Math.abs(c.w - c.h) < 1.5) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1)), `iPhone emulado: sete colunas de quadrados (1:1) de pelo menos 44 px (${Math.round(Math.min(...cx.map((c) => c.w)))} por ${Math.round(Math.min(...cx.map((c) => c.h)))} px, a faixa de meses ocupa o resto da largura) e sem rolagem horizontal`);
+  // grade quadrada (14/11/2026): só o número e o preenchimento da carga; nada de pílulas, "+N", selo, pontos ou barras dentro da célula
   const hm = await pg.evaluate(() => {
-    const vis = (e) => !!e && e.getClientRects().length > 0 && getComputedStyle(e).display !== 'none';
     const cels = [...document.querySelectorAll('.agd-cel')], niveis = {};
-    for (const n of ['zero', 'baixa', 'media', 'alta']) { const e = cels.find((c) => c.dataset.nivel === n); if (e) niveis[n] = getComputedStyle(e).backgroundColor; }
-    const comEv = cels.find((c) => c.querySelector('.agd-evm')), atr = cels.find((c) => c.dataset.atrasada);
-    return { pilulas: cels.some((c) => [...c.querySelectorAll('.agd-it, .agd-mais, .agd-qtd')].some(vis)), niveis, evVisivel: comEv ? vis(comEv.querySelector('.agd-evm')) : null, atrVisivel: atr ? vis(atr.querySelector('.agd-atr')) : null, evZero: cels.some((c) => c.dataset.nivel === 'zero' && c.querySelector('.agd-evm')) };
+    for (const n of ['zero', 'baixa', 'media', 'alta']) { const e = cels.find((c) => c.dataset.nivel === n && c.dataset.naoUtil === undefined && c.dataset.hoje === undefined && c.dataset.sel === undefined); if (e) niveis[n] = getComputedStyle(e).backgroundColor; }
+    const fds = cels.filter((c) => c.dataset.naoUtil !== undefined);
+    const fdsCarga = fds.find((c) => c.dataset.nivel !== 'zero' && c.dataset.sel === undefined), utilMesmoNivel = fdsCarga ? cels.find((c) => c.dataset.naoUtil === undefined && c.dataset.nivel === fdsCarga.dataset.nivel && c.dataset.sel === undefined && c.dataset.hoje === undefined) : null;
+    return { extras: cels.some((c) => c.querySelector('.agd-it, .agd-mais, .agd-qtd, .agd-evm, .agd-atr')), depois: cels.filter((c) => getComputedStyle(c, '::after').content !== 'none' && getComputedStyle(c, '::after').display !== 'none').length, niveis,
+      borda: fds.every((c) => /\b2px\b/.test(getComputedStyle(c).boxShadow)), mesmoFill: fdsCarga && utilMesmoNivel ? getComputedStyle(fdsCarga).backgroundColor === getComputedStyle(utilMesmoNivel).backgroundColor : null, nFds: fds.length };
   });
-  ok(!hm.pilulas && hm.evVisivel === true && hm.atrVisivel !== false && hm.evZero, `no celular as células não têm pílulas, "+N" nem selo de carga; o compromisso aparece como um ponto (inclusive com carga zero) e o atraso, quando o mês tem um, como um ponto vermelho (${JSON.stringify({ p: hm.pilulas, e: hm.evVisivel, a: hm.atrVisivel, z: hm.evZero })})`);
+  ok(!hm.extras && hm.depois === 0, 'no celular a célula tem só o número e o preenchimento: sem títulos, "+N", contagem, pontos de compromisso ou de atraso e sem barra de indisponibilidade');
+  ok(hm.nFds >= 9 && hm.borda && hm.mesmoFill !== false, `sábado, domingo e feriado têm contorno cinza de 2 px, visível também sobre o preenchimento, que é o mesmo da carga num dia útil (${hm.nFds} dias)`);
   ok(new Set(Object.values(hm.niveis)).size === Object.keys(hm.niveis).length && Object.keys(hm.niveis).length >= 3, `o preenchimento distingue os níveis de carga (${Object.keys(hm.niveis).join(', ')}) em tema claro`);
   const cols = await pg.$$eval('.agd-linha-sem:nth-child(2) > [role="gridcell"]', (c) => c.length);
-  ok(cols === 7 && (await pg.$$('.agd-mes-aba')).length === 12 && (await pg.$$eval('.agd-cabsem', (c) => c.length)) === 7, 'o celular mantém as sete colunas, com os cabeçalhos, e a faixa de meses JAN a DEZ');
-  const faixa = await pg.$eval('.agd-meses', (e) => { const r = e.getBoundingClientRect(), g = document.querySelector('.agd-grade').getBoundingClientRect(); return { esq: r.left - g.right, dir: window.innerWidth - r.right, largura: r.width, abas: [...e.querySelectorAll('.agd-mes-aba')].map((a) => a.getBoundingClientRect().height), topo: r.top, base: r.bottom, alt: window.innerHeight }; });
-  ok(faixa.esq > 0 && faixa.dir > 0 && faixa.largura >= 22 && faixa.abas.every((h) => h >= 40), `no celular a faixa de meses fica à direita da grade, legível (${Math.round(faixa.largura)} px de largura, abas de pelo menos ${Math.round(Math.min(...faixa.abas))} px de altura)`);
+  ok(cols === 7 && (await pg.$$eval('.agd-cabsem', (c) => c.map((x) => x.textContent.trim()).join())) === 'DOM,SEG,TER,QUA,QUI,SEX,SÁB' && !(await pg.isVisible('.agd-meses')) && (await pg.isVisible('.agd-mes-sel select')), 'o celular mantém as sete colunas de domingo a sábado; o mês fica no seletor junto do período (os quadrados não deixam altura para as doze abas)');
   const aux = await caixa(pg, '.agd-lateral .agd-aux'), calB = (await caixa(pg, '.agd-cal'))[0];
   ok(aux.length === 2 && aux[1].y > aux[0].b - 2 && aux[0].y >= calB.b - 2, 'no celular os dois painéis auxiliares ficam empilhados abaixo do calendário');
   // cabeçalho compacto: a grade começa bem mais perto do topo (antes do ajuste ela começava a 533 px, com a faixa de teste terminando em 126 px)
@@ -648,13 +750,12 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
   await pg.click('.agd-filtros-bt'); await pg.waitForTimeout(250);
   ok((await vis('.agd-filtros')) && (await pg.getAttribute('.agd-filtros-bt', 'aria-expanded')) === 'true' && (await pg.$$eval('.agd-filtros .opcoes button', (b) => b.map((x) => x.textContent))).join() === 'Tudo,Demandas,Compromissos' && (await pg.$$('.agd-filtros .agd-chk input')).length === 2, 'abrir Filtros mostra Tudo, Demandas, Compromissos, Tarefas concluídas e Demandas finalizadas');
   await pg.click('.agd-filtros .opcoes button:has-text("Compromissos")'); await pg.check('.agd-filtros .agd-chk:has-text("Demandas finalizadas") input'); await pg.waitForTimeout(300);
-  ok((await pg.getAttribute('.agd-filtros-bt', 'data-ativos')) === '2' && /2 ativos/.test(await pg.getAttribute('.agd-filtros-bt', 'aria-label')) && (await pg.textContent('.agd-filtros-n')) === '2' && (await pg.$$('.agd-cel .agd-it[data-k="demanda"]')).length === 0, 'com dois filtros ativos o botão mostra o número 2 e a grade só tem compromissos');
+  ok((await pg.getAttribute('.agd-filtros-bt', 'data-ativos')) === '2' && /2 ativos/.test(await pg.getAttribute('.agd-filtros-bt', 'aria-label')) && (await pg.textContent('.agd-filtros-n')) === '2' && (await pg.$$('.agd-cel:not([data-nivel="zero"])')).length === 0, 'com dois filtros ativos o botão mostra o número 2 e a grade só tem compromissos');
   await pg.click('.agd-filtros .opcoes button:has-text("Tudo")'); await pg.uncheck('.agd-filtros .agd-chk:has-text("Demandas finalizadas") input'); await pg.click('.agd-filtros-bt'); await pg.waitForTimeout(250);
-  ok(!(await vis('.agd-filtros')) && !(await pg.$('.agd-filtros-bt[data-ativos]')) && (await pg.$$('.agd-cel .agd-it[data-k="demanda"]')).length > 0, 'desfeitos os filtros, a indicação some, o painel recolhe e as demandas voltam à grade');
+  ok(!(await vis('.agd-filtros')) && !(await pg.$('.agd-filtros-bt[data-ativos]')) && (await pg.$$('.agd-cel:not([data-nivel="zero"])')).length > 0, 'desfeitos os filtros, a indicação some, o painel recolhe e a carga das demandas volta à grade');
   // alvos de toque de 44 px na data e na faixa de meses, sem sobrepor os vizinhos
-  const aCel = await areaEfetiva(pg, '.agd-cel[data-data="2026-11-11"]'), aAba = await areaEfetiva(pg, '.agd-mes-aba[data-mes="6"]');
-  const sobre = await pg.evaluate(() => { const c = document.querySelector('.agd-cel[data-data="2026-11-08"]').getBoundingClientRect(), t = document.elementFromPoint(c.right - 0.5, c.top + c.height / 2); return !!t && !!t.closest('.agd-mes-aba'); });
-  ok(aCel.w >= 44 && aCel.h >= 44 && aAba.w >= 44 && aAba.h >= 44 && !sobre, `iPhone 390: área efetiva de toque da data ${aCel.w}x${aCel.h} px e da aba ${aAba.w}x${aAba.h} px (a aba não cobre a coluna de domingo)`);
+  const aCel = await areaEfetiva(pg, '.agd-cel[data-data="2026-11-11"]'), aSel = await caixa(pg, '.agd-mes-sel select');
+  ok(aCel.w >= 44 && aCel.h >= 44 && aSel[0].h >= 40, `iPhone 390: área efetiva de toque da data ${aCel.w}x${aCel.h} px; o seletor de mês tem ${Math.round(aSel[0].h)} px de altura`);
   // tocar numa data: o painel do dia abre logo abaixo da grade, no fluxo da página, e a grade não se mexe
   const antesGrade = await pg.evaluate(() => { const g = document.querySelector('.agd-grade').getBoundingClientRect(); return { y: g.top + document.querySelector('.main').scrollTop, h: g.height, w: g.width }; });
   await paraData(pg, S.h.prazo); await abrirDia(pg, S.h.prazo); await pg.waitForTimeout(700);
@@ -668,13 +769,15 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
   ok(Math.abs(pn.gradeY - antesGrade.y) < 1 && Math.abs(pn.gradeAltura - antesGrade.h) < 1 && Math.abs(pn.gradeLargura - antesGrade.w) < 1, 'a grade fica na mesma posição e com o mesmo tamanho com o painel aberto');
   ok(pn.sel === S.h.prazo && pn.expandida === 'true' && pn.controla === 'agd-dia-painel' && /^Quarta-feira, 12 de novembro de 2026$|^[A-Za-zçãé-]+, \d+ de \w+ de 2026$/.test(pn.titulo), `a data tocada fica selecionada (aria-expanded) e o painel mostra a data por extenso (“${pn.titulo}”)`);
   ok(pn.cabTopo >= 0 && pn.cabBase <= pn.barraTopo, `o cabeçalho do painel ficou dentro da área visível, acima da barra de baixo (base em ${Math.round(pn.cabBase)} de ${Math.round(pn.barraTopo)} px)`);
-  ok((await pg.$$('.agd-dia-painel .agd-abrir')).length >= 1 && /Novo evento neste dia/.test(await pg.textContent('.agd-dia-painel')), 'o painel traz os cartões do dia com as mesmas ações e o botão Novo evento neste dia');
+  ok((await pg.$$('.agd-dia-painel .agd-abrir')).length >= 1 && /Novo evento neste dia/.test(await pg.textContent('.agd-dia-painel')) && !!(await pg.$('.agd-dia-painel [data-acao="dia-indisponivel"]')), 'o painel traz os cartões do dia com as mesmas ações, Novo evento neste dia e Cadastrar dia indisponível');
+  const selVisivel = await pg.evaluate(() => { const c = document.querySelector('.agd-cel[data-sel]').getBoundingClientRect(); return c.top >= 0 && c.bottom <= innerHeight; });
+  ok(selVisivel, 'com o painel aberto, a data escolhida continua visível (rolagem mínima)');
   await fecharDia(pg);
   ok(!(await pg.$('.agd-dia-painel')) && (await pg.evaluate(() => !!document.activeElement?.dataset?.data)), 'o botão de fechar recolhe o painel e devolve o foco à célula do dia');
-  await pg.click('.agd-mes-aba[data-mes="12"]'); await pg.waitForTimeout(400);
+  await pg.selectOption('.agd-mes-sel select', '12'); await pg.waitForTimeout(400);
   const cheioCel = `.agd-cel[data-data="${S.mes.cheio}"]`;
   await pg.evaluate((s) => document.querySelector(s).scrollIntoView({ block: 'center' }), cheioCel); await pg.waitForTimeout(200);
-  ok((await pg.$$eval(`${cheioCel} .agd-it, ${cheioCel} .agd-mais`, (l) => l.every((e) => getComputedStyle(e.closest('.agd-its')).display === 'none'))) && (await pg.$eval(`${cheioCel} .agd-evm`, (e) => getComputedStyle(e).display)) === 'block', 'no celular o dia cheio de dezembro não mostra pílulas nem "+N": só a carga e o ponto do compromisso');
+  ok((await pg.$$(`${cheioCel} .agd-it, ${cheioCel} .agd-mais, ${cheioCel} .agd-evm`)).length === 0 && /3 compromissos/.test(await pg.getAttribute(cheioCel, 'aria-label')), 'no celular o dia cheio de dezembro mostra só o número e a carga; os três compromissos ficam no nome acessível e no painel');
   ok(await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'em dezembro, no celular, continua sem rolagem horizontal');
   await pg.click(cheioCel); await pg.waitForSelector('.agd-dia-painel'); await pg.waitForTimeout(500);
   ok((await pg.$$('.agd-dia-painel .agd-evento')).length === 3 && (await pg.$$('.agd-dia-painel .agd-demanda')).length === 3 && /Audiência pública para revisão do plano diretor e do zoneamento urbano do município/.test(await pg.textContent('.agd-dia-painel')) && (await pg.$$eval('.agd-dia-painel button', (b) => b.filter((x) => x.getClientRects().length).every((x) => x.getBoundingClientRect().height >= 32))), 'tocar no dia cheio no celular abre o painel com os seis itens e os títulos inteiros');
@@ -690,9 +793,10 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
   await tocar(S.mes.cheio);
   await fecharDia(pg);
   ok((await pg.evaluate(() => document.activeElement?.getAttribute('data-data'))) === S.mes.cheio, 'no celular, fechar o painel devolve o foco à célula');
-  await pg.click('.agd-mes-aba[data-mes="11"]'); await pg.waitForTimeout(300);
+  await pg.selectOption('.agd-mes-sel select', '11'); await pg.waitForTimeout(300);
   await modo(pg, 'Semana');
-  ok((await caixa(pg, '.agd-dia')).every((c) => c.w > 300) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)), 'semana no celular: um dia por linha, sem rolagem horizontal');
+  const sf = await caixa(pg, '.agd-sf-dia');
+  ok(sf.length === 7 && sf.every((c) => c.w >= 44 && c.h >= 44) && !(await pg.$('.agd-sem')) && (await pg.isVisible('#agd-sem-detalhe')) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)), 'semana no celular: a faixa com as sete datas (alvos de 44 px) e o dia escolhido inteiro abaixo, sem rolagem horizontal');
   await modo(pg, 'Dia');
   ok(!(await pg.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), 'Hoje no celular sem rolagem horizontal');
 }
@@ -703,25 +807,22 @@ for (const [w, alvo] of [[375, 44], [360, 44], [320, 0]]) {
   const { ctx, pg } = await novo({ viewport: { width: w, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, { prefs: { modo: 'mes' } });
   await ir(pg);
   const cx = await caixa(pg, '.agd-cel'), minW = Math.min(...cx.map((c) => c.w));
-  const aCel = await areaEfetiva(pg, '.agd-cel[data-data="2026-11-11"]'), aAba = await areaEfetiva(pg, '.agd-mes-aba[data-mes="6"]');
+  const aCel = await areaEfetiva(pg, '.agd-cel[data-data="2026-11-11"]');
   const semRol = await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1);
   // nada fica para fora da tela escondido pelo corte lateral: a faixa de meses e o botão Novo evento terminam dentro da largura
   const casca = await pg.evaluate(() => document.querySelector('.main').getBoundingClientRect().right);
-  const dentro = await pg.evaluate((lim) => [...document.querySelectorAll('.agd-mes-aba, .agd-novo, .agd-cel, .agd-nav .btn, .agd-data input')].every((e) => e.getBoundingClientRect().right <= lim + 0.5), alvo ? w : casca);
-  ok(dentro, `${w} px: a faixa de meses, as células e os botões do topo terminam dentro da ${alvo ? 'largura da tela' : `casca do aplicativo (${Math.round(casca)} px, mais larga que a tela por causa da barra do topo, que não é da Agenda)`}, sem nada cortado pela Agenda`);
-  const cols = await pg.$$eval('.agd-linha-sem:nth-child(2) > [role="gridcell"]', (c) => c.length), abas = (await pg.$$('.agd-mes-aba')).length;
-  ok(semRol && cols === 7 && abas === 12 && (await pg.$$eval('.agd-cabsem', (c) => c.length)) === 7, `${w} px: sete colunas de segunda a domingo e JAN a DEZ, sem rolagem horizontal da página`);
-  if (alvo) ok(minW >= alvo - 0.5 && aCel.w >= alvo && (w < 375 || (aAba.w >= 44 && aAba.h >= 44)), `${w} px: a célula mede ${minW.toFixed(1)} px de largura (área de toque ${aCel.w}x${aCel.h}) e ${w < 375 ? 'as abas saíram, então a grade ganha a largura toda' : `a aba tem área de toque de ${aAba.w}x${aAba.h} px`}`);
-  else ok(minW >= 34, `${w} px (limite da composição): a célula mede ${minW.toFixed(1)} px de largura (área de toque ${aCel.w}x${aCel.h}), abaixo dos 44 px; a aba tem ${aAba.w}x${aAba.h} px de área de toque`);
+  const dentro = await pg.evaluate((lim) => [...document.querySelectorAll('.agd-mes-sel select, .agd-novo, .agd-cel, .agd-nav .btn, .agd-data input')].every((e) => e.getBoundingClientRect().right <= lim + 0.5), alvo ? w : casca);
+  ok(dentro, `${w} px: o seletor de mês, as células e os botões do topo terminam dentro da ${alvo ? 'largura da tela' : `casca do aplicativo (${Math.round(casca)} px, mais larga que a tela por causa da barra do topo, que não é da Agenda)`}, sem nada cortado pela Agenda`);
+  const cols = await pg.$$eval('.agd-linha-sem:nth-child(2) > [role="gridcell"]', (c) => c.length);
+  ok(semRol && cols === 7 && (await pg.$$eval('.agd-cabsem', (c) => c.map((x) => x.textContent.trim()).join())) === 'DOM,SEG,TER,QUA,QUI,SEX,SÁB' && cx.every((c) => Math.abs(c.w - c.h) < 1.5), `${w} px: sete colunas de quadrados de domingo a sábado, sem rolagem horizontal da página`);
+  if (alvo) ok(minW >= alvo - 0.5 && aCel.w >= alvo, `${w} px: o quadrado mede ${minW.toFixed(1)} px (área de toque ${aCel.w}x${aCel.h})`);
+  else ok(minW >= 38, `${w} px (limite da composição): o quadrado mede ${minW.toFixed(1)} px (área de toque ${aCel.w}x${aCel.h})`);
   // adaptação a 320 px (decisão 73): sem largura para 7 colunas + abas, os meses passam a um controle compacto no cabeçalho do Mês
   const tabsVisiveis = await pg.isVisible('.agd-meses'), selVisivel = await pg.isVisible('.agd-mes-sel select');
-  if (w >= 375) ok(tabsVisiveis && !selVisivel, `${w} px: as abas JAN a DEZ ficam à direita da grade e o seletor compacto de mês não aparece`);
-  else {
-    ok(!tabsVisiveis && selVisivel, `${w} px (a Agenda tem menos de 340 px de largura útil, o que acontece até uns 371 px de tela): sem largura para as abas, o mês passa a um seletor compacto no cabeçalho do Mês e as datas ganham a largura toda`);
-    const antes = ((await pg.textContent('.agd-periodo')) ?? '').replace(/\s+/g, ' ').trim();
-    await pg.selectOption('.agd-mes-sel select', '12'); await pg.waitForTimeout(400);
-    ok(/^Dezembro 2026$/.test(((await pg.textContent('.agd-periodo')) ?? '').replace(/\s+/g, ' ').trim()) && /Novembro 2026/.test(antes) && (await pg.$eval('.agd-mes-sel select', (e) => e.value)) === '12' && (await pg.$$eval('.agd-cel', (l) => l.length)) > 27, `${w} px: o seletor leva ao mês escolhido (Dezembro 2026) e a grade acompanha`);
-  }
+  ok(!tabsVisiveis && selVisivel, `${w} px: o mês fica no seletor compacto junto do período e as datas ganham a largura toda`);
+  const antes = ((await pg.textContent('.agd-periodo')) ?? '').replace(/\s+/g, ' ').trim();
+  await pg.selectOption('.agd-mes-sel select', '12'); await pg.waitForTimeout(400);
+  ok(/^Dezembro 2026$/.test(((await pg.textContent('.agd-periodo')) ?? '').replace(/\s+/g, ' ').trim()) && /Novembro 2026/.test(antes) && (await pg.$eval('.agd-mes-sel select', (e) => e.value)) === '12' && (await pg.$$eval('.agd-cel', (l) => l.length)) > 27, `${w} px: o seletor leva ao mês escolhido (Dezembro 2026) e a grade acompanha`);
   await ctx.close();
 }
 const t4 = await novo({ viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true }, { tema: 'escuro', prefs: { modo: 'mes' } });
@@ -873,11 +974,11 @@ for (const tema of ['claro', 'escuro']) {
   ok(new Set(fundos).size === fundos.length && fundos.length >= 3 && Object.values(cs).every((x) => x.contraste >= 4.5), `celular, tema ${tema}: os níveis de carga têm preenchimentos distintos e a data mantém contraste de pelo menos 4,5:1 (${Object.entries(cs).map(([k, v]) => `${k} ${v.contraste}`).join(', ')})`);
   const marcas = await pg.evaluate(() => {
     const h = document.querySelector('.agd-cel[data-hoje]'), sel = document.querySelector('.agd-cel[data-sel]');
-    return { hojeDisco: getComputedStyle(h.querySelector('.agd-num')).backgroundColor !== 'rgba(0, 0, 0, 0)', selAnel: getComputedStyle(sel).boxShadow !== 'none', hojeEhSel: h === sel, indisp: !!document.querySelector('.agd-cel[data-indisp]') && getComputedStyle(document.querySelector('.agd-cel[data-indisp]'), '::after').content !== 'none' };
+    return { hojeDisco: getComputedStyle(h.querySelector('.agd-num')).backgroundColor !== 'rgba(0, 0, 0, 0)', selAnel: getComputedStyle(sel).boxShadow !== 'none', hojeEhSel: h === sel, naoUtil: !!document.querySelector('.agd-cel[data-nao-util]') && /2px/.test(getComputedStyle(document.querySelector('.agd-cel[data-nao-util]')).boxShadow) };
   });
-  ok(marcas.hojeDisco && marcas.selAnel && marcas.indisp, `celular, tema ${tema}: hoje (disco na data), dia selecionado (anel) e dia indisponível (barra na base) continuam distintos`);
+  ok(marcas.hojeDisco && marcas.selAnel && marcas.naoUtil, `celular, tema ${tema}: hoje (disco na data), dia selecionado (anel) e dia sem trabalho (contorno cinza) continuam distintos`);
   if (tema === 'claro') {
-    ok((await pg.textContent('.agd-leg')).includes('Menos pendências') && /Compromisso/.test(await pg.textContent('.agd-leg')) && /Dia indisponível/.test(await pg.textContent('.agd-leg')) && !/Acompanhar/.test(await pg.evaluate(() => [...document.querySelectorAll('.agd-leg li')].filter((e) => e.getClientRects().length).map((e) => e.textContent).join(' '))), 'celular: a legenda traz a escala de carga, Hoje, atraso, compromisso e dia indisponível (sem os marcos que a grade não mostra)');
+    ok((await pg.textContent('.agd-leg')).includes('Menos pendências') && /Sábado, domingo e feriado/.test(await pg.textContent('.agd-leg')) && !/Acompanhar|Compromisso|Com atraso|Evento externo/.test(await pg.evaluate(() => [...document.querySelectorAll('.agd-leg li')].filter((e) => e.getClientRects().length).map((e) => e.textContent).join(' '))), 'celular: a legenda traz a escala de carga, Hoje e o cinza de sábado, domingo e feriado (sem as marcas que o quadrado não mostra)');
     // movimento reduzido: o painel abre e a página rola sem animação
     await pg.emulateMedia({ reducedMotion: 'reduce' });
     const alvoDia = '2026-11-26';

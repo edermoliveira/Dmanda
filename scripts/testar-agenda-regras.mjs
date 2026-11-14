@@ -2,6 +2,7 @@
 import {
   gradeMes, somarMeses, semanaDe, diasNoMes, tituloMes, rotuloSemana, dataPorExtenso, contagemRetorno, marcosDaDemanda, dataAplicavel, cargaDaDemanda, nivelDaCarga, cargaPorDia,
   pendenciasSemPrazo, itensDoDia, descreverDia, diaMaisLivre, panorama, marcosPorDia, LIMIARES_CARGA, colunaNaSemana, trocarMes, itensParaGrade, recortarItensGrade, dataCurta, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES,
+  diaNaoUtil, feriadosDe, motivoNaoUtil, fimDeSemana,
 } from '../src/lib/agenda.ts';
 import { esperaPrefeita, ordemDaEtapa, ETAPAS, ETAPA_COR } from '../src/lib/demandas.ts';
 import { diaDaSemana, ajustarPrazo, somarDias } from '../src/lib/prazos.ts';
@@ -22,12 +23,16 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
 
 // ---------- calendário ----------
 {
-  const fev27 = gradeMes(2027, 2), fev26 = gradeMes(2026, 2), fev24 = gradeMes(2024, 2), ago26 = gradeMes(2026, 8), nov26 = gradeMes(2026, 11);
-  ok(fev27.length === 4 && fev27[0][0] === '2027-02-01' && fev27[3][6] === '2027-02-28' && fev27.flat().every(Boolean), 'fevereiro de 2027 começa na segunda e termina no domingo: 4 semanas completas, sem espaços vazios');
-  ok(fev26.length === 5 && fev26[0].slice(0, 6).every((x) => x === null) && fev26[0][6] === '2026-02-01' && fev26[1][0] === '2026-02-02' && fev26[4][5] === '2026-02-28' && fev26[4][6] === null, 'fevereiro de 2026 começa no domingo: o dia 1 fica na última coluna, em uma semana quase vazia, e o mês fecha em 5 semanas');
-  ok(fev24.length === 5 && fev24[0].slice(0, 3).every((x) => x === null) && fev24[0][3] === '2024-02-01' && fev24.flat().includes('2024-02-29') && fev24[4][3] === '2024-02-29' && fev24[4].slice(4).every((x) => x === null), 'ano bissexto: fevereiro de 2024 começa na quinta, tem o dia 29 e completa a última semana com vazios');
-  ok(ago26.length === 6 && ago26[0].slice(0, 5).every((x) => x === null) && ago26[0][5] === '2026-08-01' && ago26[0][6] === '2026-08-02', 'agosto de 2026 começa no sábado: cinco posições vazias e 6 semanas');
-  ok(nov26.length === 6 && nov26[0].slice(0, 6).every((x) => x === null) && nov26[0][6] === '2026-11-01' && nov26[1][0] === '2026-11-02' && nov26[5][0] === '2026-11-30' && nov26[5].slice(1).every((x) => x === null), 'novembro de 2026: o dia 1 (domingo) fica sozinho na primeira semana, a segunda 2 abre a segunda e a segunda 30 abre a sexta semana, com o resto vazio');
+  // domingo a sábado (14/11/2026): o domingo fica na primeira coluna e o sábado na última, em todos os calendários
+  const fev27 = gradeMes(2027, 2), fev26 = gradeMes(2026, 2), fev24 = gradeMes(2024, 2), ago26 = gradeMes(2026, 8), nov26 = gradeMes(2026, 11), fev15 = gradeMes(2015, 2);
+  ok(fev15.length === 4 && fev15[0][0] === '2015-02-01' && fev15[3][6] === '2015-02-28' && fev15.flat().every(Boolean), 'fevereiro de 2015 começa no domingo e termina no sábado: 4 semanas completas, sem espaços vazios');
+  ok(fev27.length === 5 && fev27[0][0] === null && fev27[0][1] === '2027-02-01' && fev27[3][6] === '2027-02-27' && fev27[4][0] === '2027-02-28' && fev27[4].slice(1).every((x) => x === null), 'fevereiro de 2027 começa na segunda (segunda coluna) e o domingo 28 abre a quinta semana');
+  ok(fev26.length === 4 && fev26[0][0] === '2026-02-01' && fev26[3][6] === '2026-02-28' && fev26.flat().every(Boolean), 'mês que começa no domingo: fevereiro de 2026 abre na primeira célula e fecha em 4 semanas completas');
+  ok(fev24.length === 5 && fev24[0].slice(0, 4).every((x) => x === null) && fev24[0][4] === '2024-02-01' && fev24.flat().includes('2024-02-29') && fev24[4][4] === '2024-02-29' && fev24[4].slice(5).every((x) => x === null), 'ano bissexto: fevereiro de 2024 começa na quinta (quinta coluna), tem o dia 29 e completa a última semana com vazios');
+  const fev28 = gradeMes(2028, 2);
+  ok(fev28.length === 5 && fev28[0].slice(0, 2).every((x) => x === null) && fev28[0][2] === '2028-02-01' && fev28[4][2] === '2028-02-29' && fev28.flat().filter(Boolean).length === 29, 'fevereiro bissexto de 2028: começa na terça e termina na terça 29');
+  ok(ago26.length === 6 && ago26[0].slice(0, 6).every((x) => x === null) && ago26[0][6] === '2026-08-01' && ago26[1][0] === '2026-08-02' && ago26[5][0] === '2026-08-30' && ago26[5][1] === '2026-08-31', 'mês que começa no sábado: agosto de 2026 tem o dia 1 sozinho na última coluna e 6 semanas');
+  ok(nov26.length === 5 && nov26[0][0] === '2026-11-01' && nov26[0][6] === '2026-11-07' && nov26[4][0] === '2026-11-29' && nov26[4][1] === '2026-11-30' && nov26[4].slice(2).every((x) => x === null), 'novembro de 2026: o domingo 1 abre a grade e a segunda 30 fecha a quinta semana');
   let tudo = true, qtd = 0;
   for (let a = 2024; a <= 2030; a++) for (let m = 1; m <= 12; m++) {
     const g = gradeMes(a, m), nn = g.flat().filter(Boolean);
@@ -35,12 +40,28 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
     g.forEach((s) => s.forEach((x, i) => { if (x && colunaNaSemana(x) !== i) tudo = false; }));
     qtd++;
   }
-  ok(tudo && qtd === 84, 'em 84 meses (2024 a 2030) toda semana tem 7 posições, cada data cai na coluna do seu dia da semana (segunda na primeira, domingo na última) e a quantidade de dias confere');
-  ok(colunaNaSemana('2026-11-02') === 0 && colunaNaSemana('2026-11-08') === 6 && colunaNaSemana('2026-11-01') === 6 && colunaNaSemana('2026-11-07') === 5 && MES_DIAS_ABREV.join() === 'SEG,TER,QUA,QUI,SEX,SÁB,DOM' && MES_DIAS_NOMES.length === 7 && MES_ABREV.join('') === 'JANFEVMARABRMAIJUNJULAGOSETOUTNOVDEZ', 'colunas de segunda a domingo e os rótulos do cabeçalho do Mês e das abas JAN a DEZ');
+  ok(tudo && qtd === 84, 'em 84 meses (2024 a 2030) toda semana tem 7 posições, cada data cai na coluna do seu dia da semana (domingo na primeira, sábado na última) e a quantidade de dias confere');
+  ok(colunaNaSemana('2026-11-01') === 0 && colunaNaSemana('2026-11-02') === 1 && colunaNaSemana('2026-11-07') === 6 && colunaNaSemana('2026-11-08') === 0 && MES_DIAS_ABREV.join() === 'DOM,SEG,TER,QUA,QUI,SEX,SÁB' && MES_DIAS_NOMES[0] === 'domingo' && MES_DIAS_NOMES[6] === 'sábado' && MES_ABREV.join('') === 'JANFEVMARABRMAIJUNJULAGOSETOUTNOVDEZ', 'colunas de domingo a sábado (a mesma conta de diaDaSemana) e os rótulos do cabeçalho e das abas JAN a DEZ');
+  let mesmaConta = true; for (let i = 0; i < 1096; i++) { const d = somarDias('2026-01-01', i); if (colunaNaSemana(d) !== diaDaSemana(d) || MES_DIAS_NOMES[colunaNaSemana(d)] !== dataPorExtenso(d).split(',')[0]) mesmaConta = false; }
+  ok(mesmaConta, 'em 1.096 datas o cabeçalho, a posição da célula e o nome do dia no rótulo acessível concordam');
+  // teclado das grades: Home vai ao domingo e End ao sábado da mesma semana; as setas andam um ou sete dias e passam de mês e de ano
+  const home = (d) => somarDias(d, -colunaNaSemana(d)), end = (d) => somarDias(d, 6 - colunaNaSemana(d));
+  ok(home('2026-11-04') === '2026-11-01' && end('2026-11-04') === '2026-11-07' && home('2026-11-01') === '2026-11-01' && end('2026-11-07') === '2026-11-07' && home('2026-12-31') === '2026-12-27' && end('2026-12-31') === '2027-01-02' && home('2026-08-01') === '2026-07-26', 'Home leva ao domingo e End ao sábado da semana, inclusive na virada do mês e do ano');
+  ok(somarDias('2026-12-31', 1) === '2027-01-01' && somarDias('2027-01-01', -1) === '2026-12-31' && somarDias('2026-12-28', 7) === '2027-01-04' && somarDias('2028-02-28', 1) === '2028-02-29' && somarDias('2028-02-29', 7) === '2028-03-07', 'setas: um dia e sete dias, passando de dezembro a janeiro e pelo 29 de fevereiro');
+  // dias fora do trabalho: só aparência; o feriado vem do registro, não do texto
+  const ind = [{ id: 'a', data: '2026-11-20', descricao: 'Dia da Consciência Negra', categoria: 'Feriado' }, { id: 'b', data: '2026-11-15', descricao: 'Proclamação da República', categoria: 'Feriado' }, { id: 'c', data: '2026-11-26', descricao: 'Feriado do congresso (texto enganoso)', categoria: 'Evento externo' }];
+  ok(diaNaoUtil('2026-11-14', []) && diaNaoUtil('2026-11-15', []) && !diaNaoUtil('2026-11-16', []) && diaNaoUtil('2026-11-20', ind) && !diaNaoUtil('2026-11-26', ind) && fimDeSemana('2026-11-15'), 'sábado e domingo pela data, feriado pelo registro de Feriado; evento externo (mesmo com a palavra feriado no texto) não fica cinza');
+  ok(motivoNaoUtil('2026-11-14', ind) === 'sábado' && motivoNaoUtil('2026-11-15', ind) === 'feriado' && motivoNaoUtil('2026-11-20', ind) === 'feriado' && motivoNaoUtil('2026-11-16', ind) === null && feriadosDe('2026-11-15', ind).length === 1 && feriadosDe('2026-11-26', ind).length === 0, 'feriado no domingo recebe o mesmo tratamento e o motivo é o feriado (a descrição fica no detalhe)');
+  const dSab = descreverDia('2026-11-14', { eventos: 0, indisponiveis: [], hoje: '2026-11-03' }), dFer = descreverDia('2026-11-20', { eventos: 0, indisponiveis: feriadosDe('2026-11-20', ind), hoje: '2026-11-03' });
+  ok(/^sábado, 14 de novembro de 2026; fim de semana/.test(dSab) && /feriado: Dia da Consciência Negra/.test(dFer) && !/fim de semana/.test(dFer), `nome acessível diz fim de semana e o feriado com a descrição (${dSab} | ${dFer})`);
+  // o prazo não muda com a ordem dos dias: um prazo no sábado 21/11 com a sexta 20/11 feriado continua antecipado para a quinta 19/11, com a mesma justificativa
+  const pz = ajustarPrazo('2026-11-21', ind);
+  ok(pz.prazo === '2026-11-19' && pz.ajuste === '21/11 sábado; 20/11 feriado: Dia da Consciência Negra', `prazo sobre fim de semana e feriado: mesma data e mesma justificativa de antes (${pz.prazo}, ${pz.ajuste})`);
   ok(trocarMes('2026-11-18', 1) === '2026-01-18' && trocarMes('2026-11-18', 12) === '2026-12-18' && trocarMes('2026-01-31', 2) === '2026-02-28' && trocarMes('2024-01-31', 2) === '2024-02-29' && trocarMes('2026-03-31', 4) === '2026-04-30' && trocarMes('2026-12-31', 12) === '2026-12-31', 'a aba de mês leva ao mês escolhido do mesmo ano, mantendo o dia ou usando o último dia do mês (28, 29 ou 30)');
   ok(diasNoMes(2024, 2) === 29 && diasNoMes(2026, 2) === 28 && diasNoMes(2100, 2) === 28 && diasNoMes(2000, 2) === 29 && diasNoMes(2026, 4) === 30, 'meses de tamanhos diferentes e anos bissextos (2100 não é bissexto, 2000 é)');
   ok(somarMeses('2026-01-31', 1) === '2026-02-28' && somarMeses('2024-01-31', 1) === '2024-02-29' && somarMeses('2026-12-15', 1) === '2027-01-15' && somarMeses('2026-01-15', -1) === '2025-12-15' && somarMeses('2026-03-31', -1) === '2026-02-28', 'somar meses mantém o dia ou usa o último dia do mês de destino, e cruza o ano nos dois sentidos');
   ok(semanaDe('2026-11-04')[0] === '2026-11-01' && semanaDe('2026-11-04')[6] === '2026-11-07' && semanaDe('2026-11-01')[0] === '2026-11-01' && semanaDe('2026-11-07')[0] === '2026-11-01' && semanaDe('2026-12-02')[0] === '2026-11-29' && semanaDe('2026-12-02')[6] === '2026-12-05', 'semana de domingo a sábado, inclusive quando atravessa o mês');
+  ok(semanaDe('2026-12-31').join() === '2026-12-27,2026-12-28,2026-12-29,2026-12-30,2026-12-31,2027-01-01,2027-01-02' && rotuloSemana(semanaDe('2026-12-31')) === '27 de dez a 2 de jan de 2027', 'a semana que atravessa dezembro e janeiro vai de domingo 27/12 a sábado 2/1, com o rótulo dos dois meses');
   ok(tituloMes('2026-11-15') === 'novembro de 2026' && dataPorExtenso('2026-11-03') === 'terça-feira, 3 de novembro de 2026' && rotuloSemana(semanaDe('2026-11-04')) === '1 a 7 de novembro de 2026' && rotuloSemana(semanaDe('2026-12-02')) === '29 de nov a 5 de dez de 2026', 'rótulos por extenso do mês, do dia e da semana');
 }
 

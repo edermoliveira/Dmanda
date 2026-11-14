@@ -107,10 +107,27 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 }
 .cfg-bloco { max-width: 720px; }
 .cfg-bloco .fld { margin-bottom: 10px; }
-.cfg-lista { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 6px; }
-.cfg-lista li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-height: 52px; padding: 8px 14px; border-radius: 14px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
-.cfg-lista .cfg-dia { font-variant-numeric: tabular-nums; min-width: 112px; font-weight: 600; }
-.cfg-lista .cfg-desc { flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+.cfg-lista { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+/* cada dia: a data e as ações na primeira linha, a descrição e o tipo logo abaixo quando falta largura (14/11/2026: lista cronológica legível em uma coluna no celular) */
+.cfg-lista li { display: grid; grid-template-columns: minmax(112px, auto) minmax(0, 1fr) auto auto; grid-template-areas: "data desc tipo acoes"; align-items: center; gap: 4px 12px; min-height: 52px; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
+.cfg-lista .cfg-dia { grid-area: data; font-variant-numeric: tabular-nums; font-weight: 600; }
+.cfg-lista .cfg-desc { grid-area: desc; min-width: 0; overflow-wrap: anywhere; }
+.cfg-lista .cfg-tipo { grid-area: tipo; justify-self: start; }
+.cfg-lista .cfg-acoes { grid-area: acoes; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 8px; }
+.cfg-lista .cfg-confirma { grid-area: auto; grid-column: 1 / -1; justify-content: flex-start; }
+@container tela (max-width: 699px) {
+  .cfg-lista li { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "data acoes" "desc desc" "tipo tipo"; }
+}
+.cfg-dias-h { margin: 14px 0 0; font-size: calc(15px * var(--esc)); font-weight: 650; }
+.cfg-dias-h small { font-weight: 500; }
+/* o cadastro em destaque: o quadro do formulário ganha o contorno do acento, e no modo de alteração diz o que está sendo alterado */
+.cfg-dias-form .cfg-form { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--acc) 45%, var(--card-brd)); }
+.cfg-form .fld-inteira, .di-form .fld-inteira { grid-column: 1 / -1; }
+/* o mesmo formulário dentro da janela da Agenda */
+.di-form { display: grid; gap: 4px 12px; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); align-items: end; }
+.di-form .fld { margin: 0; min-width: 0; }
+.di-form input[type="date"] { display: block; min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; text-align: left; }
+.di-onde, .di-ja { margin: 10px 0 0; }
 .cfg-form { display: grid; gap: 8px 12px; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); align-items: end; margin: 12px 0 0; padding: 14px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
 .cfg-form .fld { margin: 0; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 /* Campo Data (bloco de 30/10/2026): o controle nativo de data tem largura mínima própria (no Safari do iPhone e do iPad o campo passava da lateral do quadro). A coluna e o campo podem encolher
@@ -271,10 +288,9 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 @container tela (min-width: 1000px) {
   .app[data-dir="d"] .cfg .cfg-dias { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 0 24px; align-items: start; }
   .app[data-dir="d"] .cfg .cfg-dias > :is(h2, .data) { grid-column: 1 / -1; }
-  .app[data-dir="d"] .cfg .cfg-dias > .cfg-form { grid-column: 1; }
+  .app[data-dir="d"] .cfg .cfg-dias > .cfg-dias-form { grid-column: 1; position: sticky; top: 4px; }
   .app[data-dir="d"] .cfg .cfg-dias > .cfg-dias-lado { grid-column: 2; }
   .app[data-dir="d"] .cfg .cfg-dias-lado > .cfg-lista { margin-top: 12px; }
-  .app[data-dir="d"] .cfg .cfg-dias-lado > .data { margin-top: 12px !important; }
 }
 @media (max-height: 640px) { .app[data-dir="d"] .cfg-lado { position: static; } }
 .app[data-dir="d"] .cfg .cfg-nota { margin: 12px 0 16px; }

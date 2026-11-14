@@ -20,7 +20,7 @@ import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';
 
 export type Visao = 'cards' | 'quadro' | 'tabela' | 'lista';
 // nova: o cadastro guiado de demanda (com entradaId, ele nasce de uma anotação: Virar demanda). entrada: a janela de uma anotação (sem id, uma anotação nova).
-export type Janela = { t: 'nova'; entradaId?: string } | { t: 'editar'; id: string } | { t: 'tarefa' } | { t: 'entrada'; id?: string } | { t: 'evento'; id?: string; data?: string } | null;
+export type Janela = { t: 'nova'; entradaId?: string } | { t: 'editar'; id: string } | { t: 'tarefa' } | { t: 'entrada'; id?: string } | { t: 'evento'; id?: string; data?: string } | { t: 'dia'; data?: string } | null;
 // versao: a versão da demanda sobre a qual o rascunho foi digitado (se a demanda mudou depois, o salvamento é recusado em vez de sobrescrever)
 // passo: em que passo do cadastro guiado a pessoa estava. idNovo: o identificador que o aplicativo gerou para a demanda nova (repetir a criação com ele nunca duplica).
 // demandaId: a demanda já criada pelo passo 2, quando o cadastro foi interrompido depois dela (recarga, PWA encerrada). secoes: quais seções da consulta estavam em edição (o cadastro guiado deixa isso quando fecha com algo não salvo).
@@ -43,7 +43,8 @@ type Ctx = {
   arquivadas: Demanda[] | null;
   /** Feriados e eventos externos de dia inteiro cadastrados: a prévia do vencimento usa a mesma regra do banco. */
   dias: DiaIndisponivel[];
-  salvarDia: (dia: { id?: string; data: string; descricao: string; categoria: CategoriaDia }) => Promise<boolean>;
+  /** `rotulo`: o começo do aviso depois de gravar (a Agenda diz em que data o registro ficou). */
+  salvarDia: (dia: { id?: string; data: string; descricao: string; categoria: CategoriaDia }, rotulo?: string) => Promise<boolean>;
   excluirDia: (id: string) => Promise<boolean>;
   hoje: string;
   carregando: boolean;
@@ -519,11 +520,11 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     fecharMenuMover: () => setMenuMover(null),
     rascunhos,
     guardarRascunho,
-    salvarDia: async (dia) => {
+    salvarDia: async (dia, rotulo) => {
       const r = await gravando(() => protegido(() => srv.salvarDia(dia)));
       if (!r.ok) { avisar(r.erro, true); return false; }
       setDias((l) => [...l.filter((x) => x.id !== r.dados.dia.id), r.dados.dia].sort((a, b) => a.data.localeCompare(b.data)));
-      await aposCalendario(dia.id ? 'Dia alterado' : 'Dia cadastrado', r.dados.recalculadas);
+      await aposCalendario(rotulo ?? (dia.id ? 'Dia alterado' : 'Dia cadastrado'), r.dados.recalculadas);
       return true;
     },
     excluirDia: async (diaId) => {

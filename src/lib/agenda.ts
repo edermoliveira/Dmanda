@@ -7,9 +7,9 @@ import { ordenarEventos, type Evento } from './eventos.ts';
 
 // ---------- calendário ----------
 export const NOMES_MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-/** Cabeçalho do Mês, de segunda a domingo (a Semana e o Hoje seguem como estavam). */
-export const MES_DIAS_ABREV = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
-export const MES_DIAS_NOMES = ['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado', 'domingo'];
+/** Cabeçalho dos calendários, de domingo a sábado (14/11/2026: todos os calendários do Dmanda seguem esta ordem; a posição é a de `diaDaSemana`, 0 é domingo e 6 é sábado). */
+export const MES_DIAS_ABREV = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+export const MES_DIAS_NOMES = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
 /** As abas de meses (JAN a DEZ), na ordem do ano. */
 export const MES_ABREV = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 const NOMES_DIA_LONGO = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
@@ -27,12 +27,12 @@ export function somarMeses(iso: string, n: number): string {
   return `${a}-${dois(m)}-${dois(Math.min(Number(iso.slice(8, 10)), diasNoMes(a, m)))}`;
 }
 
-/** Posição do dia na semana do Mês: 0 é segunda-feira e 6 é domingo. */
-export const colunaNaSemana = (iso: string) => (diaDaSemana(iso) + 6) % 7;
+/** Posição do dia na semana de qualquer calendário: 0 é domingo e 6 é sábado (a mesma convenção de `diaDaSemana`). Home e End usam a mesma conta. */
+export const colunaNaSemana = (iso: string) => diaDaSemana(iso);
 /** Troca só o mês, no mesmo ano, mantendo o dia ou o último dia do mês de destino quando ele não existe (31 de janeiro, aba FEV, vira 28 ou 29). */
 export const trocarMes = (iso: string, mes: number): string => somarMeses(iso, mes - anoMes(iso).mes);
 
-/** Grade do mês: semanas de segunda a domingo; as posições antes do dia 1 e depois do último dia são nulas (vazias). O número de semanas muda com o mês (4 a 6). */
+/** Grade do mês: semanas de domingo a sábado; as posições antes do dia 1 e depois do último dia são nulas (vazias). O número de semanas muda com o mês (4 a 6). */
 export function gradeMes(ano: number, mes: number): (string | null)[][] {
   const primeiro = `${ano}-${dois(mes)}-01`, inicio = colunaNaSemana(primeiro), total = diasNoMes(ano, mes);
   const celulas: (string | null)[] = [...Array<null>(inicio).fill(null), ...Array.from({ length: total }, (_, i) => `${ano}-${dois(mes)}-${dois(i + 1)}`)];
@@ -42,6 +42,16 @@ export function gradeMes(ano: number, mes: number): (string | null)[][] {
 /** A semana (domingo a sábado) que contém a data. */
 export const semanaDe = (iso: string): string[] => { const d = somarDias(iso, -diaDaSemana(iso)); return Array.from({ length: 7 }, (_, i) => somarDias(d, i)); };
 export const fimDeSemana = (iso: string) => diaDaSemana(iso) === 0 || diaDaSemana(iso) === 6;
+/** Os feriados cadastrados numa data (categoria Feriado em Dias indisponíveis). O evento externo de dia inteiro não entra: ele ajusta prazos, mas o dia continua de trabalho na aparência. */
+export const feriadosDe = (data: string, indisponiveis: readonly DiaIndisponivel[]) => indisponiveis.filter((x) => x.data === data && x.categoria === 'Feriado');
+/**
+ * Dia fora do trabalho, para o tratamento cinza dos calendários: sábado e domingo pela própria data e o feriado pelo registro de Feriado (nunca pelo texto, pela posição na grade ou pelo tipo de
+ * compromisso). Feriado no fim de semana recebe o mesmo tratamento. Só aparência: os prazos seguem as regras de prazos.ts.
+ */
+export const diaNaoUtil = (data: string, indisponiveis: readonly DiaIndisponivel[]) => fimDeSemana(data) || feriadosDe(data, indisponiveis).length > 0;
+/** O motivo do cinza, para o texto e o nome acessível: "sábado", "domingo" ou "feriado", ou nulo num dia de trabalho. */
+export const motivoNaoUtil = (data: string, indisponiveis: readonly DiaIndisponivel[]): 'sábado' | 'domingo' | 'feriado' | null =>
+  feriadosDe(data, indisponiveis).length ? 'feriado' : diaDaSemana(data) === 6 ? 'sábado' : diaDaSemana(data) === 0 ? 'domingo' : null;
 export const nomeLongoDoDia = (iso: string) => NOMES_DIA_LONGO[diaDaSemana(iso)];
 /** "terça-feira, 3 de novembro de 2026" */
 export const dataPorExtenso = (iso: string) => `${nomeLongoDoDia(iso)}, ${Number(iso.slice(8, 10))} de ${NOMES_MES[Number(iso.slice(5, 7)) - 1]} de ${iso.slice(0, 4)}`;
@@ -170,6 +180,7 @@ const plural = (n: number, s: string, p = `${s}s`) => `${n} ${n === 1 ? s : p}`;
 export function descreverDia(data: string, o: { carga?: CargaDia; eventos: number; indisponiveis: readonly DiaIndisponivel[]; hoje: string; selecionado?: boolean; semDemandas?: boolean }): string {
   const p: string[] = [dataPorExtenso(data)];
   if (data === o.hoje) p.push('hoje');
+  if (fimDeSemana(data)) p.push('fim de semana');
   const c = o.carga;
   // com a leitura das demandas falha, "sem pendências" seria mentira: o número é desconhecido
   p.push(o.semDemandas ? 'pendências indisponíveis' : c && c.carga ? `${plural(c.carga, 'pendência')} em ${plural(c.demandas, 'demanda')}, ${ROTULO_NIVEL[nivelDaCarga(c.carga)]}${c.atrasada ? ', com atraso' : ''}` : 'sem pendências');

@@ -23,6 +23,10 @@
   --agd-demanda-bg: var(--amar-bg, color-mix(in srgb, hsl(46 90% 50%) 22%, var(--card)));
   --agd-demanda-tx: var(--amar-tx, var(--text));
   --agd-dur: 150ms;
+  /* dias sem trabalho (sábado, domingo e Feriado cadastrado, 14/11/2026): cinza derivado do texto e do cartão de cada tema, nunca uma cor de alerta */
+  --agd-nao-util-bg: color-mix(in srgb, var(--text) 8%, var(--card));
+  --agd-nao-util-borda: color-mix(in srgb, var(--text) 32%, var(--card));
+  --agd-nao-util-tx: var(--text2);
 }
 @supports not (color: color-mix(in srgb, red 50%, blue)) {
   .app[data-dir="d"] { --calendar-cell-idle: var(--track); --calendar-cell-low: var(--acc-soft); --calendar-cell-medium: var(--acc-soft); --agd-vidro: var(--solido); }
@@ -102,7 +106,8 @@
 .agd-grade > .agd-linha-sem:not(:first-child) { contain: size; }
 .agd-linha-sem { display: grid; grid-template-columns: var(--agd-semw) repeat(7, minmax(0, 1fr)); gap: var(--g); min-width: 0; }
 .agd-cabsem { text-align: center; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; letter-spacing: .04em; color: var(--text2); padding-block: 2px 4px; }
-.agd-cabsem abbr { text-decoration: none; cursor: default; }
+.agd-cabsem abbr { text-decoration: none; cursor: default; display: inline-block; min-width: 2.6em; padding: 1px 4px; border-radius: 6px; }
+.agd-cabsem[data-nao-util] abbr { background: var(--agd-nao-util-bg); box-shadow: inset 0 0 0 1px var(--agd-nao-util-borda); }
 .agd-semn { align-self: center; text-align: center; font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; color: var(--text2); font-variant-numeric: tabular-nums; }
 .agd-linha-sem > [role="gridcell"] { min-width: 0; display: flex; }
 /* fora do mês: posição recuada, sem número nem borda */
@@ -114,14 +119,20 @@
 .agd-cel[data-nivel="baixa"] { background: var(--agd-heat-baixa); }
 .agd-cel[data-nivel="media"] { background: var(--agd-heat-media); }
 .agd-cel[data-nivel="alta"] { background: var(--agd-heat-alta); }
+/* sábado, domingo e feriado: base cinza e contorno cinza; com carga, o tom da carga fica por cima do cinza */
+.agd-cel[data-nao-util] { background: var(--agd-nao-util-bg); box-shadow: inset 0 0 0 1.5px var(--agd-nao-util-borda); }
+.agd-cel[data-nao-util][data-nivel="baixa"] { background: color-mix(in srgb, var(--text) 5%, var(--agd-heat-baixa)); }
+.agd-cel[data-nao-util][data-nivel="media"] { background: color-mix(in srgb, var(--text) 5%, var(--agd-heat-media)); }
+.agd-cel[data-nao-util][data-nivel="alta"] { background: color-mix(in srgb, var(--text) 5%, var(--agd-heat-alta)); }
 .agd-cel:hover { filter: brightness(.96); box-shadow: inset 0 0 0 1px var(--brd); }
 .agd-cel:active { filter: brightness(.92); }
 /* seleção: contorno persistente de 2 px por dentro (a grade não se mexe); foco do teclado: anel tracejado por fora, bem diferente da seleção */
 .agd-cel[data-sel] { box-shadow: inset 0 0 0 2px var(--text), inset 0 0 0 4px var(--card); }
+.agd-cel[data-sel][data-nao-util] { box-shadow: inset 0 0 0 2px var(--text), inset 0 0 0 4.5px var(--agd-nao-util-borda); }
 .app[data-dir="d"] .agd-cel:focus-visible { outline: 3px dashed var(--foco); outline-offset: 3px; }
 .agd-topo { display: flex; align-items: center; gap: 5px; min-height: 26px; flex: none; }
 .agd-num { margin-inline-start: auto; font-size: calc(15px * var(--esc)); font-weight: 700; line-height: 1; display: grid; place-items: center; min-width: 1.9em; min-height: 1.9em; border-radius: 999px; }
-.agd-cel[data-fds]:not([data-hoje]) .agd-num { color: var(--text2); }
+.agd-cel[data-nao-util]:not([data-hoje]) .agd-num { color: var(--agd-nao-util-tx); }
 /* Hoje: o número fica dentro de um disco cheio, marca que a cor da carga nunca usa */
 .agd-cel[data-hoje] .agd-num { background: var(--text); color: var(--card); }
 .agd-qtd { flex: none; min-width: 1.7em; padding: 2px 6px; border-radius: 999px; text-align: center; font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; line-height: 1.2; background: var(--calendar-cell-low); color: var(--calendar-cell-low-fg); }
@@ -129,7 +140,8 @@
 .agd-cel[data-nivel="alta"] .agd-qtd { background: var(--calendar-cell-high); color: var(--calendar-cell-high-fg); }
 /* atraso: ponto vermelho ao lado da carga (a cor sozinha não conta: a descrição acessível diz "com atraso") */
 .agd-atr { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--perigo); box-shadow: 0 0 0 2px var(--card); }
-.agd-cel[data-indisp]::after { content: ""; position: absolute; bottom: 4px; left: 28%; right: 28%; height: 3px; border-radius: 3px; background: currentColor; opacity: .45; }
+/* evento externo de dia inteiro (o feriado já tem o cinza): barra na base, só na grade larga */
+.agd-cel[data-externo]::after { content: ""; position: absolute; bottom: 4px; left: 28%; right: 28%; height: 3px; border-radius: 3px; background: currentColor; opacity: .45; }
 /* os itens do dia: só texto, truncado; o título inteiro está na gaveta */
 .agd-its { display: grid; gap: 3px; min-width: 0; align-content: start; }
 .agd-it { display: flex; align-items: baseline; gap: 5px; min-width: 0; padding: 2px 6px; border-radius: 7px; font-size: max(10px, calc(11px * var(--esc))); line-height: 1.3; border-inline-start: 3px solid transparent; }
@@ -191,44 +203,49 @@
   .agd-filtros-rot { display: none; }
 
   .agd-faixa { gap: 4px; }
-  /* heatmap compacto (decisão 73): cada dia é um cartão com a data, sem pílulas nem "+N". A carga é o preenchimento (escala do Dmanda em quatro níveis, mais forte quanto maior a carga, nos dois temas);
-     o compromisso é um ponto sob a data, o atraso um ponto vermelho no canto e o dia indisponível uma barra na base. Os itens ficam no painel que abre logo abaixo da grade. */
-  .agd .agd-cal { --agd-cel-h: 52px; --agd-gm: 5px; --agd-aba-w: 36px; margin-inline: -10px; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+  /* grade quadrada do iPhone (14/11/2026, referência 395e45a): sete colunas de quadrados (1:1) com cantos arredondados, o número do dia e uma só indicação colorida, o preenchimento da carga
+     (0, 1 a 3, 4 a 7, 8 ou mais). A altura da linha vem da largura real da célula. Sábado, domingo e feriado: contorno cinza de 2 px, visível também sobre o preenchimento; sem carga, base cinza.
+     Sem pendências num dia de trabalho: cartão com contorno fino (o "sem dados" tem desenho próprio). Contagens, títulos, pontos e barras ficam no painel do dia e no nome acessível. */
+  /* os quadrados deixam a grade com metade da altura: as doze abas JAN a DEZ (44 px cada) não cabem ao lado dela. No celular o mês vai para o seletor junto do período, como na grade de referência */
+  .agd .agd-cal { --agd-gm: 0px; margin-inline: -10px; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+  .agd-meses { display: none; }
+  .agd-mes-sel { display: block; }
   .agd .agd-cal::before { display: none; }
-  .agd-grade { --g: 2px; }
+  .agd-mes { align-items: start; }
+  .agd-grade { --g: 4px; grid-template-rows: none; grid-auto-rows: auto; }
+  .agd-grade > .agd-linha-sem:not(:first-child) { contain: none; }
   .agd-linha-sem { grid-template-columns: repeat(7, minmax(0, 1fr)); }
   .agd-semn, .agd-semn-cab { display: none; }
   .agd-cabsem { padding-block: 0 4px; }
-  .agd-cel { align-items: center; justify-content: center; padding: 3px 1px; border-radius: 12px; gap: 2px; }
-  .agd-vaz { border-radius: 12px; }
+  .agd-cabsem abbr { min-width: 0; width: 100%; padding-inline: 0; }
+  .agd-cel, .agd-vaz { aspect-ratio: 1; height: auto; }
+  .agd-cel { align-items: center; justify-content: center; padding: 0; border-radius: 12px; gap: 0; background: var(--card); box-shadow: inset 0 0 0 1px var(--card-brd); }
+  .agd-vaz { border-radius: 12px; box-shadow: none; }
   .agd-topo { min-height: 0; padding-inline: 0; }
-  .agd-num { margin-inline-start: 0; font-size: max(11px, calc(14px * var(--esc))); min-width: 1.9em; min-height: 1.9em; }
-  .agd-qtd, .agd-its { display: none; }
+  .agd-num { margin-inline-start: 0; font-size: max(12px, calc(15px * var(--esc))); min-width: 1.85em; min-height: 1.85em; }
   .agd-cel[data-nivel="baixa"] { background: var(--calendar-cell-low); color: var(--calendar-cell-low-fg); }
   .agd-cel[data-nivel="media"] { background: var(--calendar-cell-medium); color: var(--calendar-cell-medium-fg); }
   .agd-cel[data-nivel="alta"] { background: var(--calendar-cell-high); color: var(--calendar-cell-high-fg); }
+  /* no celular o preenchimento é a escala forte também no fim de semana e no feriado (o cinza fica no contorno) */
+  .agd-cel[data-nao-util][data-nivel="baixa"] { background: var(--calendar-cell-low); }
+  .agd-cel[data-nao-util][data-nivel="media"] { background: var(--calendar-cell-medium); }
+  .agd-cel[data-nao-util][data-nivel="alta"] { background: var(--calendar-cell-high); }
   .agd-cel[data-nivel] .agd-num { color: inherit; }
-  .agd-cel[data-fds]:not([data-hoje])[data-nivel="zero"] .agd-num { color: var(--text2); }
+  .agd-cel[data-nao-util] { box-shadow: inset 0 0 0 2px var(--agd-nao-util-borda); }
+  .agd-cel[data-nao-util][data-nivel="zero"] { background: var(--agd-nao-util-bg); }
+  .agd-cel[data-nao-util][data-nivel="zero"]:not([data-hoje]) .agd-num { color: var(--agd-nao-util-tx); }
+  .agd-cel[data-sel] { box-shadow: inset 0 0 0 2.5px var(--text), inset 0 0 0 4.5px var(--card); }
+  .agd-cel[data-sel][data-nao-util] { box-shadow: inset 0 0 0 2.5px var(--text), inset 0 0 0 5px var(--agd-nao-util-borda); }
   /* hoje: a data dentro de um disco; no preenchimento mais forte o disco inverte (texto sobre a cor do acento) para continuar distinto */
   .agd-cel[data-hoje][data-nivel] .agd-num { background: var(--text); color: var(--card); }
   .agd-cel[data-hoje][data-nivel="alta"] .agd-num { background: var(--acc-ink); color: var(--acc); }
-  .agd-atr { position: absolute; top: 4px; inset-inline-start: 4px; width: 8px; height: 8px; box-shadow: 0 0 0 2px var(--card); }
-  .agd-evm { display: block; flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--card) 70%, transparent); }
-  .agd-cel[data-indisp]::after { bottom: 3px; left: 24%; right: 24%; opacity: .6; }
+  .agd-cel[data-externo]::after { display: none; }
   /* carga indisponível (as demandas não carregaram): listrado discreto no lugar do preenchimento, nunca um "zero" */
   .agd-cel[data-sem-carga] { background-image: repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in srgb, var(--text) 12%, transparent) 5px 6px); }
   .agd-aviso-carga { margin: 0 8px 8px; }
   .agd-leg { padding-inline: 8px; }
   .agd-so-largo { display: none !important; }
   .agd-so-compacto { display: inline-flex; }
-  .agd-marcas .agd-m-ev { width: 8px; height: 8px; border-radius: 50%; background: var(--text); box-shadow: none; }
-}
-
-/* 320 px: sete colunas e as abas JAN a DEZ deixariam as datas com menos de 44 px de largura; as abas saem e o mês passa a um controle compacto no cabeçalho do Mês */
-@container agd (max-width: 339px) {
-  .agd-meses { display: none; }
-  .agd .agd-cal { --agd-gm: 0px; }
-  .agd-mes-sel { display: block; }
 }
 
 /* painel do dia abaixo da grade (celular): no fluxo, com os mesmos cartões e ações da gaveta, mas sem cobrir a grade */
@@ -236,8 +253,10 @@
 .agd-pd-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .agd-pd-cab h3 { margin: 0; font-size: calc(18px * var(--esc)); font-weight: 700; overflow-wrap: anywhere; }
 .agd-pd-corpo { margin-top: 6px; }
-.agd-pd-novo { width: 100%; margin-top: 6px; }
+.agd-pd-acoes { margin-top: 8px; }
+.agd-pd-acoes .btn { flex: 1 1 200px; }
 .agd-m-ind { width: 14px; height: 3px; border-radius: 3px; background: var(--text); opacity: .6; }
+.agd-m-nao-util { width: 14px; height: 14px; border-radius: 4px; background: var(--agd-nao-util-bg); box-shadow: inset 0 0 0 2px var(--agd-nao-util-borda); }
 .agd-m-sem { width: 14px; height: 10px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--brd); background-image: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--text) 25%, transparent) 3px 4px); }
 
 /* legenda */
@@ -266,7 +285,7 @@
 /* só o corpo rola (o cabeçalho e o botão ficam fixos), então o último cartão chega inteiro acima do rodapé, que ainda reserva a área segura de baixo do aparelho */
 .agd-gv > .agd-gv-corpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 12px; }
 .agd-gv > .agd-gv-rod { flex: none; padding: 10px 0 calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--solido-brd); background: var(--solido); }
-.agd-gv-rod .btn { width: 100%; }
+.agd-gv-rod .agd-acoes-dia .btn { flex: 1 1 180px; }
 @container tela (max-width: 599px) {
   .app[data-dir="d"] .agd-gv-ov { align-items: flex-end; justify-content: stretch; }
   .app[data-dir="d"] .agd-gv-ov .agd-gv.dr { width: 100%; height: auto; max-height: 86%; margin: 0; border-radius: 34px 34px 0 0; border-left: 0; box-shadow: 0 -18px 50px var(--lg-sh); }
@@ -303,31 +322,80 @@
 .agd-linha-t { display: grid; gap: 2px; min-width: 0; font-size: calc(14px * var(--esc)); overflow-wrap: anywhere; }
 .agd-linha-t small { font-size: calc(13px * var(--esc)); color: var(--text2); }
 
-/* ---------- semana ---------- */
-.agd-sem { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
-@container agd (min-width: 880px) { .agd-sem { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
-@container agd (min-width: 560px) and (max-width: 879px) { .agd-sem { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.agd-dia { position: relative; isolation: isolate; min-width: 0; border-radius: 22px; padding: 10px 10px 6px; border: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--lq-edge); }
+/* ---------- semana (14/11/2026): domingo a sábado, na direção do Mês ----------
+   Largura útil a partir de 900 px: sete colunas com o resumo de cada dia (até quatro itens e o "+N · ver o dia"). Abaixo disso, a faixa com as sete datas. Nos dois casos o dia escolhido aparece
+   por inteiro logo abaixo, num painel com a altura do próprio conteúdo. Só a página rola. */
+.agd-semana { display: grid; gap: 14px; min-width: 0; }
+.agd-sem { display: grid; gap: 8px; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: start; }
+.agd-dia { position: relative; isolation: isolate; min-width: 0; border-radius: 20px; padding: 8px 8px 6px; border: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--lq-edge); }
 .agd-dia::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--agd-vidro); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .agd-dia::before { background: var(--solido); } }
-.agd-dia[data-fds] { background: color-mix(in srgb, var(--text2) 6%, transparent); }
+.agd-dia[data-nao-util]::before { background: var(--agd-nao-util-bg); }
+.agd-dia[data-nao-util] { border-color: var(--agd-nao-util-borda); }
 .agd-dia[data-sel] { box-shadow: inset 0 0 0 2px var(--text); }
 .agd-dia[data-hoje] .agd-dia-num { background: var(--text); color: var(--card); }
-.agd-dia-cab { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 6px; margin-bottom: 8px; }
+.agd-dia-cab { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 4px; margin-bottom: 6px; }
 .agd-dia-cab .agd-dia-carga { grid-column: 1 / -1; margin: 0 4px 2px; }
-.agd-dia-sel { display: inline-flex; align-items: baseline; gap: 6px; min-height: 44px; padding: 0 4px; border: 0; background: transparent; color: var(--text); font: inherit; cursor: pointer; border-radius: 12px; }
+.agd-dia-sel { display: inline-flex; align-items: baseline; gap: 6px; min-height: 44px; min-width: 0; padding: 0 4px; border: 0; background: transparent; color: var(--text); font: inherit; cursor: pointer; border-radius: 12px; }
 .app[data-dir="d"] .agd-dia-sel:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
-.agd-dia-nome { font-size: calc(13px * var(--esc)); color: var(--text2); text-transform: capitalize; }
+.agd-dia-nome { font-size: calc(13px * var(--esc)); color: var(--text2); text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agd-dia-num { font-size: calc(20px * var(--esc)); font-weight: 700; display: inline-grid; place-items: center; min-width: 1.7em; min-height: 1.7em; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.agd-dia[data-nao-util]:not([data-hoje]) .agd-dia-num { color: var(--agd-nao-util-tx); }
 .agd-dia-carga { display: inline-flex; align-items: center; gap: 5px; font-size: max(10px, calc(12px * var(--esc))); font-weight: 650; }
 .agd-dia-carga .agd-amostra { width: 12px; height: 12px; border-radius: 4px; }
 .agd-dia-carga .agd-atr { position: static; box-shadow: none; }
-.agd-dia .agd-item { padding: 8px 10px; }
+.agd-dia .agd-item { padding: 7px 9px; margin-bottom: 6px; }
+.agd-dia .agd-tit { font-size: calc(14px * var(--esc)); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
 .agd-dia .agd-vazio { margin: 4px 2px 8px; }
+.agd-dia-mais { width: 100%; justify-content: center; margin: 0 0 4px; }
+
+/* faixa das sete datas (iPad em pé e celular): cada data é um quadrado com o dia da semana, o número e o mesmo preenchimento de carga do Mês */
+.agd-sem-faixa { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; min-width: 0; }
+.agd-sf-dia { position: relative; display: grid; align-content: center; justify-items: center; gap: 2px; min-width: 0; min-height: 56px; padding: 6px 0; border: 0; border-radius: 14px; cursor: pointer; font: inherit; color: var(--text);
+  background: var(--card); box-shadow: inset 0 0 0 1px var(--card-brd); transition: background-color var(--agd-dur) ease, box-shadow var(--agd-dur) ease; }
+.agd-sf-nome { font-size: max(10px, calc(11px * var(--esc))); font-weight: 650; letter-spacing: .04em; color: var(--text2); }
+.agd-sf-num { display: grid; place-items: center; min-width: 1.85em; min-height: 1.85em; border-radius: 999px; font-size: max(12px, calc(16px * var(--esc))); font-weight: 700; font-variant-numeric: tabular-nums; }
+.agd-sf-dia[data-nivel="baixa"] { background: var(--calendar-cell-low); color: var(--calendar-cell-low-fg); }
+.agd-sf-dia[data-nivel="media"] { background: var(--calendar-cell-medium); color: var(--calendar-cell-medium-fg); }
+.agd-sf-dia[data-nivel="alta"] { background: var(--calendar-cell-high); color: var(--calendar-cell-high-fg); }
+.agd-sf-dia[data-nivel]:not([data-nivel="zero"]) .agd-sf-nome { color: inherit; }
+.agd-sf-dia[data-nao-util] { box-shadow: inset 0 0 0 2px var(--agd-nao-util-borda); }
+.agd-sf-dia[data-nao-util][data-nivel="zero"] { background: var(--agd-nao-util-bg); }
+.agd-sf-dia[data-nao-util][data-nivel="zero"]:not([data-hoje]) .agd-sf-num { color: var(--agd-nao-util-tx); }
+.agd-sf-dia[data-sel] { box-shadow: inset 0 0 0 2.5px var(--text), inset 0 0 0 4.5px var(--card); }
+.agd-sf-dia[data-sel][data-nao-util] { box-shadow: inset 0 0 0 2.5px var(--text), inset 0 0 0 5px var(--agd-nao-util-borda); }
+.agd-sf-dia[data-hoje] .agd-sf-num { background: var(--text); color: var(--card); }
+.agd-sf-dia[data-hoje][data-nivel="alta"] .agd-sf-num { background: var(--acc-ink); color: var(--acc); }
+.agd-sf-dia[data-sem-carga] { background-image: repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in srgb, var(--text) 12%, transparent) 5px 6px); }
+.app[data-dir="d"] .agd-sf-dia:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
+.agd-sem-detalhe { scroll-margin-block: 84px 96px; }
+.agd-sd-corpo { margin-top: 4px; }
+
+/* cabeçalho de uma data (painel do dia, gaveta, detalhe da Semana e Dia): o título é a data; sábado, domingo e feriado ganham a base cinza; as ações ficam junto da data */
+.agd-data-cab { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 12px; }
+.agd-data-cab > div:first-child { min-width: 0; flex: 1 1 220px; }
+.agd-data-cab h3 { margin: 0; font-size: calc(19px * var(--esc)); font-weight: 700; overflow-wrap: anywhere; }
+.agd-data-cab[data-nao-util] { margin: -4px -6px 6px; padding: 8px 10px; border-radius: 16px; background: var(--agd-nao-util-bg); box-shadow: inset 0 0 0 1.5px var(--agd-nao-util-borda); }
+.agd-marca-dia { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+.agd-md { display: inline-flex; align-items: baseline; gap: 4px; max-width: 100%; padding: 2px 9px; border-radius: 999px; font-size: max(10px, calc(12px * var(--esc))); font-weight: 600; color: var(--text); background: color-mix(in srgb, var(--text) 9%, transparent); overflow-wrap: anywhere; }
+.agd-md[data-k="externo"] { background: var(--cz-bg); color: var(--cz-tx); }
+.agd-acoes-dia { display: flex; flex-wrap: wrap; gap: 8px; }
+.agd-acoes-dia .btn { justify-content: center; }
 
 /* ---------- hoje ---------- */
 .agd-hoje { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-items: start; }
-@container agd (min-width: 880px) { .agd-hoje { grid-template-columns: repeat(2, minmax(0, 1fr)); } .agd-hoje > .agd-aux { grid-column: 1 / -1; } }
+@container agd (min-width: 760px) { .agd-hoje { grid-template-columns: repeat(2, minmax(0, 1fr)); } .agd-hoje > .agd-aux { grid-column: 1 / -1; } }
+/* Dia (14/11/2026): o cabeçalho da data é um painel; com sábado, domingo ou feriado, a base cinza vale para ele inteiro (o conteúdo abaixo continua com as cores de sempre) */
+.agd[data-modo="hoje"] .agd-resumo { gap: 6px; padding: 12px 16px 14px; border-radius: 24px; background: color-mix(in srgb, var(--card) 70%, transparent); box-shadow: 0 0 0 1px var(--card-brd); }
+.agd[data-modo="hoje"] .agd-resumo[data-nao-util] { background: var(--agd-nao-util-bg); box-shadow: inset 0 0 0 2px var(--agd-nao-util-borda); }
+.agd-dia-info { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.agd-dia-info > .agd-sub { margin: 0; }
+.agd-dia-info .agd-marca-dia { margin: 0; }
+.agd-dia-info .agd-acoes-dia { margin-inline-start: auto; }
+@container agd (max-width: 560px) {
+  .agd-dia-info .agd-acoes-dia { margin-inline-start: 0; width: 100%; }
+  .agd-dia-info .agd-acoes-dia .btn { flex: 1 1 160px; }
+}
 
 /* ---------- avisos dentro do aplicativo ---------- */
 .agd-avisos { display: grid; gap: 8px; margin: 0 0 12px; }

@@ -1,6 +1,6 @@
 'use client';
-// Agenda (decisões 46 a 49 e 72): Hoje, semana (domingo a sábado) e mês (segunda a domingo, com a gaveta do dia), com o heatmap da carga pendente, os marcos das demandas (vencimento,
-// acompanhamento, retorno do setor), os compromissos próprios e os dias indisponíveis. Toda a lógica de datas e de carga fica em src/lib/agenda.ts e eventos.ts (testada à parte); aqui só se desenha.
+// Agenda (decisões 46 a 49, 72 e 73; 14/11/2026): Dia, Semana e Mês, todos de domingo a sábado, com o heatmap da carga pendente, os marcos das demandas (vencimento,
+// acompanhamento, retorno do setor), os compromissos próprios e os dias indisponíveis. Sábado, domingo e Feriado cadastrado têm o tratamento cinza de dia sem trabalho (só aparência). Toda a lógica de datas e de carga fica em src/lib/agenda.ts e eventos.ts (testada à parte); aqui só se desenha.
 // Nada de relógio na renderização: a data de hoje vem do contexto, e a hora de agora só existe depois de montar no navegador.
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as TeclaReact } from 'react';
 import { createPortal } from 'react-dom';
@@ -13,7 +13,7 @@ import { somarDias, type DiaIndisponivel } from '@/lib/prazos';
 import { horarioDe, sobrepostosA, type Evento } from '@/lib/eventos';
 import { eObjeto } from '@/lib/armazenamento';
 import {
-  anoMes, cargaPorDia, colunaNaSemana, dataCurta, dataPorExtenso, descreverDia, diaDoMes, fimDeSemana, gradeMes, itensDoDia, itensParaGrade, LIMIARES_CARGA, marcosPorDia, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES, nivelDaCarga, nomeLongoDoDia, NOMES_MES, panorama,
+  anoMes, cargaPorDia, colunaNaSemana, dataCurta, dataPorExtenso, descreverDia, diaDoMes, diaNaoUtil, fimDeSemana, gradeMes, motivoNaoUtil, itensDoDia, itensParaGrade, LIMIARES_CARGA, marcosPorDia, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES, nivelDaCarga, nomeLongoDoDia, NOMES_MES, panorama,
   pendenciasSemPrazo, primeiroDoMes, recortarItensGrade, ROTULO_MARCO, ROTULO_NIVEL, rotuloSemana, semanaDe, somarMeses, tituloMes, trocarMes, diasNoMes, type CargaDia, type ItemGrade, type Marco, type NivelCarga, type OpcoesAgenda, type TipoMarco,
 } from '@/lib/agenda';
 
@@ -89,6 +89,29 @@ function ItemIndisponivel({ x }: { x: DiaIndisponivel }) {
   return <p className="agd-item agd-indisp"><Icone nome="calendar" /><span><b>{x.categoria === 'Feriado' ? 'Feriado' : 'Evento externo'}:</b> {x.descricao}</span></p>;
 }
 
+/** O que a data é, em texto: fim de semana, feriado (com a descrição) e evento externo de dia inteiro. É o que explica o cinza e fica junto do cabeçalho da data. */
+function MarcaDoDia({ data, indisponiveis }: { data: string; indisponiveis: readonly DiaIndisponivel[] }) {
+  const lista = indisponiveis.filter((x) => x.data === data);
+  if (!fimDeSemana(data) && !lista.length) return null;
+  return (
+    <ul className="agd-marca-dia" aria-label="Sobre esta data">
+      {fimDeSemana(data) ? <li className="agd-md" data-k="fds">{maiuscula(nomeLongoDoDia(data))}, fim de semana</li> : null}
+      {lista.map((x) => <li key={x.id} className="agd-md agd-indisp-t" data-k={x.categoria === 'Feriado' ? 'feriado' : 'externo'}><b>{x.categoria === 'Feriado' ? 'Feriado' : 'Evento externo'}:</b> {x.descricao}</li>)}
+    </ul>
+  );
+}
+
+/** As duas ações do contexto de uma data: o compromisso e o dia indisponível, as duas com a data já preenchida (e editável na janela). */
+function AcoesDoDia({ data, classe = '' }: { data: string; classe?: string }) {
+  const { abrirJanela, hoje } = useApp();
+  return (
+    <div className={`agd-acoes-dia ${classe}`.trim()} role="group" aria-label={`Ações para ${dataPorExtenso(data)}`}>
+      <button type="button" className="btn pri" data-acao="novo-evento" onClick={() => abrirJanela({ t: 'evento', data })}><Icone nome="plus" />{data === hoje ? 'Novo evento hoje' : 'Novo evento neste dia'}</button>
+      <button type="button" className="btn" data-acao="dia-indisponivel" onClick={() => abrirJanela({ t: 'dia', data })}><Icone nome="calendar" />Cadastrar dia indisponível</button>
+    </div>
+  );
+}
+
 /** Os eventos de uma lista com os conflitos de cada um, calculados só entre os eventos do mesmo dia. */
 const comConflitos = (l: Evento[]) => l.map((e) => ({ e, c: e.dia_inteiro ? [] : sobrepostosA(e, l) }));
 function agruparPorDemanda(marcos: Marco[]): Marco[][] {
@@ -104,7 +127,7 @@ function agruparPorDemanda(marcos: Marco[]): Marco[][] {
  * ao fechar, o foco volta ao controle que abriu e o mês, a data escolhida e a posição da página ficam como estavam.
  */
 function GavetaDia({ data, o, concluidas, semDemandas, aoFechar }: { data: string; o: OpcoesAgenda; concluidas: boolean; semDemandas: string | null; aoFechar: () => void }) {
-  const { abrirJanela, hoje } = useApp();
+  const { hoje, dias } = useApp();
   const ref = useRef<HTMLElement>(null);
   const fechar = useRef(aoFechar);
   useEffect(() => { fechar.current = aoFechar; });
@@ -128,12 +151,12 @@ function GavetaDia({ data, o, concluidas, semDemandas, aoFechar }: { data: strin
   return createPortal(
     <div className="dr-ov entra agd-gv-ov" onMouseDown={(e) => { if (e.target === e.currentTarget) { e.preventDefault(); aoFechar(); } }}>
       <aside ref={ref} className="dr agd-gv agd-detalhe" role="dialog" aria-modal="true" aria-labelledby="agd-gv-t" tabIndex={-1} data-data={data}>
-        <header className="agd-gv-cab">
-          <div><h3 id="agd-gv-t" aria-label={maiuscula(dataPorExtenso(data))}>{dataCurta(data, hoje)}</h3><p className="agd-sub">{situacaoDoDia(data, hoje)}</p></div>
+        <header className="agd-gv-cab agd-data-cab" data-nao-util={diaNaoUtil(data, dias) || undefined}>
+          <div><h3 id="agd-gv-t" aria-label={maiuscula(dataPorExtenso(data))}>{dataCurta(data, hoje)}</h3><p className="agd-sub">{situacaoDoDia(data, hoje)}</p><MarcaDoDia data={data} indisponiveis={dias} /></div>
           <button type="button" className="icbtn-s" aria-label="Fechar a lista do dia" onClick={aoFechar}><Icone nome="x" /></button>
         </header>
         <ListaDia data={data} o={o} concluidas={concluidas} semDemandas={semDemandas} corpo="agd-gv-corpo" />
-        <footer className="agd-gv-rod"><button type="button" className="btn pri" onClick={() => abrirJanela({ t: 'evento', data })}><Icone nome="plus" />Novo evento neste dia</button></footer>
+        <footer className="agd-gv-rod"><AcoesDoDia data={data} /></footer>
       </aside>
     </div>,
     document.querySelector('.app') ?? document.body,
@@ -143,6 +166,7 @@ function GavetaDia({ data, o, concluidas, semDemandas, aoFechar }: { data: strin
 // ---------- listagem do dia (gaveta do computador e do iPad, painel abaixo da grade no celular) ----------
 /** A lista completa de um dia: dias indisponíveis, compromissos, demandas com os marcos e as tarefas, o estado de dia vazio e o aviso de falha parcial. Mesmos filtros e regras nos dois lugares. */
 function ListaDia({ data, o, concluidas, semDemandas, corpo }: { data: string; o: OpcoesAgenda; concluidas: boolean; semDemandas: string | null; corpo: string }) {
+  // os dias indisponíveis aparecem também no cabeçalho da data (MarcaDoDia), em texto; aqui continuam como cartão, junto dos itens
   const { hoje, recarregar } = useApp();
   const itens = itensDoDia(data, o);
   const grupos = agruparPorDemanda(itens.marcos), eventos = comConflitos(itens.eventos);
@@ -166,15 +190,31 @@ const situacaoDoDia = (data: string, hoje: string) => (data === hoje ? 'Hoje' : 
  * destacada; escolher outra data atualiza este mesmo painel. O foco não se mexe (o painel não é modal): o botão de fechar devolve o foco à célula do dia.
  */
 function PainelDia({ data, o, concluidas, semDemandas, aoFechar }: { data: string; o: OpcoesAgenda; concluidas: boolean; semDemandas: string | null; aoFechar: () => void }) {
-  const { abrirJanela, hoje } = useApp();
+  const { hoje, dias } = useApp();
   return (
     <section id="agd-dia-painel" className="agd-dia-painel" aria-labelledby="agd-pd-t" data-data={data}>
-      <header className="agd-pd-cab">
-        <div><h3 id="agd-pd-t">{maiuscula(dataPorExtenso(data))}</h3><p className="agd-sub">{situacaoDoDia(data, hoje)}</p></div>
+      <header className="agd-pd-cab agd-data-cab" data-nao-util={diaNaoUtil(data, dias) || undefined}>
+        <div><h3 id="agd-pd-t">{maiuscula(dataPorExtenso(data))}</h3><p className="agd-sub">{situacaoDoDia(data, hoje)}</p><MarcaDoDia data={data} indisponiveis={dias} /></div>
         <button type="button" className="icbtn-s" aria-label="Fechar a lista do dia" onClick={aoFechar}><Icone nome="x" /></button>
       </header>
       <ListaDia data={data} o={o} concluidas={concluidas} semDemandas={semDemandas} corpo="agd-pd-corpo" />
-      <button type="button" className="btn pri agd-pd-novo" onClick={() => abrirJanela({ t: 'evento', data })}><Icone nome="plus" />Novo evento neste dia</button>
+      <AcoesDoDia data={data} classe="agd-pd-acoes" />
+    </section>
+  );
+}
+
+/**
+ * Semana (14/11/2026): o dia escolhido com a lista completa, logo abaixo da faixa (ou das sete colunas). Mesmas regras e ações do painel do Mês, com a data como título.
+ */
+function DetalheDia({ data, o, concluidas, semDemandas }: { data: string; o: OpcoesAgenda; concluidas: boolean; semDemandas: string | null }) {
+  const { hoje, dias } = useApp();
+  return (
+    <section id="agd-sem-detalhe" className="agd-painel agd-sem-detalhe" aria-labelledby="agd-sd-t" data-data={data}>
+      <header className="agd-data-cab" data-nao-util={diaNaoUtil(data, dias) || undefined}>
+        <div><h3 id="agd-sd-t">{maiuscula(dataPorExtenso(data))}</h3><p className="agd-sub">{situacaoDoDia(data, hoje)}</p><MarcaDoDia data={data} indisponiveis={dias} /></div>
+        <AcoesDoDia data={data} />
+      </header>
+      <ListaDia data={data} o={o} concluidas={concluidas} semDemandas={semDemandas} corpo="agd-sd-corpo" />
     </section>
   );
 }
@@ -237,12 +277,13 @@ function Legenda({ semDemandas }: { semDemandas: boolean }) {
     <footer className="agd-leg">
       <ul className="agd-marcas" aria-label="Marcas do calendário">
         <li><i className="agd-m-hoje" aria-hidden="true" />Hoje</li>
-        <li><i className="agd-m-atr" aria-hidden="true" />Com atraso</li>
-        <li><i className="agd-m-ev" aria-hidden="true" />Compromisso</li>
+        <li><i className="agd-m-nao-util" aria-hidden="true" />Sábado, domingo e feriado</li>
+        <li className="agd-so-largo"><i className="agd-m-atr" aria-hidden="true" />Com atraso</li>
+        <li className="agd-so-largo"><i className="agd-m-ev" aria-hidden="true" />Compromisso</li>
         <li className="agd-so-largo"><i className="agd-m-dem" data-marco="vencimento" aria-hidden="true" />Vencimento</li>
         <li className="agd-so-largo"><i className="agd-m-dem" data-marco="acompanhamento" aria-hidden="true" />Acompanhar</li>
         <li className="agd-so-largo"><i className="agd-m-dem" data-marco="retorno" aria-hidden="true" />Retorno do setor</li>
-        <li className="agd-so-compacto"><i className="agd-m-ind" aria-hidden="true" />Dia indisponível</li>
+        <li className="agd-so-largo"><i className="agd-m-ind" aria-hidden="true" />Evento externo de dia inteiro</li>
         {semDemandas ? <li className="agd-so-compacto"><i className="agd-m-sem" aria-hidden="true" />Carga indisponível</li> : null}
       </ul>
       <div className="agd-escala" role="group" aria-label="Escala de pendências">
@@ -308,30 +349,32 @@ function GradeMes({ dia, hoje, carga, o, indispPorData, semDemandas, compacto, p
   };
   return (
     <div className="agd-grade" role="grid" aria-label={`Calendário de ${tituloMes(dia)}`} ref={gridRef} onKeyDown={tecla} style={{ '--sem': semanas.length } as CSSProperties}>
-      <div className="agd-linha-sem" role="row"><div className="agd-semn-cab" aria-hidden="true" />{MES_DIAS_ABREV.map((l, i) => <div key={l} className="agd-cabsem" role="columnheader"><abbr title={MES_DIAS_NOMES[i]}>{l}</abbr></div>)}</div>
+      <div className="agd-linha-sem" role="row"><div className="agd-semn-cab" aria-hidden="true" />{MES_DIAS_ABREV.map((l, i) => <div key={l} className="agd-cabsem" role="columnheader" data-nao-util={i === 0 || i === 6 || undefined}><abbr title={MES_DIAS_NOMES[i]}>{l}</abbr></div>)}</div>
       {semanas.map((sem, i) => (
         <div key={i} className="agd-linha-sem" role="row">
           <div className="agd-semn" role="rowheader" aria-label={`Semana ${i + 1} do mês`}>{i + 1}</div>
           {sem.map((d, j) => {
             if (!d) return <div key={j} className="agd-vaz" role="gridcell" aria-hidden="true" />;
-            const c = carga.get(d), sel = d === dia, ind = indispPorData.get(d) ?? [];
+            const c = carga.get(d), sel = d === dia, ind = indispPorData.get(d) ?? [], naoUtil = diaNaoUtil(d, ind), externo = ind.some((x) => x.categoria !== 'Feriado');
             const itens = itensPorDia.get(d) ?? [], { visiveis, restantes } = recortarItensGrade(itens, limite);
             const nEv = itens.filter((x) => x.tipo === 'evento').length;
             const nivel = nivelDaCarga(c?.carga ?? 0);
             return (
               <div key={j} role="gridcell" aria-selected={sel}>
-                <button type="button" className="agd-cel" data-data={d} data-nivel={nivel} data-hoje={d === hoje || undefined} data-sel={sel || undefined} data-atrasada={c?.atrasada || undefined} data-fds={fimDeSemana(d) || undefined} data-indisp={ind.length || undefined} data-sem-carga={semDemandas || undefined}
+                <button type="button" className="agd-cel" data-data={d} data-nivel={nivel} data-hoje={d === hoje || undefined} data-sel={sel || undefined} data-atrasada={c?.atrasada || undefined} data-fds={fimDeSemana(d) || undefined} data-nao-util={naoUtil || undefined} data-feriado={motivoNaoUtil(d, ind) === 'feriado' || undefined} data-indisp={ind.length || undefined} data-externo={externo || undefined} data-sem-carga={semDemandas || undefined}
                   tabIndex={sel ? 0 : -1} aria-current={d === hoje ? 'date' : undefined} {...(compacto ? { 'aria-controls': 'agd-dia-painel', 'aria-expanded': sel && painelAberto } : { 'aria-haspopup': 'dialog' as const })} aria-label={descreverDia(d, { carga: c, eventos: nEv, indisponiveis: ind, hoje, selecionado: sel, semDemandas })} onClick={(e) => abrir(d, e.currentTarget)}>
+                  {/* celular (14/11/2026): o quadrado só tem o número e o preenchimento da carga; contagens, títulos, pontos e barras ficam no painel do dia e no nome acessível */}
                   <span className="agd-topo">
-                    {c?.carga && !semDemandas ? <span className="agd-qtd" aria-hidden="true">{c.carga}</span> : null}
-                    {c?.atrasada && !semDemandas ? <i className="agd-atr" aria-hidden="true" /> : null}
+                    {!compacto && c?.carga && !semDemandas ? <span className="agd-qtd" aria-hidden="true">{c.carga}</span> : null}
+                    {!compacto && c?.atrasada && !semDemandas ? <i className="agd-atr" aria-hidden="true" /> : null}
                     <span className="agd-num">{diaDoMes(d)}</span>
                   </span>
-                  {nEv ? <i className="agd-evm" aria-hidden="true" /> : null}
-                  <span className="agd-its" aria-hidden="true">
-                    {visiveis.map((it) => <ItemCelula key={`${it.tipo}-${it.id}`} it={it} />)}
-                    {restantes ? <span className="agd-mais" data-mais={restantes}>+{restantes}</span> : null}
-                  </span>
+                  {compacto ? null : (
+                    <span className="agd-its" aria-hidden="true">
+                      {visiveis.map((it) => <ItemCelula key={`${it.tipo}-${it.id}`} it={it} />)}
+                      {restantes ? <span className="agd-mais" data-mais={restantes}>+{restantes}</span> : null}
+                    </span>
+                  )}
                 </button>
               </div>
             );
@@ -343,25 +386,74 @@ function GradeMes({ dia, hoje, carga, o, indispPorData, semDemandas, compacto, p
 }
 
 // ---------- semana ----------
-function ColunaDia({ data, o, cat, hoje, sel, carga, escolher }: { data: string; o: OpcoesAgenda; cat: Categoria; hoje: string; sel: boolean; carga?: CargaDia; escolher: (d: string) => void }) {
+const ITENS_COLUNA = 4;
+/** Uma coluna da Semana larga: o cabeçalho escolhe o dia (o conteúdo completo aparece abaixo), um resumo dos itens e o caminho até a lista completa quando o dia está cheio. */
+function ColunaDia({ data, o, cat, hoje, sel, carga, escolher }: { data: string; o: OpcoesAgenda; cat: Categoria; hoje: string; sel: boolean; carga?: CargaDia; escolher: (d: string, verDetalhe?: boolean) => void }) {
   const { abrirJanela } = useApp();
   const itens = itensDoDia(data, { ...o, demandas: cat === 'eventos' ? [] : o.demandas, eventos: cat === 'demandas' ? [] : o.eventos });
   const grupos = agruparPorDemanda(itens.marcos), eventos = comConflitos(itens.eventos);
-  const nivel = nivelDaCarga(carga?.carga ?? 0);
+  const nivel = nivelDaCarga(carga?.carga ?? 0), naoUtil = diaNaoUtil(data, o.indisponiveis);
+  // resumo: até quatro itens (compromissos primeiro, como na lista do dia); o resto fica no detalhe abaixo
+  const total = eventos.length + grupos.length, evVis = eventos.slice(0, ITENS_COLUNA), demVis = grupos.slice(0, Math.max(0, ITENS_COLUNA - evVis.length)), resto = total - evVis.length - demVis.length;
   return (
-    <section className="agd-dia" data-data={data} data-nivel={nivel} data-hoje={data === hoje || undefined} data-sel={sel || undefined} data-fds={fimDeSemana(data) || undefined} aria-label={descreverDia(data, { carga, eventos: itens.eventos.length, indisponiveis: itens.indisponiveis, hoje })}>
+    <section className="agd-dia" data-data={data} data-nivel={nivel} data-hoje={data === hoje || undefined} data-sel={sel || undefined} data-fds={fimDeSemana(data) || undefined} data-nao-util={naoUtil || undefined} aria-label={descreverDia(data, { carga, eventos: itens.eventos.length, indisponiveis: itens.indisponiveis, hoje })}>
       <header className="agd-dia-cab">
-        <button type="button" className="agd-dia-sel" onClick={() => escolher(data)} aria-pressed={sel}>
+        <button type="button" className="agd-dia-sel" data-sem-dia={data} tabIndex={sel ? 0 : -1} onClick={() => escolher(data)} aria-pressed={sel} aria-controls="agd-sem-detalhe">
           <span className="agd-dia-nome">{nomeLongoDoDia(data).replace('-feira', '')}</span><span className="agd-dia-num">{diaDoMes(data)}</span>
         </button>
         <button type="button" className="icbtn-s" aria-label={`Novo evento em ${dataPorExtenso(data)}`} title="Novo evento neste dia" onClick={() => abrirJanela({ t: 'evento', data })}><Icone nome="plus" /></button>
         {carga?.carga ? <span className="agd-dia-carga" data-nivel={nivel} title={ROTULO_NIVEL[nivel]}><i className="agd-amostra" data-nivel={nivel} aria-hidden="true" />{carga.carga} {carga.carga === 1 ? 'pendência' : 'pendências'}{carga.atrasada ? <i className="agd-atr" title="Com atraso" /> : null}</span> : null}
       </header>
       {itens.indisponiveis.map((x) => <ItemIndisponivel key={x.id} x={x} />)}
-      {eventos.map(({ e, c }) => <ItemEvento key={e.id} e={e} conflitos={c} compacto />)}
-      {grupos.map((g) => <ItemDemanda key={g[0].demanda.id} marcos={g} hoje={hoje} concluidas={false} compacto />)}
-      {!itens.indisponiveis.length && !eventos.length && !grupos.length ? <p className="agd-vazio">Livre</p> : null}
+      {evVis.map(({ e, c }) => <ItemEvento key={e.id} e={e} conflitos={c} compacto />)}
+      {demVis.map((g) => <ItemDemanda key={g[0].demanda.id} marcos={g} hoje={hoje} concluidas={false} compacto />)}
+      {resto > 0 ? <button type="button" className="btn mini agd-dia-mais" data-mais={resto} onClick={() => escolher(data, true)}>+{resto} · ver o dia</button> : null}
+      {!itens.indisponiveis.length && !total ? <p className="agd-vazio">Livre</p> : null}
     </section>
+  );
+}
+
+/**
+ * Semana de domingo a sábado (14/11/2026, na direção do Mês). Com largura para colunas legíveis, sete colunas com o resumo de cada dia; sem ela (iPad em pé, celular), uma faixa com as sete
+ * datas. Nos dois casos, o dia escolhido aparece por inteiro logo abaixo, com as ações da data. A página rola; nada tem rolagem própria.
+ */
+function VisaoSemana({ semana, dia, hoje, o, oCat, cat, carga, amplo, concluidas, semDemandas, escolher }: {
+  semana: string[]; dia: string; hoje: string; o: OpcoesAgenda; oCat: OpcoesAgenda; cat: Categoria; carga: Map<string, CargaDia>; amplo: boolean; concluidas: boolean; semDemandas: string | null; escolher: (d: string) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const focar = useRef(false);
+  useEffect(() => { if (focar.current) { focar.current = false; ref.current?.querySelector<HTMLElement>(`[data-sem-dia="${dia}"]`)?.focus(); } }, [dia]);
+  const verDetalhe = () => requestAnimationFrame(() => document.getElementById('agd-sem-detalhe')?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
+  // teclado dos dias (colunas largas ou faixa): setas andam um dia (ou sete, para cima e para baixo), Home vai ao domingo e End ao sábado; o foco acompanha a data
+  const tecla = (e: TeclaReact<HTMLDivElement>) => {
+    const col = colunaNaSemana(dia);
+    const passo: Record<string, string> = { ArrowLeft: somarDias(dia, -1), ArrowRight: somarDias(dia, 1), ArrowUp: somarDias(dia, -7), ArrowDown: somarDias(dia, 7), Home: somarDias(dia, -col), End: somarDias(dia, 6 - col) };
+    const alvo = passo[e.key];
+    if (!alvo || e.altKey || e.ctrlKey || e.metaKey || !(e.target as HTMLElement).closest('[data-sem-dia]')) return;
+    e.preventDefault(); focar.current = true; escolher(alvo);
+  };
+  return (
+    <div className="agd-semana" ref={ref} data-amplo={amplo || undefined}>
+      {amplo ? (
+        <div className="agd-sem" role="group" aria-label={`Semana de ${rotuloSemana(semana)}`} onKeyDown={tecla}>
+          {semana.map((d) => <ColunaDia key={d} data={d} o={o} cat={cat} hoje={hoje} sel={d === dia} carga={carga.get(d)} escolher={(x, ver) => { escolher(x); if (ver) verDetalhe(); }} />)}
+        </div>
+      ) : (
+        <div className="agd-sem-faixa" role="group" aria-label={`Dias de ${rotuloSemana(semana)}`} onKeyDown={tecla}>
+          {semana.map((d) => {
+            const c = carga.get(d), nivel = nivelDaCarga(c?.carga ?? 0), sel = d === dia, ind = o.indisponiveis.filter((x) => x.data === d);
+            return (
+              <button key={d} type="button" className="agd-sf-dia" data-sem-dia={d} data-data={d} data-nivel={nivel} data-hoje={d === hoje || undefined} data-sel={sel || undefined} data-nao-util={diaNaoUtil(d, ind) || undefined} data-sem-carga={!!semDemandas || undefined}
+                tabIndex={sel ? 0 : -1} aria-pressed={sel} aria-controls="agd-sem-detalhe" aria-label={descreverDia(d, { carga: c, eventos: oCat.eventos.filter((e) => e.data === d).length, indisponiveis: ind, hoje, selecionado: sel, semDemandas: !!semDemandas })} onClick={() => escolher(d)}>
+                <span className="agd-sf-nome" aria-hidden="true">{MES_DIAS_ABREV[colunaNaSemana(d)]}</span>
+                <span className="agd-sf-num" aria-hidden="true">{diaDoMes(d)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <DetalheDia data={dia} o={oCat} concluidas={concluidas} semDemandas={semDemandas} />
+    </div>
   );
 }
 
@@ -378,6 +470,8 @@ export function PaginaAgenda() {
   const [filtrosAbertos, setFiltrosAbertos] = useState(false); // só vale nas telas estreitas, onde os filtros ficam num controle compacto
   // celular (decisão 73): a grade vira heatmap e o toque na data abre o painel do dia abaixo dela, no lugar da gaveta; a medida é a do próprio contêiner da Agenda (a mesma do CSS, 560 px)
   const [compacto, setCompacto] = useState(false);
+  // Semana (14/11/2026): sete colunas só a partir de 900 px de largura útil (cada coluna com cerca de 120 px); abaixo, a faixa das sete datas com o dia escolhido abaixo
+  const [amplo, setAmplo] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const [pedidoRolagem, setPedidoRolagem] = useState(0);
   const raiz = useRef<HTMLDivElement>(null);
@@ -387,7 +481,7 @@ export function PaginaAgenda() {
     if (!el || typeof ResizeObserver === 'undefined') return;
     // ao cruzar os 560 px (girar o aparelho, mudar o tamanho da janela) a gaveta e o painel do dia fecham: cada um só existe de um lado da medida e não devem reaparecer sozinhos ao voltar
     let atual = false;
-    const ro = new ResizeObserver(() => { const agora = el.clientWidth <= 560; if (agora !== atual) { atual = agora; setCompacto(agora); setGavetaAberta(false); setPainelAberto(false); } });
+    const ro = new ResizeObserver(() => { const agora = el.clientWidth <= 560; setAmplo(el.clientWidth >= 900); if (agora !== atual) { atual = agora; setCompacto(agora); setGavetaAberta(false); setPainelAberto(false); } });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -407,7 +501,10 @@ export function PaginaAgenda() {
     if (!cab || !main) return;
     const r = cab.getBoundingClientRect(), m = main.getBoundingClientRect(), barra = document.querySelector('.bar')?.getBoundingClientRect();
     const base = (barra && barra.top > m.top ? Math.min(m.bottom, barra.top) : m.bottom) - 8, topo = m.top + (parseFloat(getComputedStyle(main).scrollPaddingTop) || 0);
-    const delta = r.bottom > base ? r.bottom - base : r.top < topo ? r.top - topo : 0;
+    let delta = r.bottom > base ? r.bottom - base : r.top < topo ? r.top - topo : 0;
+    // rolagem mínima: o cabeçalho do painel aparece, mas a data escolhida não sai de cima da tela (14/11/2026)
+    const cel = document.querySelector('.agd-cel[data-sel]')?.getBoundingClientRect();
+    if (delta > 0 && cel) delta = Math.min(delta, Math.max(0, cel.top - topo - 6));
     const reduzido = matchMedia('(prefers-reduced-motion: reduce)').matches || document.querySelector('.app')?.getAttribute('data-reduzir') === 'true';
     if (delta) main.scrollBy({ top: delta, behavior: reduzido ? 'auto' : 'smooth' });
   }, [pedidoRolagem]);
@@ -473,7 +570,7 @@ export function PaginaAgenda() {
 
       {erroEventos ? <div className="erro-carga" role="alert"><b>Não foi possível carregar os eventos.</b><span>{erroEventos}</span><button className="btn mini" onClick={() => void recarregarEventos()}>Tentar de novo</button></div> : null}
 
-      <section className="agd-resumo" aria-label="Resumo do período">
+      <section className="agd-resumo" aria-label={modo === 'hoje' ? 'Data e resumo do dia' : 'Resumo do período'} data-nao-util={(modo === 'hoje' && diaNaoUtil(dia, dias)) || undefined}>
         <div className="agd-linha-per">
           <h2 className="agd-periodo" aria-live="polite">{rotuloPeriodo}</h2>
           {modo === 'mes' ? <SeletorMes dia={dia} escolherMes={mudarMes} /> : null}
@@ -484,6 +581,13 @@ export function PaginaAgenda() {
             <label className="agd-data"><span className="sr-only">Ir para a data</span><input type="date" value={dia} aria-label="Ir para a data" onChange={(e) => { if (e.target.value) ir(e.target.value); }} /></label>
           </div>
         </div>
+        {modo === 'hoje' ? (
+          <div className="agd-dia-info">
+            <p className="agd-sub">{situacaoDoDia(dia, hoje)}</p>
+            <MarcaDoDia data={dia} indisponiveis={dias} />
+            <AcoesDoDia data={dia} />
+          </div>
+        ) : null}
         <div className="agd-totais">
           {verDemandas ? (
             <p className="agd-grande"><b data-total-pendencias>{aguardando || semDem ? '–' : pan.pendencias}</b> {pan.pendencias === 1 ? 'pendência' : 'pendências'} {modo === 'hoje' ? 'neste dia' : modo === 'semana' ? 'nesta semana' : `em ${NOMES_MES[mes - 1]}`}</p>
@@ -516,16 +620,14 @@ export function PaginaAgenda() {
       {!aguardando && modo === 'mes' && gavetaAberta && !compacto ? <GavetaDia data={dia} o={opcoesCat} concluidas={concluidas} semDemandas={erroCarga} aoFechar={fecharGaveta} /> : null}
 
       {!aguardando && modo === 'semana' ? (
-        <div className="agd-sem">
-          {semana.map((d) => <ColunaDia key={d} data={d} o={opcoes} cat={cat} hoje={hoje} sel={d === dia} carga={carga.get(d)} escolher={(x) => setData(x)} />)}
-        </div>
+        <VisaoSemana semana={semana} dia={dia} hoje={hoje} o={opcoes} oCat={opcoesCat} cat={cat} carga={carga} amplo={amplo} concluidas={concluidas} semDemandas={erroCarga} escolher={(x) => setData(x)} />
       ) : null}
 
       {!aguardando && modo === 'hoje' ? <VisaoHoje dia={dia} o={opcoes} cat={cat} concluidas={concluidas} /> : null}
 
       {!aguardando && modo === 'semana' ? (
         <div className="agd-aux-par">
-          <PainelDiasCheios pan={pan} rotulo={nomePeriodo} aoVer={(d) => { setData(d); setModo('mes'); }} />
+          <PainelDiasCheios pan={pan} rotulo={nomePeriodo} aoVer={(d) => { setData(d); requestAnimationFrame(() => document.getElementById('agd-sem-detalhe')?.scrollIntoView({ block: 'start' })); }} />
           <PainelSemPrazo lista={semPrazo} />
         </div>
       ) : null}
@@ -534,8 +636,9 @@ export function PaginaAgenda() {
 }
 
 // ---------- hoje ----------
+/** Dia (14/11/2026): a data é o título (no cabeçalho, com o que ela é e as duas ações); abaixo, compromissos e demandas lado a lado quando há largura, empilhados no celular. */
 function VisaoHoje({ dia, o, cat, concluidas }: { dia: string; o: OpcoesAgenda; cat: Categoria; concluidas: boolean }) {
-  const { abrirJanela, hoje, dias, demandas } = useApp();
+  const { hoje, dias, demandas } = useApp();
   const itens = itensDoDia(dia, { ...o, demandas: cat === 'eventos' ? [] : o.demandas, eventos: cat === 'demandas' ? [] : o.eventos });
   const eventos = comConflitos(itens.eventos), grupos = agruparPorDemanda(itens.marcos);
   const atrasados = useMemo(() => (dia === hoje && cat !== 'eventos' ? agruparPorDemanda(marcosAtrasados(demandas, dias, hoje, dia)) : []), [dia, hoje, cat, demandas, dias]);
@@ -543,7 +646,7 @@ function VisaoHoje({ dia, o, cat, concluidas }: { dia: string; o: OpcoesAgenda; 
   return (
     <div className="agd-hoje">
       <section className="agd-painel" aria-labelledby="agd-h-c">
-        <header className="agd-cab"><div><h3 id="agd-h-c">Compromissos e lembretes</h3><p className="agd-sub">Em ordem cronológica.</p></div><button type="button" className="btn mini" onClick={() => abrirJanela({ t: 'evento', data: dia })}><Icone nome="plus" />{dia === hoje ? 'Novo evento hoje' : 'Novo evento neste dia'}</button></header>
+        <header className="agd-cab"><div><h3 id="agd-h-c">Compromissos e lembretes</h3><p className="agd-sub">Em ordem cronológica.</p></div></header>
         {itens.indisponiveis.map((x) => <ItemIndisponivel key={x.id} x={x} />)}
         {eventos.length ? eventos.map(({ e, c }) => <ItemEvento key={e.id} e={e} conflitos={c} />) : <p className="agd-vazio">Nenhum compromisso {dia === hoje ? 'para hoje' : 'neste dia'}.</p>}
       </section>

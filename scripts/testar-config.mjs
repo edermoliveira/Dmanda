@@ -470,7 +470,7 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
     const duplo = [...document.querySelectorAll('.cfg-duplo > section')].map((e) => { const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height, conteudo: [...e.children].reduce((a, c) => a + c.getBoundingClientRect().height, 0) }; });
     const fora = [...document.querySelectorAll('.main *')].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.right > innerWidth + 1; }).length;
     const campos = [...document.querySelectorAll('.cfg-form input, .cfg-form select')].map((e) => e.getBoundingClientRect().width);
-    return { apar: r('.cfg-apar'), lado: r('.cfg-lado'), ctrl: r('.cfg-controles'), topo: r('.cfg-topo'), listas, duplo, perfil: r('.cfg-bloco:not(.cfg-dias)'), dias: r('.cfg-dias'), form: r('.cfg-dias .cfg-form'), lista: r('.cfg-dias-lado'), fora, semRolH: document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1, campos, nota: r('.cfg-nota') };
+    return { apar: r('.cfg-apar'), lado: r('.cfg-lado'), ctrl: r('.cfg-controles'), topo: r('.cfg-topo'), listas, duplo, perfil: r('.cfg-bloco:not(.cfg-dias)'), dias: r('.cfg-dias'), form: r('.cfg-dias .cfg-dias-form'), lista: r('.cfg-dias-lado'), fora, semRolH: document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1, campos, nota: r('.cfg-nota') };
   });
   // largura ampla (1360): prévia ao lado da aparência, três listas de fontes e dois blocos lado a lado, Perfil e Dias na largura inteira
   {
