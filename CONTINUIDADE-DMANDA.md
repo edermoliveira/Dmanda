@@ -618,7 +618,7 @@ Branch `bloco/configuracoes-catalyst`, a partir de `c2876dc`, sem push, sem publ
 
 **Próximos passos possíveis (só com pedido do Éder).** Aprovada a direção visual, registrar a aprovação separadamente dos testes; depois, se quiser, aplicar o mesmo desenho a Semana e Dia (fora deste bloco), integrar com as demais branches e publicar (push só com autorização). Reprovada, o desenho fica fora de qualquer entrega, como na decisão 71. Andamento oficial: 45%.
 
-## AB. Mês com painéis na lateral, heatmap do celular com o dia abaixo da grade, Configurações e detalhe de Demandas (14/11/2026, decisão 73; aguardando avaliação visual do Éder)
+## AB. Mês com painéis na lateral, heatmap do celular com o dia abaixo da grade, Configurações e detalhe de Demandas (14/11/2026, decisão 73; aprovada visualmente pelo Éder em 14/11/2026, Safari real pendente)
 
 **Onde está.** Um commit local na `main` do checkout principal (`C:\Users\Éder\Desktop\Dmanda`), sobre `9f20149`. **Sem push, sem deploy e sem Supabase real** (dependem de autorização própria). O estoque de `git stash` foi preservado (só o `preserva-claude-md-local-bloco-inicio-clima-2026-11-12`).
 
@@ -630,4 +630,10 @@ Branch `bloco/configuracoes-catalyst`, a partir de `c2876dc`, sem push, sem publ
 
 **Falta Safari em aparelho real** (iPhone e iPad): toque, rolagem do painel, `:has()`, consultas de contêiner.
 
-**Próximo ponto de retomada.** A avaliação visual do Éder. Aprovada, registrar a aprovação separada dos testes; depois, só com pedido, estender o desenho a Dia e Semana, integrar as demais branches (Clima no Início) e publicar. Andamento do projeto segue em 45% (`ANDAMENTO.md`, sem critério novo).
+**Aprovação visual do Éder (14/11/2026).** O Éder aprovou integralmente a versão local `a4694a7` da `main`: a Agenda no computador e no iPhone (painéis laterais do Mês, cabeçalho por função, heatmap compacto e o painel do dia abaixo da grade), as Configurações e o detalhe de Demandas. A aprovação é de avaliação visual dele, **separada** dos testes emulados (Edge, dados fictícios) e **não** substitui o Safari real.
+
+**Build de produção.** `npm.cmd run build` sobre `a4694a7` terminou com código de saída 0 em 14/11/2026 (Next.js 16.4.4, Turbopack, compilação e TypeScript sem erro, 23 páginas geradas). A árvore ficou limpa depois do build.
+
+**Ainda pendente (separado).** Validação no **Safari real do iPhone e do iPad**: toque, rolagem do painel do dia, `:has()`, consultas de contêiner, barra de endereço. Nenhum desses casos foi provado fora do Edge emulado.
+
+**Próximo ponto de retomada.** Publicar a `main` depende de **autorização específica** do Éder (um push publica o painel real na Vercel; os commits `a4694a7` e o desta documentação estão só locais). Depois, só com pedido: validar no Safari real, estender o desenho a Dia e Semana e integrar as demais branches (Clima no Início). Andamento do projeto segue em 45% (`ANDAMENTO.md`, sem critério novo).
