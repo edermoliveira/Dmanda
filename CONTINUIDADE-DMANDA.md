@@ -649,3 +649,21 @@ Branch `bloco/configuracoes-catalyst`, a partir de `c2876dc`, sem push, sem publ
 **Falta Safari em aparelho real** (iPhone e iPad): gestos do baralho, rolagem com o painel do dia, `aspect-ratio`, `:has()`, consultas de contêiner e o seletor nativo de data.
 
 **Próximo ponto de retomada.** Avaliação visual do Éder sobre a prévia. Publicar a `main` e levar o mini calendário a algum lugar dependem de autorização específica. Andamento do projeto segue em 45% (`ANDAMENTO.md`, sem critério novo cumprido).
+
+## AD. Mês aprovado, Dia e Semana recompostos, baralho sem salto e auditoria do frontend (14/11/2026, decisão 75; prévia local, avaliação no iPhone pendente)
+
+**Onde está.** Commits locais na `main` do checkout principal de casa (`C:\Users\Éder\Desktop\Dmanda`): `efdc761` (prévia pelo IP da rede), `64c6757` (baralho), `96f5b51` (Dia e Semana) e o commit da auditoria e deste registro. `origin/main` segue em `35c15a9` (conferido com `git fetch` em 14/11/2026). **Sem push, sem deploy e sem Supabase real.** O stash `preserva-claude-md-local-bloco-inicio-clima-2026-11-12` continua intacto.
+
+**O que o Éder aprovou.** O Mês da Agenda e os demais ajustes da decisão 74. As duas ressalvas (Dia e Semana; salto do baralho) foram tratadas neste bloco e aguardam a avaliação dele.
+
+**O que mudou.** `src/estilos/inicio.css` (o palco do baralho reserva a altura da pilha), `src/ui/agenda.tsx` e `src/estilos/agenda.css` (Dia e Semana: seletor na linha inteira, "Ir para a data", uma ação principal por tela, dia da Semana num só cartão, sete colunas a partir de 1040 px), `scripts/testar-baralho.mjs` (seção 4, com WebKit) e `scripts/testar-agenda.mjs` (bloco da decisão 75). O Mês não mudou (22 capturas idênticas). Auditoria nova em `docs/auditoria-dmanda.md`, com capturas em `docs/auditoria-capturas/`.
+
+**Prévia para avaliar no iPhone.** No PowerShell, na pasta do projeto: `$env:DMANDA_ORIGENS_DEV='192.168.18.12'; npm.cmd run dev:teste`. No Safari do iPhone, no mesmo Wi-Fi: `http://192.168.18.12:7100` (se o IP do computador mudar, trocar nos dois lugares; `ipconfig` mostra o IPv4). Roteiro: (1) Início, rolar até o Para hoje e deslizar o card para os dois lados: a tela não pode saltar; repetir na Nova urgência e num filtro de prazo; (2) Agenda, Dia e Semana: o seletor, tocar em "Ir para a data", escolher uma data e ver o período; as duas ações do dia; rolar até o fim e conferir a barra de baixo; (3) Mês: deve estar como aprovado.
+
+**A conferir primeiro na próxima sessão (auditoria, achado A1).** A documentação registra 15 migrações aplicadas no Supabase real e cinco pendentes (16 a 20), mas `origin/main`, que é o que a Vercel publica, já contém o código que depende delas. Com autorização do Éder, conferir só por leitura (`npx supabase migration list --linked` e `db push --linked --dry-run`) e alinhar o `CLAUDE.md`.
+
+**Outras pendências da auditoria, pela ordem:** humor na entrada do dia (janela que abre sozinha e balão sobre os controles do celular), seletor do Mês no celular com "Semana" cortado, alvos de toque abaixo de 44 px, foco da janela de detalhe, barra de baixo translúcida, dia indisponível sem identidade da tentativa, esperas intermitentes de `testar:config` e `testar:baralho`, documentação desatualizada. Sugestão: abrir uma Issue para esse conjunto (não foi criada).
+
+**Falta Safari em aparelho real.** Gesto do baralho, seletor nativo de data pelo "Ir para a data", largura real do cabeçalho, área segura e barra do Safari.
+
+**Próximo ponto de retomada.** Avaliação do Éder no iPhone. Depois: conferência das migrações (A1) e a escolha do próximo item da auditoria. Push da `main` e deploy dependem de autorização específica. Andamento do projeto segue em 45% (`ANDAMENTO.md`, sem critério novo cumprido).

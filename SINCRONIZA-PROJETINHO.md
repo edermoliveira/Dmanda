@@ -10,6 +10,8 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 
 ## PONTO DE RETOMADA ATUAL (04/11/2026, leia primeiro)
 
+**Atualização de 14/11/2026 (decisão 75, só local, nada enviado):** Mês da Agenda aprovado pelo Éder; Dia e Semana recompostos (`96f5b51`) e baralho sem salto (`64c6757`), aguardando a avaliação dele no iPhone pela prévia `http://192.168.18.12:7100` (iniciar com `$env:DMANDA_ORIGENS_DEV='192.168.18.12'; npm.cmd run dev:teste`). Auditoria do frontend em `docs/auditoria-dmanda.md`. Estado, roteiro e pendências: seção AD de `CONTINUIDADE-DMANDA.md`.
+
 **Atualização de 13/11/2026 (Mês da Agenda, decisão 72 e ajuste):** a `main` recebeu a troca das ferramentas de design (decisão 71), o novo Mês com gaveta do dia e o ajuste de 13/11 (cabeçalho compacto, visão Dia, vencimentos à vista, gaveta do iPhone), com push direto autorizado pelo Éder. Estado, comandos para atualizar o computador do trabalho e o próximo ponto de retomada: seção AA de `CONTINUIDADE-DMANDA.md`. Avaliação visual do Mês ainda pendente do Éder. Andamento oficial: 45%.
 
 **Atualização de 05/11/2026 (Issue #7):** o bloco de resistência e desempenho foi publicado na `main` (`7504f1d`), com deploy concluído na Vercel; a etapa visual Apple foi encerrada (Catalyst mantido). Estado e comandos para continuar em casa: seção S de `CONTINUIDADE-DMANDA.md`. As seções R e R2 têm os testes e as medições.

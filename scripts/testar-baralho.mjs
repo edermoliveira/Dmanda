@@ -1,5 +1,6 @@
 // Baralho do Início no celular (decisão 65, aprovado na prévia 887b116 da decisão 67; portado para a main em 14/11/2026) com as TRÊS vagas da main: Para hoje, Nova urgência e as listas
 // de cards dos filtros do Início. No navegador (Edge) com banco de TESTE descartável (PGlite), servidor na porta 7116. Toque emulado pelo protocolo do navegador (não é aparelho real).
+// A seção 4 (decisão 75, a página não salta na troca do card) roda também no WebKit do Playwright, quando ele existe neste computador.
 // Adaptado do teste da branch bloco/inicio-perfil-clima (914c435), sem Clima, pagamentos, prioridade por origem nem quatro vagas.
 // Uso: node scripts/testar-baralho.mjs   (nunca toca o Supabase real)
 import { chromium, webkit, devices } from 'playwright-core';
@@ -157,10 +158,10 @@ for (const perfil of ['desktop', 'ipad']) {
   {
     const fix = () => pg.$eval(`${ATIVA} .dcard`, (e) => e.dataset.fix);
     const cab = await R(pg, `${ATIVA} .face.front .cab`);
-    await pg.touchscreen.tap(cab.x + 12, cab.y + cab.h / 2); await esperar(500);
+    await pg.touchscreen.tap(cab.x + 12, cab.y + cab.h / 2); await esperar(750); // a virada do card leva 550 ms: medir o verso antes do fim dela acertava o toque fora do lugar (falha intermitente)
     ok((await fix()) === 'verso', 'tocar numa área livre do card vira para o verso');
     const num = await R(pg, `${ATIVA} .face.back .cab .num`);   // área livre do verso (o número do documento é texto, não controle)
-    await pg.touchscreen.tap(num.x + 6, num.y + num.h / 2); await esperar(500);
+    await pg.touchscreen.tap(num.x + 6, num.y + num.h / 2); await esperar(750);
     ok((await fix()) === 'frente', 'novo toque numa área livre volta à frente');
     const ass = await R(pg, `${ATIVA} .vaga[data-ativo] .assunto`);
     await pg.touchscreen.tap(ass.x + 20, ass.y + ass.h / 2);
@@ -285,8 +286,8 @@ parar();
 
 // ---------- 4) a página não salta quando o card da frente é trocado (decisão 75) ----------
 // Causa comprovada em 14/11/2026: o card da frente é remontado a cada troca e era o único filho com altura do palco. No WebKit, a página ficava a altura de um card mais curta por um layout
-// e a rolagem era cortada no novo limite (a tela "saltava para o topo"); o Chromium não corta a rolagem nesse instante, por isso a medição do palco vale nos dois motores e a da rolagem
-// real é a do WebKit. O WebKit do Playwright é o motor do Safari no Windows com ponteiro sintético: NÃO é o Safari do iPhone, que continua dependendo do gesto no aparelho.
+// e a rolagem era cortada no novo limite (a tela "saltava para o topo"). Sem instrumentação, só o WebKit salta (o Chromium não refaz o layout nesse instante). Aqui o teste lê a altura do
+// palco no instante exato em que o card sai, o que obriga os dois motores a calcular o layout ali: por isso a medição do palco e a da rolagem valem nos dois, e as duas falhavam antes da correção (a da rolagem, quando a página estava no fim). O WebKit do Playwright é o motor do Safari no Windows com ponteiro sintético: NÃO é o Safari do iPhone, que continua dependendo do gesto no aparelho.
 await subir();
 const wk = await webkit.launch().catch((e) => { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); return null; });
 const instrumentar = (pg) => pg.evaluate(() => {
