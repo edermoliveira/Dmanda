@@ -37,8 +37,15 @@
 .agd-nav { display: flex; align-items: center; gap: 6px; }
 .agd-ant .ic { transform: rotate(180deg); }
 .agd-data input { min-height: 40px; border-radius: var(--r-field, 14px); border: 1px solid var(--brd); background: var(--grp-campo); color: var(--text); padding: 0 10px; font: inherit; font-size: max(16px, calc(14px * var(--esc))); }
-.agd-novo { margin-inline-start: auto; }
 .agd-cab-pag { display: block; }
+/* cabeçalho por função (decisão 73): as visões e o Novo evento juntos numa faixa, com os filtros (identificados) no fim dela; o período, as setas, o Hoje e a data juntos junto da grade, com os totais numa linha pequena */
+.agd-faixa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+.agd-filtros { margin-inline-start: auto; padding-inline: 14px; border-radius: 24px; background: color-mix(in srgb, var(--text) 4%, transparent); }
+.agd-filtros-rot { display: inline-flex; align-items: center; gap: 6px; font-size: calc(13px * var(--esc)); font-weight: 650; color: var(--text2); }
+.agd-filtros-rot .ic { width: 16px; height: 16px; }
+@container agd (max-width: 899px) { .agd-filtros { margin-inline-start: 0; } }
+.agd-mes-sel { display: none; }
+.agd-mes-sel select { min-height: 40px; max-width: 100%; border-radius: var(--r-field, 14px); border: 1px solid var(--brd); background: var(--grp-campo); color: var(--text); padding: 0 10px; font: inherit; font-size: max(16px, calc(14px * var(--esc))); }
 .agd-filtros-bt { display: none; align-items: center; gap: 6px; }
 .agd-filtros-bt .ic { width: 16px; height: 16px; }
 .agd-filtros-n { min-width: 1.5em; padding: 0 5px; border-radius: 999px; text-align: center; font-size: max(10px, calc(11px * var(--esc))); font-weight: 700; line-height: 1.5; background: var(--text); color: var(--card); }
@@ -46,13 +53,14 @@
 .agd-chk input { margin: 0; }
 
 /* informação principal do período: dados reais, sem enfeite */
-.agd-resumo { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; }
-.agd-resumo-t { display: grid; gap: 2px; min-width: 0; }
+.agd-resumo { display: grid; gap: 2px; min-width: 0; }
+.agd-linha-per { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; min-width: 0; }
+.agd-totais { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .agd-periodo { margin: 0; font-size: calc(26px * var(--esc)); font-weight: 700; color: var(--text); text-transform: none; letter-spacing: -.01em; }
 .agd-ano { margin-inline-start: .15em; font-size: .62em; font-weight: 600; color: var(--text2); font-variant-numeric: tabular-nums; }
-.agd-grande { margin: 2px 0 0; font-size: calc(18px * var(--esc)); color: var(--text); }
-.agd-grande b { font-size: calc(34px * var(--esc)); font-weight: 700; font-variant-numeric: tabular-nums; margin-inline-end: 4px; }
-.agd-chips-res { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; padding: 0; list-style: none; }
+.agd-grande { margin: 0; font-size: calc(14px * var(--esc)); color: var(--text2); }
+.agd-grande b { font-size: calc(18px * var(--esc)); font-weight: 700; font-variant-numeric: tabular-nums; margin-inline-end: 2px; color: var(--text); }
+.agd-chips-res { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 
 /* ---------- painel de vidro fosco ---------- */
 .agd-painel { position: relative; isolation: isolate; min-width: 0; border-radius: 28px; padding: 16px clamp(10px, 3.4cqw, 36px) 18px; border: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--lq-edge), var(--lq-sh); color: var(--text); }
@@ -69,7 +77,20 @@
 .agd-vazio { margin: 8px 0; font-size: calc(14px * var(--esc)); color: var(--text2); }
 
 .agd-aux-par { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
-@container agd (min-width: 760px) { .agd-aux-par { grid-template-columns: repeat(2, minmax(0, 1fr)); } .agd-aux-par .agd-aux { min-height: 168px; } }
+@container agd (min-width: 760px) { .agd-aux-par { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
+
+/* ---------- Mês com os painéis na lateral (decisão 73): a grade e, à direita, "Onde o mês aperta" e "Pendências sem prazo", empilhados, cada um com a altura do próprio conteúdo.
+   A passagem para uma coluna é medida na largura útil da Agenda (não na da janela): com menos de 1040 px a grade ficaria com menos de 700 px e as células e as abas perderiam o título; então
+   os painéis descem para baixo do calendário (lado a lado a partir de 760 px). Sem rolagem própria: a página rola, e a coluna acompanha (useColunaFixa, o `top` é ajustado por ele). ---------- */
+.agd-mes-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; min-width: 0; }
+.agd-lateral { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); align-content: start; align-items: start; min-width: 0; }
+.agd-lateral > * { margin: 0; min-width: 0; }
+.agd-lateral .agd-painel { padding: 14px 16px 16px; border-radius: 24px; }
+@container agd (min-width: 760px) and (max-width: 1039px) { .agd-lateral { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container agd (min-width: 1040px) {
+  .agd-mes-cols { grid-template-columns: minmax(0, 1fr) clamp(272px, 25cqw, 340px); gap: 16px; }
+  .agd-lateral { position: sticky; top: 0; }
+}
 
 /* ---------- mês (decisão 72): segunda a domingo, semanas numeradas à esquerda, JAN a DEZ na vertical à direita, células grandes com os itens do dia ---------- */
 .agd-cal { --agd-cel-h: 124px; --agd-semw: 24px; --agd-gm: 12px; --agd-aba-w: 34px; padding: 14px clamp(10px, 2.2cqw, 26px) 16px; }
@@ -140,6 +161,8 @@
   .agd-it-t { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; white-space: normal; overflow-wrap: anywhere; hyphens: auto; }
   .agd-it-h, .agd-it-m { display: none; }
 }
+/* marcas só do heatmap compacto (celular): escondidas fora dele */
+.agd-evm, .agd-so-compacto { display: none; }
 /* celular: sete colunas de segunda a domingo e a faixa JAN a DEZ cabem sem rolagem horizontal. A prioridade é a área de toque (44 px na data e na aba, sem sobrepor vizinhos) e o título legível:
    o painel de vidro sai, a margem lateral cai para 6 px, os espaços entre as células ficam em 2 px, a numeração das semanas sai e a hora e o rótulo do marco ficam na gaveta. */
 @container agd (max-width: 560px) {
@@ -154,33 +177,68 @@
   .agd-barra .opcoes { flex: 1 1 auto; min-width: 0; }
   .agd-barra .opcoes button { flex: 1 1 0; min-width: 0; padding-inline: 6px; }
   .agd-novo { flex: none; margin-inline-start: auto; padding-inline: 12px; }
-  .agd-resumo { flex-direction: column; align-items: stretch; gap: 6px; }
-  .agd-resumo-t { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
-  .agd-periodo { flex: 1 0 100%; font-size: calc(22px * var(--esc)); }
-  .agd-grande { margin: 0; font-size: calc(14px * var(--esc)); }
-  .agd-grande b { font-size: calc(18px * var(--esc)); margin-inline-end: 2px; }
-  .agd-chips-res { margin: 0; }
+  .agd-resumo { gap: 4px; }
+  .agd-linha-per { gap: 2px 10px; }
+  .agd-periodo { flex: 1 1 auto; font-size: calc(22px * var(--esc)); }
+  .agd-totais { gap: 2px 8px; }
+  .agd-grande { font-size: max(10px, calc(13px * var(--esc))); }
+  .agd-grande b { font-size: calc(16px * var(--esc)); }
   .agd-nav { width: 100%; }
   .agd-data { flex: 1 1 0; min-width: 0; }
   .agd-data input { width: 100%; min-width: 0; }
+  .agd-faixa { gap: 0; }
+  .agd-filtros { margin-inline-start: 0; padding-inline: 0; border-radius: 0; background: none; }
+  .agd-filtros-rot { display: none; }
 
-  .agd .agd-cal { --agd-cel-h: 108px; --agd-gm: 3px; --agd-aba-w: 40px; margin-inline: -8px; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+  .agd-faixa { gap: 4px; }
+  /* heatmap compacto (decisão 73): cada dia é um cartão com a data, sem pílulas nem "+N". A carga é o preenchimento (escala do Dmanda em quatro níveis, mais forte quanto maior a carga, nos dois temas);
+     o compromisso é um ponto sob a data, o atraso um ponto vermelho no canto e o dia indisponível uma barra na base. Os itens ficam no painel que abre logo abaixo da grade. */
+  .agd .agd-cal { --agd-cel-h: 52px; --agd-gm: 5px; --agd-aba-w: 36px; margin-inline: -10px; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
   .agd .agd-cal::before { display: none; }
   .agd-grade { --g: 2px; }
   .agd-linha-sem { grid-template-columns: repeat(7, minmax(0, 1fr)); }
   .agd-semn, .agd-semn-cab { display: none; }
   .agd-cabsem { padding-block: 0 4px; }
-  .agd-cel { padding: 3px 1px 3px; border-radius: 12px; gap: 2px; }
+  .agd-cel { align-items: center; justify-content: center; padding: 3px 1px; border-radius: 12px; gap: 2px; }
   .agd-vaz { border-radius: 12px; }
-  .agd-topo { min-height: 20px; gap: 2px; padding-inline: 2px; }
-  .agd-num { font-size: max(10px, calc(12px * var(--esc))); min-width: 1.7em; min-height: 1.7em; }
-  .agd-qtd { padding: 1px 4px; min-width: 1.4em; }
-  .agd-its { gap: 2px; }
-  .agd-it { padding: 1px 1px; gap: 0; border-inline-start-width: 2px; border-radius: 5px; line-height: 1.15; letter-spacing: -.01em; }
-  .agd-mais { padding: 0 3px; }
+  .agd-topo { min-height: 0; padding-inline: 0; }
+  .agd-num { margin-inline-start: 0; font-size: max(11px, calc(14px * var(--esc))); min-width: 1.9em; min-height: 1.9em; }
+  .agd-qtd, .agd-its { display: none; }
+  .agd-cel[data-nivel="baixa"] { background: var(--calendar-cell-low); color: var(--calendar-cell-low-fg); }
+  .agd-cel[data-nivel="media"] { background: var(--calendar-cell-medium); color: var(--calendar-cell-medium-fg); }
+  .agd-cel[data-nivel="alta"] { background: var(--calendar-cell-high); color: var(--calendar-cell-high-fg); }
+  .agd-cel[data-nivel] .agd-num { color: inherit; }
+  .agd-cel[data-fds]:not([data-hoje])[data-nivel="zero"] .agd-num { color: var(--text2); }
+  /* hoje: a data dentro de um disco; no preenchimento mais forte o disco inverte (texto sobre a cor do acento) para continuar distinto */
+  .agd-cel[data-hoje][data-nivel] .agd-num { background: var(--text); color: var(--card); }
+  .agd-cel[data-hoje][data-nivel="alta"] .agd-num { background: var(--acc-ink); color: var(--acc); }
+  .agd-atr { position: absolute; top: 4px; inset-inline-start: 4px; width: 8px; height: 8px; box-shadow: 0 0 0 2px var(--card); }
+  .agd-evm { display: block; flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--card) 70%, transparent); }
+  .agd-cel[data-indisp]::after { bottom: 3px; left: 24%; right: 24%; opacity: .6; }
+  /* carga indisponível (as demandas não carregaram): listrado discreto no lugar do preenchimento, nunca um "zero" */
+  .agd-cel[data-sem-carga] { background-image: repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in srgb, var(--text) 12%, transparent) 5px 6px); }
   .agd-aviso-carga { margin: 0 8px 8px; }
   .agd-leg { padding-inline: 8px; }
+  .agd-so-largo { display: none !important; }
+  .agd-so-compacto { display: inline-flex; }
+  .agd-marcas .agd-m-ev { width: 8px; height: 8px; border-radius: 50%; background: var(--text); box-shadow: none; }
 }
+
+/* 320 px: sete colunas e as abas JAN a DEZ deixariam as datas com menos de 44 px de largura; as abas saem e o mês passa a um controle compacto no cabeçalho do Mês */
+@container agd (max-width: 339px) {
+  .agd-meses { display: none; }
+  .agd .agd-cal { --agd-gm: 0px; }
+  .agd-mes-sel { display: block; }
+}
+
+/* painel do dia abaixo da grade (celular): no fluxo, com os mesmos cartões e ações da gaveta, mas sem cobrir a grade */
+.agd-dia-painel { margin-top: 12px; padding: 14px 14px 16px; border-radius: 22px; background: color-mix(in srgb, var(--card) 88%, transparent); box-shadow: 0 0 0 1px var(--card-brd); min-width: 0; scroll-margin-block: 84px 96px; }
+.agd-pd-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.agd-pd-cab h3 { margin: 0; font-size: calc(18px * var(--esc)); font-weight: 700; overflow-wrap: anywhere; }
+.agd-pd-corpo { margin-top: 6px; }
+.agd-pd-novo { width: 100%; margin-top: 6px; }
+.agd-m-ind { width: 14px; height: 3px; border-radius: 3px; background: var(--text); opacity: .6; }
+.agd-m-sem { width: 14px; height: 10px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--brd); background-image: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--text) 25%, transparent) 3px 4px); }
 
 /* legenda */
 .agd-leg { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; margin-top: 14px; font-size: calc(12px * var(--esc)); color: var(--text2); }

@@ -139,11 +139,14 @@ export function SecoesAparencia() {
           {CONJUNTOS.map((c, i) => <button key={c.nome} type="button" className="btn mini" data-conjunto={i} aria-pressed={a.titulo === c.titulo && a.texto === c.texto && a.mono === c.mono} onClick={() => mudarAparencia({ titulo: c.titulo, texto: c.texto, mono: c.mono })}>{c.nome}</button>)}
         </div>
         <PreviaFontes titulo={a.titulo} texto={a.texto} mono={a.mono} />
+        <div className="fonte-listas">
         <ListaFontes id="cfg-f-titulo" papel="titulo" lista={FONTES_TITULO} valor={a.titulo} aoMudar={(v) => mudarAparencia({ titulo: v })} />
         <ListaFontes id="cfg-f-texto" papel="texto" lista={FONTES_TEXTO} valor={a.texto} aoMudar={(v) => mudarAparencia({ texto: v })} />
         <ListaFontes id="cfg-f-mono" papel="mono" lista={FONTES_MONO} valor={a.mono} aoMudar={(v) => mudarAparencia({ mono: v })} />
+        </div>
       </section>
 
+      <div className="cfg-duplo">
       <section className="painel" aria-labelledby="cfg-tam-t">
         <h3 id="cfg-tam-t">Tamanhos</h3>
         <Faixa id="cfg-t-texto" rotulo="Texto" unidade="%" valor={a.textoPct} lim={TEXTO} aoMudar={(v) => mudarAparencia({ textoPct: v })} />
@@ -162,6 +165,7 @@ export function SecoesAparencia() {
         <p className="data">O gradiente usa a cor de destaque e se move devagar. Fica parado quando o aparelho pede para reduzir movimento ou quando você liga a opção abaixo. Só o fundo muda: cards, janelas e textos continuam como estão.</p>
         <div className="acoes"><button type="button" className="btn mini" data-movimento aria-pressed={a.movimento === 'reduzido'} onClick={() => mudarAparencia({ movimento: a.movimento === 'reduzido' ? 'sistema' : 'reduzido' })}>Reduzir movimento: {a.movimento === 'reduzido' ? 'ligado' : 'segue o aparelho'}</button></div>
       </section>
+      </div>
       </div>
       <p className="data cfg-nota">Aparência, fontes, tamanhos e fundo ficam guardados só neste navegador e valem em todas as telas. Em outro aparelho, escolha de novo.</p>
     </div>

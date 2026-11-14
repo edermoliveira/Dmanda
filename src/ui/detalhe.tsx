@@ -160,6 +160,7 @@ function Detalhe({ d }: { d: Demanda }) {
       {d.entrada_id ? <OrigemEntrada id={d.entrada_id} /> : null}
       <div className="resumo-chips"><span className="chip neutro">{fin ? 'Finalizada' : d.etapa}</span><ChipEspera d={d} /><ChipPrazo d={d} /><ChipSelo d={d} />{d.arquivada_em ? <span className="chip neutro">Arquivada</span> : null}</div>
 
+      <div className="det"><div className="det-grade">
       <Bloco ctx={ctx} s="identificacao" editor={<CamposIdentificacao c={c} mudar={mudar} prefixo="d" />}>
         <dl className="ler">
           <dt>Assunto</dt><dd><b>{d.assunto}</b></dd>
@@ -233,6 +234,7 @@ function Detalhe({ d }: { d: Demanda }) {
         ) : <div className="proxima vazia"><span>Nenhuma tarefa cadastrada</span></div>}
         <p className="data m-prog">{d.tarefas.length ? `${d.tarefas.filter((t) => t.concluida).length} de ${d.tarefas.length} concluídas. ` : ''}Toque no lápis para adicionar, alterar ou remover tarefas.</p>
       </Bloco>
+      </div></div>
       {menuAcoes ? <MenuAcoes pos={menuAcoes} fechar={() => setMenuAcoes(null)} aoArquivar={async () => { setMenuAcoes(null); const r = await arquivar(d.id); if (r) { guardarRascunho(chave, null); fecharJanela(); } }} aoExcluir={() => { setMenuAcoes(null); setConf(true); }} /> : null}
     </Janela>
   );
@@ -243,7 +245,7 @@ type CtxBloco = { abertas: Secao[]; lapis: (s: Secao) => ReactNode; acoes: (s: S
 function Bloco({ ctx, s, editor, children }: { ctx: CtxBloco; s: Secao; editor: ReactNode; children: ReactNode }) {
   const editando = ctx.abertas.includes(s);
   return (
-    <section className="sec" aria-label={NOME_SECAO[s]} data-secao={s}>
+    <section className="sec" aria-label={NOME_SECAO[s]} data-secao={s} data-editando={editando || undefined}>
       <div className="sec-h"><h4>{NOME_SECAO[s]}</h4>{editando ? null : ctx.lapis(s)}</div>
       {editando ? <>{ctx.erro && s !== 'tarefas' ? <p className="data" role="alert" style={{ color: 'var(--perigo)' }}>{ctx.erro}</p> : null}{editor}{ctx.acoes(s)}</> : children}
     </section>

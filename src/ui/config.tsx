@@ -39,7 +39,7 @@ export function PaginaConfig() {
       <div className="cfg">
       <SecoesAparencia />
       <SecaoPerfilConfig />
-      <section className="cfg-bloco painel" aria-labelledby="cfg-dias-t">
+      <section className="cfg-bloco painel cfg-dias" aria-labelledby="cfg-dias-t">
         <h2 id="cfg-dias-t" style={{ fontSize: 'calc(17px * var(--esc))', margin: '0 0 6px' }}>Dias indisponíveis</h2>
         <p className="data">Feriados e eventos externos de dia inteiro. Sábados e domingos já são considerados. Quando o prazo de uma demanda cai em um desses dias, o vencimento é antecipado para o dia disponível anterior, e é recalculado sozinho (nos dois sentidos) quando você cadastra, altera ou exclui um dia aqui. Nada é importado nem presumido.</p>
         <div ref={formRef} className="cfg-form" role="group" aria-label={f.id ? 'Alterar dia indisponível' : 'Cadastrar dia indisponível'}>
@@ -52,6 +52,7 @@ export function PaginaConfig() {
             <button type="button" className="btn pri" disabled={salvando} onClick={() => void salvar()}>{salvando ? 'Salvando...' : f.id ? 'Salvar alteração' : 'Cadastrar dia'}</button>
           </div>
         </div>
+        <div className="cfg-dias-lado">
         {!dias.length ? (
           <p className="data" style={{ marginTop: 14 }}>{carregando ? 'Carregando...' : 'Nenhum dia cadastrado. Só os fins de semana ajustam os prazos por enquanto.'}</p>
         ) : (
@@ -77,6 +78,7 @@ export function PaginaConfig() {
             ))}
           </ul>
         )}
+        </div>
       </section>
       </div>
     </>

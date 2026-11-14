@@ -16,6 +16,7 @@
     "testar:regras": "node scripts/testar-regras.mjs",
     "testar:app": "node scripts/testar-app.mjs",
     "testar:interface": "node scripts/testar-interface.mjs",
+    "testar:detalhe": "node scripts/testar-detalhe.mjs",
     "testar:entradas": "node scripts/testar-entradas.mjs",
     "testar:ajustes": "node scripts/testar-ajustes.mjs",
     "testar:agenda-regras": "node scripts/testar-agenda-regras.mjs",

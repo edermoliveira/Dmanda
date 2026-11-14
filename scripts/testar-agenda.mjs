@@ -47,12 +47,15 @@ const ir = async (pg, rota = '/agenda') => {
   await pg.waitForTimeout(900);
 };
 // A lista completa do dia é a gaveta do Mês (decisão 72): abre pelo toque na célula, e Esc a fecha. Enquanto ela está aberta, a grade não recebe cliques (é um diálogo modal).
-const fecharDia = async (pg) => { if (await pg.$('.agd-detalhe')) { await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.agd-detalhe'), null, { timeout: 8000 }); await pg.waitForTimeout(150); } };
+const fecharDia = async (pg) => {
+  if (await pg.$('.agd-detalhe')) { await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.agd-detalhe'), null, { timeout: 8000 }); await pg.waitForTimeout(150); }
+  else if (await pg.$('.agd-dia-painel')) { await pg.click('.agd-dia-painel [aria-label="Fechar a lista do dia"]'); await pg.waitForFunction(() => !document.querySelector('.agd-dia-painel'), null, { timeout: 8000 }); await pg.waitForTimeout(150); } // celular (decisão 73): o painel abaixo da grade
+};
 const modo = async (pg, nome) => { await fecharDia(pg); await pg.click(`.agd-barra .opcoes button:has-text("${nome}")`); await pg.waitForTimeout(350); };
 const paraData = async (pg, iso) => { await fecharDia(pg); await pg.fill('.agd-data input', iso); await pg.waitForFunction((d) => document.querySelector('.agd-data input')?.value === d, iso); await pg.waitForTimeout(250); };
 const celula = (pg, d) => pg.locator(`.agd-cel[data-data="${d}"]`);
 const selAtualDe = (pg) => pg.$eval('.agd-cel[data-sel]', (e) => e.getAttribute('data-data'));
-const abrirDia = async (pg, d) => { await fecharDia(pg); await celula(pg, d).evaluate((e) => e.scrollIntoView({ block: 'center' })); await celula(pg, d).click(); await pg.waitForSelector('.agd-detalhe', { timeout: 10000 }); await pg.waitForTimeout(350); };
+const abrirDia = async (pg, d) => { await fecharDia(pg); await celula(pg, d).evaluate((e) => e.scrollIntoView({ block: 'center' })); await celula(pg, d).click(); await pg.waitForSelector('.agd-detalhe, .agd-dia-painel', { timeout: 10000 }); await pg.waitForTimeout(350); };
 const verDia = async (pg, d) => { await paraData(pg, d); await abrirDia(pg, d); };
 const caixa = (pg, sel) => pg.$$eval(sel, (els) => els.map((e) => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height, x: r.x, y: r.y, r: r.right, b: r.bottom }; }));
 const janelaFechada = (pg) => pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 15000 });
@@ -224,10 +227,12 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok((await pg.$$('text=/Novo dia indisponível|Cadastrar feriado/')).length === 0, 'a Agenda não cria uma segunda fonte de dias indisponíveis (o cadastro continua só em Configurações)');
   await fecharDia(pg);
   // --- painéis auxiliares e pendências sem prazo ---
-  const aux = await caixa(pg, '.agd-aux-par .agd-aux');
-  ok(aux.length === 2 && Math.abs(aux[0].w - aux[1].w) <= 2 && Math.abs(aux[0].y - aux[1].y) <= 2 && Math.abs(aux[0].h - aux[1].h) <= 2, 'dois painéis auxiliares lado a lado, com dimensões equivalentes');
-  ok(/Sem nenhuma data/.test(await pg.textContent('.agd-aux-par')) && /Nada foi inventado/.test(await pg.textContent('.agd-aux-par')), 'demanda sem nenhuma data aparece em Pendências sem prazo, sem vencimento inventado');
-  ok(/Pacote grande/.test((await pg.textContent('.agd-aux-par .agd-aux')) + ' Pacote grande') && !!(await pg.$('.agd-aux-par')), 'o painel de dias cheios existe ao lado do de pendências sem prazo');
+  const aux = await caixa(pg, '.agd-lateral .agd-aux'), calBox = (await caixa(pg, '.agd-cal'))[0], latBox = (await caixa(pg, '.agd-lateral'))[0];
+  ok(aux.length === 2 && aux[0].x >= calBox.r && Math.abs(aux[0].x - aux[1].x) <= 2 && Math.abs(aux[0].w - aux[1].w) <= 2 && aux[1].y >= aux[0].b - 2 && Math.abs(aux[0].y - calBox.y) <= 2, 'no computador os dois painéis auxiliares ficam empilhados à direita da grade, o primeiro alinhado ao topo dela (decisão 73)');
+  ok(Math.abs(aux[0].h - aux[1].h) > 20 && aux.every((a) => a.h < 700), `cada painel tem a altura do próprio conteúdo (${Math.round(aux[0].h)} e ${Math.round(aux[1].h)} px), sem esticar um para igualar o outro`);
+  ok((await pg.evaluate(() => { const l = document.querySelector('.agd-lateral'); return [l, ...l.querySelectorAll('*')].every((e) => !/(auto|scroll)/.test(getComputedStyle(e).overflowY) || e.scrollHeight <= e.clientHeight + 1); })) && (await pg.evaluate(() => { const m = document.querySelector('.main'); return m.scrollWidth <= m.clientWidth + 1; })), 'a lateral não tem rolagem própria (só a página rola) e não há rolagem horizontal');
+  ok(/Sem nenhuma data/.test(await pg.textContent('.agd-lateral')) && /Nada foi inventado/.test(await pg.textContent('.agd-lateral')), 'demanda sem nenhuma data aparece em Pendências sem prazo, sem vencimento inventado');
+  ok(/Onde novembro aperta/.test(await pg.textContent('.agd-lateral')) && /Pendências sem prazo/.test(await pg.textContent('.agd-lateral')) && !!latBox, 'o painel de dias cheios existe acima do de pendências sem prazo');
   // --- filtros ---
   await pg.click('.agd-filtros .opcoes button:has-text("Demandas")'); await pg.waitForTimeout(300);
   ok((await pg.$$('.agd-cel .agd-it[data-k="evento"]')).length === 0 && (await pg.$$('.agd-cel .agd-it[data-k="demanda"]')).length > 0 && (await pg.$$('.agd-cel:not([data-nivel="zero"])')).length > 0, 'filtro Demandas: somem os compromissos das células e o heatmap continua');
@@ -617,13 +622,23 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
   ok(!!(await pg.$('.agd[data-modo="hoje"]')), 'no celular, sem preferência salva, a Agenda abre em Hoje');
   await modo(pg, 'Mês');
   const cx = await caixa(pg, '.agd-cel');
-  ok(cx.length > 27 && cx.every((c) => c.w >= 44 && c.h >= 90) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1)), `iPhone emulado: sete colunas, células de pelo menos 40 por 70 px (${Math.round(Math.min(...cx.map((c) => c.w)))} por ${Math.round(Math.min(...cx.map((c) => c.h)))} px, a faixa de meses ocupa o resto da largura) e sem rolagem horizontal`);
+  ok(cx.length > 27 && cx.every((c) => c.w >= 44 && c.h >= 50) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1)), `iPhone emulado: sete colunas, cartões de heatmap de pelo menos 44 por 50 px (${Math.round(Math.min(...cx.map((c) => c.w)))} por ${Math.round(Math.min(...cx.map((c) => c.h)))} px, a faixa de meses ocupa o resto da largura) e sem rolagem horizontal`);
+  // heatmap compacto (decisão 73): sem pílulas com título nem "+N"; a carga é o preenchimento, o compromisso um ponto, o atraso um ponto vermelho no canto
+  const hm = await pg.evaluate(() => {
+    const vis = (e) => !!e && e.getClientRects().length > 0 && getComputedStyle(e).display !== 'none';
+    const cels = [...document.querySelectorAll('.agd-cel')], niveis = {};
+    for (const n of ['zero', 'baixa', 'media', 'alta']) { const e = cels.find((c) => c.dataset.nivel === n); if (e) niveis[n] = getComputedStyle(e).backgroundColor; }
+    const comEv = cels.find((c) => c.querySelector('.agd-evm')), atr = cels.find((c) => c.dataset.atrasada);
+    return { pilulas: cels.some((c) => [...c.querySelectorAll('.agd-it, .agd-mais, .agd-qtd')].some(vis)), niveis, evVisivel: comEv ? vis(comEv.querySelector('.agd-evm')) : null, atrVisivel: atr ? vis(atr.querySelector('.agd-atr')) : null, evZero: cels.some((c) => c.dataset.nivel === 'zero' && c.querySelector('.agd-evm')) };
+  });
+  ok(!hm.pilulas && hm.evVisivel === true && hm.atrVisivel !== false && hm.evZero, `no celular as células não têm pílulas, "+N" nem selo de carga; o compromisso aparece como um ponto (inclusive com carga zero) e o atraso, quando o mês tem um, como um ponto vermelho (${JSON.stringify({ p: hm.pilulas, e: hm.evVisivel, a: hm.atrVisivel, z: hm.evZero })})`);
+  ok(new Set(Object.values(hm.niveis)).size === Object.keys(hm.niveis).length && Object.keys(hm.niveis).length >= 3, `o preenchimento distingue os níveis de carga (${Object.keys(hm.niveis).join(', ')}) em tema claro`);
   const cols = await pg.$$eval('.agd-linha-sem:nth-child(2) > [role="gridcell"]', (c) => c.length);
   ok(cols === 7 && (await pg.$$('.agd-mes-aba')).length === 12 && (await pg.$$eval('.agd-cabsem', (c) => c.length)) === 7, 'o celular mantém as sete colunas, com os cabeçalhos, e a faixa de meses JAN a DEZ');
   const faixa = await pg.$eval('.agd-meses', (e) => { const r = e.getBoundingClientRect(), g = document.querySelector('.agd-grade').getBoundingClientRect(); return { esq: r.left - g.right, dir: window.innerWidth - r.right, largura: r.width, abas: [...e.querySelectorAll('.agd-mes-aba')].map((a) => a.getBoundingClientRect().height), topo: r.top, base: r.bottom, alt: window.innerHeight }; });
   ok(faixa.esq > 0 && faixa.dir > 0 && faixa.largura >= 22 && faixa.abas.every((h) => h >= 40), `no celular a faixa de meses fica à direita da grade, legível (${Math.round(faixa.largura)} px de largura, abas de pelo menos ${Math.round(Math.min(...faixa.abas))} px de altura)`);
-  const aux = await caixa(pg, '.agd-aux-par .agd-aux');
-  ok(aux.length === 2 && aux[1].y > aux[0].b - 2, 'no celular os dois painéis auxiliares ficam empilhados');
+  const aux = await caixa(pg, '.agd-lateral .agd-aux'), calB = (await caixa(pg, '.agd-cal'))[0];
+  ok(aux.length === 2 && aux[1].y > aux[0].b - 2 && aux[0].y >= calB.b - 2, 'no celular os dois painéis auxiliares ficam empilhados abaixo do calendário');
   // cabeçalho compacto: a grade começa bem mais perto do topo (antes do ajuste ela começava a 533 px, com a faixa de teste terminando em 126 px)
   const topo = await pg.evaluate(() => ({ grade: document.querySelector('.agd-grade').getBoundingClientRect().top, cab: document.querySelector('.agd-cab-pag').getBoundingClientRect().top, faixa: document.querySelector('.faixa-teste')?.getBoundingClientRect().bottom ?? null }));
   ok(topo.faixa !== null && topo.grade - topo.cab <= 260, `iPhone 390 com a faixa de teste visível: a grade começa a ${Math.round(topo.grade - topo.cab)} px do título da página (${Math.round(topo.grade)} px do topo, com a faixa terminando em ${Math.round(topo.faixa)} px); antes do ajuste eram cerca de 395 px`);
@@ -640,27 +655,41 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
   const aCel = await areaEfetiva(pg, '.agd-cel[data-data="2026-11-11"]'), aAba = await areaEfetiva(pg, '.agd-mes-aba[data-mes="6"]');
   const sobre = await pg.evaluate(() => { const c = document.querySelector('.agd-cel[data-data="2026-11-08"]').getBoundingClientRect(), t = document.elementFromPoint(c.right - 0.5, c.top + c.height / 2); return !!t && !!t.closest('.agd-mes-aba'); });
   ok(aCel.w >= 44 && aCel.h >= 44 && aAba.w >= 44 && aAba.h >= 44 && !sobre, `iPhone 390: área efetiva de toque da data ${aCel.w}x${aCel.h} px e da aba ${aAba.w}x${aAba.h} px (a aba não cobre a coluna de domingo)`);
-  await verDia(pg, S.h.prazo);
-  ok(/Pacote grande/.test(await pg.textContent('.agd-detalhe')), 'tocar no dia mostra os detalhes no celular');
-  const gv = await pg.$eval('.agd-gv', (e) => { const r = e.getBoundingClientRect(); return { esq: r.left, dir: window.innerWidth - r.right, base: window.innerHeight - r.bottom, topo: r.top, larg: r.width, alt: r.height, vh: window.innerHeight }; });
-  ok(gv.esq <= 1 && gv.dir <= 1 && gv.base <= 1 && gv.alt < gv.vh && gv.topo > 0, `no celular a gaveta é inferior: ocupa a largura toda, encosta embaixo e deixa a grade aparecer em cima (topo em ${Math.round(gv.topo)} de ${gv.vh} px)`);
+  // tocar numa data: o painel do dia abre logo abaixo da grade, no fluxo da página, e a grade não se mexe
+  const antesGrade = await pg.evaluate(() => { const g = document.querySelector('.agd-grade').getBoundingClientRect(); return { y: g.top + document.querySelector('.main').scrollTop, h: g.height, w: g.width }; });
+  await paraData(pg, S.h.prazo); await abrirDia(pg, S.h.prazo); await pg.waitForTimeout(700);
+  ok(!(await pg.$('.agd-detalhe')) && !!(await pg.$('.agd-dia-painel')) && /Pacote grande/.test(await pg.textContent('.agd-dia-painel')), 'tocar no dia mostra os itens num painel abaixo da grade (sem gaveta) no celular');
+  const pn = await pg.evaluate(() => {
+    const p = document.querySelector('.agd-dia-painel').getBoundingClientRect(), g = document.querySelector('.agd-grade').getBoundingClientRect(), leg = document.querySelector('.agd-leg').getBoundingClientRect(), main = document.querySelector('.main'), cab = document.querySelector('.agd-pd-cab').getBoundingClientRect(), bar = document.querySelector('.bar')?.getBoundingClientRect();
+    const sel = document.querySelector('.agd-cel[data-sel]');
+    return { painelTopo: p.top, gradeBase: g.bottom, legTopo: leg.top, gradeAltura: g.height, gradeLargura: g.width, gradeY: g.top + main.scrollTop, cabBase: cab.bottom, cabTopo: cab.top, barraTopo: bar ? bar.top : innerHeight, sel: sel?.dataset.data, expandida: sel?.getAttribute('aria-expanded'), controla: sel?.getAttribute('aria-controls'), titulo: document.querySelector('#agd-pd-t')?.textContent, ctl: document.querySelector('.agd-cel[data-data="' + sel?.dataset.data + '"]') === document.activeElement };
+  });
+  ok(pn.painelTopo >= pn.gradeBase - 1 && pn.painelTopo - pn.gradeBase < 40 && pn.legTopo >= pn.painelTopo, `o painel começa logo abaixo da grade (${Math.round(pn.painelTopo - pn.gradeBase)} px de distância) e a legenda vem depois dele`);
+  ok(Math.abs(pn.gradeY - antesGrade.y) < 1 && Math.abs(pn.gradeAltura - antesGrade.h) < 1 && Math.abs(pn.gradeLargura - antesGrade.w) < 1, 'a grade fica na mesma posição e com o mesmo tamanho com o painel aberto');
+  ok(pn.sel === S.h.prazo && pn.expandida === 'true' && pn.controla === 'agd-dia-painel' && /^Quarta-feira, 12 de novembro de 2026$|^[A-Za-zçãé-]+, \d+ de \w+ de 2026$/.test(pn.titulo), `a data tocada fica selecionada (aria-expanded) e o painel mostra a data por extenso (“${pn.titulo}”)`);
+  ok(pn.cabTopo >= 0 && pn.cabBase <= pn.barraTopo, `o cabeçalho do painel ficou dentro da área visível, acima da barra de baixo (base em ${Math.round(pn.cabBase)} de ${Math.round(pn.barraTopo)} px)`);
+  ok((await pg.$$('.agd-dia-painel .agd-abrir')).length >= 1 && /Novo evento neste dia/.test(await pg.textContent('.agd-dia-painel')), 'o painel traz os cartões do dia com as mesmas ações e o botão Novo evento neste dia');
   await fecharDia(pg);
+  ok(!(await pg.$('.agd-dia-painel')) && (await pg.evaluate(() => !!document.activeElement?.dataset?.data)), 'o botão de fechar recolhe o painel e devolve o foco à célula do dia');
   await pg.click('.agd-mes-aba[data-mes="12"]'); await pg.waitForTimeout(400);
   const cheioCel = `.agd-cel[data-data="${S.mes.cheio}"]`;
   await pg.evaluate((s) => document.querySelector(s).scrollIntoView({ block: 'center' }), cheioCel); await pg.waitForTimeout(200);
-  ok((await pg.$$eval(`${cheioCel} .agd-it`, (l) => l.length)) === 2 && (await pg.textContent(`${cheioCel} .agd-mais`)) === '+4' && (await pg.$eval(`${cheioCel} .agd-it[data-k="evento"] .agd-it-h`, (e) => getComputedStyle(e).display)) === 'none', 'no celular a célula mostra duas linhas (só o título, sem a hora) e "+4" para os outros quatro itens do dia cheio');
-  ok((await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)) && (await pg.$$eval('.agd-it', (l) => l.every((e) => e.getBoundingClientRect().height >= 10))), 'em dezembro, no celular, continua sem rolagem horizontal e com as linhas legíveis');
-  const cP = await semCorte(pg);
-  ok(cP.f1 > cP.f0 && cP.cortados.length === 0, `iPhone, no texto a 125%: nenhuma célula corta a última linha nem o "+N" (fonte de ${cP.f0} para ${cP.f1} px)`);
-  await pg.click(`${cheioCel} .agd-mais`); await pg.waitForSelector('.agd-detalhe'); await pg.waitForTimeout(400);
-  ok((await pg.$$('.agd-detalhe .agd-evento')).length === 3 && (await pg.$$('.agd-detalhe .agd-demanda')).length === 3 && /Audiência pública para revisão do plano diretor e do zoneamento urbano do município/.test(await pg.textContent('.agd-detalhe')) && (await pg.$$eval('.agd-detalhe button', (b) => b.filter((x) => x.getClientRects().length).every((x) => x.getBoundingClientRect().height >= 32))), 'tocar no "+4" no celular abre a gaveta inferior com os seis itens e os títulos inteiros');
-  ok(/^Terça, 15 de dezembro$/.test(await pg.textContent('#agd-gv-t')) && (await pg.getAttribute('#agd-gv-t', 'aria-label')) === 'Terça-feira, 15 de dezembro de 2026' && (await pg.getAttribute('.agd-gv', 'aria-labelledby')) === 'agd-gv-t', 'no celular o cabeçalho da gaveta é curto ("Terça, 15 de dezembro") e o nome acessível traz a data completa');
-  const gvAntes = await pg.evaluate(() => { const c = document.querySelector('.agd-gv-corpo'); return c.scrollHeight > c.clientHeight; });
-  await pg.evaluate(() => { const c = document.querySelector('.agd-gv-corpo'); c.scrollTop = c.scrollHeight; }); await pg.waitForTimeout(300);
-  const gvFim = await pg.evaluate(() => { const l = [...document.querySelectorAll('.agd-detalhe .agd-item')], u = l[l.length - 1].getBoundingClientRect(), bt = document.querySelector('.agd-gv-rod .btn').getBoundingClientRect(), corpo = document.querySelector('.agd-gv-corpo').getBoundingClientRect(), pad = parseFloat(getComputedStyle(document.querySelector('.agd-gv-rod')).paddingBottom); return { baseUltimo: u.bottom, topoUltimo: u.top, topoBt: bt.top, baseBt: bt.bottom, topoCorpo: corpo.top, baseCorpo: corpo.bottom, vh: innerHeight, pad }; });
-  ok(gvAntes && gvFim.baseUltimo <= gvFim.topoBt + 0.5 && gvFim.baseUltimo <= gvFim.baseCorpo + 0.5 && gvFim.topoUltimo >= gvFim.topoCorpo && gvFim.baseBt <= gvFim.vh && gvFim.pad >= 14, `no dia cheio do iPhone o último cartão rola até aparecer inteiro acima do botão "Novo evento neste dia" (folga de ${Math.round(gvFim.topoBt - gvFim.baseUltimo)} px; o rodapé reserva ${Math.round(gvFim.pad)} px embaixo para a área segura)`);
+  ok((await pg.$$eval(`${cheioCel} .agd-it, ${cheioCel} .agd-mais`, (l) => l.every((e) => getComputedStyle(e.closest('.agd-its')).display === 'none'))) && (await pg.$eval(`${cheioCel} .agd-evm`, (e) => getComputedStyle(e).display)) === 'block', 'no celular o dia cheio de dezembro não mostra pílulas nem "+N": só a carga e o ponto do compromisso');
+  ok(await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'em dezembro, no celular, continua sem rolagem horizontal');
+  await pg.click(cheioCel); await pg.waitForSelector('.agd-dia-painel'); await pg.waitForTimeout(500);
+  ok((await pg.$$('.agd-dia-painel .agd-evento')).length === 3 && (await pg.$$('.agd-dia-painel .agd-demanda')).length === 3 && /Audiência pública para revisão do plano diretor e do zoneamento urbano do município/.test(await pg.textContent('.agd-dia-painel')) && (await pg.$$eval('.agd-dia-painel button', (b) => b.filter((x) => x.getClientRects().length).every((x) => x.getBoundingClientRect().height >= 32))), 'tocar no dia cheio no celular abre o painel com os seis itens e os títulos inteiros');
+  ok(/^Terça-feira, 15 de dezembro de 2026$/.test(await pg.textContent('#agd-pd-t')) && (await pg.getAttribute('.agd-dia-painel', 'aria-labelledby')) === 'agd-pd-t', 'o cabeçalho do painel traz a data por extenso ("Terça-feira, 15 de dezembro de 2026")');
+  ok(!(await pg.evaluate(() => { const l = document.querySelector('.agd-dia-painel'); return [l, ...l.querySelectorAll('*')].some((e) => /(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1); })), 'o painel não tem rolagem própria (só a página rola)');
+  // outra data atualiza o mesmo painel (sem fechar e abrir); dia vazio e dia só com compromisso
+  const tocar = async (d) => { await celula(pg, d).evaluate((e) => e.scrollIntoView({ block: 'center' })); await celula(pg, d).click(); await pg.waitForTimeout(500); };
+  await pg.evaluate(() => { window.__painel = document.querySelector('.agd-dia-painel'); });
+  await tocar(S.mes.vazio);
+  ok((await pg.evaluate(() => window.__painel === document.querySelector('.agd-dia-painel'))) && (await pg.$$('.agd-dia-painel')).length === 1 && /Nada programado para este dia/.test(await pg.textContent('.agd-dia-painel')) && (await selAtualDe(pg)) === S.mes.vazio, 'tocar em outra data atualiza o mesmo painel (dia vazio: "Nada programado para este dia.")');
+  await tocar('2026-12-24');
+  ok(/Recesso do funcionalismo/.test(await pg.textContent('.agd-dia-painel')) && !/Demandas e acompanhamentos/.test(await pg.textContent('.agd-dia-painel')) && (await pg.$$('.agd-dia-painel .agd-demanda')).length === 0, 'dia só com compromisso: o painel mostra o compromisso e nenhuma demanda');
+  await tocar(S.mes.cheio);
   await fecharDia(pg);
-  ok((await pg.evaluate(() => document.activeElement?.getAttribute('data-data'))) === S.mes.cheio, 'no celular, fechar a gaveta devolve o foco à célula');
+  ok((await pg.evaluate(() => document.activeElement?.getAttribute('data-data'))) === S.mes.cheio, 'no celular, fechar o painel devolve o foco à célula');
   await pg.click('.agd-mes-aba[data-mes="11"]'); await pg.waitForTimeout(300);
   await modo(pg, 'Semana');
   ok((await caixa(pg, '.agd-dia')).every((c) => c.w > 300) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)), 'semana no celular: um dia por linha, sem rolagem horizontal');
@@ -669,7 +698,8 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
 }
 // 375 px (iPhone menor) e 320 px (limite da composição): sete colunas, sem rolagem horizontal; as medidas reais ficam no texto de cada verificação
 // Abaixo de uns 363 px é a casca do aplicativo (a barra do topo, fora da Agenda) que fica mais larga que a tela e é cortada pela lateral: a Agenda é conferida dentro dessa casca.
-for (const [w, alvo] of [[375, 44], [360, 0], [320, 0]]) {
+for (const [w, alvo] of [[375, 44], [360, 44], [320, 0]]) {
+  // a partir da correção da casca (grade `minmax(0, 1fr)`), a Agenda e a casca têm a largura da tela; a barra do topo é que se ajusta por dentro
   const { ctx, pg } = await novo({ viewport: { width: w, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, { prefs: { modo: 'mes' } });
   await ir(pg);
   const cx = await caixa(pg, '.agd-cel'), minW = Math.min(...cx.map((c) => c.w));
@@ -681,8 +711,17 @@ for (const [w, alvo] of [[375, 44], [360, 0], [320, 0]]) {
   ok(dentro, `${w} px: a faixa de meses, as células e os botões do topo terminam dentro da ${alvo ? 'largura da tela' : `casca do aplicativo (${Math.round(casca)} px, mais larga que a tela por causa da barra do topo, que não é da Agenda)`}, sem nada cortado pela Agenda`);
   const cols = await pg.$$eval('.agd-linha-sem:nth-child(2) > [role="gridcell"]', (c) => c.length), abas = (await pg.$$('.agd-mes-aba')).length;
   ok(semRol && cols === 7 && abas === 12 && (await pg.$$eval('.agd-cabsem', (c) => c.length)) === 7, `${w} px: sete colunas de segunda a domingo e JAN a DEZ, sem rolagem horizontal da página`);
-  if (alvo) ok(minW >= alvo - 0.5 && aCel.w >= alvo && aAba.w >= 44 && aAba.h >= 44, `${w} px: a célula mede ${minW.toFixed(1)} px de largura (área de toque ${aCel.w}x${aCel.h}) e a aba tem área de toque de ${aAba.w}x${aAba.h} px`);
+  if (alvo) ok(minW >= alvo - 0.5 && aCel.w >= alvo && (w < 375 || (aAba.w >= 44 && aAba.h >= 44)), `${w} px: a célula mede ${minW.toFixed(1)} px de largura (área de toque ${aCel.w}x${aCel.h}) e ${w < 375 ? 'as abas saíram, então a grade ganha a largura toda' : `a aba tem área de toque de ${aAba.w}x${aAba.h} px`}`);
   else ok(minW >= 34, `${w} px (limite da composição): a célula mede ${minW.toFixed(1)} px de largura (área de toque ${aCel.w}x${aCel.h}), abaixo dos 44 px; a aba tem ${aAba.w}x${aAba.h} px de área de toque`);
+  // adaptação a 320 px (decisão 73): sem largura para 7 colunas + abas, os meses passam a um controle compacto no cabeçalho do Mês
+  const tabsVisiveis = await pg.isVisible('.agd-meses'), selVisivel = await pg.isVisible('.agd-mes-sel select');
+  if (w >= 375) ok(tabsVisiveis && !selVisivel, `${w} px: as abas JAN a DEZ ficam à direita da grade e o seletor compacto de mês não aparece`);
+  else {
+    ok(!tabsVisiveis && selVisivel, `${w} px (a Agenda tem menos de 340 px de largura útil, o que acontece até uns 371 px de tela): sem largura para as abas, o mês passa a um seletor compacto no cabeçalho do Mês e as datas ganham a largura toda`);
+    const antes = ((await pg.textContent('.agd-periodo')) ?? '').replace(/\s+/g, ' ').trim();
+    await pg.selectOption('.agd-mes-sel select', '12'); await pg.waitForTimeout(400);
+    ok(/^Dezembro 2026$/.test(((await pg.textContent('.agd-periodo')) ?? '').replace(/\s+/g, ' ').trim()) && /Novembro 2026/.test(antes) && (await pg.$eval('.agd-mes-sel select', (e) => e.value)) === '12' && (await pg.$$eval('.agd-cel', (l) => l.length)) > 27, `${w} px: o seletor leva ao mês escolhido (Dezembro 2026) e a grade acompanha`);
+  }
   await ctx.close();
 }
 const t4 = await novo({ viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true }, { tema: 'escuro', prefs: { modo: 'mes' } });
@@ -751,6 +790,102 @@ const t4 = await novo({ viewport: { width: 820, height: 1180 }, isMobile: true, 
   await pg.clock.fastForward(25 * 60 * 1000);   // 00h05 de 03/11 em São Paulo
   await pg.waitForFunction(() => !!document.querySelector('.agd-cel[data-hoje][data-data="2026-11-03"]'), null, { timeout: 15000 });
   ok((await hojeCel()).join() === '2026-11-03' && !(await pg.$('.agd-aviso[data-evento]')), 'na virada da meia-noite de São Paulo o dia muda e o aviso do compromisso de ontem sai (sem juntar a data de ontem com a hora de hoje)');
+  await ctx.close();
+}
+
+// falha só das demandas no celular (decisão 73): o heatmap não inventa carga (listrado de "carga indisponível") e o painel do dia avisa e deixa tentar de novo
+{
+  const { ctx, pg } = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, { prefs: { modo: 'mes' } });
+  let ativa = true;
+  await pg.route('**/*', async (route) => {
+    const q = route.request();
+    if (!(q.method() === 'POST' && q.headers()['next-action'])) { await route.continue(); return; }
+    const r = await route.fetch(); const texto = await r.text();
+    const linhas = texto.split('\n'), i = linhas.findIndex((l) => /^1:\{"ok":true,"dados":\{"demandas":/.test(l));
+    if (ativa && i >= 0) {
+      const j = JSON.parse(linhas[i].slice(2)); j.dados.demandas = { ok: false, erro: 'Falha simulada em demandas.' }; linhas[i] = '1:' + JSON.stringify(j);
+      const corpo = linhas.join('\n'); await route.fulfill({ response: r, body: corpo, headers: { ...r.headers(), 'content-length': String(Buffer.byteLength(corpo)) } }); return;
+    }
+    await route.fulfill({ response: r, body: texto });
+  });
+  await ir(pg);
+  const cs = await pg.evaluate(() => { const l = [...document.querySelectorAll('.agd-cel')]; return { n: l.length, semCarga: l.filter((c) => c.dataset.semCarga !== undefined).length, niveis: [...new Set(l.map((c) => c.dataset.nivel))], listrado: getComputedStyle(l[10]).backgroundImage.includes('repeating-linear-gradient') }; });
+  ok(cs.n > 27 && cs.semCarga === cs.n && cs.niveis.join() === 'zero' && cs.listrado && /Carga indisponível/.test(await pg.evaluate(() => [...document.querySelectorAll('.agd-leg li')].filter((e) => e.getClientRects().length).map((e) => e.textContent).join(' '))), 'celular, falha só das demandas: as células ganham o listrado de "carga indisponível" (nunca um zero) e a legenda explica');
+  await celula(pg, HOJE).evaluate((e) => e.scrollIntoView({ block: 'center' })); await celula(pg, HOJE).click(); await pg.waitForSelector('.agd-dia-painel');
+  ok(/As demandas não carregaram/.test(await pg.textContent('.agd-dia-painel .erro-carga')) && (await pg.$$('.agd-dia-painel .agd-evento')).length >= 3 && (await pg.$$('.agd-dia-painel .agd-demanda')).length === 0, 'celular, falha parcial: o painel do dia lista os compromissos e avisa que as demandas não carregaram');
+  ativa = false;
+  await pg.click('.agd-dia-painel .erro-carga .btn');
+  await pg.waitForFunction(() => !!document.querySelector('.agd-dia-painel') && !document.querySelector('.agd-dia-painel .erro-carga') && !document.querySelector('.agd-aviso-carga') && document.querySelectorAll('.agd-cel[data-nivel="alta"], .agd-cel[data-nivel="media"], .agd-cel[data-nivel="baixa"]').length > 0, null, { timeout: 15000 });
+  ok(!(await pg.$('.agd-aviso-carga')) && (await pg.$('.agd-dia-painel')) !== null, 'celular: "Tentar de novo" dentro do painel recarrega as demandas, tira o aviso e o painel continua aberto');
+  await pg.unrouteAll({ behavior: 'ignoreErrors' }); await ctx.close();
+}
+
+// ================= ajustes de layout de 13/11/2026 (decisão 73) =================
+// cabeçalho por função, painéis na lateral (e a passagem para uma coluna pela largura útil) e heatmap do celular com o painel do dia abaixo da grade (claro e escuro, movimento reduzido)
+for (const [w, lateral] of [[1360, true], [1280, true], [1100, false], [1000, false]]) {
+  const { ctx, pg } = await novo({ viewport: { width: w, height: 900 } }, { prefs: { modo: 'mes' } });
+  await ir(pg);
+  const m = await pg.evaluate(() => {
+    const r = (s) => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
+    const celMin = Math.min(...[...document.querySelectorAll('.agd-cel')].map((c) => c.getBoundingClientRect().width));
+    return { barra: r('.agd-barra'), visoes: r('.agd-barra .opcoes'), novo: r('.agd-novo'), filtros: r('.agd-filtros'), per: r('.agd-periodo'), nav: r('.agd-nav'), tot: r('.agd-totais'), cal: r('.agd-cal'), lat: r('.agd-lateral'), p1: r('.agd-lateral .agd-aux'), grade: r('.agd-grade'), abas: r('.agd-meses'), celMin, semRolH: document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1, chips: [...document.querySelectorAll('.agd-chips-res li')].map((l) => l.textContent) };
+  });
+  ok(m.novo.x - m.visoes.r < 24 && Math.abs(m.novo.y - m.visoes.y) < 20, `${w} px: Dia, Semana, Mês e Novo evento ficam juntos na mesma faixa (a ${Math.round(m.novo.x - m.visoes.r)} px um do outro)`);
+  ok(m.nav.x - m.per.r < 40 && Math.abs(m.nav.y - m.per.y) < 30 && m.nav.x < m.cal.x + m.cal.w / 2, `${w} px: mês e ano, setas, Hoje e a data formam um grupo só, junto da grade (a navegação começa a ${Math.round(m.nav.x - m.per.r)} px do título)`);
+  ok(m.tot.y > m.per.b - 4 && m.tot.h < 40 && m.cal.y - m.tot.b < 40, `${w} px: os totais ficam numa linha compacta abaixo do período (${Math.round(m.tot.h)} px de altura), logo acima da grade`);
+  ok(m.filtros.y < m.per.y && /demanda/.test(m.chips.join()) && /compromisso/.test(m.chips.join()), `${w} px: os filtros ficam juntos e identificados, e os totais distinguem demandas e compromissos (${m.chips.join(' | ')})`);
+  if (lateral) ok(m.lat.x >= m.cal.r && Math.abs(m.p1.y - m.cal.y) <= 2 && m.celMin >= 70 && m.semRolH, `${w} px: os painéis ficam à direita da grade, alinhados ao topo dela, com células de pelo menos ${Math.round(m.celMin)} px de largura`);
+  else ok(m.lat.y >= m.cal.b - 2 && m.lat.w > m.grade.w * 0.9 && m.celMin >= 70 && m.semRolH, `${w} px: sem largura útil para a lateral, os painéis descem para baixo do calendário (a grade mantém células de ${Math.round(m.celMin)} px)`);
+  if (w === 1360) {
+    // uma só rolagem, mesmo com o painel curto e o longo; a coluna acompanha a página sem rolagem própria e sem sair do quadro
+    const so = await pg.evaluate(() => { const l = [...document.querySelectorAll('.main *')].filter((e) => /(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1 && e.clientHeight > 0); return l.map((e) => e.className); });
+    ok(so.length === 0, `a página tem uma só rolagem (nenhum outro elemento do miolo rola: ${so.join(',') || 'nenhum'})`);
+    const top0 = (await caixa(pg, '.agd-lateral'))[0].y;
+    await pg.evaluate(() => { const mm = document.querySelector('.main'); mm.scrollTo({ top: Math.min(mm.scrollHeight, 400), behavior: 'instant' }); }); await pg.waitForTimeout(400);
+    const l1 = (await caixa(pg, '.agd-lateral'))[0], c1 = (await caixa(pg, '.agd-cal'))[0];
+    ok(l1.y >= 0 && l1.b <= c1.b + 8, `a lateral acompanha a página sem passar do calendário (topo da coluna em ${Math.round(top0)} px, depois ${Math.round(l1.y)} px)`);
+    // lateral com um card curto e outro longo: a grade segue legível (sete colunas, títulos e abas visíveis)
+    ok((await pg.$$eval('.agd-cabsem', (l) => l.length)) === 7 && (await pg.isVisible('.agd-meses')) && (await pg.$$eval('.agd-cel .agd-it-t', (l) => l.filter((e) => e.getClientRects().length).length)) > 5, 'com a lateral, a grade mantém as sete colunas, os títulos dos itens e as abas dos meses visíveis');
+  }
+  await ctx.close();
+}
+
+// celular, claro e escuro: heatmap com níveis distintos, contraste da data, hoje, seleção e painel; movimento reduzido sem rolagem animada
+for (const tema of ['claro', 'escuro']) {
+  const { ctx, pg } = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, { tema, prefs: { modo: 'mes' } });
+  await ir(pg);
+  const cs = await pg.evaluate(() => {
+    const rgb = (cor) => { const c = document.createElement('canvas').getContext('2d', { willReadFrequently: true }); c.fillStyle = '#808080'; c.fillRect(0, 0, 1, 1); c.fillStyle = cor; c.fillRect(0, 0, 1, 1); const [r, g, b] = c.getImageData(0, 0, 1, 1).data; return [r, g, b]; };
+    const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const cr = (a, b) => { const l1 = lum(a), l2 = lum(b); return Math.round(((Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)) * 100) / 100; };
+    const saida = {};
+    for (const n of ['zero', 'baixa', 'media', 'alta']) {
+      const c = [...document.querySelectorAll('.agd-cel')].find((x) => x.dataset.nivel === n && !x.dataset.hoje && !x.dataset.fds);
+      if (!c) continue;
+      const num = c.querySelector('.agd-num'), cc = getComputedStyle(c), nc = getComputedStyle(num);
+      saida[n] = { fundo: cc.backgroundColor, contraste: cr(rgb(cc.backgroundColor), rgb(nc.color)) };
+    }
+    const h = document.querySelector('.agd-cel[data-hoje] .agd-num'), hc = getComputedStyle(h);
+    saida.hoje = { contraste: cr(rgb(hc.backgroundColor), rgb(hc.color)) };
+    return saida;
+  });
+  const fundos = Object.values(cs).filter((x) => x.fundo).map((x) => x.fundo);
+  ok(new Set(fundos).size === fundos.length && fundos.length >= 3 && Object.values(cs).every((x) => x.contraste >= 4.5), `celular, tema ${tema}: os níveis de carga têm preenchimentos distintos e a data mantém contraste de pelo menos 4,5:1 (${Object.entries(cs).map(([k, v]) => `${k} ${v.contraste}`).join(', ')})`);
+  const marcas = await pg.evaluate(() => {
+    const h = document.querySelector('.agd-cel[data-hoje]'), sel = document.querySelector('.agd-cel[data-sel]');
+    return { hojeDisco: getComputedStyle(h.querySelector('.agd-num')).backgroundColor !== 'rgba(0, 0, 0, 0)', selAnel: getComputedStyle(sel).boxShadow !== 'none', hojeEhSel: h === sel, indisp: !!document.querySelector('.agd-cel[data-indisp]') && getComputedStyle(document.querySelector('.agd-cel[data-indisp]'), '::after').content !== 'none' };
+  });
+  ok(marcas.hojeDisco && marcas.selAnel && marcas.indisp, `celular, tema ${tema}: hoje (disco na data), dia selecionado (anel) e dia indisponível (barra na base) continuam distintos`);
+  if (tema === 'claro') {
+    ok((await pg.textContent('.agd-leg')).includes('Menos pendências') && /Compromisso/.test(await pg.textContent('.agd-leg')) && /Dia indisponível/.test(await pg.textContent('.agd-leg')) && !/Acompanhar/.test(await pg.evaluate(() => [...document.querySelectorAll('.agd-leg li')].filter((e) => e.getClientRects().length).map((e) => e.textContent).join(' '))), 'celular: a legenda traz a escala de carga, Hoje, atraso, compromisso e dia indisponível (sem os marcos que a grade não mostra)');
+    // movimento reduzido: o painel abre e a página rola sem animação
+    await pg.emulateMedia({ reducedMotion: 'reduce' });
+    const alvoDia = '2026-11-26';
+    await celula(pg, alvoDia).evaluate((e) => e.scrollIntoView({ block: 'center' })); await celula(pg, alvoDia).click(); await pg.waitForSelector('.agd-dia-painel'); await pg.waitForTimeout(150);
+    const vis = await pg.evaluate(() => { const c = document.querySelector('.agd-pd-cab').getBoundingClientRect(), bar = document.querySelector('.bar')?.getBoundingClientRect(); return { base: c.bottom, barra: bar ? bar.top : innerHeight, topo: c.top }; });
+    ok(vis.topo >= 0 && vis.base <= vis.barra, `movimento reduzido: o painel abre e o cabeçalho já está à vista logo em seguida, sem rolagem suave (base em ${Math.round(vis.base)} de ${Math.round(vis.barra)} px)`);
+    await pg.emulateMedia({ reducedMotion: 'no-preference' });
+  }
   await ctx.close();
 }
 

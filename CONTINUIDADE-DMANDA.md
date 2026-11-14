@@ -617,3 +617,17 @@ Branch `bloco/configuracoes-catalyst`, a partir de `c2876dc`, sem push, sem publ
 **Próximo ponto de retomada.** A avaliação visual do Éder do Mês renderizado (computador, iPad e iPhone, claro e escuro) e, se aprovada, o registro da aprovação separado dos testes; depois, só com pedido, estender o desenho a Dia e Semana, validar no Safari real do iPhone e do iPad, e integrar as demais branches (Clima, Perfil, Início, decisões 61 a 70).
 
 **Próximos passos possíveis (só com pedido do Éder).** Aprovada a direção visual, registrar a aprovação separadamente dos testes; depois, se quiser, aplicar o mesmo desenho a Semana e Dia (fora deste bloco), integrar com as demais branches e publicar (push só com autorização). Reprovada, o desenho fica fora de qualquer entrega, como na decisão 71. Andamento oficial: 45%.
+
+## AB. Mês com painéis na lateral, heatmap do celular com o dia abaixo da grade, Configurações e detalhe de Demandas (14/11/2026, decisão 73; aguardando avaliação visual do Éder)
+
+**Onde está.** Um commit local na `main` do checkout principal (`C:\Users\Éder\Desktop\Dmanda`), sobre `9f20149`. **Sem push, sem deploy e sem Supabase real** (dependem de autorização própria). O estoque de `git stash` foi preservado (só o `preserva-claude-md-local-bloco-inicio-clima-2026-11-12`).
+
+**O que mudou.** `src/ui/agenda.tsx` (cabeçalho por função, lateral do Mês, heatmap compacto, painel do dia abaixo da grade, `ListaDia` comum à gaveta e ao painel, seletor de mês a 320 px), `src/ui/coluna-fixa.ts` (copiado sem alteração da branch `bloco/inicio-perfil-clima`), `src/estilos/agenda.css`, `src/estilos/app.css` (Configurações e detalhe), `src/estilos/estilo.css` (coluna da casca `minmax(0, 1fr)`), `src/ui/config-aparencia.tsx`, `src/ui/config.tsx`, `src/ui/detalhe.tsx` (só marcação: blocos agrupados e atributo `data-editando`). Testes: `testar-agenda.mjs` (adaptado e ampliado), `testar-config.mjs`, `testar-regras.mjs`, novo `testar-detalhe.mjs` (`npm run testar:detalhe`, porta 7125) e o gerador de capturas `capturar-ajustes-layout.mjs`. As decisões de layout (limites de largura, adaptação a 320 px, medidas, correção da casca) estão em `DECISOES.md`, decisão 73.
+
+**Para avaliar.** `npm run dev:teste` e abrir `/agenda` (Mês no computador, no iPad e no iPhone, claro e escuro), `/config` e uma demanda em `/demandas`. Pontos para o olhar do Éder: a lateral à direita da grade e a passagem para baixo dela; o cabeçalho (visões, Novo evento e Filtros juntos; mês, setas, Hoje e data juntos); no iPhone, o heatmap, as marcas e o painel do dia abaixo da grade (e o seletor de mês a 360 e 320 px); a prévia ao lado da aparência e os blocos de Configurações sem cartões esticados; o detalhe da demanda em duas colunas (1120 px) e com tarefas longas.
+
+**Verificação.** Lista completa e números na decisão 73. `ponytail-review` feito: achados procedentes corrigidos (legenda "Carga indisponível" só no celular, painel e gaveta fechando ao cruzar os 560 px, teste da falha parcial no celular); o teste da virada da meia-noite é intermitente (registrado na decisão 73).
+
+**Falta Safari em aparelho real** (iPhone e iPad): toque, rolagem do painel, `:has()`, consultas de contêiner.
+
+**Próximo ponto de retomada.** A avaliação visual do Éder. Aprovada, registrar a aprovação separada dos testes; depois, só com pedido, estender o desenho a Dia e Semana, integrar as demais branches (Clima no Início) e publicar. Andamento do projeto segue em 45% (`ANDAMENTO.md`, sem critério novo).

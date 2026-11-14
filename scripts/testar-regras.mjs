@@ -13,6 +13,7 @@ import { validarDados, validarDia, validarEntrada, validarRegistros } from '../s
 import { estadoDe, tagsDe, semTags, resumoDe, temTitulo, contarTags, filtrarEntradas, ordenarEntradas, paraDemanda, diferencas, vazia, camposEmConflito, carimbo, QTD_CORES } from '../src/lib/entradas.ts';
 import { buscar, palavrasDa, simplificar as simplificarBusca, LIMITE_RESULTADOS } from '../src/lib/busca.ts';
 import { diasPendentes, diaDeTrabalho, emJanelaDeCorrecao, serieDoPeriodo, textoDoDia, fraseDoDia, registrosValidos, substituirRegistros, textoConcluidas, AVISO_PERFIL } from '../src/lib/registros.ts';
+import { limitesDaColuna, topoDepoisDeRolar } from '../src/ui/coluna-fixa.ts';
 import { estadoInicial, lerEstado, tique, resolver, INTERVALO_S, PASSO_MAX, OCIOSO_MS } from '../src/lib/lembretes.ts';
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
@@ -395,6 +396,16 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(f({}) === 'a,b,c,d,e2' && f({ origem: 'Prefeita' }) === 'a,b' && f({ tipo: 'Ofício' }) === 'a,d' && f({ ano: '2024' }) === 'b' && f({ ano: '2026' }) === 'a' && f({ ano: '2023' }) === 'd', 'filtros: origem, tipo e ano (reconhecido ou confirmado), ignorando maiúsculas e espaços; ambíguos e vazios só em Todos');
   ok(f({ origem: 'Prefeita', tipo: 'Memorando', ano: '2024' }) === 'b' && f({ origem: 'Prefeita', ano: '2023' }) === '' && f({ origem: 'Reunião', tipo: 'Ofício' }) === '', 'filtros: combinam origem, tipo e ano (E lógico)');
   ok(titulo({ tipo: null, numero: '' }) === 'Sem documento' && titulo({ tipo: null, numero: '45/2026' }) === '45/2026' && titulo({ tipo: 'Ofício', numero: '' }) === 'Ofício', 'título: sem tipo mostra só o número e, sem nada, "Sem documento" (nunca um título vazio)');
+}
+// coluna lateral que acompanha a página (Agenda, decisão 73): limites do `top` e deslocamento contínuo, sem salto na troca de direção
+{
+  const lim = limitesDaColuna(500, 800, 84); // cabe: fica sempre logo abaixo do cabeçalho
+  ok(lim.max === 84 && lim.min === 84 && topoDepoisDeRolar(84, 300, lim) === 84 && topoDepoisDeRolar(84, -300, lim) === 84, 'coluna lateral que cabe na área visível fica fixa logo abaixo do cabeçalho, ao descer e ao subir');
+  const alta = limitesDaColuna(1200, 800, 84); // mais alta que a área visível: acompanha a página até a borda de baixo aparecer
+  ok(alta.max === 84 && alta.min === 800 - 1200 - 16 && alta.min < alta.max, 'coluna mais alta que a área visível tem como limite mínimo a borda de baixo (com 16 px de folga)');
+  let t = alta.max; t = topoDepoisDeRolar(t, 100, alta); const descendo = t; t = topoDepoisDeRolar(t, 5000, alta);
+  ok(descendo === -16 && t === alta.min, 'ao descer, a coluna sobe com a página (mesmo deslocamento) e para quando a borda de baixo aparece');
+  ok(topoDepoisDeRolar(alta.min, -50, alta) === alta.min + 50 && topoDepoisDeRolar(alta.min + 50, -5000, alta) === alta.max, 'ao subir, a coluna acompanha a página a partir de onde parou (sem salto) até a borda de cima chegar ao cabeçalho');
 }
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);

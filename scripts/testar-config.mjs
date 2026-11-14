@@ -462,6 +462,51 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
   await ctx.close();
 }
 
+// ================= 11) composição por largura (decisão 73): sem cartões esticados, sem coluna vazia, sem corte =================
+{
+  const medir = (pg) => pg.evaluate(() => {
+    const r = (s) => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
+    const listas = [...document.querySelectorAll('.fonte-listas > .fonte-grupo')].map((e) => { const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width }; });
+    const duplo = [...document.querySelectorAll('.cfg-duplo > section')].map((e) => { const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height, conteudo: [...e.children].reduce((a, c) => a + c.getBoundingClientRect().height, 0) }; });
+    const fora = [...document.querySelectorAll('.main *')].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.right > innerWidth + 1; }).length;
+    const campos = [...document.querySelectorAll('.cfg-form input, .cfg-form select')].map((e) => e.getBoundingClientRect().width);
+    return { apar: r('.cfg-apar'), lado: r('.cfg-lado'), ctrl: r('.cfg-controles'), topo: r('.cfg-topo'), listas, duplo, perfil: r('.cfg-bloco:not(.cfg-dias)'), dias: r('.cfg-dias'), form: r('.cfg-dias .cfg-form'), lista: r('.cfg-dias-lado'), fora, semRolH: document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1, campos, nota: r('.cfg-nota') };
+  });
+  // largura ampla (1360): prévia ao lado da aparência, três listas de fontes e dois blocos lado a lado, Perfil e Dias na largura inteira
+  {
+    const { ctx, pg } = await novo('computador'); await ir(pg);
+    const m = await medir(pg);
+    ok(m.lado.x >= m.ctrl.r && Math.abs(m.lado.y - m.apar.y) < 8, 'largura ampla: a prévia fica ao lado direito dos controles, alinhada ao topo da aparência');
+    ok(m.listas.length === 3 && new Set(m.listas.map((l) => Math.round(l.y))).size === 1 && m.listas.every((l) => l.w >= 220), `largura ampla: as três listas de fontes ficam lado a lado (${m.listas.map((l) => Math.round(l.w)).join(', ')} px de largura cada)`);
+    ok(m.duplo.length === 2 && Math.abs(m.duplo[0].y - m.duplo[1].y) < 4 && m.duplo[0].x < m.duplo[1].x, 'largura ampla: Tamanhos e Fundo ficam lado a lado');
+    ok(m.duplo.every((d) => Math.abs(d.h - d.conteudo) < 120) && Math.abs(m.duplo[0].h - m.duplo[1].h) > 20, `largura ampla: os dois blocos têm a altura do próprio conteúdo (${Math.round(m.duplo[0].h)} e ${Math.round(m.duplo[1].h)} px), sem esticar um para igualar o outro`);
+    ok(m.perfil.x < m.ctrl.x + 8 && m.perfil.w > m.ctrl.w + m.lado.w - 10 && m.dias.w > m.ctrl.w + m.lado.w - 10, `largura ampla: depois da aparência, Perfil e Dias indisponíveis retomam a largura inteira (${Math.round(m.perfil.w)} e ${Math.round(m.dias.w)} px contra ${Math.round(m.ctrl.w + m.lado.w)} da aparência)`);
+    ok(m.form.r <= m.lista.x && Math.abs(m.form.y - m.lista.y) <= 16 && m.lista.w > 300 && m.campos.every((w) => w >= 120), `largura ampla: em Dias indisponíveis o formulário fica à esquerda e a lista à direita (${Math.round(m.lista.w)} px), sem campos comprimidos; campos de ${m.campos.map(Math.round).join(', ')} px, formulário em ${Math.round(m.form.r)} e lista em ${Math.round(m.lista.x)})`);
+    ok(m.semRolH && m.fora === 0, 'largura ampla: sem rolagem horizontal e nada fora da tela');
+    // a prévia acompanha a rolagem enquanto os controles passam
+    const antes = (await medir(pg)).lado.y;
+    await pg.evaluate(() => document.querySelector('.main').scrollTo({ top: 500, behavior: 'instant' })); await pg.waitForTimeout(300);
+    const depois = (await medir(pg)).lado;
+    ok(depois.y >= 0 && depois.y < 140 && antes > depois.y - 1, `a prévia acompanha a rolagem dos controles (topo em ${Math.round(antes)} px, depois ${Math.round(depois.y)} px)`);
+    await ctx.close();
+  }
+  // largura intermediária (1024): coluna de controles mais estreita, listas em duas colunas, Tamanhos e Fundo empilhados
+  {
+    const { ctx, pg } = await novo('computador'); await pg.setViewportSize({ width: 1024, height: 800 }); await ir(pg);
+    const m = await medir(pg);
+    ok(m.lado.x >= m.ctrl.r && m.listas.length === 3 && new Set(m.listas.map((l) => Math.round(l.y))).size <= 2 && m.listas.every((l) => l.w >= 220), `largura intermediária: a prévia segue ao lado e as listas de fontes usam duas colunas legíveis (${m.listas.map((l) => Math.round(l.w)).join(', ')} px)`);
+    ok(m.duplo.length === 2 && m.duplo.every((d) => d.w >= 300) && m.semRolH && m.fora === 0, `largura intermediária: Tamanhos e Fundo cabem sem apertar (${m.duplo.map((d) => Math.round(d.w)).join(' e ')} px) e sem corte`);
+    await ctx.close();
+  }
+  // larguras estreitas (iPad em pé e celular): uma coluna, prévia primeiro, sem corte nem rolagem horizontal
+  for (const perfil of ['ipad', 'celular']) {
+    const { ctx, pg } = await novo(perfil); await ir(pg);
+    const m = await medir(pg);
+    ok((perfil === 'ipad' ? m.lado.x >= m.ctrl.r : m.lado.b <= m.ctrl.y + 24) && m.listas.every((l) => l.w >= 200) && m.duplo.every((d) => d.w >= 250) && m.semRolH && m.fora === 0 && m.campos.every((w) => w >= 120), `${perfil}: ${perfil === 'ipad' ? 'a prévia ao lado dos controles (a partir de 760 px de largura útil)' : 'uma coluna com a prévia primeiro'}, listas e blocos na largura útil, campos legíveis, sem corte nem rolagem horizontal (${JSON.stringify({ ladoB: Math.round(m.lado.b), ctrlY: Math.round(m.ctrl.y), listas: m.listas.map((l) => Math.round(l.w)), duplo: m.duplo.map((d) => Math.round(d.w)), rol: m.semRolH, fora: m.fora, campos: m.campos.map(Math.round) })})`);
+    await ctx.close();
+  }
+}
+
 ok(erros.length === 0, 'nenhum erro de página nem de console durante toda a execução' + (erros.length ? ': ' + [...new Set(erros)].slice(0, 5).join(' | ') : ''));
 await nav.close();
 console.log(`\n${total - falhas} de ${total} verificações aprovadas.`);

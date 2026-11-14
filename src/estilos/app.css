@@ -71,6 +71,22 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app[data-dir="d"] .modal .t-ler li { display: flex; align-items: center; gap: 12px; min-height: 44px; }
 .app[data-dir="d"] .modal .t-ler li + li { border-top: 1px solid var(--brd); }
 .app[data-dir="d"] .modal .t-ler .feita { text-decoration: line-through; color: var(--text2); }
+/* Consulta da demanda (decisão 73): a janela larga ganha largura em telas grandes e os blocos, na ordem de leitura e de foco de sempre (identificação, descrição, chegada e prazo, andamento, tarefas),
+   passam a duas colunas quando a largura útil da janela permite (800 px): identificação ao lado da descrição, chegada e prazo ao lado do andamento, e as tarefas na largura inteira (a lista longa
+   lê melhor assim e não aperta ninguém). Seção em edição, e o bloco que ficaria sozinho antes dela, usam a largura inteira. Janela menor: uma coluna, como era. */
+.app[data-dir="d"] .modal.larga { width: min(1120px, 100%); }
+.app[data-dir="d"] .modal .det { container: det / inline-size; }
+.app[data-dir="d"] .modal .det-grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 32px; align-items: start; }
+.app[data-dir="d"] .modal .det-grade > .sec { min-width: 0; container: secb / inline-size; }
+@container det (min-width: 800px) {
+  .app[data-dir="d"] .modal .det-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app[data-dir="d"] .modal .det-grade > [data-secao="tarefas"], .app[data-dir="d"] .modal .det-grade > [data-editando] { grid-column: 1 / -1; }
+  .app[data-dir="d"] .modal .det-grade > .sec:has(+ [data-editando]) { grid-column: 1 / -1; }
+}
+@container secb (max-width: 420px) {
+  .app[data-dir="d"] .modal .ler { grid-template-columns: minmax(0, 1fr); }
+  .app[data-dir="d"] .modal .ler dt { padding-bottom: 0; }
+}
 .app[data-dir="d"] .modal .resumo-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
 .app[data-dir="d"] .modal .rascunho-tarefas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; background: var(--grp-campo); font-size: calc(13px * var(--esc)); }
 .app[data-dir="d"] .modal .confirma-fechar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
@@ -233,22 +249,32 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .buscabtn kbd { font-size: max(10px, calc(12px * var(--esc))); }
 
 /* ---------- Configurações: prévia do card e das fontes ---------- */
-/* Composição da aparência: controles de um lado, prévia do outro (fixa enquanto se percorrem os blocos). Largura menor: uma coluna, prévia primeiro. */
+/* Composição da aparência (decisão 73): os controles de um lado e a prévia do outro, fixa enquanto se percorrem os controles a que ela responde (modo, destaque, fontes, tamanhos e fundo). Os blocos
+   têm a altura do próprio conteúdo (nada de cartões esticados para igualar a coluna ao lado): as três listas de fontes ficam lado a lado e Tamanhos e Fundo também, conforme a largura da coluna de controles.
+   Depois da aparência, Perfil e Dias indisponíveis retomam a largura inteira. Largura menor: uma coluna, prévia primeiro. */
 .app[data-dir="d"] .cfg-apar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 20px; align-items: start; margin-bottom: 4px; }
-.app[data-dir="d"] .cfg-controles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.app[data-dir="d"] .cfg-controles { container: cc / inline-size; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; min-width: 0; }
 .app[data-dir="d"] .cfg-controles > section { margin: 0; min-width: 0; }
 .app[data-dir="d"] .cfg-lado { margin-bottom: 16px; }
 .app[data-dir="d"] .cfg .cfg-topo .pal { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+.app[data-dir="d"] .cfg-duplo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; min-width: 0; }
+.app[data-dir="d"] .cfg-duplo > section { margin: 0; min-width: 0; }
+.app[data-dir="d"] .fonte-listas { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 16px; align-items: start; min-width: 0; }
 @container tela (min-width: 760px) {
   .app[data-dir="d"] .cfg-apar { grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); }
   .app[data-dir="d"] .cfg-controles { grid-column: 1; grid-row: 1; }
   .app[data-dir="d"] .cfg-lado { grid-column: 2; grid-row: 1; margin: 0; position: sticky; top: 4px; }
 }
-/* janela larga: Fontes de um lado, Tamanhos e Fundo do outro (ocupa a largura em vez de deixar a direita vazia) */
-@container tela (min-width: 1280px) {
-  .app[data-dir="d"] .cfg-controles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .app[data-dir="d"] .cfg-controles > .cfg-topo { grid-column: 1 / -1; }
-  .app[data-dir="d"] .cfg-controles > section:nth-of-type(2) { grid-row: span 2; }
+@container cc (min-width: 520px) { .app[data-dir="d"] .fonte-listas { grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); } }
+@container cc (min-width: 640px) { .app[data-dir="d"] .cfg-duplo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Dias indisponíveis em largura ampla: o formulário de um lado e a lista do outro (a lista cresce sem empurrar o formulário) */
+@container tela (min-width: 1000px) {
+  .app[data-dir="d"] .cfg .cfg-dias { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 0 24px; align-items: start; }
+  .app[data-dir="d"] .cfg .cfg-dias > :is(h2, .data) { grid-column: 1 / -1; }
+  .app[data-dir="d"] .cfg .cfg-dias > .cfg-form { grid-column: 1; }
+  .app[data-dir="d"] .cfg .cfg-dias > .cfg-dias-lado { grid-column: 2; }
+  .app[data-dir="d"] .cfg .cfg-dias-lado > .cfg-lista { margin-top: 12px; }
+  .app[data-dir="d"] .cfg .cfg-dias-lado > .data { margin-top: 12px !important; }
 }
 @media (max-height: 640px) { .app[data-dir="d"] .cfg-lado { position: static; } }
 .app[data-dir="d"] .cfg .cfg-nota { margin: 12px 0 16px; }
