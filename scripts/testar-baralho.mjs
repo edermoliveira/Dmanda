@@ -2,7 +2,7 @@
 // de cards dos filtros do Início. No navegador (Edge) com banco de TESTE descartável (PGlite), servidor na porta 7116. Toque emulado pelo protocolo do navegador (não é aparelho real).
 // Adaptado do teste da branch bloco/inicio-perfil-clima (914c435), sem Clima, pagamentos, prioridade por origem nem quatro vagas.
 // Uso: node scripts/testar-baralho.mjs   (nunca toca o Supabase real)
-import { chromium } from 'playwright-core';
+import { chromium, webkit, devices } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
@@ -39,16 +39,20 @@ let HOJE;
   await db.close();
 }
 
-let servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
+let servidor = null;
+const subir = async () => {
+  servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
+  for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/login'); if (r.status < 500) break; } catch { /* subindo */ } await esperar(2000); }
+};
 const parar = () => { if (servidor) { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } servidor = null; } };
 process.on('exit', parar);
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/login'); if (r.status < 500) break; } catch { /* subindo */ } await esperar(2000); }
+await subir();
 
 const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
 const erros = [];
 const PERFIS = { desktop: { viewport: { width: 1440, height: 900 } }, ipad: { viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }, celular: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } };
-const abrir = async (perfil, { extra = {}, antes } = {}) => {
-  const ctx = await nav.newContext({ ...PERFIS[perfil], ...extra });
+const abrir = async (perfil, { extra = {}, antes, motor = nav } = {}) => {
+  const ctx = await motor.newContext({ ...PERFIS[perfil], ...extra });
   const pg = await ctx.newPage();
   pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
   pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::ERR|offline|Failed to fetch|Load failed/i.test(m.text())) erros.push('console: ' + m.text().slice(0, 300)); });
@@ -270,8 +274,107 @@ parar();
   const vagas = await c('listar_para_hoje', {}), nome = (id) => Object.entries(ID).find(([, v]) => v === id)?.[0];
   const mapa = Object.fromEntries(vagas.filter((v) => por(v.demanda_id)?.etapa !== 'Finalizado').map((v) => [v.posicao, nome(v.demanda_id)]));
   ok(mapa[1] === 'A' && mapa[2] === 'F' && mapa[3] === 'E' && Object.keys(mapa).length === 3, `banco: três vagas; só a vaga 2 foi reposta (Charlie, depois Delta, depois Foxtrot), a 1 e a 3 ficaram (${JSON.stringify(mapa)})`);
+  // dados da regressão da rolagem (decisão 75), semeados com o servidor parado: três vagas novas (Golf, Hotel e India, as três atrasadas, para o filtro Atrasadas); Alfa e Foxtrot ficam
+  // fora das vagas e viram a Nova urgência. India tem uma tarefa pendente (finalizar pede confirmação).
+  await db.query('delete from public.para_hoje where user_id = $1', [USUARIO]);
+  const nova = async (assunto, o, textos = []) => { const d = await c('criar_demanda', { p: { assunto, tipo: 'Memorando', numero: '', ...o } }); for (const t of textos) await c('adicionar_tarefa', { p_demanda: d.id, p_texto: t }); return d.id; };
+  const vagasNovas = [await nova('Golf atrasada em Cadastro', { prazo_original: somarDias(HOJE, -4) }), await nova('Hotel atrasada em Vistos', { etapa: 'Vistos', prazo_original: somarDias(HOJE, -3) }), await nova('India em Fazendo com pendência', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -1) }, ['i1'])];
+  for (const [i, id] of vagasNovas.entries()) await db.query('insert into public.para_hoje (user_id, posicao, demanda_id) values ($1, $2, $3)', [USUARIO, i + 1, id]);
   await db.close();
 }
+
+// ---------- 4) a página não salta quando o card da frente é trocado (decisão 75) ----------
+// Causa comprovada em 14/11/2026: o card da frente é remontado a cada troca e era o único filho com altura do palco. No WebKit, a página ficava a altura de um card mais curta por um layout
+// e a rolagem era cortada no novo limite (a tela "saltava para o topo"); o Chromium não corta a rolagem nesse instante, por isso a medição do palco vale nos dois motores e a da rolagem
+// real é a do WebKit. O WebKit do Playwright é o motor do Safari no Windows com ponteiro sintético: NÃO é o Safari do iPhone, que continua dependendo do gesto no aparelho.
+await subir();
+const wk = await webkit.launch().catch((e) => { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); return null; });
+const instrumentar = (pg) => pg.evaluate(() => {
+  const m = document.querySelector('.main'), R = { m, log: [], pilha: null, minPalco: Infinity, trocas: 0 };
+  const reg = (fase) => { if (R.pilha?.isConnected) R.log.push({ fase, st: m.scrollTop, topo: R.pilha.getBoundingClientRect().top }); };
+  const remover = Node.prototype.removeChild;
+  // o instante da substituição: o card da frente acabou de sair do palco e o seguinte ainda não entrou
+  Node.prototype.removeChild = function (filho) {
+    const palco = filho instanceof Element && filho.matches('.ph-arrasto') && this instanceof Element && this.matches('.ph-palco') ? this : null;
+    const r = remover.call(this, filho);
+    if (palco && R.pilha?.contains(palco)) { R.trocas++; R.minPalco = Math.min(R.minPalco, palco.getBoundingClientRect().height); reg('troca'); }
+    return r;
+  };
+  m.addEventListener('scroll', () => reg('rolagem'), { passive: true });
+  const quadro = () => { reg('quadro'); requestAnimationFrame(quadro); }; requestAnimationFrame(quadro);
+  window.__rol = R;
+});
+/** Rola a página (a pilha a 150 px do topo, ou o fim da página), executa a ação e devolve a rolagem e a posição visual da pilha lidas a cada quadro, a cada rolagem e no instante da troca. */
+const medirTroca = async (pg, sel, acao, { fim = false, espera = 900 } = {}) => {
+  const ini = await pg.evaluate(({ sel, fim }) => {
+    const R = window.__rol, m = R.m, p = document.querySelector(sel);
+    m.scrollTo({ top: Math.max(1, fim ? m.scrollHeight : m.scrollTop + p.getBoundingClientRect().top - 150), behavior: 'instant' });
+    R.pilha = p; R.log = []; R.minPalco = Infinity; R.trocas = 0;
+    return { st: m.scrollTop, topo: p.getBoundingClientRect().top, card: p.querySelector('.dcard').getBoundingClientRect().height, ativo: p.querySelector('.ph-arrasto').dataset.ativoId };
+  }, { sel, fim });
+  await esperar(150);
+  await acao();
+  await esperar(espera);
+  const f = await pg.evaluate((sel) => {
+    const R = window.__rol, p = document.querySelector(sel), sts = R.log.map((x) => x.st), tps = R.log.map((x) => x.topo);
+    return { trocas: R.trocas, minPalco: R.minPalco, stMin: Math.min(...sts), stMax: Math.max(...sts), topoMin: Math.min(...tps), topoMax: Math.max(...tps), naTroca: R.log.filter((x) => x.fase === 'troca').map((x) => Math.round(x.st)), st: R.m.scrollTop, topo: p?.getBoundingClientRect().top ?? NaN, ativo: p?.querySelector('.ph-arrasto')?.dataset.ativoId, n: R.log.length };
+  }, sel);
+  return { ini, fim: f };
+};
+const firme = (rot, { ini, fim }, { troca = true } = {}) => {
+  const dSt = Math.max(Math.abs(fim.stMin - ini.st), Math.abs(fim.stMax - ini.st), Math.abs(fim.st - ini.st)), dTopo = Math.max(Math.abs(fim.topoMin - ini.topo), Math.abs(fim.topoMax - ini.topo), Math.abs(fim.topo - ini.topo));
+  const trocou = troca ? fim.trocas >= 1 && fim.ativo !== ini.ativo : fim.trocas === 0 && fim.ativo === ini.ativo;
+  ok(ini.st > 0 && trocou && dSt <= 1, `${rot}: a rolagem fica em ${Math.round(ini.st)} px durante a troca e depois (variação ${dSt.toFixed(1)} px em ${fim.n} leituras${troca ? `; no instante da troca: ${fim.naTroca.join(', ')}` : '; o card não troca'})`);
+  ok(dTopo <= 1 && (!troca || fim.minPalco >= ini.card - 0.5), `${rot}: a pilha não sai do lugar (variação ${dTopo.toFixed(1)} px)${troca ? ` e o palco nunca fica menor que o card (${Math.round(fim.minPalco)} de ${Math.round(ini.card)} px)` : ''}`);
+};
+const NU = '[data-nova-urgencia] .ph-pilha', FILTRO = '.cartas .ph-pilha';
+for (const [motor, navegador, extra, toqueReal] of [['Edge', nav, {}, true], ...(wk ? [['WebKit emulado', wk, { ...devices['iPhone 13'] }, false]] : [])]) {
+  const { ctx, pg } = await abrir('celular', { extra, motor: navegador });
+  await instrumentar(pg);
+  // Edge: toque pelo protocolo do navegador; WebKit: eventos de ponteiro sintéticos (o WebKit do Playwright não tem o protocolo de toque)
+  const gesto = async (sel, dx) => {
+    const c = await R(pg, `${sel} .ph-arrasto`), x = c.x + c.w / 2, y = c.y + c.h * 0.45;
+    if (toqueReal) { await deslizar(pg, x - dx / 2, y, x + dx / 2, y); return; }
+    await pg.evaluate(async ({ sel, x, y, dx }) => {
+      const el = document.querySelector(`${sel} .ph-arrasto`); el.setPointerCapture = () => {};
+      const ev = (tipo, px) => el.dispatchEvent(new PointerEvent(tipo, { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch', isPrimary: true, clientX: px, clientY: y }));
+      ev('pointerdown', x - dx / 2);
+      for (let i = 1; i <= 10; i++) { ev('pointermove', x - dx / 2 + (dx * i) / 10); await new Promise((r) => setTimeout(r, 16)); }
+      ev('pointerup', x + dx / 2);
+    }, { sel, x, y, dx });
+    await esperar(450);
+  };
+  // a etapa muda com a resposta do servidor chegando depois: a pilha só troca quando a gravação é confirmada
+  const atraso = async (rota) => { if (rota.request().method() === 'POST' && rota.request().headers()['next-action']) await esperar(700); await rota.continue(); };
+  await pg.route('**/*', atraso);
+  firme(`${motor}, Para hoje, deslizar à direita (etapa gravada com a resposta atrasada)`, await medirTroca(pg, ATIVA, () => gesto(ATIVA, 220), { espera: 3200 }));
+  await pg.unroute('**/*', atraso);
+  firme(`${motor}, Para hoje, deslizar à esquerda`, await medirTroca(pg, ATIVA, () => gesto(ATIVA, -220)));
+  firme(`${motor}, Para hoje, gesto curto`, await medirTroca(pg, ATIVA, () => gesto(ATIVA, 40)), { troca: false });
+  await trazer(pg, 'India');
+  firme(`${motor}, Para hoje, finalizar com pendência e Cancelar`, await medirTroca(pg, ATIVA, async () => {
+    await gesto(ATIVA, 220);
+    await pg.waitForSelector('[data-confirma-finalizar]', { timeout: 5000 }).catch(() => {});
+    await esperar(300);
+    await pg.evaluate(() => document.querySelector('[data-confirma-finalizar] .btn:not(.pri)')?.click()); // sem a rolagem automática do clique do Playwright
+  }), { troca: false });
+  const nNU = await pg.$eval(NU, (e) => Number(e.dataset.total)).catch(() => 0);
+  ok(nNU >= 2, `${motor}: a Nova urgência tem mais de um card para a pilha navegar (${nNU})`);
+  if (nNU >= 2) {
+    firme(`${motor}, Nova urgência, deslizar à esquerda com a página no fim`, await medirTroca(pg, NU, () => gesto(NU, -220), { fim: true }));
+    firme(`${motor}, Nova urgência, deslizar à direita com a página no fim`, await medirTroca(pg, NU, () => gesto(NU, 220), { fim: true }));
+  }
+  await pg.evaluate(() => document.querySelector('.stat.st-atrasadas')?.click()); await esperar(600);
+  const nF = await pg.$eval(FILTRO, (e) => Number(e.dataset.total)).catch(() => 0);
+  ok(nF >= 2, `${motor}: o filtro Atrasadas tem mais de um card na pilha (${nF})`);
+  if (nF >= 2) {
+    firme(`${motor}, lista filtrada, deslizar à esquerda`, await medirTroca(pg, FILTRO, () => gesto(FILTRO, -220)));
+    firme(`${motor}, lista filtrada, deslizar à direita`, await medirTroca(pg, FILTRO, () => gesto(FILTRO, 220)));
+  }
+  await ctx.close();
+}
+await wk?.close();
+parar();
 await nav.close();
 ok(erros.length === 0, `nenhum erro de console ou de página${erros.length ? ': ' + erros.slice(0, 3).join(' | ') : ''}`);
 console.log(`\nCapturas para abrir localmente: ${CAPTURAS}`);

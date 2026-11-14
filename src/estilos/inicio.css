@@ -3,22 +3,24 @@
    largura do painel; no computador e no iPad a grade de cards da main não muda. Cores só por tokens. */
 /* baralho do celular (decisão 65): o card da frente acompanha o dedo com leve inclinação, dois cards ficam logo atrás; gesto confirmado faz o card sair e reaparecer atrás da pilha.
    A rolagem vertical segue livre (touch-action: pan-y). Movimento reduzido tira todas as animações. */
-.app[data-dir="d"] .ph-pilha { display: grid; gap: 10px; }
-.app[data-dir="d"] .ph-palco { position: relative; padding-bottom: 22px; }
+/* A pilha ocupa a altura de um card (o token --cardh, o tamanho escolhido em Configurações) mais o degrau de cada um dos dois cards de trás. O palco reserva essa altura inteira: o card da
+   frente é remontado a cada troca e era o único filho com altura; sem a reserva a página ficava um card mais curta por um layout e, no WebKit, a rolagem era cortada (a tela saltava; decisão 75). */
+.app[data-dir="d"] .ph-pilha { --ph-degrau: 11px; --ph-fundo: calc(var(--ph-degrau) * 2); display: grid; gap: 10px; }
+.app[data-dir="d"] .ph-palco { position: relative; padding-bottom: var(--ph-fundo); min-height: calc(var(--cardh, 340px) + var(--ph-fundo)); }
 .app[data-dir="d"] .ph-arrasto { position: relative; z-index: 2; touch-action: pan-y; transform: translateX(var(--dx, 0px)) rotate(var(--rot, 0deg)); transform-origin: 50% 90%; transition: transform .26s var(--suave, ease-out), opacity .26s ease-out; will-change: transform; }
 .app[data-dir="d"] .ph-arrasto[data-arrastando] { transition: none; }
 .app[data-dir="d"] .ph-arrasto[data-anima] { animation: ph-entra .24s var(--suave, ease-out); }
 .app[data-dir="d"] .ph-arrasto .vaga { min-width: 0; }
 .app[data-dir="d"] .ph-pilha[data-saindo="esq"] .ph-arrasto { transform: translateX(-125%) rotate(-16deg); opacity: 0; }
 .app[data-dir="d"] .ph-pilha[data-saindo="dir"] .ph-arrasto { transform: translateX(125%) rotate(16deg); opacity: 0; }
-.app[data-dir="d"] .ph-atras { position: absolute; inset: 0 0 22px; z-index: 1; display: flex; align-items: flex-start; padding: 16px 18px; overflow: hidden; border-radius: var(--r-card); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); color: var(--text2); font-weight: 600;
+.app[data-dir="d"] .ph-atras { position: absolute; inset: 0 0 var(--ph-fundo); z-index: 1; display: flex; align-items: flex-start; padding: 16px 18px; overflow: hidden; border-radius: var(--r-card); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); color: var(--text2); font-weight: 600;
   transform-origin: 50% 100%; transition: transform .26s var(--suave, ease-out); }
 .app[data-dir="d"] .ph-atras > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: var(--t-leitura); }
-.app[data-dir="d"] .ph-atras[data-nivel="1"] { z-index: 1; transform: translateY(calc(11px * (1 - var(--prog, 0)))) scale(calc(.95 + .05 * var(--prog, 0))); }
-.app[data-dir="d"] .ph-atras[data-nivel="2"] { z-index: 0; transform: translateY(calc(22px - 11px * var(--prog, 0))) scale(calc(.9 + .05 * var(--prog, 0))); }
-.app[data-dir="d"] .ph-atras[data-nivel="3"] { z-index: 0; transform: translateY(22px) scale(.9); }
+.app[data-dir="d"] .ph-atras[data-nivel="1"] { z-index: 1; transform: translateY(calc(var(--ph-degrau) * (1 - var(--prog, 0)))) scale(calc(.95 + .05 * var(--prog, 0))); }
+.app[data-dir="d"] .ph-atras[data-nivel="2"] { z-index: 0; transform: translateY(calc(var(--ph-fundo) - var(--ph-degrau) * var(--prog, 0))) scale(calc(.9 + .05 * var(--prog, 0))); }
+.app[data-dir="d"] .ph-atras[data-nivel="3"] { z-index: 0; transform: translateY(var(--ph-fundo)) scale(.9); }
 .app[data-dir="d"] .ph-pilha[data-saindo] .ph-atras[data-nivel="1"] { transform: translateY(0) scale(1); }
-.app[data-dir="d"] .ph-pilha[data-saindo] .ph-atras[data-nivel="2"] { transform: translateY(11px) scale(.95); }
+.app[data-dir="d"] .ph-pilha[data-saindo] .ph-atras[data-nivel="2"] { transform: translateY(var(--ph-degrau)) scale(.95); }
 .app[data-dir="d"] .ph-atras[data-volta] { animation: ph-volta .36s var(--suave, ease-out); }
 @keyframes ph-entra { from { transform: scale(.95) translateY(10px); opacity: .7; } to { transform: none; opacity: 1; } }
 @keyframes ph-volta { from { transform: translateX(-70%) translateY(0) rotate(-14deg) scale(1); opacity: 0; } 60% { opacity: 1; } }
