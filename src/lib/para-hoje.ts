@@ -1,6 +1,6 @@
 // Para hoje: o painel de execução do Início, com até 3 vagas. Aqui ficam só as regras de quem pode ocupar uma vaga e em que ordem (o banco guarda as vagas e impede duplicação).
 // Humor e produtividade não entram no cálculo. Sem relógio: a data de hoje vem de fora.
-import { contagemRetorno, dataFiltro, diasAte, esperaPrefeita, permanencia, type Demanda } from './demandas.ts';
+import { contagemRetorno, dataFiltro, diasAte, esperaPrefeita, permanencia, type Demanda, type Etapa } from './demandas.ts';
 import type { DiaIndisponivel } from './prazos.ts';
 
 export const VAGAS_PARA_HOJE = 3;
@@ -60,3 +60,29 @@ export const novasUrgencias = (vagas: readonly Vaga[], lista: readonly Demanda[]
   const ocupadas = new Set(vagasAbertas(vagas, lista).map((v) => v.demanda.id));
   return elegiveis.filter((e) => ehUrgente(e.classe) && !ocupadas.has(e.demanda.id));
 };
+
+// ---------- baralho do celular (decisões 64 e 65, portado da branch do Início em 14/11/2026 sem mudar as três vagas, a seleção, a prioridade nem a reposição) ----------
+/** Avanço pelo gesto para a direita: Cadastro, Vistos, Fazendo, Finalizado. Nas etapas de espera não há avanço direto (abre o menu para escolher); em Finalizado não há o que avançar. */
+export const ETAPA_SEGUINTE: Partial<Record<Etapa, Etapa>> = { Cadastro: 'Vistos', Vistos: 'Fazendo', Fazendo: 'Finalizado' };
+export const etapaDeEspera = (e: Etapa) => e === 'Aguardando retorno' || e === 'Aguardando Prefeita';
+/**
+ * Ordem de apresentação da pilha neste aparelho: a ordem guardada (se for do dia) com só os cards que ainda estão nas vagas, e os que não estavam nela entram no fim, na ordem do painel.
+ * Nunca perde nem repete um card, mesmo com a lista guardada velha, repetida ou com ids que saíram.
+ */
+export function ordemDaPilha(ids: readonly string[], guardada: readonly string[]): string[] {
+  const nas = new Set(ids), vistos = new Set<string>(), saida: string[] = [];
+  for (const id of guardada) if (nas.has(id) && !vistos.has(id)) { vistos.add(id); saida.push(id); }
+  for (const id of ids) if (!vistos.has(id)) { vistos.add(id); saida.push(id); }
+  return saida;
+}
+/** O card ativo vai para o fim da ordem de apresentação (a vaga, a etapa e a prioridade não mudam: só a ordem em que o aparelho mostra). */
+export const ativoParaOFim = (ordem: readonly string[]): string[] => (ordem.length < 2 ? [...ordem] : [...ordem.slice(1), ordem[0]]);
+/** O inverso: o último da ordem volta para a frente (o "anterior" das outras pilhas do Início). */
+export const ultimoParaAFrente = (ordem: readonly string[]): string[] => (ordem.length < 2 ? [...ordem] : [ordem[ordem.length - 1], ...ordem.slice(0, -1)]);
+/** O gesto de deslizar vale quando o deslocamento passa de max(72 px, 22% da largura) ou quando é rápido (velocidade em px/ms) e longo o bastante para não ser um toque acidental. */
+export function gestoValido(dx: number, velocidade: number, largura: number): 'esq' | 'dir' | null {
+  const limite = Math.max(72, largura * 0.22), lado = dx < 0 ? 'esq' : 'dir';
+  if (Math.abs(dx) >= limite) return lado;
+  if (Math.abs(dx) >= 36 && Math.abs(velocidade) >= 0.55 && Math.sign(velocidade) === Math.sign(dx)) return lado;
+  return null;
+}

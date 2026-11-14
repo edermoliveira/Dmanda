@@ -407,5 +407,14 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(descendo === -16 && t === alta.min, 'ao descer, a coluna sobe com a página (mesmo deslocamento) e para quando a borda de baixo aparece');
   ok(topoDepoisDeRolar(alta.min, -50, alta) === alta.min + 50 && topoDepoisDeRolar(alta.min + 50, -5000, alta) === alta.max, 'ao subir, a coluna acompanha a página a partir de onde parou (sem salto) até a borda de cima chegar ao cabeçalho');
 }
+// ---------- baralho do Início (decisão 65, portado em 14/11/2026): ordem da pilha, gesto e etapa seguinte ----------
+{
+  const { ordemDaPilha, ativoParaOFim, ultimoParaAFrente, gestoValido, ETAPA_SEGUINTE, etapaDeEspera, VAGAS_PARA_HOJE } = await import('../src/lib/para-hoje.ts');
+  ok(VAGAS_PARA_HOJE === 3, 'o porte do baralho mantém as três vagas do Para hoje');
+  ok(ordemDaPilha(['a', 'b', 'c'], []).join() === 'a,b,c' && ordemDaPilha(['a', 'b', 'c'], ['c', 'a']).join() === 'c,a,b' && ordemDaPilha(['a', 'b'], ['x', 'b', 'b', 'a']).join() === 'b,a', 'ordem da pilha: a guardada vale só para os cards que ainda estão nas vagas, sem perder nem repetir');
+  ok(ativoParaOFim(['a', 'b', 'c']).join() === 'b,c,a' && ultimoParaAFrente(['b', 'c', 'a']).join() === 'a,b,c' && ativoParaOFim(['a']).join() === 'a' && ultimoParaAFrente([]).length === 0, 'passar para o fim e voltar ao anterior são inversos; com um card nada muda');
+  ok(gestoValido(-80, 0, 300) === 'esq' && gestoValido(80, 0, 300) === 'dir' && gestoValido(-60, 0, 300) === null && gestoValido(-40, -0.8, 300) === 'esq' && gestoValido(-40, 0.8, 300) === null && gestoValido(-20, -2, 300) === null && gestoValido(-100, 0, 500) === null && gestoValido(-110, 0, 500) === 'esq', 'gesto: distância de max(72 px, 22% da largura) ou rápido e longo o bastante; toque curto ou contrário não vale');
+  ok(ETAPA_SEGUINTE.Cadastro === 'Vistos' && ETAPA_SEGUINTE.Vistos === 'Fazendo' && ETAPA_SEGUINTE.Fazendo === 'Finalizado' && !ETAPA_SEGUINTE.Finalizado && etapaDeEspera('Aguardando retorno') && etapaDeEspera('Aguardando Prefeita') && !etapaDeEspera('Fazendo'), 'gesto à direita: Cadastro, Vistos, Fazendo, Finalizado; nas etapas de espera, o menu');
+}
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);

@@ -1,0 +1,47 @@
+/* ---------- Início: baralho do celular (decisão 65, aprovado na prévia 887b116, decisão 67) ----------
+   Portado da branch bloco/inicio-perfil-clima em 14/11/2026 só com o que o baralho precisa: o Para hoje, a Nova urgência e as listas de cards do Início viram uma pilha abaixo de 520 px de
+   largura do painel; no computador e no iPad a grade de cards da main não muda. Cores só por tokens. */
+/* baralho do celular (decisão 65): o card da frente acompanha o dedo com leve inclinação, dois cards ficam logo atrás; gesto confirmado faz o card sair e reaparecer atrás da pilha.
+   A rolagem vertical segue livre (touch-action: pan-y). Movimento reduzido tira todas as animações. */
+.app[data-dir="d"] .ph-pilha { display: grid; gap: 10px; }
+.app[data-dir="d"] .ph-palco { position: relative; padding-bottom: 22px; }
+.app[data-dir="d"] .ph-arrasto { position: relative; z-index: 2; touch-action: pan-y; transform: translateX(var(--dx, 0px)) rotate(var(--rot, 0deg)); transform-origin: 50% 90%; transition: transform .26s var(--suave, ease-out), opacity .26s ease-out; will-change: transform; }
+.app[data-dir="d"] .ph-arrasto[data-arrastando] { transition: none; }
+.app[data-dir="d"] .ph-arrasto[data-anima] { animation: ph-entra .24s var(--suave, ease-out); }
+.app[data-dir="d"] .ph-arrasto .vaga { min-width: 0; }
+.app[data-dir="d"] .ph-pilha[data-saindo="esq"] .ph-arrasto { transform: translateX(-125%) rotate(-16deg); opacity: 0; }
+.app[data-dir="d"] .ph-pilha[data-saindo="dir"] .ph-arrasto { transform: translateX(125%) rotate(16deg); opacity: 0; }
+.app[data-dir="d"] .ph-atras { position: absolute; inset: 0 0 22px; z-index: 1; display: flex; align-items: flex-start; padding: 16px 18px; overflow: hidden; border-radius: var(--r-card); background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); color: var(--text2); font-weight: 600;
+  transform-origin: 50% 100%; transition: transform .26s var(--suave, ease-out); }
+.app[data-dir="d"] .ph-atras > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: var(--t-leitura); }
+.app[data-dir="d"] .ph-atras[data-nivel="1"] { z-index: 1; transform: translateY(calc(11px * (1 - var(--prog, 0)))) scale(calc(.95 + .05 * var(--prog, 0))); }
+.app[data-dir="d"] .ph-atras[data-nivel="2"] { z-index: 0; transform: translateY(calc(22px - 11px * var(--prog, 0))) scale(calc(.9 + .05 * var(--prog, 0))); }
+.app[data-dir="d"] .ph-atras[data-nivel="3"] { z-index: 0; transform: translateY(22px) scale(.9); }
+.app[data-dir="d"] .ph-pilha[data-saindo] .ph-atras[data-nivel="1"] { transform: translateY(0) scale(1); }
+.app[data-dir="d"] .ph-pilha[data-saindo] .ph-atras[data-nivel="2"] { transform: translateY(11px) scale(.95); }
+.app[data-dir="d"] .ph-atras[data-volta] { animation: ph-volta .36s var(--suave, ease-out); }
+@keyframes ph-entra { from { transform: scale(.95) translateY(10px); opacity: .7; } to { transform: none; opacity: 1; } }
+@keyframes ph-volta { from { transform: translateX(-70%) translateY(0) rotate(-14deg) scale(1); opacity: 0; } 60% { opacity: 1; } }
+.app[data-dir="d"] .ph-dica { position: absolute; top: 10px; z-index: 3; padding: 4px 10px; border-radius: 999px; font-size: var(--t-rotulo); font-weight: 700; background: var(--acc); color: var(--on-acc, var(--card)); opacity: 0; pointer-events: none; transition: opacity .12s; }
+.app[data-dir="d"] .ph-dica-esq { right: 10px; }
+.app[data-dir="d"] .ph-dica-dir { left: 10px; }
+.app[data-dir="d"] .ph-arrasto[data-lado="esq"] .ph-dica-esq, .app[data-dir="d"] .ph-arrasto[data-lado="dir"] .ph-dica-dir { opacity: 1; }
+.app[data-dir="d"] .ph-botoes { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.app[data-dir="d"] .ph-botoes .btn:first-child svg { transform: scaleX(-1); }
+.app[data-dir="d"] .ph-botoes .btn:disabled { opacity: .5; }
+.app[data-dir="d"] .ph-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.app[data-dir="d"] .ph-confirma { padding: 12px 14px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 2px var(--acc); }
+.app[data-dir="d"] .ph-confirma p { margin: 0 0 10px; font-size: var(--t-leitura); }
+.app[data-dir="d"] .ph-confirma .acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+@media (prefers-reduced-motion: reduce) {
+  .app[data-dir="d"] .ph-arrasto, .app[data-dir="d"] .ph-atras { transition: none; }
+  .app[data-dir="d"] .ph-arrasto[data-anima], .app[data-dir="d"] .ph-atras[data-volta] { animation: none; }
+}
+/* as listas de cards das outras páginas no celular: o mesmo baralho; nas demais larguras a grade segue como era */
+.app[data-dir="d"] .cartas { min-width: 0; }
+
+
+/* títulos e chips na pilha: a explicação do Para hoje vai para a linha de baixo e os chips de prazo e de espera quebram em vez de passar da borda do card */
+.app[data-dir="d"] .ph[data-modo="pilha"] > h3 small { display: block; margin-top: 2px; }
+.app[data-dir="d"] .ph-pilha .dcard .chips { flex-wrap: wrap; }
+.app[data-dir="d"] .ph-pilha .dcard .chips .pz { max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
