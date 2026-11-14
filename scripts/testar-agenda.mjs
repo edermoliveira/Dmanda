@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
 import { semearAgenda } from './semear-agenda.mjs';
-import { contagemRetorno, gradeMes, anoMes, diasNoMes } from '../src/lib/agenda.ts';
+import { contagemRetorno, gradeMes, anoMes, diasNoMes, colunaNaSemana } from '../src/lib/agenda.ts';
 import { somarDias } from '../src/lib/prazos.ts';
 import { minutosAgora } from '../src/lib/eventos.ts';
 
@@ -613,7 +613,7 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   await modo(pg, 'Semana'); await paraData(pg, S.dia.data);
   const sem = await pg.evaluate(() => ({ cols: [...document.querySelectorAll('.agd-sem .agd-dia')].map((e) => ({ d: e.dataset.data, n: e.dataset.naoUtil !== undefined })), faixa: !!document.querySelector('.agd-sem-faixa'), det: document.querySelector('#agd-sem-detalhe')?.dataset.data, detTxt: document.querySelector('#agd-sem-detalhe')?.textContent ?? '' }));
   ok(sem.cols.length === 7 && dow(sem.cols[0].d) === 0 && dow(sem.cols[6].d) === 6 && !sem.faixa && sem.cols.filter((c) => c.n).length === 3, 'Semana larga: sete colunas de domingo a sábado; domingo, sábado e o feriado da semana em cinza');
-  ok(sem.det === S.dia.data && /Feriado: Feriado de teste/.test(sem.detTxt) && /Cadastrar dia indisponível/.test(sem.detTxt) && /Novo evento neste dia/.test(sem.detTxt), 'Semana: o dia escolhido aparece inteiro abaixo, com a identificação do feriado e as duas ações da data');
+  ok(sem.det === S.dia.data && /Feriado: Feriado de teste/.test(sem.detTxt) && /Dia indisponível/.test(sem.detTxt) && /Novo evento neste dia/.test(sem.detTxt), 'Semana: o dia escolhido aparece inteiro abaixo, com a identificação do feriado e as duas ações da data');
   await pg.focus(`.agd-dia-sel[data-sem-dia="${S.dia.data}"]`); await pg.keyboard.press('Home'); await pg.waitForTimeout(250);
   const selS = () => pg.$eval('.agd-dia[data-sel]', (e) => e.dataset.data), focoS = () => pg.evaluate(() => document.activeElement?.dataset?.semDia ?? null);
   ok((await selS()) === sem.cols[0].d && (await focoS()) === sem.cols[0].d, 'Semana: Home leva ao domingo da semana, com o foco');
@@ -799,6 +799,103 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
   ok(sf.length === 7 && sf.every((c) => c.w >= 44 && c.h >= 44) && !(await pg.$('.agd-sem')) && (await pg.isVisible('#agd-sem-detalhe')) && (await pg.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)), 'semana no celular: a faixa com as sete datas (alvos de 44 px) e o dia escolhido inteiro abaixo, sem rolagem horizontal');
   await modo(pg, 'Dia');
   ok(!(await pg.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), 'Hoje no celular sem rolagem horizontal');
+}
+// ---------- Dia e Semana no celular (decisão 75) ----------
+// O seletor de visões na linha inteira, "Ir para a data" com o campo nativo por baixo (um só controle), uma ação principal por tela, nada cortado nem para fora, o último item acima da
+// barra de baixo e o Mês como estava. Emulação no Edge: a largura própria do campo de data do Safari do iPhone e o seletor nativo dependem do aparelho.
+for (const [w, texto, tema] of [[390, 100, 'claro'], [375, 100, 'escuro'], [320, 100, 'claro'], [390, 125, 'escuro'], [320, 125, 'claro']]) {
+  const { ctx, pg } = await novo({ viewport: { width: w, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, { tema, prefs: { modo: 'hoje' } });
+  await ctx.addInitScript((t) => { try { if (!localStorage.getItem('dmanda:aparencia')) localStorage.setItem('dmanda:aparencia', JSON.stringify({ textoPct: t })); } catch { /* sem armazenamento */ } }, texto);
+  await ir(pg);
+  const rot = `${w} px, texto a ${texto}%, ${tema}`;
+  const medir = () => pg.evaluate(() => {
+    const a = document.querySelector('.agd').getBoundingClientRect(), m = document.querySelector('.main');
+    const R = (e) => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, r: r.right, b: r.bottom }; };
+    const visiveis = [...document.querySelectorAll('.agd *')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; });
+    const inp = document.querySelector('.agd-data input'), sup = document.querySelector('.agd-ir-rot'), sec = visiveis.find((e) => e.matches('[data-acao="dia-indisponivel"]'));
+    const cs = sup ? R(sup) : null, alvo = cs ? document.elementFromPoint(cs.x + cs.w / 2, cs.y + cs.h / 2) : null;
+    return {
+      esc: Number(getComputedStyle(document.querySelector('.app')).getPropertyValue('--esc')),
+      fora: visiveis.filter((e) => e.getBoundingClientRect().right > a.right + 1 || e.getBoundingClientRect().left < a.left - 1).map((e) => String(e.className || e.tagName)).slice(0, 4),
+      cortados: visiveis.filter((e) => e.matches('button, .btn, h2, h3, .chip, .agd-md') && e.textContent.trim() && e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent.trim().slice(0, 30)),
+      rolagemH: m.scrollWidth - m.clientWidth,
+      seletor: [...document.querySelectorAll('.agd-barra .opcoes button')].map(R),
+      larguraUtil: a.width,
+      novoGeral: !!document.querySelector('.agd-novo'),
+      principais: visiveis.filter((e) => e.matches('.btn.pri')).map((e) => e.textContent.trim()),
+      secundaria: sec ? { texto: sec.textContent.trim(), nome: sec.getAttribute('aria-label') } : null,
+      ir: sup && inp ? { sup: R(sup), inp: R(inp), opac: getComputedStyle(inp).opacity, nome: inp.getAttribute('aria-label'), supTab: sup.tabIndex, supOculto: sup.getAttribute('aria-hidden'), supVisivel: getComputedStyle(sup).display !== 'none', alvoEhCampo: alvo === inp } : null,
+      tabulaveisNav: [...document.querySelectorAll('.agd-nav button:not(:disabled), .agd-nav input, .agd-nav [tabindex]')].filter((e) => e.tabIndex >= 0).length,
+    };
+  });
+  for (const visao of ['Dia', 'Semana']) {
+    await modo(pg, visao); await paraData(pg, S.dia.data); // feriado em dia útil: título longo, marca do dia e as duas ações
+    const d = await medir();
+    ok(Math.abs(d.esc - 0.85 * texto / 100) < 0.002 && d.fora.length === 0 && d.cortados.length === 0 && d.rolagemH <= 1, `${visao}, ${rot}: nada passa da margem nem é cortado, sem rolagem horizontal${d.fora.length || d.cortados.length ? ` (fora: ${d.fora.join(' | ')}; cortados: ${d.cortados.join(' | ')})` : ''}`);
+    const sl = d.seletor;
+    ok(sl.length === 3 && sl.every((b) => Math.abs(b.y - sl[0].y) < 1 && Math.abs(b.w - sl[0].w) < 1 && b.h >= 40) && sl[2].r - sl[0].x >= d.larguraUtil - 2, `${visao}, ${rot}: Dia, Semana e Mês dividem a linha inteira em três partes iguais (${Math.round(sl[0]?.w)} px cada, ${Math.round(sl[0]?.h)} px de altura)`);
+    ok(!d.novoGeral && d.principais.length === 1 && /^Novo evento (hoje|neste dia)$/.test(d.principais[0]) && d.secundaria?.texto === 'Dia indisponível' && d.secundaria.nome === 'Cadastrar dia indisponível', `${visao}, ${rot}: uma só ação principal ("${d.principais.join('", "')}") e a secundária "Dia indisponível" (nome acessível completo)`);
+    const i = d.ir;
+    ok(!!i && i.supVisivel && i.opac === '0' && i.nome === 'Ir para a data' && i.supOculto === 'true' && i.supTab < 0 && i.alvoEhCampo && i.inp.w >= 44 && i.inp.h >= 44 && i.inp.x <= i.sup.x + 0.5 && i.inp.r >= i.sup.r - 0.5 && i.inp.y <= i.sup.y + 0.5 && i.inp.b >= i.sup.b - 0.5 && d.tabulaveisNav === 4,
+      `${visao}, ${rot}: "Ir para a data" é o próprio campo de data (um só controle tabulável, área de ${Math.round(i?.inp.w)}x${Math.round(i?.inp.h)} px cobrindo a superfície; o toque cai no campo nativo)`);
+    // teclado: o foco aparece na superfície, Enter abre o seletor nativo e a data escolhida atualiza o período
+    await pg.evaluate(() => { window.__seletores = 0; HTMLInputElement.prototype.showPicker = function () { window.__seletores++; }; });
+    await pg.focus('.agd-nav .icbtn-s:not(.agd-ant)'); await pg.keyboard.press('Tab'); await pg.waitForTimeout(150);
+    const foco = await pg.evaluate(() => ({ noCampo: document.activeElement === document.querySelector('.agd-data input'), contorno: getComputedStyle(document.querySelector('.agd-ir-rot')).outlineStyle }));
+    await pg.keyboard.press('Enter'); await pg.waitForTimeout(100);
+    const abriu = await pg.evaluate(() => window.__seletores);
+    await paraData(pg, '2026-12-30'); // quarta-feira da semana que atravessa o mês e o ano
+    const per = ((await pg.textContent('.agd-periodo')) ?? '').replace(/\s+/g, ' ').trim(), d2 = await medir();
+    const esperado = visao === 'Dia' ? /^Quarta-feira, 30 de dezembro de 2026$/ : /^27 de dez a 2 de jan de 2027$/;
+    ok(foco.noCampo && foco.contorno === 'dashed' && abriu === 1 && esperado.test(per) && d2.fora.length === 0 && d2.cortados.length === 0 && d2.rolagemH <= 1, `${visao}, ${rot}: pelo teclado o foco aparece em "Ir para a data", Enter abre o seletor e a data escolhida vira o período, inteiro e sem corte ("${per}")`);
+    if (visao === 'Semana') {
+      await paraData(pg, S.dia.data);
+      const s = await pg.evaluate(() => {
+        const y = (q) => document.querySelector(q)?.getBoundingClientRect().top ?? NaN, det = document.querySelector('#agd-sem-detalhe'), cab = det.querySelector('.agd-sd-cab');
+        const fundo = (e, p) => getComputedStyle(e, p).backgroundColor;
+        return { faixa: document.querySelectorAll('.agd-sem-faixa .agd-sf-dia').length, cab: y('#agd-sem-detalhe .agd-sd-cab'), lista: y('#agd-sem-detalhe .agd-sd-lista'), acoes: y('#agd-sem-detalhe .agd-sd-acoes'), cinza: det.hasAttribute('data-nao-util'), fundoCartao: fundo(det, '::before'), fundoCab: fundo(cab), caixaNoCab: cab.hasAttribute('data-nao-util') };
+      });
+      await paraData(pg, '2026-11-18'); // dia útil da referência, sem feriado
+      const util = await pg.evaluate(() => ({ cinza: document.querySelector('#agd-sem-detalhe').hasAttribute('data-nao-util'), fundo: getComputedStyle(document.querySelector('#agd-sem-detalhe'), '::before').backgroundColor }));
+      ok(s.faixa === 7 && s.cab < s.lista && s.lista < s.acoes && s.cinza && !util.cinza && s.fundoCartao !== util.fundo && !s.caixaNoCab && /rgba\(0, 0, 0, 0\)|transparent/.test(s.fundoCab),
+        `Semana, ${rot}: a faixa das sete datas e o dia escolhido num só cartão, na ordem data, conteúdo e ações; o feriado dá o cinza ao cartão inteiro (${s.fundoCartao}), sem caixa dentro de caixa`);
+      await paraData(pg, HOJE);
+      const outro = somarDias(HOJE, colunaNaSemana(HOJE) === 6 ? -1 : 1);
+      await pg.click(`.agd-sf-dia[data-sem-dia="${outro}"]`); await pg.waitForTimeout(250);
+      const marcas = await pg.evaluate(([h, o]) => {
+        const c = (d) => document.querySelector(`.agd-sf-dia[data-sem-dia="${d}"]`), disco = (e) => getComputedStyle(e.querySelector('.agd-sf-num')).backgroundColor, anel = (e) => getComputedStyle(e).boxShadow;
+        const fds = [...document.querySelectorAll('.agd-sf-dia')].filter((e) => e.hasAttribute('data-nao-util') && e !== c(h) && e !== c(o))[0];
+        return { hojeDisco: disco(c(h)), outroDisco: disco(c(o)), hojeAnel: anel(c(h)), outroAnel: anel(c(o)), selDoOutro: c(o).hasAttribute('data-sel'), selDoHoje: c(h).hasAttribute('data-sel'), fdsFundo: fds ? getComputedStyle(fds).backgroundColor : null, utilFundo: getComputedStyle(c(o)).backgroundColor };
+      }, [HOJE, outro]);
+      ok(marcas.selDoOutro && !marcas.selDoHoje && marcas.hojeDisco !== marcas.outroDisco && marcas.hojeAnel !== marcas.outroAnel && !!marcas.fdsFundo && marcas.fdsFundo !== marcas.utilFundo, `Semana, ${rot}: hoje (disco), a data escolhida (anel) e o fim de semana (cinza) têm marcas diferentes`);
+    } else {
+      const dia = await pg.evaluate(() => { const p = [...document.querySelectorAll('.agd-hoje > .agd-painel')].map((e) => ({ x: e.getBoundingClientRect().left, y: e.getBoundingClientRect().top, t: e.querySelector('h3')?.textContent })); const r = document.querySelector('.agd-resumo').getBoundingClientRect(); return { p, resumo: r.bottom, acoes: document.querySelector('.agd-dia-info .agd-acoes-dia').getBoundingClientRect().bottom }; });
+      ok(dia.p.length >= 2 && dia.p[0].t === 'Compromissos e lembretes' && dia.p[1].t === 'Demandas e acompanhamentos' && Math.abs(dia.p[0].x - dia.p[1].x) < 1 && dia.p[0].y < dia.p[1].y && dia.acoes <= dia.resumo && dia.resumo <= dia.p[0].y, `Dia, ${rot}: a data, a navegação e as ações ficam no cartão da data; abaixo, Compromissos e depois Demandas, em uma coluna`);
+    }
+    // o último item rola inteiro para cima da barra de baixo
+    const fim = await pg.evaluate(() => { const m = document.querySelector('.main'); m.scrollTo({ top: m.scrollHeight, behavior: 'instant' }); const u = document.querySelector('.agd').getBoundingClientRect().bottom, b = document.querySelector('.bar')?.getBoundingClientRect(); const r = { ultimo: u, barra: b && b.height ? b.top : innerHeight }; m.scrollTo({ top: 0, behavior: 'instant' }); return r; });
+    ok(fim.ultimo <= fim.barra + 0.5, `${visao}, ${rot}: no fim da rolagem o último item termina acima da barra de baixo (${Math.round(fim.ultimo)} de ${Math.round(fim.barra)} px)`);
+  }
+  await modo(pg, 'Mês');
+  const mes = await pg.evaluate(() => ({ novo: !!document.querySelector('.agd-novo')?.offsetParent, opac: getComputedStyle(document.querySelector('.agd-data input')).opacity, sup: getComputedStyle(document.querySelector('.agd-ir-rot')).display, grade: getComputedStyle(document.querySelector('.agd-barra .opcoes')).display }));
+  ok(mes.novo && mes.opac === '1' && mes.sup === 'none' && mes.grade === 'flex', `Mês, ${rot}: o cabeçalho aprovado não muda (Novo evento no topo, campo de data visível, seletor como era)`);
+  await ctx.close();
+}
+// Dia e Semana com largura (decisão 75): sem a ação geral repetida, o campo de data visível, as ações ao lado da data e as sete colunas só quando cada uma tem largura confortável
+for (const [nomeL, w, colunas] of [['computador 1360', 1360, true], ['janela 1100', 1100, false], ['iPad em pé 820', 820, false]]) {
+  const { ctx, pg } = await novo({ viewport: { width: w, height: 900 } }, { prefs: { modo: 'semana' } });
+  await ir(pg); await paraData(pg, S.dia.data);
+  const l = await pg.evaluate(() => {
+    const R = (q) => { const r = document.querySelector(q)?.getBoundingClientRect(); return r ? { x: r.left, y: r.top, w: r.width, b: r.bottom } : null; };
+    return { agd: document.querySelector('.agd').clientWidth, cols: [...document.querySelectorAll('.agd-sem .agd-dia')].map((e) => e.getBoundingClientRect().width), faixa: document.querySelectorAll('.agd-sem-faixa .agd-sf-dia').length, novo: !!document.querySelector('.agd-novo'), opac: getComputedStyle(document.querySelector('.agd-data input')).opacity, sup: getComputedStyle(document.querySelector('.agd-ir-rot')).display, cab: R('.agd-sd-cab'), acoes: R('.agd-sd-acoes'), lista: R('.agd-sd-lista'), pri: [...document.querySelectorAll('.agd .btn.pri')].filter((e) => e.offsetParent).length };
+  });
+  ok(!l.novo && l.pri === 1 && l.opac === '1' && l.sup === 'none', `Semana, ${nomeL}: sem a ação geral repetida (uma ação principal) e com o campo de data visível`);
+  ok(colunas ? l.cols.length === 7 && Math.min(...l.cols) >= 140 && l.faixa === 0 : l.cols.length === 0 && l.faixa === 7, `Semana, ${nomeL} (${l.agd} px úteis): ${colunas ? `sete colunas de ${Math.round(Math.min(...l.cols))} px` : 'a faixa das sete datas (as colunas ficariam estreitas)'}`);
+  ok(Math.abs(l.acoes.y - l.cab.y) < 30 && l.acoes.x > l.cab.x + 200 && l.lista.y >= l.cab.b - 1, `Semana, ${nomeL}: as ações ficam ao lado da data e a lista vem abaixo`);
+  await modo(pg, 'Dia');
+  const dd = await pg.evaluate(() => ({ novo: !!document.querySelector('.agd-novo'), pri: [...document.querySelectorAll('.agd .btn.pri')].filter((e) => e.offsetParent).map((e) => e.textContent.trim()), paineis: [...document.querySelectorAll('.agd-hoje > .agd-painel')].slice(0, 2).map((e) => e.getBoundingClientRect().top) }));
+  ok(!dd.novo && dd.pri.length === 1 && Math.abs(dd.paineis[0] - dd.paineis[1]) < 1, `Dia, ${nomeL}: uma ação principal ("${dd.pri.join('", "')}") e os dois grupos lado a lado`);
+  await ctx.close();
 }
 // 375 px (iPhone menor) e 320 px (limite da composição): sete colunas, sem rolagem horizontal; as medidas reais ficam no texto de cada verificação
 // Abaixo de uns 363 px é a casca do aplicativo (a barra do topo, fora da Agenda) que fica mais larga que a tela e é cortada pela lateral: a Agenda é conferida dentro dessa casca.

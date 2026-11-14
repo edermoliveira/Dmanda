@@ -102,12 +102,13 @@ function MarcaDoDia({ data, indisponiveis }: { data: string; indisponiveis: read
 }
 
 /** As duas ações do contexto de uma data: o compromisso e o dia indisponível, as duas com a data já preenchida (e editável na janela). */
-function AcoesDoDia({ data, classe = '' }: { data: string; classe?: string }) {
+/** `curto` (Dia e Semana, decisão 75): o rótulo visível da ação secundária é só "Dia indisponível" (cabe ao lado da principal no celular); o nome acessível continua completo e contém o visível. */
+function AcoesDoDia({ data, classe = '', curto = false }: { data: string; classe?: string; curto?: boolean }) {
   const { abrirJanela, hoje } = useApp();
   return (
     <div className={`agd-acoes-dia ${classe}`.trim()} role="group" aria-label={`Ações para ${dataPorExtenso(data)}`}>
       <button type="button" className="btn pri" data-acao="novo-evento" onClick={() => abrirJanela({ t: 'evento', data })}><Icone nome="plus" />{data === hoje ? 'Novo evento hoje' : 'Novo evento neste dia'}</button>
-      <button type="button" className="btn" data-acao="dia-indisponivel" onClick={() => abrirJanela({ t: 'dia', data })}><Icone nome="calendar" />Cadastrar dia indisponível</button>
+      <button type="button" className="btn" data-acao="dia-indisponivel" aria-label={curto ? 'Cadastrar dia indisponível' : undefined} onClick={() => abrirJanela({ t: 'dia', data })}><Icone nome="calendar" />{curto ? 'Dia indisponível' : 'Cadastrar dia indisponível'}</button>
     </div>
   );
 }
@@ -183,6 +184,12 @@ function ListaDia({ data, o, concluidas, semDemandas, corpo }: { data: string; o
     </>
   );
 }
+/** Campo de data na forma compacta (transparente sobre "Ir para a data"): Enter e Espaço abrem o seletor nativo, como num botão. Na forma visível o teclado segue o do próprio campo. */
+function abrirSeletorPeloTeclado(e: TeclaReact<HTMLInputElement>) {
+  if ((e.key !== 'Enter' && e.key !== ' ') || getComputedStyle(e.currentTarget).opacity !== '0') return;
+  e.preventDefault();
+  try { e.currentTarget.showPicker(); } catch { /* navegador sem showPicker: o toque ou o clique no próprio campo abre o seletor */ }
+}
 const situacaoDoDia = (data: string, hoje: string) => (data === hoje ? 'Hoje' : data < hoje ? 'Dia que já passou' : `Daqui a ${plural(diasDesde(hoje, data), 'dia')}`);
 
 /**
@@ -205,16 +212,18 @@ function PainelDia({ data, o, concluidas, semDemandas, aoFechar }: { data: strin
 
 /**
  * Semana (14/11/2026): o dia escolhido com a lista completa, logo abaixo da faixa (ou das sete colunas). Mesmas regras e ações do painel do Mês, com a data como título.
+ * Decisão 75: um só cartão (o cinza do dia sem trabalho vale para ele inteiro, sem caixa dentro de caixa). Com largura, as ações ficam ao lado da data; no celular a ordem de leitura é
+ * data, estado do dia, conteúdo e ações (a posição é do CSS; a ordem do documento é a da largura ampla).
  */
 function DetalheDia({ data, o, concluidas, semDemandas }: { data: string; o: OpcoesAgenda; concluidas: boolean; semDemandas: string | null }) {
   const { hoje, dias } = useApp();
   return (
-    <section id="agd-sem-detalhe" className="agd-painel agd-sem-detalhe" aria-labelledby="agd-sd-t" data-data={data}>
-      <header className="agd-data-cab" data-nao-util={diaNaoUtil(data, dias) || undefined}>
+    <section id="agd-sem-detalhe" className="agd-painel agd-sem-detalhe" aria-labelledby="agd-sd-t" data-data={data} data-nao-util={diaNaoUtil(data, dias) || undefined}>
+      <header className="agd-data-cab agd-sd-cab">
         <div><h3 id="agd-sd-t">{maiuscula(dataPorExtenso(data))}</h3><p className="agd-sub">{situacaoDoDia(data, hoje)}</p><MarcaDoDia data={data} indisponiveis={dias} /></div>
-        <AcoesDoDia data={data} />
       </header>
-      <ListaDia data={data} o={o} concluidas={concluidas} semDemandas={semDemandas} corpo="agd-sd-corpo" />
+      <AcoesDoDia data={data} classe="agd-sd-acoes" curto />
+      <div className="agd-sd-lista"><ListaDia data={data} o={o} concluidas={concluidas} semDemandas={semDemandas} corpo="agd-sd-corpo" /></div>
     </section>
   );
 }
@@ -470,7 +479,7 @@ export function PaginaAgenda() {
   const [filtrosAbertos, setFiltrosAbertos] = useState(false); // só vale nas telas estreitas, onde os filtros ficam num controle compacto
   // celular (decisão 73): a grade vira heatmap e o toque na data abre o painel do dia abaixo dela, no lugar da gaveta; a medida é a do próprio contêiner da Agenda (a mesma do CSS, 560 px)
   const [compacto, setCompacto] = useState(false);
-  // Semana (14/11/2026): sete colunas só a partir de 900 px de largura útil (cada coluna com cerca de 120 px); abaixo, a faixa das sete datas com o dia escolhido abaixo
+  // Semana: sete colunas só a partir de 1040 px de largura útil (cada coluna com cerca de 140 px; a 900 px ficavam com 120 px e o texto espremido, decisão 75); abaixo, a faixa das sete datas com o dia escolhido abaixo
   const [amplo, setAmplo] = useState(true);
   const [painelAberto, setPainelAberto] = useState(false);
   const [pedidoRolagem, setPedidoRolagem] = useState(0);
@@ -481,7 +490,7 @@ export function PaginaAgenda() {
     if (!el || typeof ResizeObserver === 'undefined') return;
     // ao cruzar os 560 px (girar o aparelho, mudar o tamanho da janela) a gaveta e o painel do dia fecham: cada um só existe de um lado da medida e não devem reaparecer sozinhos ao voltar
     let atual = false;
-    const ro = new ResizeObserver(() => { const agora = el.clientWidth <= 560; setAmplo(el.clientWidth >= 900); if (agora !== atual) { atual = agora; setCompacto(agora); setGavetaAberta(false); setPainelAberto(false); } });
+    const ro = new ResizeObserver(() => { const agora = el.clientWidth <= 560; setAmplo(el.clientWidth >= 1040); if (agora !== atual) { atual = agora; setCompacto(agora); setGavetaAberta(false); setPainelAberto(false); } });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -557,7 +566,8 @@ export function PaginaAgenda() {
       <div className="agd-faixa">
         <div className="agd-barra">
           <div className="opcoes" role="group" aria-label="Visão da agenda">{MODOS.map(([k, n]) => <button key={k} type="button" aria-pressed={modo === k} onClick={() => setModo(k)}>{n}</button>)}</div>
-          <button type="button" className="btn pri agd-novo" onClick={() => abrirJanela({ t: 'evento', data: dia })}><Icone nome="plus" />Novo evento</button>
+          {/* decisão 75: em Dia e Semana a ação principal de novo evento é a do dia em contexto (uma só por tela); a ação geral fica no Mês, como aprovado */}
+          {modo === 'mes' ? <button type="button" className="btn pri agd-novo" onClick={() => abrirJanela({ t: 'evento', data: dia })}><Icone nome="plus" />Novo evento</button> : null}
         </div>
 
         <div className="agd-filtros" id="agd-filtros-p" data-aberto={filtrosAbertos || undefined}>
@@ -578,14 +588,19 @@ export function PaginaAgenda() {
             <button type="button" className="icbtn-s agd-ant" aria-label={modo === 'mes' ? 'Mês anterior' : modo === 'semana' ? 'Semana anterior' : 'Dia anterior'} onClick={() => passo(-1)}><Icone nome="chevron-right" /></button>
             <button type="button" className="btn mini" onClick={() => ir(null)} disabled={data === null || data === hoje} aria-label="Voltar para hoje">Hoje</button>
             <button type="button" className="icbtn-s" aria-label={modo === 'mes' ? 'Próximo mês' : modo === 'semana' ? 'Próxima semana' : 'Próximo dia'} onClick={() => passo(1)}><Icone nome="chevron-right" /></button>
-            <label className="agd-data"><span className="sr-only">Ir para a data</span><input type="date" value={dia} aria-label="Ir para a data" onChange={(e) => { if (e.target.value) ir(e.target.value); }} /></label>
+            {/* Um só controle para ir a uma data: o campo nativo. Em Dia e Semana no celular (decisão 75) ele fica transparente sobre a superfície "Ir para a data" (posição e aparência no CSS):
+                a largura própria do campo nativo deixa de entrar no layout, o toque abre o seletor nativo e o foco aparece na superfície. */}
+            <label className="agd-data">
+              <span className="btn mini agd-ir-rot" aria-hidden="true"><Icone nome="calendar" />Ir para a data</span>
+              <input type="date" value={dia} aria-label="Ir para a data" onChange={(e) => { if (e.target.value) ir(e.target.value); }} onKeyDown={abrirSeletorPeloTeclado} />
+            </label>
           </div>
         </div>
         {modo === 'hoje' ? (
           <div className="agd-dia-info">
             <p className="agd-sub">{situacaoDoDia(dia, hoje)}</p>
             <MarcaDoDia data={dia} indisponiveis={dias} />
-            <AcoesDoDia data={dia} />
+            <AcoesDoDia data={dia} curto />
           </div>
         ) : null}
         <div className="agd-totais">

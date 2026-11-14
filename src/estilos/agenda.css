@@ -41,6 +41,7 @@
 .agd-nav { display: flex; align-items: center; gap: 6px; }
 .agd-ant .ic { transform: rotate(180deg); }
 .agd-data input { min-height: 40px; border-radius: var(--r-field, 14px); border: 1px solid var(--brd); background: var(--grp-campo); color: var(--text); padding: 0 10px; font: inherit; font-size: max(16px, calc(14px * var(--esc))); }
+.agd-ir-rot { display: none; } /* a superfície "Ir para a data" só existe em Dia e Semana no celular (mais abaixo) */
 .agd-cab-pag { display: block; }
 /* cabeçalho por função (decisão 73): as visões e o Novo evento juntos numa faixa, com os filtros (identificados) no fim dela; o período, as setas, o Hoje e a data juntos junto da grade, com os totais numa linha pequena */
 .agd-faixa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
@@ -198,6 +199,19 @@
   .agd-nav { width: 100%; }
   .agd-data { flex: 1 1 0; min-width: 0; }
   .agd-data input { width: 100%; min-width: 0; }
+  /* Dia e Semana (decisão 75; o Mês fica como aprovado). O seletor de visões ocupa a linha inteira em três partes iguais (os três nomes cabem a 320 px e com o texto a 125%).
+     A data vira a ação compacta "Ir para a data": o campo nativo fica transparente sobre ela (um só controle, com o nome, o toque e o foco na superfície), então a largura própria do
+     campo nativo, que no Safari do iPhone passava da margem, deixa de entrar no layout. A linha das setas quebra em vez de alargar a página. */
+  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-barra { flex: 1 1 100%; }
+  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-barra .opcoes { flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-barra .opcoes button { min-height: 40px; }
+  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-nav { flex-wrap: wrap; }
+  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-data { position: relative; flex: none; margin-inline-start: auto; display: inline-flex; align-items: center; min-height: 44px; min-width: 0; }
+  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-ir-rot { display: inline-flex; pointer-events: none; }
+  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-data input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+  /* no Chromium o seletor só abre pelo ícone do campo: o ícone (invisível) cobre a superfície inteira; no Safari do iPhone o toque em qualquer ponto do campo já abre o seletor nativo */
+  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-data input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; margin: 0; padding: 0; cursor: pointer; }
+  .app[data-dir="d"] .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-data:has(input:focus-visible) .agd-ir-rot { outline: 3px dashed var(--foco); outline-offset: 2px; }
   .agd-faixa { gap: 0; }
   .agd-filtros { margin-inline-start: 0; padding-inline: 0; border-radius: 0; background: none; }
   .agd-filtros-rot { display: none; }
@@ -323,7 +337,7 @@
 .agd-linha-t small { font-size: calc(13px * var(--esc)); color: var(--text2); }
 
 /* ---------- semana (14/11/2026): domingo a sábado, na direção do Mês ----------
-   Largura útil a partir de 900 px: sete colunas com o resumo de cada dia (até quatro itens e o "+N · ver o dia"). Abaixo disso, a faixa com as sete datas. Nos dois casos o dia escolhido aparece
+   Largura útil a partir de 1040 px (decisão 75; eram 900 px, com colunas de 120 px e texto espremido): sete colunas com o resumo de cada dia (até quatro itens e o "+N · ver o dia"). Abaixo disso, a faixa com as sete datas. Nos dois casos o dia escolhido aparece
    por inteiro logo abaixo, num painel com a altura do próprio conteúdo. Só a página rola. */
 .agd-semana { display: grid; gap: 14px; min-width: 0; }
 .agd-sem { display: grid; gap: 8px; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: start; }
@@ -368,7 +382,18 @@
 .agd-sf-dia[data-hoje][data-nivel="alta"] .agd-sf-num { background: var(--acc-ink); color: var(--acc); }
 .agd-sf-dia[data-sem-carga] { background-image: repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in srgb, var(--text) 12%, transparent) 5px 6px); }
 .app[data-dir="d"] .agd-sf-dia:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
-.agd-sem-detalhe { scroll-margin-block: 84px 96px; }
+/* o dia escolhido (decisão 75): um só cartão. Com largura, a data e o estado à esquerda e as duas ações à direita, com a lista abaixo; em telas estreitas a ordem de leitura é data,
+   estado do dia, conteúdo e ações. Sábado, domingo e feriado dão a base cinza ao cartão inteiro (como o cabeçalho do Dia), sem caixa dentro de caixa. */
+.agd-sem-detalhe { scroll-margin-block: 84px 96px; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "cab acoes" "lista lista"; align-items: start; gap: 6px 16px; }
+.agd-sd-cab { grid-area: cab; }
+.agd-sd-acoes { grid-area: acoes; }
+.agd-sd-lista { grid-area: lista; min-width: 0; }
+.agd-sem-detalhe[data-nao-util] { border-color: var(--agd-nao-util-borda); box-shadow: inset 0 0 0 1px var(--agd-nao-util-borda), var(--lq-sh); }
+.agd-sem-detalhe[data-nao-util]::before { background: var(--agd-nao-util-bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+@container agd (max-width: 699px) {
+  .agd-sem-detalhe { grid-template-columns: minmax(0, 1fr); grid-template-areas: "cab" "lista" "acoes"; }
+  .agd-sd-acoes { padding-top: 10px; border-top: 1px solid var(--card-brd); }
+}
 .agd-sd-corpo { margin-top: 4px; }
 
 /* cabeçalho de uma data (painel do dia, gaveta, detalhe da Semana e Dia): o título é a data; sábado, domingo e feriado ganham a base cinza; as ações ficam junto da data */
@@ -392,9 +417,12 @@
 .agd-dia-info > .agd-sub { margin: 0; }
 .agd-dia-info .agd-marca-dia { margin: 0; }
 .agd-dia-info .agd-acoes-dia { margin-inline-start: auto; }
+/* Dia e Semana no celular (decisão 75): a ação principal e a secundária ficam lado a lado quando as duas cabem inteiras e passam a uma por linha quando não cabem (320 px, texto a 125%);
+   a largura vem do conteúdo, nada é cortado. */
 @container agd (max-width: 560px) {
   .agd-dia-info .agd-acoes-dia { margin-inline-start: 0; width: 100%; }
-  .agd-dia-info .agd-acoes-dia .btn { flex: 1 1 160px; }
+  .agd-dia-info .agd-acoes-dia .btn, .agd-sd-acoes .btn { flex: 1 1 auto; padding-inline: 12px; }
+  .agd-dia-info .agd-acoes-dia .btn.pri, .agd-sd-acoes .btn.pri { flex-grow: 1.4; }
 }
 
 /* ---------- avisos dentro do aplicativo ---------- */
