@@ -145,15 +145,21 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 /* o campo de data do Chromium põe o foco num segmento interno e o próprio campo não conta como :focus-visible: o anel segue o foco de dentro do quadro */
 .campo-data:focus-within input[type="date"] { border-color: var(--foco); box-shadow: 0 0 0 2px var(--foco); outline: 0; }
 .cfg-form input[aria-invalid="true"] { border-color: var(--perigo); }
-/* Data vazia (decisão 76): no Safari do iPhone e do iPad o campo nativo de data vazio não desenha nada (nem a dica). A dica "Escolher a data" fica atrás do campo transparente, só em toque (pointer: coarse);
-   o texto (a dica ou a data preenchida, em dd/mm/aaaa) é desenhado por cima, centralizado na altura do campo, porque o Safari do iPhone cola o valor nativo no topo. O campo continua sendo o controle real
-   (rótulo associado, teclado e seletor nativo ao toque, que cobre a área inteira). */
+/* Data vazia (decisões 76 e 78): no Safari do iPhone e do iPad o campo nativo de data vazio não desenha nada (nem a dica) e o valor nativo é uma caixa de bloco colada no topo. Só ali, a dica
+   "Escolher a data" fica atrás do campo transparente e o texto (a dica ou a data preenchida, em dd/mm/aaaa) é desenhado por cima, centralizado na altura do campo. O campo continua sendo o controle
+   real (rótulo associado, teclado e seletor nativo ao toque, que cobre a área inteira).
+   A condição é `-webkit-touch-callout`, que só existe no WebKit de iOS e iPadOS. Não é `pointer: coarse`: o Chromium com toque (Android, Windows) também é coarse, edita o campo por segmentos e
+   precisa do texto nativo visível, senão o que se digita fica invisível e sobreposto à dica. Fora do iOS o campo nativo aparece como sempre e a dica nunca é exibida. */
 .campo-data { position: relative; display: block; min-width: 0; }
 .campo-data-dica { position: absolute; inset: 0; display: none; align-items: center; gap: 8px; padding: 0 14px; color: var(--text2); pointer-events: none; font-size: max(16px, calc(14px * var(--esc))); }
-@media (pointer: coarse) {
+@supports (-webkit-touch-callout: none) {
   .campo-data .campo-data-dica { display: flex; }
   .campo-data .campo-data-dica[data-preenchido] { color: var(--text); }
   .app .campo-data input[type="date"][id] { color: transparent; } /* mais específico que a cor dos campos das janelas (tema.css), senão o valor nativo aparece junto com o desenhado por cima */
+}
+/* cores forçadas (alto contraste): o navegador impõe a cor do valor nativo, então a camada desenhada duplicaria o texto; fica só o campo nativo */
+@media (forced-colors: active) {
+  .campo-data .campo-data-dica { display: none; }
 }
 .cfg-form label { font-size: calc(13px * var(--esc)); font-weight: 500; color: var(--text2); padding-left: 14px; display: block; }
 

@@ -32,8 +32,19 @@ for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/login'); if
 const motores = [['Edge', await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] })]];
 try { motores.push(['WebKit', await webkit.launch()]); } catch (e) { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); }
 const erros = [];
-const novo = async (nav, { largura = 390, esquema = 'light', toque = true } = {}) => {
+// A camada desenhada do campo de data só vale onde `@supports (-webkit-touch-callout: none)` é verdadeiro (Safari do iPhone e do iPad); nenhum navegador deste computador atende essa condição.
+// Para medir o layout dela, o teste reaplica as regras de dentro do bloco @supports (e a regra de cores forçadas que vem depois) sem a condição. É emulação: o aparelho confirma que o Safari atende a condição.
+const camadaIOS = () => {
+  const aplicar = () => {
+    const css = [];
+    for (const f of document.styleSheets) { let regras; try { regras = [...f.cssRules]; } catch { continue; } for (const r of regras) { if (r.constructor.name === 'CSSSupportsRule' && /touch-callout/.test(r.conditionText)) css.push(...[...r.cssRules].map((x) => x.cssText)); } for (const r of regras) if (r.constructor.name === 'CSSMediaRule' && /forced-colors/.test(r.conditionText) && /campo-data-dica/.test(r.cssText)) css.push(r.cssText); }
+    if (!css.length) return; const st = document.createElement('style'); st.dataset.simulaIos = 'sim'; st.textContent = css.join(String.fromCharCode(10)); document.head.appendChild(st);
+  };
+  if (document.readyState === 'complete') aplicar(); else addEventListener('load', aplicar);
+};
+const novo = async (nav, { largura = 390, esquema = 'light', toque = true, ios = true } = {}) => {
   const ctx = await nav.newContext({ viewport: { width: largura, height: largura > 700 ? 1000 : 844 }, hasTouch: toque, isMobile: toque && nav === motores[0][1], deviceScaleFactor: 2, colorScheme: esquema });
+  if (toque && ios) await ctx.addInitScript(camadaIOS);
   await ctx.addInitScript((t) => { try { localStorage.setItem('dmanda-tema', JSON.stringify(t)); } catch { /* sem armazenamento */ } }, esquema === 'dark' ? 'escuro' : 'claro');
   const pg = await ctx.newPage();
   pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
@@ -256,6 +267,43 @@ for (const [nome, nav] of motores) for (const largura of [320, 390, 820, 1360]) 
   await pg.locator('.agd-barra .opcoes button', { hasText: /^Mês$/ }).click(); await pg.waitForSelector('.agd[data-modo="mes"] .agd-grade');
   const mes = await pg.evaluate(() => ({ celulas: document.querySelectorAll('.agd-cel').length, cabecas: [...document.querySelectorAll('.agd-cabsem')].map((e) => e.textContent.trim()), legenda: !!document.querySelector('.agd-leg'), seletor: !!document.querySelector('.agd-mes-sel select') }));
   ok(mes.celulas >= 28 && mes.cabecas.length === 7 && /^D/i.test(mes.cabecas[0]) && /^S/i.test(mes.cabecas[6]) && mes.legenda && mes.seletor, `${nome}: o corpo do Mês segue com a grade de domingo a sábado, a legenda e o atalho de mês (${mes.celulas} células)`);
+  await ctx.close();
+}
+
+// ================= 6) CampoData fora do iOS (decisão 78): o campo nativo continua visível e editável; cores forçadas sem texto duplicado =================
+// A auditoria mostrou, no Edge com toque, que digitar o dia sem completar a data deixava os dígitos invisíveis e sobrepostos à dica. A camada desenhada agora é só do iOS (-webkit-touch-callout).
+for (const [nome, nav] of motores) {
+  const R = `${nome}, fora do iOS`;
+  const { ctx, pg } = await novo(nav, { largura: 390, esquema: 'light', toque: true, ios: false });
+  await ir(pg, '/config', '#cfg-data');
+  const base = await pg.evaluate(() => { const i = document.querySelector('#cfg-data'); return { dica: getComputedStyle(document.querySelector('.cfg-dias-form .campo-data-dica')).display, cor: getComputedStyle(i).color, coarse: matchMedia('(pointer: coarse)').matches, alt: i.getBoundingClientRect().height }; });
+  ok(base.dica === 'none' && !/rgba\(0, 0, 0, 0\)|transparent/.test(base.cor) && base.alt >= 44, `${R}: com toque (pointer: coarse = ${base.coarse}) mas sem iOS, a dica não é desenhada, o valor nativo tem cor própria (${base.cor}) e o campo mede ${base.alt} px`);
+  if (nome === 'Edge') {
+    await pg.focus('#cfg-data'); await pg.keyboard.type('25'); await pg.waitForTimeout(200);
+    const parcial = await foto(pg, '.cfg-dias-form .campo-data');
+    ok(parcial.tinta > 40, `${R}: digitar só o dia deixa a digitação visível no campo (tinta ${parcial.tinta})`);
+    await pg.keyboard.type('122026'); await pg.waitForTimeout(150);
+    ok((await pg.inputValue('#cfg-data')) === '2026-12-25', `${R}: digitar a data pelo teclado completa o campo (${await pg.inputValue('#cfg-data')})`);
+  }
+  await ctx.close();
+}
+{
+  // a condição da camada é de plataforma, não de toque: nenhuma regra de pointer: coarse mexe na dica, e o bloco @supports de iOS existe com as regras da camada
+  const { ctx, pg } = await novo(motores[0][1], { largura: 390, toque: true, ios: false });
+  await ir(pg, '/config', '#cfg-data');
+  const css = await pg.evaluate(() => { let sup = '', coarse = false; const ver = (regras) => { for (const r of regras) { if (r.constructor.name === 'CSSSupportsRule') { if (/touch-callout/.test(r.conditionText)) sup += r.cssText; else ver([...r.cssRules]); } else if (r.constructor.name === 'CSSMediaRule') { if (/coarse/.test(r.conditionText) && /campo-data/.test(r.cssText)) coarse = true; ver([...r.cssRules]); } } }; for (const f of document.styleSheets) { try { ver([...f.cssRules]); } catch { /* folha de outra origem */ } } return { sup, coarse }; });
+  ok(/campo-data-dica/.test(css.sup) && /color:\s*(transparent|#0000|rgba\(0,\s*0,\s*0,\s*0\))/.test(css.sup), 'o valor nativo só fica transparente e a dica só aparece dentro de @supports (-webkit-touch-callout: none)');
+  ok(!css.coarse, 'nenhuma regra de @media (pointer: coarse) mexe no campo de data (coarse não identifica o Safari)');
+  await ctx.close();
+}
+{
+  // cores forçadas com a camada do iOS simulada: a dica some e o valor nativo (cor imposta pelo navegador) é o único texto
+  const { ctx, pg } = await novo(motores[0][1], { largura: 390, toque: true, ios: true });
+  await ir(pg, '/config', '#cfg-data');
+  const sem = await pg.evaluate(() => getComputedStyle(document.querySelector('.cfg-dias-form .campo-data-dica')).display);
+  await pg.emulateMedia({ forcedColors: 'active' }); await pg.fill('#cfg-data', '2026-12-25'); await pg.waitForTimeout(200);
+  const f = await pg.evaluate(() => ({ dica: getComputedStyle(document.querySelector('.cfg-dias-form .campo-data-dica')).display, forcado: matchMedia('(forced-colors: active)').matches, cor: getComputedStyle(document.querySelector('#cfg-data')).color }));
+  ok(sem === 'flex' && f.forcado && f.dica === 'none' && !/rgba\(0, 0, 0, 0\)/.test(f.cor), `cores forçadas: com a camada ativa a dica fica ${sem}; em alto contraste vira ${f.dica} e o valor nativo (${f.cor}) é o único texto`);
   await ctx.close();
 }
 
