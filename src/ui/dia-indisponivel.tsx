@@ -8,6 +8,7 @@ import { useApp } from './contexto';
 import { Icone } from './Icone';
 import { Janela } from './janela-base';
 import { dataPorExtenso } from '@/lib/agenda';
+import { dataBR } from '@/lib/demandas';
 import { CATEGORIAS_DIA, ROTULO_CATEGORIA, type CategoriaDia } from '@/lib/prazos';
 
 export type CamposDia = { id?: string; data: string; descricao: string; categoria: CategoriaDia };
@@ -19,7 +20,7 @@ export function CampoData({ id, valor, aoMudar, aoEnter, invalido }: { id: strin
   return (
     <div className="campo-data" data-vazio={valor ? undefined : 'sim'}>
       <input id={id} type="date" value={valor} aria-invalid={invalido || undefined} onChange={(e) => aoMudar(e.target.value)} onKeyDown={aoEnter ? (e) => { if (e.key === 'Enter') { e.preventDefault(); aoEnter(); } } : undefined} />
-      <span className="campo-data-dica" aria-hidden="true"><Icone nome="calendar" />Escolher a data</span>
+      <span className="campo-data-dica" data-preenchido={valor ? 'sim' : undefined} aria-hidden="true">{valor ? dataBR(valor) : <><Icone nome="calendar" />Escolher a data</>}</span>
     </div>
   );
 }

@@ -126,14 +126,17 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 /* o mesmo formulário dentro da janela da Agenda */
 .di-form { display: grid; gap: 4px 12px; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); align-items: end; }
 .di-form .fld { margin: 0; min-width: 0; }
-.di-form input[type="date"] { display: block; min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; text-align: left; }
+.di-form input[type="date"] { display: flex; align-items: center; min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; text-align: left; line-height: 1.4; }
+.di-form input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 0; padding: 0; }
+.di-form .campo-data-dica { padding: 0 12px; } /* o recuo dos campos da janela (tema.css) é de 12 px */
 .di-onde, .di-ja { margin: 10px 0 0; }
 .cfg-form { display: grid; gap: 8px 12px; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); align-items: end; margin: 12px 0 0; padding: 14px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--card-brd); }
 .cfg-form .fld { margin: 0; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 /* Campo Data (bloco de 30/10/2026): o controle nativo de data tem largura mínima própria (no Safari do iPhone e do iPad o campo passava da lateral do quadro). A coluna e o campo podem encolher
    até o espaço que existe (min-width 0, trilho minmax(0, 1fr), sem largura mínima de 190 px maior que a tela) e o campo ocupa só a largura da coluna. O seletor nativo continua o mesmo. */
-.cfg-form input[type="date"] { display: block; min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; text-align: left; }
-.cfg-form input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.4em; }
+.cfg-form input[type="date"] { display: flex; align-items: center; min-width: 0; max-width: 100%; -webkit-appearance: none; appearance: none; text-align: left; line-height: 1.4; }
+/* o valor do campo de data é uma caixa de bloco: no Safari ela ficava colada no topo e sobrava espaço embaixo. O campo é flex e o valor não leva margem nem altura própria. */
+.cfg-form input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 0; padding: 0; }
 .cfg-form .acoes { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 /* Limite visível de cada controle (decisão 76): no claro o campo (--grp-campo) tem a mesma cor do quadro (--card), então só uma borda com contraste de 3:1 o separa do fundo.
    Foco: a borda passa ao tom de foco e ganha um anel (nos dois temas, também por teclado). */
@@ -143,12 +146,14 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .campo-data:focus-within input[type="date"] { border-color: var(--foco); box-shadow: 0 0 0 2px var(--foco); outline: 0; }
 .cfg-form input[aria-invalid="true"] { border-color: var(--perigo); }
 /* Data vazia (decisão 76): no Safari do iPhone e do iPad o campo nativo de data vazio não desenha nada (nem a dica). A dica "Escolher a data" fica atrás do campo transparente, só em toque (pointer: coarse);
-   com valor, o campo desenha a própria data. O campo continua sendo o controle real (rótulo associado, teclado e seletor nativo ao toque). */
+   o texto (a dica ou a data preenchida, em dd/mm/aaaa) é desenhado por cima, centralizado na altura do campo, porque o Safari do iPhone cola o valor nativo no topo. O campo continua sendo o controle real
+   (rótulo associado, teclado e seletor nativo ao toque, que cobre a área inteira). */
 .campo-data { position: relative; display: block; min-width: 0; }
 .campo-data-dica { position: absolute; inset: 0; display: none; align-items: center; gap: 8px; padding: 0 14px; color: var(--text2); pointer-events: none; font-size: max(16px, calc(14px * var(--esc))); }
 @media (pointer: coarse) {
-  .campo-data[data-vazio] .campo-data-dica { display: flex; }
-  .campo-data[data-vazio] input[type="date"] { color: transparent; }
+  .campo-data .campo-data-dica { display: flex; }
+  .campo-data .campo-data-dica[data-preenchido] { color: var(--text); }
+  .app .campo-data input[type="date"][id] { color: transparent; } /* mais específico que a cor dos campos das janelas (tema.css), senão o valor nativo aparece junto com o desenhado por cima */
 }
 .cfg-form label { font-size: calc(13px * var(--esc)); font-weight: 500; color: var(--text2); padding-left: 14px; display: block; }
 
