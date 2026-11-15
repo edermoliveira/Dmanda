@@ -205,6 +205,13 @@ export function diaMaisLivre(data: string, carga: ReadonlyMap<string, CargaDia>,
   }
   return melhor;
 }
+/**
+ * Texto da sugestão de organizar o trabalho: "antecipar" quando o dia mais leve vem antes do dia cheio e "redistribuir" quando vem depois. É só uma sugestão: nenhum vencimento é alterado.
+ */
+export function sugestaoDeAlivio(data: string, alvo: string, cargaDoAlvo: number): string {
+  const verbo = alvo < data ? 'antecipar' : 'redistribuir';
+  return `Considere ${verbo} parte da carga para ${dataPorExtenso(alvo)} (${plural(cargaDoAlvo, 'pendência')}). O vencimento não muda.`;
+}
 /** Resumo de um intervalo (o mês ou a semana) a partir da carga já calculada. Os dias cheios são os de carga média ou alta, do mais carregado para o menos, no máximo três. */
 export function panorama(carga: ReadonlyMap<string, CargaDia>, eventos: readonly Evento[], indisponiveis: readonly DiaIndisponivel[], hoje: string, de: string, ate: string): Panorama {
   let pendencias = 0, demandas = 0, atrasadas = 0;
@@ -212,9 +219,10 @@ export function panorama(carga: ReadonlyMap<string, CargaDia>, eventos: readonly
   for (const [data, c] of carga) {
     if (data < de || data > ate) continue;
     pendencias += c.carga; demandas += c.demandas; if (c.atrasada) atrasadas += c.demandas;
-    if (c.carga >= LIMIARES_CARGA.media) {
+    // Dias que já passaram continuam no calendário e nos totais (carga e atrasos), mas não recebem recomendação de planejamento: não há mais o que reorganizar neles.
+    if (c.carga >= LIMIARES_CARGA.media && data >= hoje) {
       const alvo = diaMaisLivre(data, carga, indisponiveis, hoje);
-      cheios.push({ data, carga: c.carga, sugestao: alvo ? `Considere antecipar ou redistribuir parte da carga para ${dataPorExtenso(alvo)} (${plural(carga.get(alvo)?.carga ?? 0, 'pendência')}).` : null });
+      cheios.push({ data, carga: c.carga, sugestao: alvo ? sugestaoDeAlivio(data, alvo, carga.get(alvo)?.carga ?? 0) : null });
     }
   }
   cheios.sort((a, b) => b.carga - a.carga || a.data.localeCompare(b.data));

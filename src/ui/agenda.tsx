@@ -232,10 +232,13 @@ function DetalheDia({ data, o, concluidas, semDemandas }: { data: string; o: Opc
 }
 
 // ---------- painéis auxiliares ----------
-function PainelDiasCheios({ pan, aoVer, rotulo }: { pan: ReturnType<typeof panorama>; aoVer: (d: string) => void; rotulo: string }) {
+/** Texto dos painéis quando as demandas não carregaram: não é "vazio" (não se sabe se há pendência), então não afirma nada. O erro com o botão de tentar de novo está no topo da página (e no aviso do Mês). */
+const INDISPONIVEL = 'Indisponível: as demandas não carregaram.';
+function PainelDiasCheios({ pan, aoVer, rotulo, indisponivel = false }: { pan: ReturnType<typeof panorama>; aoVer: (d: string) => void; rotulo: string; indisponivel?: boolean }) {
+  if (indisponivel) return <section className="agd-painel agd-aux" aria-labelledby="agd-cheios-t" data-vazio="sim" data-indisponivel="sim"><header className="agd-cab agd-cab-aux"><h3 id="agd-cheios-t">Onde {rotulo} aperta</h3></header><p className="agd-vazio">{INDISPONIVEL}</p></section>;
   return (
     <section className="agd-painel agd-aux" aria-labelledby="agd-cheios-t" data-vazio={pan.cheios.length ? undefined : 'sim'}>
-      <header className="agd-cab agd-cab-aux"><h3 id="agd-cheios-t">Onde {rotulo} aperta</h3>{pan.cheios.length ? <span className="agd-qtd" title="Dias de carga média ou alta, para antecipar ou redistribuir"><span className="sr-only">{plural(pan.cheios.length, 'dia')} de carga média ou alta</span><span aria-hidden="true">{pan.cheios.length}</span></span> : null}</header>
+      <header className="agd-cab agd-cab-aux"><h3 id="agd-cheios-t">Onde {rotulo} aperta</h3>{pan.cheios.length ? <span className="agd-qtd" title="Dias de carga média ou alta de hoje em diante, para antecipar ou redistribuir o trabalho"><span className="sr-only">{plural(pan.cheios.length, 'dia')} de carga média ou alta</span><span aria-hidden="true">{pan.cheios.length}</span></span> : null}</header>
       {pan.cheios.length ? (
         <ul className="agd-lista">
           {pan.cheios.map((c) => {
@@ -255,8 +258,9 @@ function PainelDiasCheios({ pan, aoVer, rotulo }: { pan: ReturnType<typeof panor
   );
 }
 
-function PainelSemPrazo({ lista }: { lista: Demanda[] }) {
+function PainelSemPrazo({ lista, indisponivel = false }: { lista: Demanda[]; indisponivel?: boolean }) {
   const { abrirJanela } = useApp();
+  if (indisponivel) return <section className="agd-painel agd-aux" aria-labelledby="agd-sem-t" data-vazio="sim" data-indisponivel="sim"><header className="agd-cab agd-cab-aux"><h3 id="agd-sem-t">Pendências sem prazo</h3></header><p className="agd-vazio">{INDISPONIVEL}</p></section>;
   return (
     <section className="agd-painel agd-aux" aria-labelledby="agd-sem-t" data-vazio={lista.length ? undefined : 'sim'}>
       <header className="agd-cab agd-cab-aux"><h3 id="agd-sem-t">Pendências sem prazo</h3>{lista.length ? <span className="agd-qtd" title="Demandas abertas sem nenhuma data. Nada foi inventado para elas"><span className="sr-only">{pl(lista.length, 'demanda aberta', 'demandas abertas')} sem nenhuma data</span><span aria-hidden="true">{lista.length}</span></span> : null}</header>
@@ -276,13 +280,13 @@ function PainelSemPrazo({ lista }: { lista: Demanda[] }) {
 }
 
 /** Os dois painéis do Mês, empilhados à direita da grade quando há largura (senão abaixo dela): cada um com a altura do próprio conteúdo e sem rolagem própria, só a página rola. A coluna acompanha a página (useColunaFixa). */
-function LateralMes({ pan, rotulo, semPrazo, aoVer }: { pan: ReturnType<typeof panorama>; rotulo: string; semPrazo: Demanda[]; aoVer: (d: string) => void }) {
+function LateralMes({ pan, rotulo, semPrazo, aoVer, indisponivel }: { pan: ReturnType<typeof panorama>; rotulo: string; semPrazo: Demanda[]; aoVer: (d: string) => void; indisponivel: boolean }) {
   const ref = useRef<HTMLElement>(null);
   useColunaFixa(ref);
   return (
     <aside ref={ref} className="agd-lateral" aria-label="Apoio do mês: dias mais cheios e pendências sem prazo">
-      <PainelDiasCheios pan={pan} rotulo={rotulo} aoVer={aoVer} />
-      <PainelSemPrazo lista={semPrazo} />
+      <PainelDiasCheios pan={pan} rotulo={rotulo} aoVer={aoVer} indisponivel={indisponivel} />
+      <PainelSemPrazo lista={semPrazo} indisponivel={indisponivel} />
     </aside>
   );
 }
@@ -633,7 +637,7 @@ export function PaginaAgenda() {
             {compacto && painelAberto ? <PainelDia data={dia} o={opcoesCat} concluidas={concluidas} semDemandas={erroCarga} aoFechar={fecharPainel} /> : null}
             <Legenda semDemandas={semDem} />
           </section>
-          <LateralMes pan={pan} rotulo={nomePeriodo} semPrazo={semPrazo} aoVer={(d) => ir(d)} />
+          <LateralMes pan={pan} rotulo={nomePeriodo} semPrazo={semPrazo} aoVer={(d) => ir(d)} indisponivel={semDem} />
         </div>
       ) : null}
 
@@ -643,12 +647,12 @@ export function PaginaAgenda() {
         <VisaoSemana semana={semana} dia={dia} hoje={hoje} o={opcoes} oCat={opcoesCat} cat={cat} carga={carga} amplo={amplo} concluidas={concluidas} semDemandas={erroCarga} escolher={(x) => setData(x)} />
       ) : null}
 
-      {!aguardando && modo === 'hoje' ? <VisaoHoje dia={dia} o={opcoes} cat={cat} concluidas={concluidas} /> : null}
+      {!aguardando && modo === 'hoje' ? <VisaoHoje dia={dia} o={opcoes} cat={cat} concluidas={concluidas} semDemandas={semDem} /> : null}
 
       {!aguardando && modo === 'semana' ? (
         <div className="agd-aux-par">
-          <PainelDiasCheios pan={pan} rotulo={nomePeriodo} aoVer={(d) => { setData(d); requestAnimationFrame(() => document.getElementById('agd-sem-detalhe')?.scrollIntoView({ block: 'start' })); }} />
-          <PainelSemPrazo lista={semPrazo} />
+          <PainelDiasCheios pan={pan} rotulo={nomePeriodo} aoVer={(d) => { setData(d); requestAnimationFrame(() => document.getElementById('agd-sem-detalhe')?.scrollIntoView({ block: 'start' })); }} indisponivel={semDem} />
+          <PainelSemPrazo lista={semPrazo} indisponivel={semDem} />
         </div>
       ) : null}
     </div>
@@ -657,7 +661,7 @@ export function PaginaAgenda() {
 
 // ---------- hoje ----------
 /** Dia (14/11/2026): a data é o título (no cabeçalho, com o que ela é e as duas ações); abaixo, compromissos e demandas lado a lado quando há largura, empilhados no celular. */
-function VisaoHoje({ dia, o, cat, concluidas }: { dia: string; o: OpcoesAgenda; cat: Categoria; concluidas: boolean }) {
+function VisaoHoje({ dia, o, cat, concluidas, semDemandas }: { dia: string; o: OpcoesAgenda; cat: Categoria; concluidas: boolean; semDemandas: boolean }) {
   const { hoje, dias, demandas } = useApp();
   const itens = itensDoDia(dia, { ...o, demandas: cat === 'eventos' ? [] : o.demandas, eventos: cat === 'demandas' ? [] : o.eventos });
   const eventos = comConflitos(itens.eventos), grupos = agruparPorDemanda(itens.marcos);
@@ -672,10 +676,10 @@ function VisaoHoje({ dia, o, cat, concluidas }: { dia: string; o: OpcoesAgenda; 
       </section>
       <section className="agd-painel" aria-labelledby="agd-h-d">
         <header className="agd-cab"><div><h3 id="agd-h-d">Demandas e acompanhamentos</h3><p className="agd-sub">Vencimentos, acompanhamentos e retornos {dia === hoje ? 'de hoje' : 'deste dia'}.</p></div></header>
-        {grupos.length ? grupos.map((g) => <ItemDemanda key={g[0].demanda.id} marcos={g} hoje={hoje} concluidas={concluidas} />) : <p className="agd-vazio">Nada vence {dia === hoje ? 'hoje' : 'neste dia'}.</p>}
-        {atrasados.length ? <><h4 className="agd-h4 agd-h4-atr">Atrasadas (continuam no dia em que venceram)</h4>{atrasados.map((g) => <ItemDemanda key={g[0].demanda.id} marcos={g} hoje={hoje} concluidas={concluidas} compacto />)}</> : null}
+        {semDemandas ? <p className="agd-vazio">{INDISPONIVEL}</p> : grupos.length ? grupos.map((g) => <ItemDemanda key={g[0].demanda.id} marcos={g} hoje={hoje} concluidas={concluidas} />) : <p className="agd-vazio">Nada vence {dia === hoje ? 'hoje' : 'neste dia'}.</p>}
+        {!semDemandas && atrasados.length ? <><h4 className="agd-h4 agd-h4-atr">Atrasadas (continuam no dia em que venceram)</h4>{atrasados.map((g) => <ItemDemanda key={g[0].demanda.id} marcos={g} hoje={hoje} concluidas={concluidas} compacto />)}</> : null}
       </section>
-      {cat !== 'eventos' ? <PainelSemPrazo lista={semPrazo} /> : null}
+      {cat !== 'eventos' ? <PainelSemPrazo lista={semPrazo} indisponivel={semDemandas} /> : null}
     </div>
   );
 }

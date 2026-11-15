@@ -1,7 +1,7 @@
 // Regras puras da Agenda (src/lib/agenda.ts, eventos.ts e a etapa Aguardando Prefeita de demandas.ts), sem navegador nem banco. Uso: node scripts/testar-agenda-regras.mjs
 import {
   gradeMes, somarMeses, semanaDe, diasNoMes, tituloMes, rotuloSemana, dataPorExtenso, contagemRetorno, marcosDaDemanda, dataAplicavel, cargaDaDemanda, nivelDaCarga, cargaPorDia,
-  pendenciasSemPrazo, itensDoDia, descreverDia, diaMaisLivre, panorama, marcosPorDia, LIMIARES_CARGA, colunaNaSemana, trocarMes, itensParaGrade, recortarItensGrade, dataCurta, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES,
+  pendenciasSemPrazo, itensDoDia, descreverDia, diaMaisLivre, panorama, sugestaoDeAlivio, marcosPorDia, LIMIARES_CARGA, colunaNaSemana, trocarMes, itensParaGrade, recortarItensGrade, dataCurta, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES,
   diaNaoUtil, feriadosDe, motivoNaoUtil, fimDeSemana,
 } from '../src/lib/agenda.ts';
 import { esperaPrefeita, ordemDaEtapa, ETAPAS, ETAPA_COR } from '../src/lib/demandas.ts';
@@ -122,6 +122,19 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
   ok(diaMaisLivre('2026-11-18', cc, [], hoje) === '2026-11-17' && diaMaisLivre('2026-11-18', cc, [{ id: 'z', data: '2026-11-17', descricao: 'x', categoria: 'Feriado' }], hoje) === '2026-11-16' && diaMaisLivre('2026-11-18', new Map(['2026-11-13', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-23'].map((x) => [x, { carga: x === '2026-11-18' ? 1 : 2, demandas: 1, atrasada: false }])), [], hoje) === null, 'sugestão de dia mais livre: o disponível mais leve e próximo, pulando fim de semana e dia indisponível; nulo se nada for mais leve');
   const pan = panorama(cc, [ev('x', { data: '2026-11-18' }), ev('y', { data: '2026-12-01' })], [], hoje, '2026-11-01', '2026-11-30');
   ok(pan.pendencias === 15 && pan.demandas === 6 && pan.compromissos === 1 && pan.cheios.map((x) => x.data).join() === '2026-11-18,2026-11-19' && /17 de novembro/.test(pan.cheios[0].sugestao), 'panorama do mês: pendências, demandas, compromissos e os dias cheios (média ou alta) com a sugestão de redistribuir');
+  // decisão 78: o verbo acompanha a direção do alvo, dia passado não recebe recomendação e a sugestão nunca mexe em vencimento
+  const antes = JSON.stringify([...cc]);
+  ok(/antecipar parte da carga para terça-feira, 17 de novembro/.test(pan.cheios[0].sugestao) && !/redistribuir/.test(pan.cheios[0].sugestao), 'alvo anterior ao dia cheio: a sugestão diz "antecipar"');
+  const alvoPost = new Map([['2026-11-16', { carga: 9, demandas: 1, atrasada: false }], ['2026-11-17', { carga: 8, demandas: 1, atrasada: false }], ['2026-11-18', { carga: 2, demandas: 1, atrasada: false }]]);
+  const pp = panorama(alvoPost, [], [], '2026-11-15', '2026-11-01', '2026-11-30');
+  ok(pp.cheios[0].data === '2026-11-16' && /redistribuir parte da carga para quinta-feira, 19 de novembro/.test(pp.cheios[0].sugestao) && !/antecipar/.test(pp.cheios[0].sugestao), 'alvo posterior ao dia cheio: a sugestão diz "redistribuir"');
+  ok(sugestaoDeAlivio('2026-11-18', '2026-11-17', 0).startsWith('Considere antecipar') && sugestaoDeAlivio('2026-11-18', '2026-11-19', 1).startsWith('Considere redistribuir') && /O vencimento não muda\.$/.test(sugestaoDeAlivio('2026-11-18', '2026-11-19', 1)), 'sugestaoDeAlivio: verbo pela direção e aviso de que o vencimento não muda');
+  const semAlvo = panorama(new Map(['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-23'].map((d) => [d, { carga: 9, demandas: 3, atrasada: false }])), [], [], '2026-11-15', '2026-11-01', '2026-11-30');
+  ok(semAlvo.cheios.length === 3 && semAlvo.cheios.every((x) => x.sugestao === null), 'sem nenhum dia mais leve por perto: o dia cheio continua listado e a sugestão é nula (a tela diz que nenhum dia próximo está mais leve)');
+  const passado = new Map([['2026-11-13', { carga: 9, demandas: 4, atrasada: true }], ['2026-11-15', { carga: 5, demandas: 2, atrasada: false }], ['2026-11-16', { carga: 0, demandas: 0, atrasada: false }]]);
+  const pas = panorama(passado, [], [], '2026-11-15', '2026-11-01', '2026-11-30');
+  ok(pas.cheios.map((x) => x.data).join() === '2026-11-15' && pas.pendencias === 14 && pas.demandas === 6 && pas.atrasadas === 4, 'dia passado: não vira recomendação, mas a carga e o atraso dele continuam nos totais do período; hoje ainda recebe sugestão');
+  ok(JSON.stringify([...cc]) === antes, 'a sugestão não altera a carga nem os dados recebidos');
 }
 
 // ---------- o que a célula do Mês mostra e o "+N" ----------
