@@ -7,11 +7,11 @@ import { useRouter } from 'next/navigation';
 import { Icone } from './Icone';
 import { useApp, type EstadoRotina } from './contexto';
 import { ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
-import { Cards, Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
+import { Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
 import { ParaHoje } from './para-hoje';
-import { CardsDeDemandas } from './baralho';
+import { CardsDeDemandas, CardsPorGrupo } from './baralho';
 import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, type Demanda } from '@/lib/demandas';
 import { anoDoDocumento, chaveOpcao } from '@/lib/documentos';
 
@@ -142,7 +142,7 @@ export function PaginaDemandas() {
           : !demandas.length && erroCarga ? null // a leitura falhou: o erro e o botão de tentar de novo já estão no topo; não se diz que não há demandas
           : !demandas.length ? <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda cadastrada</h3><p>Cadastre a primeira com o botão Nova demanda.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
           : !lista.length ? <div className="vazio"><Icone nome="busca" extra="grande" /><h3>Nenhuma demanda encontrada</h3><p>Ajuste o filtro para ver mais.</p><button className="btn mini" onClick={() => setFiltro({ ...FILTRO_VAZIO })}>Limpar filtros</button></div>
-          : visao === 'cards' ? <Cards lista={lista} /> : visao === 'quadro' ? <Quadro lista={lista} /> : visao === 'tabela' ? <Tabela lista={lista} /> : <Lista lista={lista} />}
+          : visao === 'cards' ? <CardsPorGrupo lista={lista} /> : visao === 'quadro' ? <Quadro lista={lista} /> : visao === 'tabela' ? <Tabela lista={lista} /> : <Lista lista={lista} />}
       </div>
     </>
   );

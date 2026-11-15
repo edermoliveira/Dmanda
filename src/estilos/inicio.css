@@ -9,7 +9,6 @@
 .app[data-dir="d"] .ph-palco { position: relative; padding-bottom: var(--ph-fundo); min-height: calc(var(--cardh, 340px) + var(--ph-fundo)); }
 .app[data-dir="d"] .ph-arrasto { position: relative; z-index: 2; touch-action: pan-y; transform: translateX(var(--dx, 0px)) rotate(var(--rot, 0deg)); transform-origin: 50% 90%; transition: transform .26s var(--suave, ease-out), opacity .26s ease-out; will-change: transform; }
 .app[data-dir="d"] .ph-arrasto[data-arrastando] { transition: none; }
-.app[data-dir="d"] .ph-arrasto[data-anima] { animation: ph-entra .24s var(--suave, ease-out); }
 .app[data-dir="d"] .ph-arrasto .vaga { min-width: 0; }
 .app[data-dir="d"] .ph-pilha[data-saindo="esq"] .ph-arrasto { transform: translateX(-125%) rotate(-16deg); opacity: 0; }
 .app[data-dir="d"] .ph-pilha[data-saindo="dir"] .ph-arrasto { transform: translateX(125%) rotate(16deg); opacity: 0; }
@@ -21,8 +20,16 @@
 .app[data-dir="d"] .ph-atras[data-nivel="3"] { z-index: 0; transform: translateY(var(--ph-fundo)) scale(.9); }
 .app[data-dir="d"] .ph-pilha[data-saindo] .ph-atras[data-nivel="1"] { transform: translateY(0) scale(1); }
 .app[data-dir="d"] .ph-pilha[data-saindo] .ph-atras[data-nivel="2"] { transform: translateY(var(--ph-degrau)) scale(.95); }
+/* revelar o próximo (decisão 77): o card que vai assumir a frente está montado atrás, com o próprio título e a própria cor, e vai aparecendo conforme o da frente acompanha o dedo (--prog, de 0 a 1).
+   É só visual: sem clique (pointer-events), sem foco (inert no HTML). A face do lado direito só entra quando o gesto da direita é navegar ("Voltar ao anterior") e só no arrasto para a direita. */
+.app[data-dir="d"] .ph-atras[data-face] { display: block; padding: 0; pointer-events: none; }
+.app[data-dir="d"] .ph-atras[data-face] .vaga { height: 100%; opacity: min(1, calc(var(--prog, 0) * 3)); }
+.app[data-dir="d"] .ph-atras[data-face] .dcard { height: 100%; }
+.app[data-dir="d"] .ph-atras[data-face="dir"] { visibility: hidden; }
+.app[data-dir="d"] .ph-pilha:is([data-revela="dir"], [data-saindo="dir"]) .ph-atras[data-face="dir"] { visibility: visible; }
+.app[data-dir="d"] .ph-pilha[data-nav-dir]:is([data-revela="dir"], [data-saindo="dir"]) .ph-atras[data-face="esq"] { visibility: hidden; }
+.app[data-dir="d"] .ph-pilha[data-saindo] .ph-atras[data-face] .vaga { opacity: 1; transition: opacity .2s; }
 .app[data-dir="d"] .ph-atras[data-volta] { animation: ph-volta .36s var(--suave, ease-out); }
-@keyframes ph-entra { from { transform: scale(.95) translateY(10px); opacity: .7; } to { transform: none; opacity: 1; } }
 @keyframes ph-volta { from { transform: translateX(-70%) translateY(0) rotate(-14deg) scale(1); opacity: 0; } 60% { opacity: 1; } }
 .app[data-dir="d"] .ph-dica { position: absolute; top: 10px; z-index: 3; padding: 4px 10px; border-radius: 999px; font-size: var(--t-rotulo); font-weight: 700; background: var(--acc); color: var(--on-acc, var(--card)); opacity: 0; pointer-events: none; transition: opacity .12s; }
 .app[data-dir="d"] .ph-dica-esq { right: 10px; }
@@ -37,7 +44,7 @@
 .app[data-dir="d"] .ph-confirma .acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 @media (prefers-reduced-motion: reduce) {
   .app[data-dir="d"] .ph-arrasto, .app[data-dir="d"] .ph-atras { transition: none; }
-  .app[data-dir="d"] .ph-arrasto[data-anima], .app[data-dir="d"] .ph-atras[data-volta] { animation: none; }
+  .app[data-dir="d"] .ph-atras[data-volta] { animation: none; }
 }
 /* as listas de cards das outras páginas no celular: o mesmo baralho; nas demais larguras a grade segue como era */
 .app[data-dir="d"] .cartas { min-width: 0; }
@@ -47,3 +54,15 @@
 .app[data-dir="d"] .ph[data-modo="pilha"] > h3 small { display: block; margin-top: 2px; }
 .app[data-dir="d"] .ph-pilha .dcard .chips { flex-wrap: wrap; }
 .app[data-dir="d"] .ph-pilha .dcard .chips .pz { max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
+
+/* Demandas, visão Cards, por categoria (decisão 77): cada grupo com a cor do próprio card; "Na fila" do Para hoje ao lado da Nova urgência */
+.app[data-dir="d"] .grupos-cards { display: grid; gap: 22px; min-width: 0; }
+.app[data-dir="d"] .grupo-cards { min-width: 0; }
+.app[data-dir="d"] .grupo-cab { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+.app[data-dir="d"] .grupo-cor { flex: none; width: 12px; height: 12px; border-radius: 4px; background: var(--text2); }
+.app[data-dir="d"] .grupo-cards[data-cor="azul"] .grupo-cor { background: var(--cat-azul); box-shadow: inset 0 0 0 1px var(--brd); }
+.app[data-dir="d"] .grupo-cards[data-cor="verde"] .grupo-cor { background: var(--cat-verde); box-shadow: inset 0 0 0 1px var(--brd); }
+.app[data-dir="d"] .grupo-cards[data-cor="amar"] .grupo-cor { background: var(--cat-amar); box-shadow: inset 0 0 0 1px var(--brd); }
+.app[data-dir="d"] .fila-hoje { margin-top: 14px; }
+.app[data-dir="d"] .fila-hoje h4 { margin: 0 0 8px; font-size: calc(14px * var(--esc)); color: var(--text); }
+.app[data-dir="d"] .fila-hoje h4 small { font-weight: 400; color: var(--text2); }

@@ -4,13 +4,16 @@
 //  - Gesto confirmado (distância proporcional à largura ou gesto rápido e longo o bastante): o card sai, reaparece atrás da pilha e o próximo assume a frente.
 //  - Toque numa área livre vira o card (verso existente); novo toque volta à frente. Tocar em tarefa, link ou botão faz só aquela ação. Há sempre uma ação clara para abrir a demanda.
 //  - A rolagem vertical segue livre (touch-action: pan-y), o cancelamento do gesto pelo navegador devolve o card, o mouse nunca arrasta (valem os botões equivalentes) e movimento reduzido tira as animações.
+//  - Revelar o próximo (decisão 77): o card que vai assumir a frente já está montado atrás, com o título e a cor do próprio card; enquanto o da frente acompanha o dedo, ele aparece. Gesto curto: o da frente
+//    volta e a ordem não muda. Gesto completo de navegação: assume a frente exatamente o card que foi revelado. Os de fundo são só visuais (inert, sem foco nem clique).
 // Aqui só mora a apresentação e o gesto: a ordem, as etapas e as gravações ficam com quem usa (Para hoje, Nova urgência e as listas de cards do Início).
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as PonteiroReact, type ReactNode, type RefObject } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as PonteiroReact, type ReactNode, type RefObject } from 'react';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { CardDemanda } from './cartoes';
 import { gestoValido, ordemDaPilha, ultimoParaAFrente, ativoParaOFim } from '@/lib/para-hoje';
-import type { Demanda } from '@/lib/demandas';
+import { plural, type Demanda } from '@/lib/demandas';
+import { agruparPorCategoria } from '@/lib/fila';
 
 export type Modo = 'grade' | 'pilha';
 /** Largura do painel em px de layout (não de fonte): abaixo de 520 é celular (pilha); acima, a grade de cards de sempre (computador e iPad seguem como na main). */
@@ -49,10 +52,12 @@ function useArrasto(aoLado: (lado: Lado) => boolean | void, desligado: boolean) 
     const el = ref.current; if (!el) return;
     const w = largura(), prog = Math.min(1, Math.abs(dx) / Math.max(72, w * 0.22));
     el.style.setProperty('--dx', `${dx}px`); el.style.setProperty('--rot', `${Math.max(-14, Math.min(14, (dx / w) * 18)).toFixed(2)}deg`);
-    el.closest<HTMLElement>('.ph-pilha')?.style.setProperty('--prog', prog.toFixed(3));
+    const pilha = el.closest<HTMLElement>('.ph-pilha');
+    pilha?.style.setProperty('--prog', prog.toFixed(3));
+    if (pilha) { if (Math.abs(dx) >= 4) pilha.dataset.revela = dx < 0 ? 'esq' : 'dir'; else delete pilha.dataset.revela; }
     if (prog >= 1) el.dataset.lado = dx < 0 ? 'esq' : 'dir'; else delete el.dataset.lado;
   };
-  const zerar = () => { const el = ref.current; if (el) { delete el.dataset.arrastando; delete el.dataset.lado; el.style.setProperty('--dx', '0px'); el.style.setProperty('--rot', '0deg'); el.closest<HTMLElement>('.ph-pilha')?.style.setProperty('--prog', '0'); } };
+  const zerar = () => { const el = ref.current; if (el) { delete el.dataset.arrastando; delete el.dataset.lado; el.style.setProperty('--dx', '0px'); el.style.setProperty('--rot', '0deg'); const p = el.closest<HTMLElement>('.ph-pilha'); p?.style.setProperty('--prog', '0'); if (p) delete p.dataset.revela; } };
   const final = () => { zerar(); est.current = null; };
   return {
     ref,
@@ -110,22 +115,20 @@ export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado
   const [saindo, setSaindo] = useState<Lado | null>(null);
   const [volta, setVolta] = useState<string | null>(null);
   const [virado, setVirado] = useState<{ id: string; verso: boolean } | null>(null);
-  const [anima, setAnima] = useState(false);
+  const pilhaRef = useRef<HTMLDivElement>(null);
   const trava = useRef(false);
   const botaoDireita = useRef<HTMLButtonElement>(null);   // onde o menu de etapas se ancora quando a direita abre o menu
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => { setAnima(true); }, []); // o primeiro desenho não anima: só os cards que assumem a frente depois
-  /* eslint-enable react-hooks/set-state-in-effect */
   const ativoId = ordem[0], ativa = ativoId ? porId.get(ativoId) : undefined;
   const verso = !!ativoId && virado?.id === ativoId && virado.verso;
   const total = ordem.length, desligado = travado || saindo !== null;
 
   const sair = useCallback((lado: Lado, depois: () => void) => {
     if (trava.current) return;
-    if (movimentoReduzido()) { depois(); return; }
+    const limpar = () => { const p = pilhaRef.current; if (p) { p.style.setProperty('--prog', '0'); delete p.dataset.revela; } };
+    if (movimentoReduzido()) { depois(); limpar(); return; }
     trava.current = true; setSaindo(lado);
     setTimeout(() => {
-      depois(); setSaindo(null); trava.current = false;
+      depois(); limpar(); setSaindo(null); trava.current = false;
       if (lado === 'esq' && ativoId) { setVolta(ativoId); setTimeout(() => setVolta(null), 420); }
     }, TEMPO_SAIDA);
   }, [ativoId]);
@@ -139,19 +142,26 @@ export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado
     setVirado({ id: ativoId, verso: !verso });
   };
   if (!ativa) return null;
-  const atras = ordem.slice(1, 3), fantasma = volta && total >= 4 ? porId.get(volta) : undefined;
+  const navDir = !!direita.animar;
+  // os cards que podem assumir a frente: o próximo (esquerda) e, quando a direita é "voltar ao anterior", o último da ordem (com só dois cards os dois lados revelam o mesmo)
+  const proximo = total >= 2 ? porId.get(ordem[1]) : undefined, anterior = navDir && total >= 3 ? porId.get(ordem[total - 1]) : undefined;
+  const atras = ordem.slice(2, 3), fantasma = volta && total >= 4 ? porId.get(volta) : undefined;
+  const face = (d: Demanda, lado: 'esq' | 'dir' | 'ambos') => <div key={`face-${lado}`} className="ph-atras" data-nivel="1" data-face={lado} aria-hidden="true" inert><div className="vaga"><CardDemanda d={d} mostrarRapida lado="frente" /></div></div>;
   return (
-    <div className="ph-pilha" data-pilha data-total={total} data-saindo={saindo ?? undefined} aria-label={nome} role="group">
+    <div ref={pilhaRef} className="ph-pilha" data-pilha data-total={total} data-saindo={saindo ?? undefined} data-nav-dir={navDir || undefined} aria-label={nome} role="group">
       <div className="ph-palco">
         {fantasma ? <div className="ph-atras" data-nivel="3" data-volta aria-hidden="true"><span>{fantasma.assunto}</span></div> : null}
-        {atras.map((id, i) => <div key={id} className="ph-atras" data-nivel={i + 1} data-volta={id === volta || undefined} aria-hidden="true"><span>{porId.get(id)?.assunto}</span></div>)}
-        <div key={ativoId} ref={ref} className="ph-arrasto" data-ativo-id={ativoId} data-anima={anima || undefined} onClick={virar} {...props}>
+        {atras.map((id) => <div key={id} className="ph-atras" data-nivel="2" data-volta={id === volta || undefined} aria-hidden="true"><span>{porId.get(id)?.assunto}</span></div>)}
+        <div key={ativoId} ref={ref} className="ph-arrasto" data-ativo-id={ativoId} onClick={virar} {...props}>
           <span className="ph-dica ph-dica-esq" aria-hidden="true">{esquerda.rotulo}</span>
           <span className="ph-dica ph-dica-dir" aria-hidden="true">{direita.rotulo}</span>
           <div className="vaga" {...(vagaDe?.(ativoId) !== undefined ? { 'data-vaga': vagaDe(ativoId) } : {})} data-ativo>
             <CardDemanda d={ativa} mostrarRapida lado={verso ? 'verso' : 'frente'} aoGirar={(para) => setVirado({ id: ativoId, verso: para === 'verso' })} />
           </div>
         </div>
+        {/* depois do card da frente no documento: quem procura o card pelo id encontra primeiro o da frente; a sobreposição é do CSS */}
+        {proximo ? face(proximo, anterior ? 'esq' : 'ambos') : null}
+        {anterior ? face(anterior, 'dir') : null}
       </div>
       {rodape ?? (
         <>
@@ -190,5 +200,26 @@ export function BaralhoSimples({ lista, nome = 'Demandas' }: { lista: Demanda[];
     <Baralho nome={nome} ordem={ordem} porId={porId} aviso={aviso}
       esquerda={{ rotulo: 'Passar para o fim', executar: () => { setGuardada(ativoParaOFim(ordem)); setAviso(`Passado para o fim. Agora: ${porId.get(ordem[1])?.assunto ?? ''}`); } }}
       direita={{ rotulo: 'Voltar ao anterior', icone: 'chevron-right', desabilitado: ordem.length < 2, animar: true, executar: () => { setGuardada(ultimoParaAFrente(ordem)); setAviso(`Voltou ao anterior: ${porId.get(ordem[ordem.length - 1])?.assunto ?? ''}`); } }} />
+  );
+}
+
+/**
+ * Demandas, visão Cards (decisão 77): uma fila por categoria funcional (tipo e área), cada demanda em um só grupo e cada grupo com a sua cor e a sua contagem. No iPhone cada grupo é um baralho
+ * independente (navegar em um não mexe nos outros, e nada muda de etapa); na web e no iPad as mesmas filas ficam como grades de cards, todas à vista. A ordem é a mesma nas duas (lib/fila.ts).
+ */
+export function CardsPorGrupo({ lista }: { lista: Demanda[] }) {
+  const { hoje, dias } = useApp();
+  const secao = useRef<HTMLDivElement>(null);
+  const modo = useModo(secao);
+  const grupos = useMemo(() => agruparPorCategoria(lista, hoje, dias), [lista, hoje, dias]);
+  return (
+    <div ref={secao} className="grupos-cards" data-modo={modo}>
+      {grupos.map((g) => (
+        <section key={g.chave} className="grupo-cards" data-grupo={g.chave} data-cor={g.cor} aria-label={`${g.rotulo}, ${plural(g.demandas.length, 'demanda')}`}>
+          <h3 className="sub-f grupo-cab"><i className="grupo-cor" aria-hidden="true" />{g.rotulo} <small>{plural(g.demandas.length, 'demanda')}</small></h3>
+          {modo === 'pilha' ? <BaralhoSimples lista={g.demandas} nome={g.rotulo} /> : <div className="cards">{g.demandas.map((d) => <CardDemanda key={d.id} d={d} />)}</div>}
+        </section>
+      ))}
+    </div>
   );
 }

@@ -667,3 +667,10 @@ Branch `bloco/configuracoes-catalyst`, a partir de `c2876dc`, sem push, sem publ
 **Falta Safari em aparelho real.** Gesto do baralho, seletor nativo de data pelo "Ir para a data", largura real do cabeçalho, área segura e barra do Safari.
 
 **Próximo ponto de retomada.** Avaliação do Éder no iPhone. Depois: conferência das migrações (A1) e a escolha do próximo item da auditoria. Push da `main` e deploy dependem de autorização específica. Andamento do projeto segue em 45% (`ANDAMENTO.md`, sem critério novo cumprido).
+
+## AE. Calendário aprovado, ajustes pós-iPhone e fila de cards (15/11/2026, decisões 76 e 77; publicados em recorte com autorização expressa do Éder)
+
+O Éder aprovou o calendário depois de usar a prévia no Safari do iPhone e autorizou o push direto à `main` e o deploy. Publicado: o recorte da decisão 76 (campos de Configurações e cabeçalho comum da Agenda, sem Pagamentos e sem a prévia dos lançamentos) mais os ajustes da decisão 77 (data centralizada, painéis, legenda, próximo card revelado, Cards por grupo, fila completa no Início). **Fica só na `main` local:** Pagamentos (migração `20261115000000_pagamentos` e cópia versão 5) e a prévia dos lançamentos (`#previa=lancamentos`).
+
+**A1 resolvido (leitura):** as migrações 16 a 20 estão aplicadas no Supabase real; só `20261115000000_pagamentos` está pendente (dry-run). **Para liberar Pagamentos:** autorizar `npx supabase db push --linked` com dry-run antes, sem reset; depois publicar o código de Pagamentos da `main` local. A convivência com a migração 23 do Início está na decisão 77, item 8. **A avaliar no iPhone:** campos de data centralizados, painéis e legenda da Agenda, arrasto do baralho com o próximo card, Demandas em Cards por grupo, Nova urgência e "Na fila" do Para hoje. **Depende de validação autenticada em produção:** tudo isso com os dados reais do Éder (só ele entra).
+

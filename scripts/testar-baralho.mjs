@@ -100,13 +100,13 @@ for (const perfil of ['desktop', 'ipad']) {
   await pg.waitForSelector(`${ATIVA} .vaga[data-ativo]`);
   let a = await ativo(pg);
   ok(a?.assunto.startsWith('Alfa') && a.vaga === '1' && (await pg.$eval(`${ATIVA} .ph-posicao`, (e) => e.textContent.trim())) === '1 de 3', `celular: pilha com um card ativo (vaga 1, ${a?.assunto}) e "1 de 3"`);
-  ok((await pg.$$eval(`${ATIVA} .vaga`, (l) => l.length)) === 1 && (await pg.$$eval(`${ATIVA} .ph-atras`, (l) => l.map((e) => e.dataset.nivel).join())) === '1,2', 'dois cards traseiros visíveis atrás do da frente, como um baralho');
+  ok((await pg.$$eval(`${ATIVA} .ph-arrasto .vaga`, (l) => l.length)) === 1 && (await pg.$$eval(`${ATIVA} .ph-atras`, (l) => l.map((e) => e.dataset.nivel).sort().join())) === '1,2', 'dois cards traseiros visíveis atrás do da frente, como um baralho (o primeiro com a face do próximo card)');
   ok((await pg.$eval(AVANCAR, (e) => e.textContent.trim())) === 'Avançar para Vistos', 'em Cadastro o botão equivalente diz "Avançar para Vistos"');
   const alvos = await pg.$$eval(`${ATIVA} .ph-botoes .btn, ${ABRIR}`, (l) => l.map((e) => e.getBoundingClientRect().height));
   ok(alvos.every((h) => h >= 32), `os botões equivalentes ao gesto existem e têm altura de botão (${alvos.map(Math.round).join(', ')} px)`);
   // Nova urgência no celular: a mesma pilha com a ordem só em memória
   {
-    const nu = await pg.$eval('[data-nova-urgencia]', (e) => ({ pilhas: e.querySelectorAll('.ph-pilha').length, cards: e.querySelectorAll('.ph-pilha .vaga').length, pos: e.querySelector('.ph-posicao')?.textContent.trim() }));
+    const nu = await pg.$eval('[data-nova-urgencia]', (e) => ({ pilhas: e.querySelectorAll('.ph-pilha').length, cards: e.querySelectorAll('.ph-pilha .ph-arrasto .vaga').length, pos: e.querySelector('.ph-posicao')?.textContent.trim() }));
     ok(nu.pilhas === 1 && nu.cards === 1 && nu.pos === '1 de 2', `a Nova urgência no celular também é um baralho (${nu.pos})`);
     const idNU = () => pg.$eval('[data-nova-urgencia] .ph-pilha .dcard', (e) => e.dataset.id);
     const centro = async () => { await pg.$eval('[data-nova-urgencia] .ph-arrasto', (e) => e.scrollIntoView({ block: 'center' })); await esperar(400); };

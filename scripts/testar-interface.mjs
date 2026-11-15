@@ -32,7 +32,7 @@ const novoContexto = async (opcoes, { visao = 'cards', tema = 'claro' } = {}) =>
 // Depois de carregar, a tela ainda precisa aplicar a visão guardada no navegador (Cards, Quadro, Tabela ou Lista): o aplicativo lê essa preferência depois da hidratação e as ações do servidor
 // do início (demandas, ambiente, dias, rotina, entradas) rodam uma de cada vez, então a visão guardada aparece de 0,1 a 0,5 s DEPOIS de os dados chegarem (medido, e igual na versão anterior ao
 // bloco de Entradas). Por isso o "ir" espera explicitamente a visão pedida (ou o estado vazio, ou o erro de carga), com limite, e falha com o retrato da tela.
-const VISAO_SEL = { cards: '.cards .dcard', quadro: '.quadro .coluna', tabela: '.tabela tbody tr', lista: '.lista .linha' };
+const VISAO_SEL = { cards: '.cards .dcard, .grupos-cards .ph-arrasto .dcard', quadro: '.quadro .coluna', tabela: '.tabela tbody tr', lista: '.lista .linha' };
 const ir = async (pg, rota = '/demandas') => {
   await pg.goto(BASE + rota, { waitUntil: 'load', timeout: 120000 }); await pg.waitForSelector('.app .main', { timeout: 120000 });
   await pg.waitForFunction(() => !document.body.innerText.includes('Carregando as demandas'), null, { timeout: 120000 });
@@ -225,7 +225,9 @@ for (const tema of ['claro', 'escuro']) {
     await pg.waitForFunction((n) => document.querySelectorAll('.dcard').length >= n, CASOS.length, { timeout: 20000 }).catch(() => {}); await pg.waitForTimeout(400);
     const r = await pg.evaluate(medirCards);
     const longos = r.filter((x) => x.naturais >= 3);
-    ok(r.length === CASOS.length + 6, `${nome}, ${tema}: ${r.length} cards renderizados (esperados ${CASOS.length + 6})`);
+    // no celular (painel abaixo de 520 px) a visão Cards é um baralho por grupo (decisão 77): cada pilha traz o card da frente e as faces dos vizinhos; na grade todos os cards aparecem
+    const grupos = await pg.$$eval('.grupos-cards[data-modo="pilha"] .grupo-cards', (l) => l.length);
+    ok(grupos ? r.length >= grupos : r.length === CASOS.length + 6, grupos ? `${nome}, ${tema}: ${grupos} pilhas por grupo com ${r.length} cards renderizados (a frente e as faces dos vizinhos)` : `${nome}, ${tema}: ${r.length} cards renderizados (esperados ${CASOS.length + 6})`);
     ok(r.every((x) => x.vis >= Math.min(x.naturais, 2)), `${nome}, ${tema}: nenhum título fica com menos de 2 linhas (ou o que o texto tiver)` + (r.filter((x) => x.vis < Math.min(x.naturais, 2)).length ? ': ' + JSON.stringify(r.filter((x) => x.vis < Math.min(x.naturais, 2)).map((x) => [x.titulo, x.vis, x.naturais])) : ''));
     ok(r.every((x) => x.exato && x.dentro && !x.sobra), `${nome}, ${tema}: título com linhas inteiras (nenhuma cortada ao meio), texto pintado dentro do cartão e sem estouro vertical`);
     ok(r.every((x) => !x.descVisivel || x.vis >= Math.min(x.naturais, 4)), `${nome}, ${tema}: a descrição só aparece quando o título já tem todas as linhas que cabem (até 4)`);

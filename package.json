@@ -24,6 +24,8 @@
     "testar:fuso": "node scripts/testar-fuso.mjs",
     "testar:agenda": "node scripts/testar-agenda.mjs",
     "testar:baralho": "node scripts/testar-baralho.mjs",
+    "testar:fila": "node scripts/testar-fila.mjs",
+    "testar:fila-cards": "node scripts/testar-fila-cards.mjs",
     "testar:config": "node scripts/testar-config.mjs",
     "testar:campos": "node scripts/testar-campos.mjs",
     "testar:busca": "node scripts/testar-busca.mjs",

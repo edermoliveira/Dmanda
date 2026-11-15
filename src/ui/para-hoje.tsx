@@ -11,6 +11,7 @@ import { useApp } from './contexto';
 import { CardDemanda } from './cartoes';
 import { Baralho, BaralhoSimples, useModo } from './baralho';
 import { eObjeto } from '@/lib/armazenamento';
+import { prioritariasPrimeiro } from '@/lib/prioridade';
 import { ativoParaOFim, elegiveisParaHoje, ETAPA_SEGUINTE, etapaDeEspera, novasUrgencias, ordemDaPilha, precisaCompletar, vagasAbertas } from '@/lib/para-hoje';
 import { plural, type Demanda } from '@/lib/demandas';
 
@@ -122,7 +123,12 @@ export function ParaHoje() {
   const candidatas = faltaCompletar ? elegiveis.filter((e) => !ocupadas.has(e.demanda.id)).slice(0, 10).map((e) => e.demanda.id).join(',') : '';
   // preenche (ou repõe) só as vagas livres; a lista só muda quando as candidatas mudam, então uma resposta sem efeito não repete a chamada
   useEffect(() => { if (!carregando && hoje !== '2000-01-01' && candidatas) void sincronizarParaHoje(candidatas.split(',')); }, [candidatas, carregando, hoje, sincronizarParaHoje]);
-  const urgentes = novasUrgencias(paraHoje, demandas, elegiveis).slice(0, 3);
+  // Nova urgência e a fila inteira (decisão 77): sem corte em três; as pedidas pela Prefeita ou pelo Gabinete vão primeiro, depois a ordem da própria seção (atrasadas, vencem hoje, próximas e sem prazo).
+  // Cada demanda aparece uma só vez na seção: nas vagas, ou na Nova urgência, ou na fila.
+  const urgentes = prioritariasPrimeiro(novasUrgencias(paraHoje, demandas, elegiveis).map((e) => e.demanda));
+  const idsUrgentes = new Set(urgentes.map((d) => d.id));
+  // enquanto há vaga livre a preencher, a fila espera (senão as demandas apareceriam aqui e pulariam para as vagas um instante depois)
+  const fila = faltaCompletar ? [] : prioritariasPrimeiro(elegiveis.filter((e) => !ocupadas.has(e.demanda.id) && !idsUrgentes.has(e.demanda.id)).map((e) => e.demanda));
   return (
     <section ref={secao} className="sec ph" data-painel="para-hoje" data-modo={modo} aria-labelledby="ph-t">
       <h3 id="ph-t">Para hoje <small>até 3 demandas para tocar hoje: atrasadas e as que vencem hoje primeiro</small></h3>
@@ -132,8 +138,15 @@ export function ParaHoje() {
       {urgentes.length ? (
         <div className="nova-urgencia" role="status" data-nova-urgencia>
           <h4>Nova urgência <small>fora das suas vagas, sem trocar a seleção</small></h4>
-          {modo === 'pilha' ? <BaralhoSimples lista={urgentes.map((e) => e.demanda)} nome="Nova urgência" />
-            : <div className="cards">{urgentes.map((e) => <CardDemanda key={e.demanda.id} d={e.demanda} mostrarRapida />)}</div>}
+          {modo === 'pilha' ? <BaralhoSimples lista={urgentes} nome="Nova urgência" />
+            : <div className="cards">{urgentes.map((d) => <CardDemanda key={d.id} d={d} mostrarRapida />)}</div>}
+        </div>
+      ) : null}
+      {fila.length ? (
+        <div className="fila-hoje" data-fila-hoje>
+          <h4>Na fila <small>{plural(fila.length, 'demanda')} que também podem ser tocadas hoje, sem ocupar vaga</small></h4>
+          {modo === 'pilha' ? <BaralhoSimples lista={fila} nome="Na fila de hoje" />
+            : <div className="cards">{fila.map((d) => <CardDemanda key={d.id} d={d} mostrarRapida />)}</div>}
         </div>
       ) : null}
     </section>

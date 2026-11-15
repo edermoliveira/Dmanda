@@ -131,7 +131,7 @@ await pg.click('.dcard:has-text("Falha de rede") .girar >> nth=0'); await pg.wai
 await pg.click('.dcard:has-text("Falha de rede") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
 await ir('/arquivo'); await pg.click('.linha:has-text("Falha de rede") .btn:has-text("Excluir")'); await pg.click('.linha:has-text("Falha de rede") .btn:has-text("Confirmar exclusão")'); await pg.waitForTimeout(600);
 await ir('/demandas');
-ok((await assuntos()).join() === 'Resposta ao TCE sobre diárias,Revisão do contrato de limpeza' && /2 demandas, 1 atrasada/.test(await pg.textContent('.pagehead')), 'depois do cadastro as duas demandas aparecem em Cards e a contagem do cabeçalho conta a atrasada (vencimento ajustado de 10/10 para 09/10)');
+ok((await assuntos()).sort().join() === 'Resposta ao TCE sobre diárias,Revisão do contrato de limpeza' && /2 demandas, 1 atrasada/.test(await pg.textContent('.pagehead')), 'depois do cadastro as duas demandas aparecem em Cards e a contagem do cabeçalho conta a atrasada (vencimento ajustado de 10/10 para 09/10)');
 ok((await assuntos()).length === 2, 'depois de recarregar a página as demandas continuam (vieram do banco)');
 // a data de hoje chega junto das demandas: nenhum quadro da carga pode mostrar a data provisória (2000-01-01) como se fosse prazo real
 await pg.addInitScript(() => { window.__amostras = []; setInterval(() => { window.__amostras.push(document.querySelector('.dcard') ? [...document.querySelectorAll('.dcard .pz, .tempo')].map((e) => e.textContent).join('|') : ''); }, 25); });

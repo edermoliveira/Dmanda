@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { Icone } from './Icone';
 import { emLote, epocaDoApp, pendentes, registrar, type Pedido } from './ajuste';
 import { useApp } from './contexto';
-import { AcaoCard, BarraProg, CardDemanda, ChipEspera, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
+import { AcaoCard, BarraProg, ChipEspera, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
 import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordemDaEtapa, ordenar, origemDe, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
 
 // O título é a informação principal do card: ele nunca é espremido para dar lugar ao resto. Linhas que o título mantém: o que o texto precisar, até TETO_TITULO, e nunca
@@ -79,10 +79,6 @@ export function useAjustar(dep: unknown) {
 export const Vazio = ({ icone = 'busca', titulo, texto }: { icone?: string; titulo: string; texto: string }) => (
   <div className="vazio"><Icone nome={icone} extra="grande" /><h3>{titulo}</h3><p>{texto}</p></div>
 );
-
-export function Cards({ lista }: { lista: Demanda[] }) {
-  return <div className="cards">{lista.map((d) => <CardDemanda key={d.id} d={d} />)}</div>;
-}
 
 // ---------- Quadro ----------
 const SKIP = 'button, input, textarea, select, a, [contenteditable], .t-txt, .prox-t, .t-ed';
