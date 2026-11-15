@@ -87,6 +87,22 @@
 .agd-h4 { margin: 14px 0 6px; font-size: calc(13px * var(--esc)); font-weight: 650; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; }
 .agd-h4-atr { color: var(--perigo); }
 .agd-vazio { margin: 8px 0; font-size: calc(14px * var(--esc)); color: var(--text2); }
+/* painéis informativos (decisão 76): cada um é uma seção com cabeçalho compacto (título e indicador de quantidade), linhas acionáveis e, sem informação, uma mensagem curta numa caixa baixa */
+.agd-aux .agd-cab-aux { align-items: center; flex-wrap: nowrap; margin-bottom: 10px; }
+.agd-aux .agd-cab-aux h3 { min-width: 0; font-size: calc(16px * var(--esc)); overflow-wrap: anywhere; }
+.agd-qtd { flex: none; display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 9px; border-radius: 999px; background: var(--acc-soft); color: var(--text); font-size: calc(13px * var(--esc)); font-weight: 700; font-variant-numeric: tabular-nums; }
+.agd-aux[data-vazio] { padding-block: 12px; }
+.agd-aux[data-vazio] .agd-cab-aux { margin-bottom: 2px; }
+.agd-aux[data-vazio] .agd-vazio { margin: 0; }
+.agd-linha.agd-linha-carga { display: grid; gap: 4px; align-items: start; } /* mesma especificidade de .agd-linha, que vem depois: precisa dos dois seletores */
+.agd-linha-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.agd-linha-data, .agd-linha-assunto { min-width: 0; font-size: calc(14px * var(--esc)); font-weight: 650; overflow-wrap: anywhere; }
+.agd-linha-data { align-self: center; }
+.agd-linha-sug { font-size: calc(13px * var(--esc)); color: var(--text2); overflow-wrap: anywhere; }
+.agd-chip { flex: none; padding: 2px 9px; border-radius: 999px; font-size: calc(12px * var(--esc)); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; background: var(--calendar-cell-medium); color: var(--calendar-cell-medium-fg); box-shadow: inset 0 0 0 1px var(--brd); }
+.agd-chip[data-nivel="alta"] { background: var(--calendar-cell-high); color: var(--calendar-cell-high-fg); box-shadow: none; }
+.agd-linha-carga[data-nivel="alta"] { box-shadow: 0 0 0 1px var(--card-brd), inset 3px 0 0 var(--acc); }
+.agd-meta { display: flex; flex-wrap: wrap; gap: 0 10px; min-width: 0; font-size: calc(13px * var(--esc)); color: var(--text2); overflow-wrap: anywhere; }
 
 .agd-aux-par { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
 @container agd (min-width: 760px) { .agd-aux-par { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
@@ -268,11 +284,13 @@
 .agd-m-sem { width: 14px; height: 10px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--brd); background-image: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--text) 25%, transparent) 3px 4px); }
 
 /* legenda */
-.agd-leg { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; margin-top: 14px; font-size: calc(12px * var(--esc)); color: var(--text2); }
+.agd-leg { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin-top: 14px; font-size: calc(12px * var(--esc)); color: var(--text2); }
 .agd-marcas, .agd-escala ul { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0; padding: 0; list-style: none; }
 .agd-marcas li, .agd-escala li { display: inline-flex; align-items: center; gap: 6px; }
-.agd-escala { display: inline-flex; align-items: center; gap: 8px; margin-inline-start: auto; }
-.agd-escala ul { gap: 6px; }
+/* a escala de pendências (decisão 76): só as quatro amostras com a faixa de cada uma, centralizadas sob a grade; cada cor fica junto do seu número e, em largura extrema, a fila quebra centralizada */
+.agd-escala { display: flex; justify-content: center; }
+.agd-escala ul { justify-content: center; gap: 8px 16px; }
+.agd-escala li { white-space: nowrap; }
 .agd-escala small { font-size: max(10px, calc(11px * var(--esc))); }
 .agd-amostra { display: inline-block; width: 18px; height: 18px; border-radius: 6px; background: var(--calendar-cell-idle); box-shadow: inset 0 0 0 1px var(--brd); flex: none; }
 .agd-amostra[data-nivel="baixa"] { background: var(--calendar-cell-low); }

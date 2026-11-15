@@ -234,18 +234,21 @@ function DetalheDia({ data, o, concluidas, semDemandas }: { data: string; o: Opc
 // ---------- painéis auxiliares ----------
 function PainelDiasCheios({ pan, aoVer, rotulo }: { pan: ReturnType<typeof panorama>; aoVer: (d: string) => void; rotulo: string }) {
   return (
-    <section className="agd-painel agd-aux" aria-labelledby="agd-cheios-t">
-      <header className="agd-cab"><div><h3 id="agd-cheios-t">Onde {rotulo} aperta</h3><p className="agd-sub">Dias de carga média ou alta, para antecipar ou redistribuir.</p></div></header>
+    <section className="agd-painel agd-aux" aria-labelledby="agd-cheios-t" data-vazio={pan.cheios.length ? undefined : 'sim'}>
+      <header className="agd-cab agd-cab-aux"><h3 id="agd-cheios-t">Onde {rotulo} aperta</h3>{pan.cheios.length ? <span className="agd-qtd" title="Dias de carga média ou alta, para antecipar ou redistribuir"><span className="sr-only">{plural(pan.cheios.length, 'dia')} de carga média ou alta</span><span aria-hidden="true">{pan.cheios.length}</span></span> : null}</header>
       {pan.cheios.length ? (
         <ul className="agd-lista">
-          {pan.cheios.map((c) => (
-            <li key={c.data}>
-              <button type="button" className="agd-linha" onClick={() => aoVer(c.data)}>
-                <span className="agd-amostra" data-nivel={nivelDaCarga(c.carga)} aria-hidden="true" />
-                <span className="agd-linha-t"><b>{maiuscula(dataPorExtenso(c.data))}</b><small>{plural(c.carga, 'pendência')} ({ROTULO_NIVEL[nivelDaCarga(c.carga)]})</small>{c.sugestao ? <small>{c.sugestao}</small> : <small>Nenhum dia próximo está mais leve.</small>}</span>
-              </button>
-            </li>
-          ))}
+          {pan.cheios.map((c) => {
+            const nivel = nivelDaCarga(c.carga);
+            return (
+              <li key={c.data}>
+                <button type="button" className="agd-linha agd-linha-carga" data-nivel={nivel} onClick={() => aoVer(c.data)}>
+                  <span className="agd-linha-topo"><b className="agd-linha-data">{maiuscula(dataPorExtenso(c.data))}</b><span className="agd-chip" data-nivel={nivel} title={ROTULO_NIVEL[nivel]}>{plural(c.carga, 'pendência')}<span className="sr-only"> ({ROTULO_NIVEL[nivel]})</span></span></span>
+                  <small className="agd-linha-sug">{c.sugestao ? c.sugestao : 'Nenhum dia próximo está mais leve.'}</small>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       ) : <p className="agd-vazio">Nenhum dia com carga média ou alta {rotulo === 'a semana' ? 'nesta semana' : 'neste período'}.</p>}
     </section>
@@ -255,18 +258,19 @@ function PainelDiasCheios({ pan, aoVer, rotulo }: { pan: ReturnType<typeof panor
 function PainelSemPrazo({ lista }: { lista: Demanda[] }) {
   const { abrirJanela } = useApp();
   return (
-    <section className="agd-painel agd-aux" aria-labelledby="agd-sem-t">
-      <header className="agd-cab"><div><h3 id="agd-sem-t">Pendências sem prazo</h3><p className="agd-sub">{lista.length ? `${pl(lista.length, 'demanda aberta', 'demandas abertas')} sem nenhuma data. Nada foi inventado para elas.` : 'Toda demanda aberta tem alguma data.'}</p></div></header>
+    <section className="agd-painel agd-aux" aria-labelledby="agd-sem-t" data-vazio={lista.length ? undefined : 'sim'}>
+      <header className="agd-cab agd-cab-aux"><h3 id="agd-sem-t">Pendências sem prazo</h3>{lista.length ? <span className="agd-qtd" title="Demandas abertas sem nenhuma data. Nada foi inventado para elas"><span className="sr-only">{pl(lista.length, 'demanda aberta', 'demandas abertas')} sem nenhuma data</span><span aria-hidden="true">{lista.length}</span></span> : null}</header>
       {lista.length ? (
         <ul className="agd-lista">
           {lista.slice(0, 6).map((d) => (
-            <li key={d.id}><button type="button" className="agd-linha" onClick={() => abrirJanela({ t: 'editar', id: d.id })}>
-              <span className="agd-linha-t"><b>{d.assunto}</b><small className="mono">{titulo(d)} · {d.etapa}{d.chegou_em ? ` · chegou em ${d.chegou_em.slice(8, 10)}/${d.chegou_em.slice(5, 7)}` : ''}</small></span>
+            <li key={d.id}><button type="button" className="agd-linha agd-linha-carga" onClick={() => abrirJanela({ t: 'editar', id: d.id })}>
+              <b className="agd-linha-assunto">{d.assunto}</b>
+              <span className="agd-meta"><span className="mono">{titulo(d)}</span><span>{d.etapa}</span>{d.chegou_em ? <span>chegou em {d.chegou_em.slice(8, 10)}/{d.chegou_em.slice(5, 7)}</span> : null}</span>
             </button></li>
           ))}
           {lista.length > 6 ? <li className="agd-sub">e mais {lista.length - 6}. Elas aparecem em Demandas, com o filtro Sem prazo.</li> : null}
         </ul>
-      ) : null}
+      ) : <p className="agd-vazio">Toda demanda aberta tem alguma data.</p>}
     </section>
   );
 }
@@ -298,10 +302,8 @@ function Legenda({ semDemandas }: { semDemandas: boolean }) {
         <li className="agd-so-largo"><i className="agd-m-ind" aria-hidden="true" />Evento externo de dia inteiro</li>
         {semDemandas ? <li className="agd-so-compacto"><i className="agd-m-sem" aria-hidden="true" />Carga indisponível</li> : null}
       </ul>
-      <div className="agd-escala" role="group" aria-label="Escala de pendências">
-        <span>Menos pendências</span>
+      <div className="agd-escala" role="group" aria-label="Pendências por dia">
         <ul>{NIVEIS.map((n) => <li key={n} title={`${FAIXA_NIVEL[n]} ${n === 'zero' ? 'pendências' : 'pendências no dia'}`}><i className="agd-amostra" data-nivel={n} aria-hidden="true" /><small>{FAIXA_NIVEL[n]}</small></li>)}</ul>
-        <span>Mais pendências</span>
       </div>
     </footer>
   );

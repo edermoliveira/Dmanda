@@ -200,8 +200,8 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok((await pg.$$('.agd-cel')).length === 28 && (await pg.$$('.agd-vaz')).length === 0 && (await pg.$$('.agd-grade [role="row"]')).length === 5, 'mês que começa no domingo: fevereiro de 2026 abre na primeira célula e fecha em 4 semanas, sem espaços vazios');
   await pg.click('.agd-nav .btn.mini:has-text("Hoje")');
   // --- legenda ---
-  const leg = await pg.$eval('.agd-leg', (e) => ({ t: e.textContent, n: e.querySelectorAll('.agd-escala .agd-amostra').length, dir: e.querySelector('.agd-escala').getBoundingClientRect().right, pai: e.getBoundingClientRect().right }));
-  ok(/Menos pendências/.test(leg.t) && /Mais pendências/.test(leg.t) && leg.n === 4 && leg.pai - leg.dir < 4, 'legenda no rodapé, à direita, com quatro amostras arredondadas e os rótulos Menos pendências e Mais pendências');
+  const leg = await pg.$eval('.agd-leg', (e) => { const u = e.querySelector('.agd-escala ul').getBoundingClientRect(), p = e.getBoundingClientRect(); return { t: e.textContent, n: e.querySelectorAll('.agd-escala .agd-amostra').length, rot: [...e.querySelectorAll('.agd-escala li')].map((l) => l.textContent.trim()).join('|'), desvio: Math.abs((u.left + u.right) / 2 - (p.left + p.right) / 2), uma: new Set([...e.querySelectorAll('.agd-escala li')].map((l) => Math.round(l.getBoundingClientRect().top))).size }; });
+  ok(!/Menos pendências|Mais pendências/.test(leg.t) && leg.n === 4 && leg.rot === '0|1 a 3|4 a 7|8 ou mais' && leg.desvio < 6, `legenda de carga centralizada sob a grade, só com as quatro amostras e os rótulos 0, 1 a 3, 4 a 7 e 8 ou mais (desvio do centro ${leg.desvio.toFixed(1)} px, ${leg.uma} linha(s))`);
   // --- detalhes do dia, marcos e tarefas ---
   await verDia(pg, S.h.prazo);
   ok(/Pacote grande de tarefas/.test(await pg.textContent('.agd-detalhe')) && (await pg.$$('.agd-detalhe .agd-tarefas input')).length === 9, 'tocar no dia abre a gaveta com a demanda e as nove tarefas pendentes');
@@ -232,7 +232,8 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok(aux.length === 2 && aux[0].x >= calBox.r && Math.abs(aux[0].x - aux[1].x) <= 2 && Math.abs(aux[0].w - aux[1].w) <= 2 && aux[1].y >= aux[0].b - 2 && Math.abs(aux[0].y - calBox.y) <= 2, 'no computador os dois painéis auxiliares ficam empilhados à direita da grade, o primeiro alinhado ao topo dela (decisão 73)');
   ok(Math.abs(aux[0].h - aux[1].h) > 20 && aux.every((a) => a.h < 700), `cada painel tem a altura do próprio conteúdo (${Math.round(aux[0].h)} e ${Math.round(aux[1].h)} px), sem esticar um para igualar o outro`);
   ok((await pg.evaluate(() => { const l = document.querySelector('.agd-lateral'); return [l, ...l.querySelectorAll('*')].every((e) => !/(auto|scroll)/.test(getComputedStyle(e).overflowY) || e.scrollHeight <= e.clientHeight + 1); })) && (await pg.evaluate(() => { const m = document.querySelector('.main'); return m.scrollWidth <= m.clientWidth + 1; })), 'a lateral não tem rolagem própria (só a página rola) e não há rolagem horizontal');
-  ok(/Sem nenhuma data/.test(await pg.textContent('.agd-lateral')) && /Nada foi inventado/.test(await pg.textContent('.agd-lateral')), 'demanda sem nenhuma data aparece em Pendências sem prazo, sem vencimento inventado');
+  ok(/sem nenhuma data/.test(await pg.textContent('.agd-lateral')) && (await pg.getAttribute('.agd-lateral [aria-labelledby="agd-sem-t"] .agd-qtd', 'title')).includes('Nada foi inventado'), 'demanda sem nenhuma data aparece em Pendências sem prazo, sem vencimento inventado');
+  { const m = await pg.$$eval('.agd-lateral .agd-linha-carga', (ls) => ls.map((b) => { const t = b.querySelector('.agd-linha-data, .agd-linha-assunto'), r = t.getBoundingClientRect(), br = b.getBoundingClientRect(); return { w: r.width / br.width, h: r.height, lh: parseFloat(getComputedStyle(t).lineHeight) || 20 }; })); ok(m.length > 0 && m.every((x) => x.w > 0.4 && x.h < x.lh * 4.2), `painéis informativos: o título de cada linha ocupa a largura da linha e quebra naturalmente (${m.map((x) => Math.round(x.w * 100) + '%').join(', ')})`); }
   ok(/Onde novembro aperta/.test(await pg.textContent('.agd-lateral')) && /Pendências sem prazo/.test(await pg.textContent('.agd-lateral')) && !!latBox, 'o painel de dias cheios existe acima do de pendências sem prazo');
   // --- filtros ---
   await pg.click('.agd-filtros .opcoes button:has-text("Demandas")'); await pg.waitForTimeout(300);
@@ -1075,7 +1076,7 @@ for (const tema of ['claro', 'escuro']) {
   });
   ok(marcas.hojeDisco && marcas.selAnel && marcas.naoUtil, `celular, tema ${tema}: hoje (disco na data), dia selecionado (anel) e dia sem trabalho (contorno cinza) continuam distintos`);
   if (tema === 'claro') {
-    ok((await pg.textContent('.agd-leg')).includes('Menos pendências') && /Sábado, domingo e feriado/.test(await pg.textContent('.agd-leg')) && !/Acompanhar|Compromisso|Com atraso|Evento externo/.test(await pg.evaluate(() => [...document.querySelectorAll('.agd-leg li')].filter((e) => e.getClientRects().length).map((e) => e.textContent).join(' '))), 'celular: a legenda traz a escala de carga, Hoje e o cinza de sábado, domingo e feriado (sem as marcas que o quadrado não mostra)');
+    ok((await pg.textContent('.agd-leg')).includes('8 ou mais') && /Sábado, domingo e feriado/.test(await pg.textContent('.agd-leg')) && !/Acompanhar|Compromisso|Com atraso|Evento externo/.test(await pg.evaluate(() => [...document.querySelectorAll('.agd-leg li')].filter((e) => e.getClientRects().length).map((e) => e.textContent).join(' '))), 'celular: a legenda traz a escala de carga, Hoje e o cinza de sábado, domingo e feriado (sem as marcas que o quadrado não mostra)');
     // movimento reduzido: o painel abre e a página rola sem animação
     await pg.emulateMedia({ reducedMotion: 'reduce' });
     const alvoDia = '2026-11-26';
