@@ -39,9 +39,16 @@
 .agd .pagehead { margin: 0; }
 .agd-barra, .agd-filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
 .agd-nav { display: flex; align-items: center; gap: 6px; }
+.agd-nav-linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; min-width: 0; }
 .agd-ant .ic { transform: rotate(180deg); }
-.agd-data input { min-height: 40px; border-radius: var(--r-field, 14px); border: 1px solid var(--brd); background: var(--grp-campo); color: var(--text); padding: 0 10px; font: inherit; font-size: max(16px, calc(14px * var(--esc))); }
-.agd-ir-rot { display: none; } /* a superfície "Ir para a data" só existe em Dia e Semana no celular (mais abaixo) */
+/* "Ir para a data" (decisão 76), igual no Dia, na Semana e no Mês e em qualquer largura: a superfície é o botão com ícone e o campo nativo de data fica transparente sobre ela, como um só controle
+   (nome acessível, toque, teclado e foco). A largura própria do campo nativo, que no Safari do iPhone passava da margem, não entra no layout, e a data fixa por extenso deixa de aparecer: ela é o título. */
+.agd-data { position: relative; flex: none; display: inline-flex; align-items: center; min-height: 44px; min-width: 0; }
+.agd-ir-rot { display: inline-flex; pointer-events: none; }
+.agd-data input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; font: inherit; font-size: max(16px, calc(14px * var(--esc))); }
+/* no Chromium o seletor só abre pelo ícone do campo: o ícone (invisível) cobre a superfície inteira; no Safari do iPhone o toque em qualquer ponto do campo já abre o seletor nativo */
+.agd-data input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; margin: 0; padding: 0; cursor: pointer; }
+.app[data-dir="d"] .agd-data:has(input:focus-visible) .agd-ir-rot { outline: 3px dashed var(--foco); outline-offset: 2px; }
 .agd-cab-pag { display: block; }
 /* cabeçalho por função (decisão 73): as visões e o Novo evento juntos numa faixa, com os filtros (identificados) no fim dela; o período, as setas, o Hoje e a data juntos junto da grade, com os totais numa linha pequena */
 .agd-faixa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
@@ -186,32 +193,19 @@
   .agd-filtros-bt { display: inline-flex; }
   .agd-filtros:not([data-aberto]) { display: none; }
   .agd-filtros { gap: 2px 12px; }
-  .agd-barra { gap: 8px; } /* quebra a linha em telas muito estreitas (320 px) em vez de alargar a página */
-  .agd-barra .opcoes { flex: 1 1 auto; min-width: 0; }
-  .agd-barra .opcoes button { flex: 1 1 0; min-width: 0; padding-inline: 6px; }
-  .agd-novo { flex: none; margin-inline-start: auto; padding-inline: 12px; }
+  /* o seletor Dia, Semana e Mês ocupa uma linha só dele, em três partes iguais (os três nomes cabem inteiros a 320 px e com o texto a 125%); o Novo evento do Mês deixou essa linha (decisão 76) */
+  .agd-barra { gap: 8px; flex: 1 1 100%; }
+  .agd-barra .opcoes { flex: 1 1 100%; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .app[data-dir="d"] .agd .agd-barra .opcoes button { min-width: 0; min-height: 40px; padding-inline: 6px; }
   .agd-resumo { gap: 4px; }
   .agd-linha-per { gap: 2px 10px; }
   .agd-periodo { flex: 1 1 auto; font-size: calc(22px * var(--esc)); }
   .agd-totais { gap: 2px 8px; }
   .agd-grande { font-size: max(10px, calc(13px * var(--esc))); }
   .agd-grande b { font-size: calc(16px * var(--esc)); }
-  .agd-nav { width: 100%; }
-  .agd-data { flex: 1 1 0; min-width: 0; }
-  .agd-data input { width: 100%; min-width: 0; }
-  /* Dia e Semana (decisão 75; o Mês fica como aprovado). O seletor de visões ocupa a linha inteira em três partes iguais (os três nomes cabem a 320 px e com o texto a 125%).
-     A data vira a ação compacta "Ir para a data": o campo nativo fica transparente sobre ela (um só controle, com o nome, o toque e o foco na superfície), então a largura própria do
-     campo nativo, que no Safari do iPhone passava da margem, deixa de entrar no layout. A linha das setas quebra em vez de alargar a página. */
-  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-barra { flex: 1 1 100%; }
-  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-barra .opcoes { flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-barra .opcoes button { min-height: 40px; }
-  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-nav { flex-wrap: wrap; }
-  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-data { position: relative; flex: none; margin-inline-start: auto; display: inline-flex; align-items: center; min-height: 44px; min-width: 0; }
-  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-ir-rot { display: inline-flex; pointer-events: none; }
-  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-data input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
-  /* no Chromium o seletor só abre pelo ícone do campo: o ícone (invisível) cobre a superfície inteira; no Safari do iPhone o toque em qualquer ponto do campo já abre o seletor nativo */
-  .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-data input::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; margin: 0; padding: 0; cursor: pointer; }
-  .app[data-dir="d"] .agd:is([data-modo="hoje"], [data-modo="semana"]) .agd-data:has(input:focus-visible) .agd-ir-rot { outline: 3px dashed var(--foco); outline-offset: 2px; }
+  /* a navegação (anterior, Hoje, próximo) à esquerda e "Ir para a data" à direita; em largura extrema a linha quebra em vez de cortar, sobrepor ou rolar para o lado */
+  .agd-nav-linha { width: 100%; }
+  .agd-nav { flex-wrap: wrap; }
   .agd-faixa { gap: 0; }
   .agd-filtros { margin-inline-start: 0; padding-inline: 0; border-radius: 0; background: none; }
   .agd-filtros-rot { display: none; }

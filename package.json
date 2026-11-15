@@ -25,6 +25,7 @@
     "testar:agenda": "node scripts/testar-agenda.mjs",
     "testar:baralho": "node scripts/testar-baralho.mjs",
     "testar:config": "node scripts/testar-config.mjs",
+    "testar:campos": "node scripts/testar-campos.mjs",
     "testar:busca": "node scripts/testar-busca.mjs",
     "testar:perfil": "node scripts/testar-perfil.mjs",
     "testar:origem": "node scripts/testar-origem.mjs",

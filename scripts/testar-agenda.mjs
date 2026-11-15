@@ -689,7 +689,7 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   const lista = await pg.$$eval('.cfg-lista li', (l) => l.map((e) => e.querySelector('.cfg-desc').textContent));
   const i1 = lista.indexOf('Ponto facultativo de teste'), i2 = lista.indexOf('Congresso de teste'), i3 = lista.indexOf('Recesso de teste');
   ok(i1 >= 0 && i1 < i2 && i2 < i3 && lista.filter((x) => x === 'Ponto facultativo de teste').length === 1, 'Configurações: os dias cadastrados pela Agenda aparecem uma vez cada, em ordem de data (o clique duplo gravou uma vez só)');
-  ok(/Cadastrar dia indisponível/.test(await pg.textContent('#cfg-novo-t')) && (await pg.$$eval('.cfg-form label', (l) => l.map((x) => x.textContent).join())) === 'Data,Tipo,Descrição', 'Configurações: o mesmo formulário de Data, Tipo e Descrição, com o título "Cadastrar dia indisponível"');
+  ok(/Cadastrar dia indisponível/.test(await pg.textContent('#cfg-novo-t')) && (await pg.$$eval('.cfg-dias-form .cfg-form label', (l) => l.map((x) => x.textContent).join())) === 'Data,Tipo,Descrição', 'Configurações: o mesmo formulário de Data, Tipo e Descrição, com o título "Cadastrar dia indisponível"');
   await pg.click('[aria-label="Editar Ponto facultativo de teste"]'); await pg.fill('#cfg-desc', 'Ponto facultativo editado'); await pg.click('.cfg-form .btn.pri');
   await pg.waitForFunction(() => document.querySelector('.cfg-lista')?.textContent.includes('Ponto facultativo editado'), null, { timeout: 15000 });
   ok(true, 'Configurações: editar o dia cadastrado pela Agenda funciona');
@@ -746,7 +746,7 @@ const t3 = await novo({ viewport: { width: 390, height: 844 }, isMobile: true, h
   ok(topo.faixa !== null && topo.grade - topo.cab <= 260, `iPhone 390 com a faixa de teste visível: a grade começa a ${Math.round(topo.grade - topo.cab)} px do título da página (${Math.round(topo.grade)} px do topo, com a faixa terminando em ${Math.round(topo.faixa)} px); antes do ajuste eram cerca de 395 px`);
   // filtros num controle compacto, com indicação de filtros ativos
   const vis = (sel) => pg.isVisible(sel);
-  ok(!(await vis('.agd-filtros')) && (await vis('.agd-filtros-bt')) && (await pg.getAttribute('.agd-filtros-bt', 'aria-expanded')) === 'false' && (await vis('.agd-novo')) && (await vis('.agd-data input')) && !(await pg.$('.agd-filtros-bt[data-ativos]')), 'no celular os filtros ficam recolhidos num botão Filtros, sem indicação enquanto nada está filtrado; Novo evento e a data continuam à vista');
+  ok(!(await vis('.agd-filtros')) && (await vis('.agd-filtros-bt')) && (await pg.getAttribute('.agd-filtros-bt', 'aria-expanded')) === 'false' && !(await pg.$('.agd-novo')) && (await vis('.agd-ir-rot')) && !(await pg.$('.agd-filtros-bt[data-ativos]')), 'no celular os filtros ficam recolhidos num botão Filtros, sem indicação enquanto nada está filtrado; o Novo evento saiu da faixa das visões (decisão 76) e Ir para a data continua à vista');
   await pg.click('.agd-filtros-bt'); await pg.waitForTimeout(250);
   ok((await vis('.agd-filtros')) && (await pg.getAttribute('.agd-filtros-bt', 'aria-expanded')) === 'true' && (await pg.$$eval('.agd-filtros .opcoes button', (b) => b.map((x) => x.textContent))).join() === 'Tudo,Demandas,Compromissos' && (await pg.$$('.agd-filtros .agd-chk input')).length === 2, 'abrir Filtros mostra Tudo, Demandas, Compromissos, Tarefas concluídas e Demandas finalizadas');
   await pg.click('.agd-filtros .opcoes button:has-text("Compromissos")'); await pg.check('.agd-filtros .agd-chk:has-text("Demandas finalizadas") input'); await pg.waitForTimeout(300);
@@ -825,7 +825,7 @@ for (const [w, texto, tema] of [[390, 100, 'claro'], [375, 100, 'escuro'], [320,
       principais: visiveis.filter((e) => e.matches('.btn.pri')).map((e) => e.textContent.trim()),
       secundaria: sec ? { texto: sec.textContent.trim(), nome: sec.getAttribute('aria-label') } : null,
       ir: sup && inp ? { sup: R(sup), inp: R(inp), opac: getComputedStyle(inp).opacity, nome: inp.getAttribute('aria-label'), supTab: sup.tabIndex, supOculto: sup.getAttribute('aria-hidden'), supVisivel: getComputedStyle(sup).display !== 'none', alvoEhCampo: alvo === inp } : null,
-      tabulaveisNav: [...document.querySelectorAll('.agd-nav button:not(:disabled), .agd-nav input, .agd-nav [tabindex]')].filter((e) => e.tabIndex >= 0).length,
+      tabulaveisNav: [...document.querySelectorAll('.agd-nav-linha button:not(:disabled), .agd-nav-linha input, .agd-nav-linha [tabindex]')].filter((e) => e.tabIndex >= 0).length,
     };
   });
   for (const visao of ['Dia', 'Semana']) {
@@ -877,8 +877,8 @@ for (const [w, texto, tema] of [[390, 100, 'claro'], [375, 100, 'escuro'], [320,
     ok(fim.ultimo <= fim.barra + 0.5, `${visao}, ${rot}: no fim da rolagem o último item termina acima da barra de baixo (${Math.round(fim.ultimo)} de ${Math.round(fim.barra)} px)`);
   }
   await modo(pg, 'Mês');
-  const mes = await pg.evaluate(() => ({ novo: !!document.querySelector('.agd-novo')?.offsetParent, opac: getComputedStyle(document.querySelector('.agd-data input')).opacity, sup: getComputedStyle(document.querySelector('.agd-ir-rot')).display, grade: getComputedStyle(document.querySelector('.agd-barra .opcoes')).display }));
-  ok(mes.novo && mes.opac === '1' && mes.sup === 'none' && mes.grade === 'flex', `Mês, ${rot}: o cabeçalho aprovado não muda (Novo evento no topo, campo de data visível, seletor como era)`);
+  const mes = await pg.evaluate(() => { const sl = [...document.querySelectorAll('.agd-barra .opcoes button')].map((b) => b.getBoundingClientRect()); return { novo: !!document.querySelector('.agd-novo'), opac: getComputedStyle(document.querySelector('.agd-data input')).opacity, sup: getComputedStyle(document.querySelector('.agd-ir-rot')).display, grade: getComputedStyle(document.querySelector('.agd-barra .opcoes')).display, tres: sl.length === 3 && sl.every((b) => Math.abs(b.width - sl[0].width) < 1 && b.height >= 40), dataFixa: [...document.querySelectorAll('.agd-resumo')].some((e) => /\d{1,2} de \w+\.? de \d{4}/.test(e.innerText) && e.querySelector('.agd-data') && /\d{1,2} de \w+\.? de \d{4}/.test(e.querySelector('.agd-data').innerText)) }; });
+  ok(!mes.novo && mes.opac === '0' && mes.sup !== 'none' && mes.grade === 'grid' && mes.tres && !mes.dataFixa, `Mês, ${rot}: o mesmo cabeçalho de Dia e Semana (Novo evento fora da faixa das visões, três partes iguais, Ir para a data compacto e sem a data fixa por extenso)`);
   await ctx.close();
 }
 // Dia e Semana com largura (decisão 75): sem a ação geral repetida, o campo de data visível, as ações ao lado da data e as sete colunas só quando cada uma tem largura confortável
@@ -889,7 +889,7 @@ for (const [nomeL, w, colunas] of [['computador 1360', 1360, true], ['janela 110
     const R = (q) => { const r = document.querySelector(q)?.getBoundingClientRect(); return r ? { x: r.left, y: r.top, w: r.width, b: r.bottom } : null; };
     return { agd: document.querySelector('.agd').clientWidth, cols: [...document.querySelectorAll('.agd-sem .agd-dia')].map((e) => e.getBoundingClientRect().width), faixa: document.querySelectorAll('.agd-sem-faixa .agd-sf-dia').length, novo: !!document.querySelector('.agd-novo'), opac: getComputedStyle(document.querySelector('.agd-data input')).opacity, sup: getComputedStyle(document.querySelector('.agd-ir-rot')).display, cab: R('.agd-sd-cab'), acoes: R('.agd-sd-acoes'), lista: R('.agd-sd-lista'), pri: [...document.querySelectorAll('.agd .btn.pri')].filter((e) => e.offsetParent).length };
   });
-  ok(!l.novo && l.pri === 1 && l.opac === '1' && l.sup === 'none', `Semana, ${nomeL}: sem a ação geral repetida (uma ação principal) e com o campo de data visível`);
+  ok(!l.novo && l.pri === 1 && l.opac === '0' && l.sup !== 'none', `Semana, ${nomeL}: sem a ação geral repetida (uma ação principal) e com Ir para a data compacto (o campo nativo fica transparente sobre o botão)`);
   ok(colunas ? l.cols.length === 7 && Math.min(...l.cols) >= 140 && l.faixa === 0 : l.cols.length === 0 && l.faixa === 7, `Semana, ${nomeL} (${l.agd} px úteis): ${colunas ? `sete colunas de ${Math.round(Math.min(...l.cols))} px` : 'a faixa das sete datas (as colunas ficariam estreitas)'}`);
   ok(Math.abs(l.acoes.y - l.cab.y) < 30 && l.acoes.x > l.cab.x + 200 && l.lista.y >= l.cab.b - 1, `Semana, ${nomeL}: as ações ficam ao lado da data e a lista vem abaixo`);
   await modo(pg, 'Dia');
@@ -1028,7 +1028,7 @@ for (const [w, lateral] of [[1360, true], [1280, true], [1100, false], [1000, fa
     const celMin = Math.min(...[...document.querySelectorAll('.agd-cel')].map((c) => c.getBoundingClientRect().width));
     return { barra: r('.agd-barra'), visoes: r('.agd-barra .opcoes'), novo: r('.agd-novo'), filtros: r('.agd-filtros'), per: r('.agd-periodo'), nav: r('.agd-nav'), tot: r('.agd-totais'), cal: r('.agd-cal'), lat: r('.agd-lateral'), p1: r('.agd-lateral .agd-aux'), grade: r('.agd-grade'), abas: r('.agd-meses'), celMin, semRolH: document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1, chips: [...document.querySelectorAll('.agd-chips-res li')].map((l) => l.textContent) };
   });
-  ok(m.novo.x - m.visoes.r < 24 && Math.abs(m.novo.y - m.visoes.y) < 20, `${w} px: Dia, Semana, Mês e Novo evento ficam juntos na mesma faixa (a ${Math.round(m.novo.x - m.visoes.r)} px um do outro)`);
+  ok(m.novo === null && m.visoes.w < 400 && m.visoes.h <= 60, `${w} px: a faixa das visões traz só Dia, Semana e Mês (o Novo evento saiu dela e continua no painel do dia, na gaveta e no + do aplicativo)`);
   ok(m.nav.x - m.per.r < 40 && Math.abs(m.nav.y - m.per.y) < 30 && m.nav.x < m.cal.x + m.cal.w / 2, `${w} px: mês e ano, setas, Hoje e a data formam um grupo só, junto da grade (a navegação começa a ${Math.round(m.nav.x - m.per.r)} px do título)`);
   ok(m.tot.y > m.per.b - 4 && m.tot.h < 40 && m.cal.y - m.tot.b < 40, `${w} px: os totais ficam numa linha compacta abaixo do período (${Math.round(m.tot.h)} px de altura), logo acima da grade`);
   ok(m.filtros.y < m.per.y && /demanda/.test(m.chips.join()) && /compromisso/.test(m.chips.join()), `${w} px: os filtros ficam juntos e identificados, e os totais distinguem demandas e compromissos (${m.chips.join(' | ')})`);

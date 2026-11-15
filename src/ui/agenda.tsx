@@ -2,7 +2,7 @@
 // Agenda (decisões 46 a 49, 72 e 73; 14/11/2026): Dia, Semana e Mês, todos de domingo a sábado, com o heatmap da carga pendente, os marcos das demandas (vencimento,
 // acompanhamento, retorno do setor), os compromissos próprios e os dias indisponíveis. Sábado, domingo e Feriado cadastrado têm o tratamento cinza de dia sem trabalho (só aparência). Toda a lógica de datas e de carga fica em src/lib/agenda.ts e eventos.ts (testada à parte); aqui só se desenha.
 // Nada de relógio na renderização: a data de hoje vem do contexto, e a hora de agora só existe depois de montar no navegador.
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as TeclaReact } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as TeclaReact, type MouseEvent as CliqueReact } from 'react';
 import { createPortal } from 'react-dom';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
@@ -184,12 +184,15 @@ function ListaDia({ data, o, concluidas, semDemandas, corpo }: { data: string; o
     </>
   );
 }
-/** Campo de data na forma compacta (transparente sobre "Ir para a data"): Enter e Espaço abrem o seletor nativo, como num botão. Na forma visível o teclado segue o do próprio campo. */
+/** "Ir para a data" (decisão 76, nas três visões): o campo nativo fica transparente sobre a superfície do botão. Enter, Espaço e o clique abrem o seletor nativo, como num botão; em toque o próprio navegador
+ *  já o abre no toque (chamar de novo seria redundante). */
+function abrirSeletor(el: HTMLInputElement) { try { el.showPicker(); } catch { /* navegador sem showPicker: o toque ou o clique no próprio campo abre o seletor */ } }
 function abrirSeletorPeloTeclado(e: TeclaReact<HTMLInputElement>) {
-  if ((e.key !== 'Enter' && e.key !== ' ') || getComputedStyle(e.currentTarget).opacity !== '0') return;
+  if (e.key !== 'Enter' && e.key !== ' ') return;
   e.preventDefault();
-  try { e.currentTarget.showPicker(); } catch { /* navegador sem showPicker: o toque ou o clique no próprio campo abre o seletor */ }
+  abrirSeletor(e.currentTarget);
 }
+function abrirSeletorPeloClique(e: CliqueReact<HTMLInputElement>) { if (!matchMedia('(pointer: coarse)').matches) abrirSeletor(e.currentTarget); }
 const situacaoDoDia = (data: string, hoje: string) => (data === hoje ? 'Hoje' : data < hoje ? 'Dia que já passou' : `Daqui a ${plural(diasDesde(hoje, data), 'dia')}`);
 
 /**
@@ -468,7 +471,7 @@ function VisaoSemana({ semana, dia, hoje, o, oCat, cat, carga, amplo, concluidas
 
 // ---------- página ----------
 export function PaginaAgenda() {
-  const { demandas, dias, eventos, hoje, carregando, carregandoEventos, erroEventos, erroCarga, recarregar, recarregarEventos, abrirJanela } = useApp();
+  const { demandas, dias, eventos, hoje, carregando, carregandoEventos, erroEventos, erroCarga, recarregar, recarregarEventos } = useApp();
   const [modo, setModoBruto] = useState<Modo>('mes');
   const [cat, setCat] = useState<Categoria>('tudo');
   const [concluidas, setConcluidas] = useState(false);
@@ -566,8 +569,6 @@ export function PaginaAgenda() {
       <div className="agd-faixa">
         <div className="agd-barra">
           <div className="opcoes" role="group" aria-label="Visão da agenda">{MODOS.map(([k, n]) => <button key={k} type="button" aria-pressed={modo === k} onClick={() => setModo(k)}>{n}</button>)}</div>
-          {/* decisão 75: em Dia e Semana a ação principal de novo evento é a do dia em contexto (uma só por tela); a ação geral fica no Mês, como aprovado */}
-          {modo === 'mes' ? <button type="button" className="btn pri agd-novo" onClick={() => abrirJanela({ t: 'evento', data: dia })}><Icone nome="plus" />Novo evento</button> : null}
         </div>
 
         <div className="agd-filtros" id="agd-filtros-p" data-aberto={filtrosAbertos || undefined}>
@@ -584,15 +585,17 @@ export function PaginaAgenda() {
         <div className="agd-linha-per">
           <h2 className="agd-periodo" aria-live="polite">{rotuloPeriodo}</h2>
           {modo === 'mes' ? <SeletorMes dia={dia} escolherMes={mudarMes} /> : null}
-          <div className="agd-nav" role="group" aria-label="Período">
-            <button type="button" className="icbtn-s agd-ant" aria-label={modo === 'mes' ? 'Mês anterior' : modo === 'semana' ? 'Semana anterior' : 'Dia anterior'} onClick={() => passo(-1)}><Icone nome="chevron-right" /></button>
-            <button type="button" className="btn mini" onClick={() => ir(null)} disabled={data === null || data === hoje} aria-label="Voltar para hoje">Hoje</button>
-            <button type="button" className="icbtn-s" aria-label={modo === 'mes' ? 'Próximo mês' : modo === 'semana' ? 'Próxima semana' : 'Próximo dia'} onClick={() => passo(1)}><Icone nome="chevron-right" /></button>
-            {/* Um só controle para ir a uma data: o campo nativo. Em Dia e Semana no celular (decisão 75) ele fica transparente sobre a superfície "Ir para a data" (posição e aparência no CSS):
-                a largura própria do campo nativo deixa de entrar no layout, o toque abre o seletor nativo e o foco aparece na superfície. */}
+          <div className="agd-nav-linha">
+            <div className="agd-nav" role="group" aria-label="Período">
+              <button type="button" className="icbtn-s agd-ant" aria-label={modo === 'mes' ? 'Mês anterior' : modo === 'semana' ? 'Semana anterior' : 'Dia anterior'} onClick={() => passo(-1)}><Icone nome="chevron-right" /></button>
+              <button type="button" className="btn mini" onClick={() => ir(null)} disabled={data === null || data === hoje} aria-label="Voltar para hoje">Hoje</button>
+              <button type="button" className="icbtn-s" aria-label={modo === 'mes' ? 'Próximo mês' : modo === 'semana' ? 'Próxima semana' : 'Próximo dia'} onClick={() => passo(1)}><Icone nome="chevron-right" /></button>
+            </div>
+            {/* Um só controle para ir a uma data, igual nas três visões: o campo nativo transparente sobre a superfície "Ir para a data" (a data fixa por extenso não aparece mais; ela é o título).
+                A largura própria do campo nativo não entra no layout, o toque abre o seletor nativo e o foco aparece na superfície. Escolher a data vai ao período dela e a seleciona, sem trocar a visão. */}
             <label className="agd-data">
               <span className="btn mini agd-ir-rot" aria-hidden="true"><Icone nome="calendar" />Ir para a data</span>
-              <input type="date" value={dia} aria-label="Ir para a data" onChange={(e) => { if (e.target.value) ir(e.target.value); }} onKeyDown={abrirSeletorPeloTeclado} />
+              <input type="date" value={dia} aria-label="Ir para a data" onChange={(e) => { if (e.target.value) ir(e.target.value); }} onKeyDown={abrirSeletorPeloTeclado} onClick={abrirSeletorPeloClique} />
             </label>
           </div>
         </div>

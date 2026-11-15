@@ -5,6 +5,7 @@
 // a falha de gravação mantém tudo nos campos; o clique repetido não envia duas vezes; ao fechar, o foco volta ao botão que abriu.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from './contexto';
+import { Icone } from './Icone';
 import { Janela } from './janela-base';
 import { dataPorExtenso } from '@/lib/agenda';
 import { CATEGORIAS_DIA, ROTULO_CATEGORIA, type CategoriaDia } from '@/lib/prazos';
@@ -13,11 +14,21 @@ export type CamposDia = { id?: string; data: string; descricao: string; categori
 export const DIA_VAZIO: CamposDia = { data: '', descricao: '', categoria: 'Feriado' };
 const maiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
+/** Campo de data com a dica "Escolher a data" quando vazio (em toque, o Safari não desenha nada num campo de data vazio). O próprio campo nativo continua sendo o controle: rótulo associado pelo `id`, teclado e seletor ao toque. */
+export function CampoData({ id, valor, aoMudar, aoEnter, invalido }: { id: string; valor: string; aoMudar: (data: string) => void; aoEnter?: () => void; invalido?: boolean }) {
+  return (
+    <div className="campo-data" data-vazio={valor ? undefined : 'sim'}>
+      <input id={id} type="date" value={valor} aria-invalid={invalido || undefined} onChange={(e) => aoMudar(e.target.value)} onKeyDown={aoEnter ? (e) => { if (e.key === 'Enter') { e.preventDefault(); aoEnter(); } } : undefined} />
+      <span className="campo-data-dica" aria-hidden="true"><Icone nome="calendar" />Escolher a data</span>
+    </div>
+  );
+}
+
 /** Os três campos. `prefixo` dá os ids (em Configurações: cfg-data, cfg-cat e cfg-desc). Enter na descrição envia. */
 export function CamposDiaIndisponivel({ prefixo, valor, mudar, aoEnviar }: { prefixo: string; valor: CamposDia; mudar: (p: Partial<CamposDia>) => void; aoEnviar: () => void }) {
   return (
     <>
-      <div className="fld"><label htmlFor={`${prefixo}-data`}>Data</label><input id={`${prefixo}-data`} type="date" value={valor.data} onChange={(e) => mudar({ data: e.target.value })} /></div>
+      <div className="fld"><label htmlFor={`${prefixo}-data`}>Data</label><CampoData id={`${prefixo}-data`} valor={valor.data} aoMudar={(data) => mudar({ data })} /></div>
       <div className="fld"><label htmlFor={`${prefixo}-cat`}>Tipo</label>
         <select id={`${prefixo}-cat`} value={valor.categoria} onChange={(e) => mudar({ categoria: e.target.value as CategoriaDia })}>{CATEGORIAS_DIA.map((c) => <option key={c} value={c}>{ROTULO_CATEGORIA[c]}</option>)}</select></div>
       <div className="fld fld-inteira"><label htmlFor={`${prefixo}-desc`}>Descrição</label>

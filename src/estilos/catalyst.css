@@ -21,7 +21,7 @@
   --perigo: #C4001A; --perigo-soft: rgba(196,0,26,.09); --on-perigo: #FCFCFC;
   --shadow: none; --solido: rgba(254,254,254,.98);
   --btn-bg: rgba(118,118,128,.14); --btn-hov: rgba(118,118,128,.22); --sel: rgba(118,118,128,.18);
-  --grp-bg: rgba(242,242,247,.97); --grp-campo: #FCFCFC; --sw-on: #34C759; --r-tile: 12px;
+  --grp-bg: rgba(242,242,247,.97); --grp-campo: #FCFCFC; --campo-brd: rgba(60,60,67,.6); --sw-on: #34C759; --r-tile: 12px;
   /* Liquid Glass */
   --lq-fill: rgba(252,252,252,calc(.46 * var(--vidro))); --lq-fill-forte: rgba(250,250,252,.94);
   --lq-edge: rgba(252,252,252,.95); --lq-edge2: rgba(252,252,252,.45); --lq-rim: rgba(10,10,10,.07);
@@ -35,7 +35,7 @@
   --perigo: #FF6961; --perigo-soft: rgba(255,105,97,.16); --on-perigo: #2B0705;
   --shadow: none; --solido: rgba(28,28,30,.98);
   --btn-bg: rgba(118,118,128,.26); --btn-hov: rgba(118,118,128,.36); --sel: rgba(118,118,128,.3);
-  --grp-bg: rgba(28,28,30,.97); --grp-campo: #2C2C2E; --sw-on: #30D158; --r-tile: 12px;
+  --grp-bg: rgba(28,28,30,.97); --grp-campo: #2C2C2E; --campo-brd: rgba(235,235,245,.4); --sw-on: #30D158; --r-tile: 12px;
   --lq-fill: rgba(70,70,76,calc(.4 * var(--vidro))); --lq-fill-forte: rgba(40,40,44,.95);
   --lq-edge: rgba(252,252,252,.32); --lq-edge2: rgba(252,252,252,.1); --lq-rim: rgba(252,252,252,.06);
   --lq-glow: rgba(252,252,252,.12); --lq-sh: 0 12px 38px rgba(10,10,10,.55), 0 1px 3px rgba(10,10,10,.4);
@@ -44,6 +44,9 @@
 .app[data-dir="d"] .tag { background: hsl(var(--h) 62% 31%); }
 .app[data-dir="d"][data-tema="escuro"] .tag { background: hsl(var(--h) 52% 32%); }
 .app[data-dir="d"] .bg { display: none; }
+/* Controles nativos (seletor Tipo, calendário de data, rolagem) seguem o tema do aplicativo, não o do aparelho: sem isto o WebKit desenhava o seletor claro com texto branco no modo Escuro (decisão 76). */
+html[data-tema="claro"], .app[data-dir="d"][data-tema="claro"] { color-scheme: light; }
+html[data-tema="escuro"], .app[data-dir="d"][data-tema="escuro"] { color-scheme: dark; }
 .app[data-dir="d"][data-tema="claro"] { --bgbase: #F2F2F7 !important; }
 .app[data-dir="d"][data-tema="escuro"] { --bgbase: #0A0A0A !important; }
 
