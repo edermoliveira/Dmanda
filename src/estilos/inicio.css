@@ -37,7 +37,7 @@
 .app[data-dir="d"] .ph-arrasto[data-lado="esq"] .ph-dica-esq, .app[data-dir="d"] .ph-arrasto[data-lado="dir"] .ph-dica-dir { opacity: 1; }
 .app[data-dir="d"] .ph-botoes { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .app[data-dir="d"] .ph-botoes .btn:first-child svg { transform: scaleX(-1); }
-.app[data-dir="d"] .ph-botoes .btn:disabled { opacity: .5; }
+.app[data-dir="d"] .ph-botoes .btn:disabled, .app[data-dir="d"] .ph-botoes .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; } /* aria-disabled: o botão bloqueado continua com o foco (o bloqueio é do onClick) */
 .app[data-dir="d"] .ph-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .app[data-dir="d"] .ph-confirma { padding: 12px 14px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 2px var(--acc); }
 .app[data-dir="d"] .ph-confirma p { margin: 0 0 10px; font-size: var(--t-leitura); }

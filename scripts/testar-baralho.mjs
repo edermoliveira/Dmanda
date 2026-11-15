@@ -259,7 +259,7 @@ for (const perfil of ['desktop', 'ipad']) {
   const animou = pg.waitForSelector('[data-pilha][data-saindo]', { state: 'attached', timeout: 900 }).then(() => true, () => false);
   await deslizar(pg, c.x + c.w / 2 + 110, y, c.x + c.w / 2 - 110, y);
   ok((await ativo(pg)).assunto !== antes && !(await animou), 'com movimento reduzido o gesto troca o card na hora, sem saída animada');
-  const um = await pg.$eval('[data-nova-urgencia]', (e) => ({ pos: e.querySelector('.ph-posicao')?.textContent.trim(), passar: e.querySelector('[data-pilha-passar]')?.disabled })).catch(() => null);
+  const um = await pg.$eval('[data-nova-urgencia]', (e) => ({ pos: e.querySelector('.ph-posicao')?.textContent.trim(), passar: e.querySelector('[data-pilha-passar]')?.getAttribute('aria-disabled') === 'true' })).catch(() => null);
   ok(um === null || (um.pos === '1 de 1' && um.passar === true), `com um card só, a pilha mostra "1 de 1" e não oferece passar (${JSON.stringify(um)})`);
   await ctx.close();
 }

@@ -305,7 +305,7 @@ export function MenuMover() {
     return () => { document.removeEventListener('click', fora, true); document.removeEventListener('keydown', tecla, true); };
   }, [menuMover, fecharMenuMover]);
   if (!menuMover || !d) return null;
-  const escolher = (et: Etapa) => { fecharMenuMover(); if (et === d.etapa) return; void (et === 'Finalizado' ? concluir(d.id) : d.etapa === 'Finalizado' ? reabrir(d.id, et) : mover(d.id, et)); };
+  const escolher = (et: Etapa) => { const g = gatilhoRef.current as HTMLElement | null; fecharMenuMover(); setTimeout(() => { if (g?.isConnected) g.focus?.(); }, 0); if (et === d.etapa) return; void (et === 'Finalizado' ? concluir(d.id) : d.etapa === 'Finalizado' ? reabrir(d.id, et) : mover(d.id, et)); };
   return (
     <div ref={ref} className="mv-menu" role="menu" aria-label={`Mover ${titulo(d)} para a etapa`}>
       <div className="mv-t">Mover para</div>

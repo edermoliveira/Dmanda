@@ -7,7 +7,7 @@
 //  - Revelar o próximo (decisão 77): o card que vai assumir a frente já está montado atrás, com o título e a cor do próprio card; enquanto o da frente acompanha o dedo, ele aparece. Gesto curto: o da frente
 //    volta e a ordem não muda. Gesto completo de navegação: assume a frente exatamente o card que foi revelado. Os de fundo são só visuais (inert, sem foco nem clique).
 // Aqui só mora a apresentação e o gesto: a ordem, as etapas e as gravações ficam com quem usa (Para hoje, Nova urgência e as listas de cards do Início).
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as PonteiroReact, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as PonteiroReact, type ReactNode, type RefObject } from 'react';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { CardDemanda } from './cartoes';
@@ -121,6 +121,15 @@ export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado
   const ativoId = ordem[0], ativa = ativoId ? porId.get(ativoId) : undefined;
   const verso = !!ativoId && virado?.id === ativoId && virado.verso;
   const total = ordem.length, desligado = travado || saindo !== null;
+  // Os botões de navegação nunca usam `disabled` enquanto bloqueiam (animação de saída, gravação em andamento, sem outro card): `disabled` tira o botão do foco e, depois da troca do card, o foco caía no BODY.
+  // `aria-disabled` mantém o foco no botão; o bloqueio de verdade (clique, Enter, Espaço e repetição) é feito no onClick abaixo.
+  const bloqueadoEsq = desligado || total < 2 || !!esquerda.desabilitado, bloqueadoDir = desligado || !!direita.desabilitado;
+  // a linha de botões some quando a confirmação de finalizar aparece e volta ao cancelar ou concluir: o foco volta para o botão da direita, sem roubar o foco de quem já foi para outro lugar
+  const tinhaRodape = useRef(false);
+  useEffect(() => {
+    if (tinhaRodape.current && !rodape && (!document.activeElement || document.activeElement === document.body)) botaoDireita.current?.focus();
+    tinhaRodape.current = !!rodape;
+  }, [rodape]);
 
   const sair = useCallback((lado: Lado, depois: () => void) => {
     if (trava.current) return;
@@ -166,8 +175,8 @@ export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado
       {rodape ?? (
         <>
           <div className="ph-botoes" role="group" aria-label="Navegar pelos cards">
-            <button type="button" className="btn mini" data-pilha-passar disabled={desligado || total < 2 || esquerda.desabilitado} onClick={() => irEsquerda()}><Icone nome="chevron-right" />{esquerda.rotulo}</button>
-            <button ref={botaoDireita} type="button" className="btn mini pri" data-pilha-avancar aria-haspopup={direita.menu ? 'menu' : undefined} disabled={desligado || direita.desabilitado} onClick={() => irDireita()}>{direita.rotulo}<Icone nome={direita.icone ?? 'chevron-right'} /></button>
+            <button type="button" className="btn mini" data-pilha-passar aria-disabled={bloqueadoEsq || undefined} onClick={() => { if (!bloqueadoEsq) irEsquerda(); }}><Icone nome="chevron-right" />{esquerda.rotulo}</button>
+            <button ref={botaoDireita} type="button" className="btn mini pri" data-pilha-avancar aria-haspopup={direita.menu ? 'menu' : undefined} aria-disabled={bloqueadoDir || undefined} onClick={() => { if (!bloqueadoDir) irDireita(); }}>{direita.rotulo}<Icone nome={direita.icone ?? 'chevron-right'} /></button>
           </div>
           <div className="ph-meta">
             <span className="ph-posicao data" aria-live="polite">1 de {total}</span>
