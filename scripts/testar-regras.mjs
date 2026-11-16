@@ -50,6 +50,7 @@ ok(filtrar(lista, { ...FILTRO_VAZIO, prazo: 'atrasadas' }, hoje).length === 2 &&
 ok(porGrupo(lista, 'atrasadas', hoje).map((x) => x.id).join() === 'venc,ag-venc', 'atrasadas, da mais antiga para a mais recente (inclui o acompanhamento vencido)');
 ok(porGrupo(lista, 'hoje', hoje).map((x) => x.id).join() === 'hoje', 'hoje: só o que vence hoje');
 ok(porGrupo(lista, 'sete', hoje).map((x) => x.id).join() === 'ag-longe,ag-sem,ag-ret10,ag-perto,em3', 'próximos 7 dias: de 1 a 7 dias, na ordem de proximidade (em8 fica de fora, hoje não repete)');
+ok(['atrasadas', 'hoje'].every((g) => filtrar(lista, { ...FILTRO_VAZIO, prazo: g }, hoje).map((x) => x.id).sort().join() === porGrupo(lista, g, hoje).map((x) => x.id).sort().join()) && porGrupo(lista, 'sete', hoje).every((d) => filtrar(lista, { ...FILTRO_VAZIO, prazo: 'sete' }, hoje).some((x) => x.id === d.id)), 'contadores do Início: Atrasadas e Vencem hoje abrem em Demandas exatamente as demandas que contam; o filtro Próximos 7 dias traz as que o contador conta e também as de hoje (decisão antiga do filtro, mantida)');
 // sessão (decisão 27): a sessão persiste; nada de encerramento por inatividade. A regra só classifica o resultado da conferência no Auth.
 ok(situacaoDoErroAuth(null) === 'ok' && situacaoDoErroAuth(undefined) === 'ok', 'sessão: sem erro, a conferência está ok');
 ok(situacaoDoErroAuth({ name: 'AuthSessionMissingError' }) === 'sem-sessao', 'sessão: a falta de sessão é reconhecida (primeira visita ou sessão removida)');

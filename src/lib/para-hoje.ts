@@ -93,16 +93,16 @@ export function urgenciasDoInicio(vagas: readonly Vaga[], lista: readonly Demand
     || (permanencia(b.d, hoje) ?? -1) - (permanencia(a.d, hoje) ?? -1)
     || a.d.criado_em.localeCompare(b.d.criado_em)
     || a.d.id.localeCompare(b.d.id);
-  const urgentes: { d: Demanda; data: string | null; prio: boolean }[] = [], vistos = new Set<string>();
+  const urgentes: { d: Demanda; data: string | null; prio: boolean }[] = [];
   for (const d of lista) {
-    if (ocupadas.has(d.id) || vistos.has(d.id)) continue;
+    if (ocupadas.has(d.id)) continue;
     const a = dataDaAcao(d, hoje, dias);
     if (!a) continue;
     const prio = demandaPrioritaria(d), n = a.data ? diasAte(a.data, hoje) : null;
-    if (prio || (n !== null && (n <= 0 || (ehOficio(d) && n <= 7)))) { vistos.add(d.id); urgentes.push({ d, data: a.data, prio }); }
+    if (prio || (n !== null && (n <= 0 || (ehOficio(d) && n <= 7)))) urgentes.push({ d, data: a.data, prio });
   }
   if (urgentes.length) return { demandas: urgentes.sort(ordem).map((x) => x.d), proximos: false };
-  const proximos = elegiveisParaHoje(lista, hoje, dias).filter((e) => e.data && !ocupadas.has(e.demanda.id) && !vistos.has(e.demanda.id));
+  const proximos = elegiveisParaHoje(lista, hoje, dias).filter((e) => e.data && !ocupadas.has(e.demanda.id));
   return { demandas: proximos.sort((a, b) => a.data!.localeCompare(b.data!) || ORDEM[a.classe] - ORDEM[b.classe]).map((e) => e.demanda), proximos: true };
 }
 

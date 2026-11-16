@@ -135,7 +135,7 @@ export function ParaHoje() {
         : modo === 'pilha' ? <Pilha vagas={abertas} />
           : <div className="cards">{abertas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}</div>}
       <div className="nova-urgencia" data-nova-urgencia data-proximos={proximos || undefined} data-vazia={!urgentes.length || undefined}>
-        <h4 id="urg-t"><span>Urgência</span><Ajuda rotulo="Sobre a Urgência">{proximos ? 'Sem urgências agora: os próximos vencimentos' : 'Pedidos da Prefeita e do Gabinete, atrasadas, as que vencem hoje e os ofícios dos próximos 7 dias'}</Ajuda></h4>
+        <h4><span>Urgência</span><Ajuda rotulo="Sobre a Urgência">{proximos ? 'Sem urgências agora: os próximos vencimentos' : 'Pedidos da Prefeita e do Gabinete, atrasadas, as que vencem hoje e os ofícios dos próximos 7 dias'}</Ajuda></h4>
         {!urgentes.length ? <div className="vazio-c">Nenhuma urgência no momento.</div>
           : modo === 'pilha' ? <BaralhoSimples lista={urgentes} nome="Urgência" />
             : <FaixaCards lista={urgentes} rotulo={proximos ? 'Urgência, os próximos vencimentos' : 'Urgência, da mais urgente para a menos urgente'} />}
