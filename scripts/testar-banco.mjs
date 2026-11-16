@@ -967,7 +967,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const nova9 = todas.find((f) => f.includes('normalizar_prazos_legados'));
   const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova15 = todas.find((f) => f.includes('alinha_regras_agenda')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
   const nova20 = todas.find((f) => f.includes('origem_documento_para_hoje'));   // depende da migração 8: entra depois dela, não no banco antigo
-  for (const f of todas.filter((f) => f !== nova20 && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const novaQ = todas.find((f) => f.includes('para_hoje_quatro_vagas'));   // depende da 20 (tabela para_hoje): entra depois dela
+  for (const f of todas.filter((f) => f !== nova20 && f !== novaQ && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -1564,6 +1565,208 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(await rodar(dq, quebrada) !== null && JSON.stringify((await dq.query('select (select count(*) from public.demandas)::int d, (select count(*) from public.tarefas)::int t, (select count(*) from public.entradas)::int e')).rows[0]) === JSON.stringify(antesQ), 'restauração 1 a 20: falha no meio desfaz tudo (transação única), inclusive demandas e tarefas');
   ok((await dq.query("select tgenabled from pg_trigger where tgname = 'tarefas_versao'")).rows[0].tgenabled === 'O', 'restauração 1 a 20: o gatilho de versão das tarefas continua ligado depois da falha');
   for (const d of [destino, d2, atual, dest2, dq]) await d.close();
+}
+
+
+// ---------- migração de Pagamentos (decisão 76, derivada da 23 da branch do Início): só a data do salário, sem tocar em eventos nem em prazos ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const mp = todas.find((f) => f.includes('_pagamentos.sql')), m20 = todas.find((f) => f.includes('origem_documento_para_hoje'));
+  ok(!!mp && !!m20 && todas.indexOf(mp) === todas.indexOf(m20) + 1, 'migração de pagamentos: existe, vem logo depois da 20 e as anteriores não foram reescritas (arquivo à parte)');
+  const sqlMig = readFileSync(join('supabase/migrations', mp), 'utf8');
+  ok(!/eventos_tipo_check|conferir_evento|Evento externo/.test(sqlMig.replace(/^--.*$/gm, '')), 'migração de pagamentos: não traz o tipo Evento externo nem troca funções de eventos (funcionalidade alheia fica fora)');
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-migpag-'));
+  try {
+    for (const f of todas.filter((f) => f < mp)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    const a = await abrirBancoTeste({ raizMigracoes: pasta });
+    const U = 'e1e1e1e1-3333-4333-8333-e1e1e1e1e1e1', O = 'e2e2e2e2-3333-4333-8333-e2e2e2e2e2e2', X = 'e3e3e3e3-3333-4333-8333-e3e3e3e3e3e3';
+    for (const [id, e] of [[U, 'p23@teste'], [O, 'p23b@teste'], [X, 'p23x@teste']]) await a.exec(`insert into auth.users (id, email) values ('${id}', '${e}')`);
+    await a.exec("insert into dmanda_privado.acesso_autorizado (email) values ('p23@teste'), ('p23b@teste')");   // X não é autorizado
+    const ua = (f, x) => chamarComoUsuario(a, U, f, x), uo = (f, x) => chamarComoUsuario(a, O, f, x), ux = (f, x) => chamarComoUsuario(a, X, f, x);
+    const er = async (fn, f, x) => { try { await fn(f, x); return null; } catch (e) { return e.message || String(e); } };
+    // antes: eventos, um dia indisponível e demandas com prazo já existem
+    const ev = await ua('criar_evento', { p: { titulo: 'Reunião antiga', tipo: 'Reunião', data: '2026-12-01', inicio: '09:00' } });
+    await ua('salvar_dia_indisponivel', { p: { data: '2026-12-25', descricao: 'Natal', categoria: 'Feriado' } });
+    await ua('criar_demanda', { p: { assunto: 'Prazo no Natal', prazo_original: '2026-12-25' } });
+    const foto = async () => JSON.stringify({
+      ev: (await a.query('select id, titulo, tipo, data, dia_inteiro, inicio, fim, versao, criado_em from public.eventos order by id')).rows,
+      di: (await a.query('select id, data, descricao, categoria from public.dias_indisponiveis order by id')).rows,
+      dm: (await a.query('select id, prazo_original, prazo, prazo_ajuste from public.demandas order by id')).rows });
+    const privilegios = async () => JSON.stringify((await a.query(`select has_function_privilege('anon', 'public.salvar_pagamento(jsonb)', 'execute') an, has_function_privilege('authenticated', 'public.salvar_pagamento(jsonb)', 'execute') au,
+      has_function_privilege('authenticated', 'public.listar_pagamentos()', 'execute') lau, has_table_privilege('anon', 'public.pagamentos', 'select') ts, has_table_privilege('authenticated', 'public.pagamentos', 'select') tas`)).rows);
+    ok((await er(ua, 'listar_pagamentos', {}) || '').length > 0, 'migração de pagamentos (antes): a função de leitura ainda não existe');
+    const fotoAntes = await foto();
+    await a.exec(sqlMig);
+    ok(await foto() === fotoAntes && (await ua('listar_eventos', {})).some((e) => e.id === ev.id), 'migração de pagamentos: eventos, dias indisponíveis e prazos anteriores ficam idênticos (nenhum dado tocado)');
+    ok(/Escolha o tipo/.test(await er(ua, 'criar_evento', { p: { titulo: 'x', tipo: 'Evento externo', data: '2026-12-02', inicio: '09:00' } })), 'migração de pagamentos: o tipo Evento externo continua fora (não é desta migração)');
+    const privDepois = await privilegios();
+    // cadastro, ordem, unicidade e edição
+    ok((await ua('listar_pagamentos', {})).length === 0, 'pagamentos: começa sem nenhuma data');
+    const p1 = await ua('salvar_pagamento', { p: { data: '2026-12-05' } });
+    ok(!!p1.id && p1.data === '2026-12-05' && Object.keys(p1).join() === 'id,data,criado_em', 'pagamentos: cria só com a data (sem valor, sem recorrência)');
+    const p1b = await ua('salvar_pagamento', { p: { data: '2026-12-05' } });
+    ok(p1b.id === p1.id && (await ua('listar_pagamentos', {})).length === 1, 'pagamentos: criar a mesma data de novo (clique repetido ou resposta perdida) devolve a que existe, sem duplicar nem dar erro');
+    const iguais = await Promise.all([ua('salvar_pagamento', { p: { data: '2026-12-20' } }), ua('salvar_pagamento', { p: { data: '2026-12-20' } }), ua('salvar_pagamento', { p: { data: '2026-12-20' } })]);
+    ok(new Set(iguais.map((x) => x.id)).size === 1 && (await ua('listar_pagamentos', {})).filter((x) => x.data === '2026-12-20').length === 1, 'pagamentos: três criações simultâneas da mesma data resultam em um só registro, sem erro');
+    await ua('excluir_pagamento', { p_id: iguais[0].id });
+    const p2 = await ua('salvar_pagamento', { p: { data: '2027-01-05' } });
+    ok((await ua('listar_pagamentos', {})).map((x) => x.data).join() === '2026-12-05,2027-01-05', 'pagamentos: listados em ordem de data');
+    const ed = await ua('salvar_pagamento', { p: { id: p2.id, data: '2027-01-08' } });
+    ok(ed.id === p2.id && ed.data === '2027-01-08' && (await ua('listar_pagamentos', {})).length === 2, 'pagamentos: edita a data do próprio registro');
+    ok(/Já existe um pagamento/.test(await er(ua, 'salvar_pagamento', { p: { id: p2.id, data: '2026-12-05' } })), 'pagamentos: mudar para uma data que já está cadastrada é recusado');
+    ok((await ua('salvar_pagamento', { p: { id: p2.id, data: '2027-01-08' } })).data === '2027-01-08', 'pagamentos: salvar o mesmo valor de novo é inofensivo');
+    ok(/Informe a data/.test(await er(ua, 'salvar_pagamento', { p: {} })) && !!(await er(ua, 'salvar_pagamento', { p: { data: '2026-02-30' } })) && !!(await er(ua, 'salvar_pagamento', { p: { data: 'amanhã' } })), 'pagamentos: sem data e data que não existe no calendário são recusadas');
+    ok(/não encontrado/.test(await er(ua, 'salvar_pagamento', { p: { id: '99999999-9999-4999-8999-999999999999', data: '2027-03-05' } })), 'pagamentos: alterar um registro que não existe é recusado');
+    // a data é a do calendário: o dia informado é o dia guardado, sem deslocamento de fuso
+    const borda = await ua('salvar_pagamento', { p: { data: '2026-12-31' } });
+    ok(borda.data === '2026-12-31' && (await a.query(`select data::text d from public.pagamentos where id = '${borda.id}'`)).rows[0].d === '2026-12-31', 'pagamentos: o dia informado é o dia guardado (31/12, sem deslocamento de fuso)');
+    await ua('excluir_pagamento', { p_id: borda.id });
+    // informativo: não muda disponibilidade nem vencimento
+    ok(await foto() === fotoAntes, 'pagamentos: cadastrar, editar e repetir datas não muda eventos, dias indisponíveis nem vencimentos');
+    const dem2 = await ua('criar_demanda', { p: { assunto: 'Prazo no dia do pagamento', prazo_original: '2026-12-07' } });   // segunda-feira
+    await ua('salvar_pagamento', { p: { data: '2026-12-07' } });
+    const demDepois = (await ua('listar_demandas', { p_arquivadas: false })).find((d) => d.id === dem2.id);
+    ok(dem2.prazo === '2026-12-07' && dem2.prazo_ajuste === null && demDepois.prazo === '2026-12-07' && demDepois.prazo_ajuste === null, 'pagamentos: um pagamento no dia do prazo não antecipa nem recalcula o vencimento');
+    await ua('excluir_pagamento', { p_id: (await ua('listar_pagamentos', {})).find((x) => x.data === '2026-12-07').id });
+    // isolamento
+    ok((await uo('listar_pagamentos', {})).length === 0, 'RLS: outro usuário não vê os pagamentos');
+    ok(/não encontrado/.test(await er(uo, 'salvar_pagamento', { p: { id: p1.id, data: '2026-12-06' } })) && (await ua('listar_pagamentos', {}))[0].data === '2026-12-05', 'RLS: outro usuário não altera o pagamento alheio');
+    await uo('excluir_pagamento', { p_id: p1.id });
+    ok((await ua('listar_pagamentos', {})).length === 2, 'RLS: outro usuário não exclui o pagamento alheio (a chamada não faz nada)');
+    ok((await uo('salvar_pagamento', { p: { data: '2026-12-05' } })).id !== p1.id, 'RLS: cada usuário pode ter a mesma data (a unicidade é por usuário)');
+    ok(!!(await er(ux, 'salvar_pagamento', { p: { data: '2026-12-05' } })) && (await a.query(`select count(*)::int n from public.pagamentos where user_id = '${X}'`)).rows[0].n === 0, 'conta fora da lista autorizada: não grava pagamento (terceira camada)');
+    const anon = await a.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_pagamentos()'); return null; } catch (e) { return e.message; } });
+    const anonT = await a.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select * from public.pagamentos'); return null; } catch (e) { return e.message; } });
+    ok(/permission denied/i.test(anon || '') && /permission denied/i.test(anonT || ''), 'pagamentos: sem login (papel anon) não executa as funções nem lê a tabela');
+    const pv = JSON.parse(privDepois)[0];
+    ok(pv.an === false && pv.au === true && pv.lau === true && pv.ts === false && pv.tas === true, 'pagamentos: só o usuário logado executa as funções; anon não lê a tabela');
+    // excluir
+    const ex = await ua('excluir_pagamento', { p_id: p2.id });
+    ok(ex.excluido === true && (await ua('listar_pagamentos', {})).length === 1, 'pagamentos: exclui a data');
+    ok((await ua('excluir_pagamento', { p_id: p2.id })).excluido === true && (await ua('listar_pagamentos', {})).length === 1, 'pagamentos: excluir de novo (resposta perdida) não é erro nem mexe no resto');
+    // reaplicar a migração não muda nada (a 23 original da branch do Início recria os mesmos objetos com as mesmas definições)
+    const listaFim = JSON.stringify(await ua('listar_pagamentos', {}));
+    await a.exec(sqlMig);
+    ok(JSON.stringify(await ua('listar_pagamentos', {})) === listaFim && await privilegios() === privDepois, 'migração de pagamentos: aplicar de novo não muda os pagamentos nem os privilégios');
+    await a.close();
+  } finally { rmSync(pasta, { recursive: true, force: true }); }
+}
+
+// ---------- cópia versão 5 (pagamentos): exporta e restaura ----------
+{
+  const SQL = readFileSync('supabase/restaurar-copia.sql', 'utf8');
+  const O = 'f1f1f1f1-4444-4444-8444-f1f1f1f1f1f1', N = 'f2f2f2f2-4444-4444-8444-f2f2f2f2f2f2';
+  const preparar = async (d, id, email) => { await d.query('insert into auth.users (id, email) values ($1, $2)', [id, email]); await d.query('insert into dmanda_privado.acesso_autorizado (email) values ($1) on conflict do nothing', [email]); return d; };
+  const origem = await preparar(await abrirBancoTeste(), O, 'c5o@teste');
+  const co = (f, a) => chamarComoUsuario(origem, O, f, a);
+  await co('salvar_pagamento', { p: { data: '2026-12-05' } }); await co('salvar_pagamento', { p: { data: '2027-01-05' } });
+  const copia = JSON.parse(JSON.stringify({ formato: 'dmanda-exportacao', versao: 5, exportado_em: new Date().toISOString(), fuso: 'America/Sao_Paulo', demandas: [], arquivadas: [], dias_indisponiveis: [], entradas: [], entradas_arquivadas: [],
+    eventos: await co('listar_eventos', {}), pagamentos: await co('listar_pagamentos', {}) }));
+  const destino = await preparar(await abrirBancoTeste(), N, 'c5n@teste');
+  const rodar = async (d, j) => { try { await d.exec(SQL.replace('__COLE_AQUI_O_JSON__', () => JSON.stringify(j))); return null; } catch (e) { return e.message || String(e); } };
+  ok(await rodar(destino, copia) === null, 'cópia v5: restaura sem erro (datas de pagamento)');
+  const dp = await chamarComoUsuario(destino, N, 'listar_pagamentos', {});
+  ok(dp.map((x) => x.data).join() === '2026-12-05,2027-01-05' && dp.map((x) => x.id).join() === copia.pagamentos.map((x) => x.id).join(), 'cópia v5: as datas de pagamento voltam como estavam');
+  ok(await rodar(destino, copia) === null && (await chamarComoUsuario(destino, N, 'listar_pagamentos', {})).length === 2, 'cópia v5: restaurar de novo não duplica as datas de pagamento');
+  await chamarComoUsuario(destino, N, 'salvar_pagamento', { p: { data: '2027-02-05' } });
+  ok(await rodar(destino, copia) === null && (await chamarComoUsuario(destino, N, 'listar_pagamentos', {})).map((x) => x.data).join() === '2026-12-05,2027-01-05,2027-02-05', 'cópia v5: restaurar sobre uma base que já tem outra data não toca no que existia');
+  const antiga = { ...copia, versao: 4 }; delete antiga.pagamentos;
+  ok(await rodar(await preparar(await abrirBancoTeste(), 'f3f3f3f3-4444-4444-8444-f3f3f3f3f3f3', 'c5v@teste'), antiga) === null, 'cópia v4 (sem a lista de pagamentos) continua restaurável no schema atual');
+  ok(/versão 1, 2, 3, 4 ou 5/.test(await rodar(await preparar(await abrirBancoTeste(), 'f4f4f4f4-4444-4444-8444-f4f4f4f4f4f4', 'c5x@teste'), { ...copia, versao: 6 }) || ''), 'cópia: a versão 6 é recusada com mensagem clara');
+  // uma cópia antiga (v4) restaura numa base que ainda não recebeu a migração de pagamentos (a tabela não existe)
+  const semTabela = await preparar(await abrirBancoTeste(), 'f6f6f6f6-4444-4444-8444-f6f6f6f6f6f6', 'c5z@teste');
+  await semTabela.exec('drop table public.pagamentos cascade');
+  ok(await rodar(semTabela, antiga) === null, 'cópia v4: restaura numa base sem a tabela de pagamentos (a restauração só mexe nela quando a cópia traz a lista)');
+  const semTabela5 = await preparar(await abrirBancoTeste(), 'f7f7f7f7-4444-4444-8444-f7f7f7f7f7f7', 'c5w@teste');
+  await semTabela5.exec('drop table public.pagamentos cascade');
+  ok(/pagamentos/.test(await rodar(semTabela5, copia) || ''), 'cópia v5 numa base sem a tabela: falha com a mensagem do banco (não restaura pela metade em silêncio)');
+  const outro = await preparar(await abrirBancoTeste(), 'f5f5f5f5-4444-4444-8444-f5f5f5f5f5f5', 'c5y@teste');
+  ok(await rodar(outro, copia) === null && (await chamarComoUsuario(outro, 'f5f5f5f5-4444-4444-8444-f5f5f5f5f5f5', 'listar_pagamentos', {})).length === 2, 'cópia v5: restaura também em outra conta (o dono é a conta da base de destino)');
+  for (const d of [origem, destino, outro]) await d.close();
+}
+
+// ---------- Para hoje com quatro vagas (decisão 80, etapa 3): migração aditiva sobre o esquema publicado (até a 20261110000000), com as três vagas já ocupadas ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m4 = todas.find((f) => f.includes('para_hoje_quatro_vagas')), m20 = todas.find((f) => f.includes('origem_documento_para_hoje')), mp = todas.find((f) => f.includes('_pagamentos.sql'));
+  ok(!!m4 && !!m20 && todas.indexOf(m4) > todas.indexOf(m20) && (!mp || todas.indexOf(m4) > todas.indexOf(mp)), 'quatro vagas: a migração é um arquivo novo, depois da 20 e da de Pagamentos, e nenhuma anterior foi reescrita');
+  const texto = readFileSync(join('supabase/migrations', m4), 'utf8'), codigo = texto.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  ok(!/prazo_base|pagamentos|ajustar_prazo|create\s+table|drop\s+(table|function|policy)/i.test(codigo), 'quatro vagas: a migração não depende da de prazo-base nem da de Pagamentos e não apaga tabela, função nem política');
+  // o esquema publicado é o da origin/main: tudo até a migração 20, sem a de Pagamentos
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-quatro-'));
+  try {
+    for (const f of todas.filter((f) => f <= m20)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    const a = await abrirBancoTeste({ raizMigracoes: pasta });
+    const U = 'e1e1e1e1-3333-4333-8333-e1e1e1e1e1e1', O = 'e2e2e2e2-3333-4333-8333-e2e2e2e2e2e2';
+    for (const [id, e] of [[U, 'q4a@teste'], [O, 'q4b@teste']]) { await a.exec(`insert into auth.users (id, email) values ('${id}', '${e}')`); await a.exec(`insert into dmanda_privado.acesso_autorizado (email) values ('${e}')`); }
+    const ua = (f, x) => chamarComoUsuario(a, U, f, x), uo = (f, x) => chamarComoUsuario(a, O, f, x);
+    const mk = async (n, u = ua) => (await u('criar_demanda', { p: { assunto: n } })).id;
+    const [d1, d2, d3, d4, d5, d6] = [await mk('Q1'), await mk('Q2'), await mk('Q3'), await mk('Q4'), await mk('Q5'), await mk('Q6')];
+    const txt = (l) => l.map((v) => `${v.posicao}:${v.demanda_id}`).join();
+    const lista = async () => txt(await ua('listar_para_hoje', {}));
+    const priv = async () => JSON.stringify((await a.query("select has_function_privilege('anon', 'public.atualizar_para_hoje(jsonb)', 'execute') an, has_function_privilege('authenticated', 'public.atualizar_para_hoje(jsonb)', 'execute') au, has_function_privilege('authenticated', 'public.listar_para_hoje()', 'execute') lu, has_table_privilege('authenticated', 'public.para_hoje', 'select') s, has_table_privilege('authenticated', 'public.para_hoje', 'insert') i, has_table_privilege('authenticated', 'public.para_hoje', 'update') u, has_table_privilege('authenticated', 'public.para_hoje', 'delete') d, has_table_privilege('anon', 'public.para_hoje', 'select') ans, (select relrowsecurity from pg_class where oid = 'public.para_hoje'::regclass) rls, (select count(*) from pg_policies where tablename = 'para_hoje') pol, (select prosecdef from pg_proc where proname = 'atualizar_para_hoje') sd, (select proconfig::text from pg_proc where proname = 'atualizar_para_hoje') cfg")).rows[0]);
+    const assinatura = async () => (await a.query("select pg_get_function_arguments(oid) args, pg_get_function_result(oid) res from pg_proc where proname = 'atualizar_para_hoje'")).rows[0];
+    const antes = await ua('atualizar_para_hoje', { p_candidatas: [d1, d2, d3, d4, d5] });
+    const foto = txt(antes);
+    ok(antes.length === 3 && foto === `1:${d1},2:${d2},3:${d3}`, 'quatro vagas (antes): o esquema publicado só tem três vagas, mesmo com cinco candidatas');
+    const pAntes = await priv(), sAntes = JSON.stringify(await assinatura());
+    ok(/check/i.test(await a.query(`insert into public.para_hoje (user_id, posicao, demanda_id) values ('${U}', 4, '${d4}')`).then(() => '', (e) => e.message)), 'quatro vagas (antes): a posição 4 é recusada pela restrição do banco');
+
+    await a.exec(texto);
+    ok(await lista() === foto, 'quatro vagas (upgrade): as posições 1 a 3 continuam com as mesmas demandas, na mesma ordem');
+    ok(await priv() === pAntes && JSON.stringify(await assinatura()) === sAntes, 'quatro vagas: RLS, política, privilégios da tabela e da função, SECURITY INVOKER, search_path, assinatura e retorno não mudaram');
+    const quarta = await ua('atualizar_para_hoje', { p_candidatas: [d1, d2, d3, d4, d5] });
+    ok(txt(quarta) === `${foto},4:${d4}`, 'quatro vagas: a quarta vaga recebe a primeira candidata livre, sem mexer nas posições 1 a 3');
+    ok((await ua('atualizar_para_hoje', { p_candidatas: [d5, d6] })).length === 4 && await lista() === `${foto},4:${d4}`, 'quatro vagas: com as quatro cheias nada muda e a quinta candidata fica de fora (nova leitura confirma)');
+    ok(/check/i.test(await a.query(`insert into public.para_hoje (user_id, posicao, demanda_id) values ('${U}', 5, '${d5}')`).then(() => '', (e) => e.message)), 'quatro vagas: a posição 5 continua recusada');
+    ok(!!(await a.query(`insert into public.para_hoje (user_id, posicao, demanda_id) values ('${U}', 1, '${d6}')`).then(() => '', (e) => e.message)) && await lista() === `${foto},4:${d4}`, 'quatro vagas: uma posição ocupada não é sobrescrita nem repetida');
+    ok(!!(await a.query(`insert into public.para_hoje (user_id, posicao, demanda_id) values ('${U}', 2, '${d4}')`).then(() => '', (e) => e.message)), 'quatro vagas: a mesma demanda não ocupa duas vagas (unicidade por usuário)');
+    // reposição unitária: só a vaga liberada por conclusão, arquivamento ou exclusão é reposta; as demais ficam
+    await ua('concluir_demanda', { p_id: d2 });
+    ok(txt(await ua('atualizar_para_hoje', { p_candidatas: [d1, d3, d4, d5, d6] })) === `1:${d1},2:${d5},3:${d3},4:${d4}`, 'quatro vagas: concluir a demanda da vaga 2 repõe só a 2; as vagas 1, 3 e 4 ficam');
+    await ua('arquivar_demanda', { p_id: d4 });
+    ok(txt(await ua('atualizar_para_hoje', { p_candidatas: [d6] })) === `1:${d1},2:${d5},3:${d3},4:${d6}`, 'quatro vagas: arquivar a demanda da vaga 4 libera só a 4');
+    await ua('excluir_demanda', { p_id: d3, p_confirmado: true });
+    ok((await ua('listar_para_hoje', {})).map((v) => v.posicao).join() === '1,2,4', 'quatro vagas: excluir a demanda da vaga 3 libera só a 3 (as vagas 1, 2 e 4 ficam)');
+    const reposta = await ua('atualizar_para_hoje', { p_candidatas: [await mk('Q7')] });
+    ok(reposta.map((v) => v.posicao).join() === '1,2,3,4', 'quatro vagas: a vaga liberada é reposta na própria posição (3), sem reordenar as outras');
+    // sem candidatas e candidatas inválidas
+    const parada = await lista();
+    ok(await lista() === parada && txt(await ua('atualizar_para_hoje', { p_candidatas: [] })) === parada && txt(await ua('atualizar_para_hoje', { p_candidatas: null })) === parada && txt(await ua('atualizar_para_hoje', { p_candidatas: ['nao-e-uuid', '99999999-9999-4999-8999-999999999999', d2, d4] })) === parada, 'quatro vagas: sem candidatas, ou com identificador inválido, inexistente, finalizado ou arquivado, nada muda');
+    ok(/inválida/.test(await ua('atualizar_para_hoje', { p_candidatas: Array.from({ length: 31 }, () => d1) }).then(() => '', (e) => e.message)), 'quatro vagas: lista grande demais continua recusada');
+    // virada de data: as vagas não dependem do dia
+    await a.query('update public.para_hoje set desde = desde - 5 where user_id = $1', [U]);
+    ok(await lista() === parada && txt(await ua('atualizar_para_hoje', { p_candidatas: [d1, d5] })) === parada, 'quatro vagas: dias depois, as mesmas demandas continuam nas mesmas posições');
+    // duas sessões do mesmo usuário preenchendo ao mesmo tempo uma única vaga livre
+    await ua('concluir_demanda', { p_id: d5 });
+    const [n1, n2, n3] = [await mk('Q8'), await mk('Q9'), await mk('Q10')];
+    const conc = await Promise.all([ua('atualizar_para_hoje', { p_candidatas: [n1, n2, n3] }), ua('atualizar_para_hoje', { p_candidatas: [n3, n2, n1] }), ua('atualizar_para_hoje', { p_candidatas: [n2, n1, n3] })]);
+    const fim = await ua('listar_para_hoje', {});
+    ok(fim.length === 4 && new Set(fim.map((v) => v.posicao)).size === 4 && new Set(fim.map((v) => v.demanda_id)).size === 4 && conc.every((v) => v.length === 4) && conc.every((v) => txt(v) === txt(fim)), 'quatro vagas: três sessões simultâneas ocupam a vaga livre uma só vez, sem posição nem demanda repetida e com o mesmo resultado para todas');
+    // outro usuário
+    const dono = await uo('atualizar_para_hoje', { p_candidatas: [n1, d1] });
+    ok(dono.length === 0 && (await uo('listar_para_hoje', {})).length === 0, 'quatro vagas: outro usuário não vê nem ocupa vagas com demandas do primeiro');
+    const o1 = await mk('O1', uo);
+    ok((await uo('atualizar_para_hoje', { p_candidatas: [o1] })).length === 1 && (await ua('listar_para_hoje', {})).length === 4, 'quatro vagas: as vagas de cada usuário são independentes');
+    // repetir a migração
+    const f2 = await lista();
+    await a.exec(texto);
+    ok(await lista() === f2 && await priv() === pAntes, 'quatro vagas: aplicar de novo não muda vagas, RLS nem privilégios');
+    await a.close();
+  } finally { rmSync(pasta, { recursive: true, force: true }); }
+  // o banco completo (com Pagamentos e a migração das quatro vagas) também aceita quatro vagas
+  const c = await abrirBancoTeste({ raizMigracoes: undefined });
+  const V = 'e3e3e3e3-3333-4333-8333-e3e3e3e3e3e3';
+  await c.exec(`insert into auth.users (id, email) values ('${V}', 'q4c@teste')`); await c.exec("insert into dmanda_privado.acesso_autorizado (email) values ('q4c@teste')");
+  const ids = []; for (let i = 0; i < 5; i++) ids.push((await chamarComoUsuario(c, V, 'criar_demanda', { p: { assunto: `C${i}` } })).id);
+  ok((await chamarComoUsuario(c, V, 'atualizar_para_hoje', { p_candidatas: ids })).length === 4, 'quatro vagas: o banco completo (todas as migrações) preenche quatro vagas');
+  await c.close();
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
