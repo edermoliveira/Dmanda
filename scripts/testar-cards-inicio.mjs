@@ -115,12 +115,13 @@ for (const [motor, navegador, extra] of [['Edge', nav, {}], ...(wk ? [['WebKit e
   const quebrou = medidas.filter(([, m]) => m.w !== d0.w || m.h !== d0.h);
   ok(quebrou.length === 0, `${motor}: o card ativo mantém ${d0.w}x${d0.h} px em ${medidas.length} momentos (curto, longo, navegação, arrasto e verso)${quebrou.length ? ': ' + quebrou.map(([r, m]) => `${r} ${m.w}x${m.h}`).join('; ') : ''}`);
   ok((await pg.evaluate(() => scrollY)) === y0, `${motor}: a página não saltou durante as trocas`);
-  // um só card: o filtro "Vencem hoje" tem uma única demanda (Curta está nas vagas, mas o filtro lista todas as que vencem hoje)
-  await pg.evaluate(() => document.querySelector('.stat.st-hoje, .stat.st-vencem-hoje')?.click()); await esperar(600);
+  // um só card de verdade: o filtro "Próximos 7 dias" tem uma única demanda (Eco, vence amanhã)
+  await pg.evaluate(() => document.querySelector('.stat.st-sete')?.click()); await esperar(600);
   const um = await pg.$eval('.cartas', (e) => ({ n: e.querySelectorAll('.dcard').length, pilha: !!e.querySelector('.ph-pilha') })).catch(() => null);
+  ok(um?.n === 1 && um.pilha, `${motor}: o filtro de um único card monta a pilha (${um?.n} card)`);
   if (um?.pilha) {
     const m = await tam(pg, '.cartas .ph-arrasto'), p = await R(pg, '.cartas .ph-pilha');
-    ok(m.w === d0.w && m.h === d0.h && Math.abs(p.w - pil.w) <= 1, `${motor}: o filtro com ${um.n} card(s) tem o mesmo tamanho do Para hoje (${m.w}x${m.h} px)`);
+    ok(m.w === d0.w && m.h === d0.h && Math.abs(p.w - pil.w) <= 1, `${motor}: com um único card o tamanho é o do Para hoje (${m.w}x${m.h} px)`);
   }
   const nu = await tam(pg, `[data-nova-urgencia] .ph-arrasto`).catch(() => null);
   await ctx.close();

@@ -123,7 +123,7 @@ function FaixaUrgencia({ lista }: { lista: Demanda[] }) {
     medir(); el.addEventListener('scroll', medir, { passive: true });
     const ro = new ResizeObserver(medir); ro.observe(el);
     return () => { el.removeEventListener('scroll', medir); ro.disconnect(); };
-  }, [lista]);
+  }, [lista.length]);   // só a quantidade: a lista é um array novo a cada desenho e reinscrever os ouvintes a cada vez seria trabalho à toa
   const rolar = (sentido: 1 | -1) => { const el = faixa.current; if (el) el.scrollBy({ left: sentido * el.clientWidth, behavior: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };
   return (
     <div className="urg-caixa">
