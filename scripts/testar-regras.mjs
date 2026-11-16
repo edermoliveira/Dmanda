@@ -357,7 +357,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
 // ---------- Para hoje, ano do documento e filtros (decisão 60) ----------
 {
   const { anoReconhecido, anoDoDocumento, chaveOpcao } = await import('../src/lib/documentos.ts');
-  const { elegiveisParaHoje, vagasAbertas, precisaCompletar, novasUrgencias, ehUrgente } = await import('../src/lib/para-hoje.ts');
+  const { elegiveisParaHoje, vagasAbertas, precisaCompletar, urgenciasDoInicio, candidatasParaVagas, ehOficio, ehUrgente } = await import('../src/lib/para-hoje.ts');
   ok(anoReconhecido('32/2026') === 2026 && anoReconhecido('2024/1250') === 2024 && anoReconhecido(' 1842 / 2026 ') === 2026 && anoReconhecido('45/2026') === 2026, 'ano do documento: reconhece formatos inequívocos ("32/2026", "2024/1250", com espaços)');
   ok(anoReconhecido('2024/2025') === null && anoReconhecido('') === null && anoReconhecido('s/n') === null && anoReconhecido('12/34') === null && anoReconhecido('Proc. 12/2026') === null && anoReconhecido('1/2/2026') === null && anoReconhecido('1250/1990') === 1990 && anoReconhecido('12/1800') === null, 'ano do documento: ausente, ambíguo ("2024/2025"), fora de formato ou fora de 1990 a 2100 fica sem ano');
   ok(anoDoDocumento({ numero: '32/2026', documento_ano: 2025 }) === 2025 && anoDoDocumento({ numero: '32/2026', documento_ano: null }) === 2026 && anoDoDocumento({ numero: '', documento_ano: 2023 }) === 2023, 'ano do documento: o ano confirmado à mão vale mais que o reconhecido');
@@ -387,9 +387,12 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   // vagas
   const vg = [{ posicao: 1, demanda_id: 'rapida' }, { posicao: 2, demanda_id: 'fin' }, { posicao: 3, demanda_id: 'sumiu' }];
   ok(vagasAbertas(vg, lista2).map((v) => `${v.posicao}:${v.demanda.id}`).join() === '1:rapida', 'vagas: as de demanda finalizada, arquivada ou inexistente ficam livres e as outras continuam nas suas posições');
-  ok(precisaCompletar(vg, lista2, e) === true && precisaCompletar([1, 2, 3].map((p, i) => ({ posicao: p, demanda_id: ['rapida', 'lenta', 'hojeR'][i] })), lista2, e) === false && precisaCompletar(vg, lista2, []) === false, 'vagas: só chama o banco quando há vaga livre e candidata');
-  const nu = novasUrgencias([{ posicao: 1, demanda_id: 'rapida' }, { posicao: 2, demanda_id: 'lenta' }, { posicao: 3, demanda_id: 'hojeR' }], lista2, e).map((x) => x.demanda.id);
-  ok(nu.includes('hoje') && nu.includes('cobr') && !nu.includes('rapida') && !nu.includes('prox') && !nu.includes('sem'), 'nova urgência: só atrasadas e as que vencem hoje fora das vagas aparecem à parte');
+  ok(precisaCompletar(vg, lista2, e) === true && precisaCompletar([1, 2, 3].map((p, i) => ({ posicao: p, demanda_id: ['rapida', 'lenta', 'hojeR'][i] })), lista2, e) === true && precisaCompletar([1, 2, 3, 4].map((p, i) => ({ posicao: p, demanda_id: ['rapida', 'lenta', 'hojeR', 'hoje'][i] })), lista2, e) === false && precisaCompletar(vg, lista2, []) === false, 'vagas: só chama o banco quando há vaga livre e candidata');
+  const vagas3 = [{ posicao: 1, demanda_id: 'rapida' }, { posicao: 2, demanda_id: 'lenta' }, { posicao: 3, demanda_id: 'hojeR' }];
+  const nu = urgenciasDoInicio(vagas3, lista2, H, []);
+  const nuIds = nu.demandas.map((x) => x.id);
+  ok(!nu.proximos && nuIds.join() === 'esperaVenc,cobr,hoje,prefLonga' && !nuIds.includes('rapida') && !nuIds.includes('prox') && !nuIds.includes('sem'), `urgência: fora das vagas, as atrasadas e as que vencem hoje (com as cobranças de espera), do maior atraso ao mais próximo (${nuIds.join()})`);
+  ok(new Set(nuIds).size === nuIds.length && !nuIds.some((id) => vagas3.some((v) => v.demanda_id === id)), 'urgência: nenhuma demanda repetida e nenhuma que ocupe vaga');
   // filtros
   const fl = [D('a', { tipo: 'Ofício', numero: '32/2026', origem: 'Prefeita' }), D('b', { tipo: 'Memorando', numero: '2024/1250', origem: ' prefeita ' }), D('c', { tipo: null, numero: '2024/2025', origem: 'Reunião' }), D('d', { tipo: 'ofício', numero: 'sem', documento_ano: 2023 }), D('e2')];
   const f = (o) => filtrar(fl, { ...FILTRO_VAZIO, ...o }, H, []).map((x) => x.id).join();
@@ -410,11 +413,69 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
 // ---------- baralho do Início (decisão 65, portado em 14/11/2026): ordem da pilha, gesto e etapa seguinte ----------
 {
   const { ordemDaPilha, ativoParaOFim, ultimoParaAFrente, gestoValido, ETAPA_SEGUINTE, etapaDeEspera, VAGAS_PARA_HOJE } = await import('../src/lib/para-hoje.ts');
-  ok(VAGAS_PARA_HOJE === 3, 'o porte do baralho mantém as três vagas do Para hoje');
+  ok(VAGAS_PARA_HOJE === 4, 'o Para hoje tem quatro vagas (decisão 80)');
   ok(ordemDaPilha(['a', 'b', 'c'], []).join() === 'a,b,c' && ordemDaPilha(['a', 'b', 'c'], ['c', 'a']).join() === 'c,a,b' && ordemDaPilha(['a', 'b'], ['x', 'b', 'b', 'a']).join() === 'b,a', 'ordem da pilha: a guardada vale só para os cards que ainda estão nas vagas, sem perder nem repetir');
   ok(ativoParaOFim(['a', 'b', 'c']).join() === 'b,c,a' && ultimoParaAFrente(['b', 'c', 'a']).join() === 'a,b,c' && ativoParaOFim(['a']).join() === 'a' && ultimoParaAFrente([]).length === 0, 'passar para o fim e voltar ao anterior são inversos; com um card nada muda');
   ok(gestoValido(-80, 0, 300) === 'esq' && gestoValido(80, 0, 300) === 'dir' && gestoValido(-60, 0, 300) === null && gestoValido(-40, -0.8, 300) === 'esq' && gestoValido(-40, 0.8, 300) === null && gestoValido(-20, -2, 300) === null && gestoValido(-100, 0, 500) === null && gestoValido(-110, 0, 500) === 'esq', 'gesto: distância de max(72 px, 22% da largura) ou rápido e longo o bastante; toque curto ou contrário não vale');
   ok(ETAPA_SEGUINTE.Cadastro === 'Vistos' && ETAPA_SEGUINTE.Vistos === 'Fazendo' && ETAPA_SEGUINTE.Fazendo === 'Finalizado' && !ETAPA_SEGUINTE.Finalizado && etapaDeEspera('Aguardando retorno') && etapaDeEspera('Aguardando Prefeita') && !etapaDeEspera('Fazendo'), 'gesto à direita: Cadastro, Vistos, Fazendo, Finalizado; nas etapas de espera, o menu');
+}
+// ---------- Urgência do Início e nove seções de Demandas > Cards (decisão 80, etapa 3) ----------
+{
+  const { urgenciasDoInicio, candidatasParaVagas, elegiveisParaHoje, ehOficio } = await import('../src/lib/para-hoje.ts');
+  const { montarSecoes } = await import('../src/lib/secoes-cards.ts');
+  const base = { tipo: null, area: 'Geral', numero: '', assunto: 'x', descricao: '', origem: '', etapa: 'Fazendo', etapa_desde: '2026-11-09T12:00:00Z', chegou_em: null, prazo: null, prazo_original: null, prazo_dias: null, prazo_base_em: null, prazo_ajuste: null, prazo_legado: false, prazo_tipo: 'Próprio', rapida: false, documento_ano: null, setor: null, acompanhar_em: null, encaminhada_em: null, reiterada_em: null, concluida_em: null, arquivada_em: null, atualizado_em: '2026-11-01T12:00:00Z', entrada_id: null, versao: 1, tarefas: [] };
+  const D = (id, o = {}) => ({ ...base, id, criado_em: `2026-11-01T12:00:${String(id.length).padStart(2, '0')}Z`, ...o });
+  const H = '2026-11-10';
+  ok(ehOficio({ tipo: 'Ofício' }) && ehOficio({ tipo: ' oficio ' }) && ehOficio({ tipo: 'OFÍCIO' }) && !ehOficio({ tipo: 'Ofício circular' }) && !ehOficio({ tipo: null }) && !ehOficio({ tipo: 'Memorando' }), 'Ofício: o tipo é reconhecido sem diferença de maiúsculas, espaços nem acento, e só ele');
+  // ---- Urgência
+  const U = [
+    D('of7', { tipo: 'Ofício', prazo: '2026-11-17' }), D('of8', { tipo: 'Ofício', prazo: '2026-11-18' }), D('mem7', { tipo: 'Memorando', prazo: '2026-11-17' }),
+    D('pref', { origem: 'Prefeita', prazo: '2026-12-30' }), D('gab', { origem: ' gabinete ', prazo: '2026-11-12' }), D('prefSem', { origem: 'Prefeita' }), D('gabVice', { origem: 'Gabinete do Vice-Prefeito', prazo: '2026-12-30' }),
+    D('prefEspera', { origem: 'Prefeita', etapa: 'Aguardando retorno' }), D('prefFin', { origem: 'Prefeita', etapa: 'Finalizado', concluida_em: '2026-11-09' }),
+    D('atr10', { prazo: '2026-10-31' }), D('atr3', { prazo: '2026-11-07' }), D('hoje', { prazo: H }), D('hojeOf', { tipo: 'Ofício', prazo: H }),
+    D('vaga1', { prazo: '2026-10-01' }), D('semPrazo'),
+  ];
+  const vg = [{ posicao: 1, demanda_id: 'vaga1' }];
+  const u = urgenciasDoInicio(vg, U, H, []);
+  const ids = u.demandas.map((d) => d.id);
+  ok(!u.proximos && ids.join() === 'gab,pref,prefSem,atr10,atr3,hoje,hojeOf,of7', `urgência: Prefeita e Gabinete primeiro (com ou sem prazo), depois o maior atraso, os que vencem hoje e o Ofício até 7 dias (${ids.join()})`);
+  ok(ids.includes('of7') && !ids.includes('of8') && !ids.includes('mem7'), 'urgência: o Ofício a sete dias entra, a oito dias não, e outro tipo a sete dias não entra');
+  ok(!ids.includes('gabVice') && !ids.includes('prefEspera') && !ids.includes('prefFin') && !ids.includes('vaga1') && !ids.includes('semPrazo') && new Set(ids).size === ids.length, 'urgência: origem parecida, espera sem cobrança, finalizada, quem ocupa vaga, sem prazo e repetição ficam de fora');
+  ok(urgenciasDoInicio([], U, H, []).demandas.map((d) => d.id).includes('vaga1') && !urgenciasDoInicio([{ posicao: 1, demanda_id: 'vaga1' }, { posicao: 2, demanda_id: 'pref' }], U, H, []).demandas.some((d) => d.id === 'pref'), 'urgência: a demanda que ocupa uma vaga sai da Urgência e, livre a vaga, volta');
+  ok(urgenciasDoInicio([{ posicao: 1, demanda_id: 'vaga1' }], U.map((d) => (d.id === 'vaga1' ? { ...d, etapa: 'Finalizado', concluida_em: '2026-11-09' } : d)), H, []).demandas.every((d) => d.id !== 'vaga1'), 'urgência: a vaga de uma demanda finalizada não reaparece como urgência');
+  const rap = urgenciasDoInicio([], [D('lenta', { prazo: '2026-11-07' }), D('rap', { prazo: '2026-11-07', rapida: true }), D('antes', { prazo: '2026-11-06' })], H, []).demandas.map((d) => d.id).join();
+  ok(rap === 'antes,rap,lenta', `urgência: o maior atraso vem primeiro e a marca Rápida desempata a mesma data (${rap})`);
+  const emDia = [D('p3', { prazo: '2026-11-13' }), D('p1', { prazo: '2026-11-11' }), D('sem'), D('longe', { prazo: '2026-12-30' }), D('p2', { prazo: '2026-11-12', rapida: true }), D('vagaP', { prazo: '2026-11-11' }), D('ofLonge', { tipo: 'Ofício', prazo: '2026-11-18' })];
+  const f = urgenciasDoInicio([{ posicao: 1, demanda_id: 'vagaP' }], emDia, H, []);
+  ok(f.proximos && f.demandas.map((d) => d.id).join() === 'p1,p2,p3', `urgência: sem nenhuma urgência, vêm as elegíveis com vencimento mais próximo, sem as das vagas, sem prazo nem as além de 7 dias (${f.demandas.map((d) => d.id).join()})`);
+  ok(urgenciasDoInicio([], [D('so-sem'), D('so-longe', { prazo: '2026-12-30' })], H, []).demandas.length === 0, 'urgência: sem urgência e sem vencimento próximo, a lista fica vazia (nenhum vencimento inventado)');
+  // ---- candidatas das vagas livres
+  const el = elegiveisParaHoje([D('atrasa', { prazo: '2026-11-01' }), D('pf', { origem: 'Prefeita', prazo: '2026-11-13' }), D('hoje2', { prazo: H }), D('ocup', { prazo: '2026-10-01' })], H, []);
+  ok(candidatasParaVagas(el, new Set(['ocup'])).map((e) => e.demanda.id).join() === 'pf,atrasa,hoje2', 'vagas livres: Prefeita e Gabinete passam à frente, depois a ordem das elegíveis, sem quem já ocupa vaga');
+  // ---- nove seções
+  const S = [
+    D('A', { tipo: 'Ofício', origem: 'Prefeita', prazo: '2026-11-17', chegou_em: '2026-10-01' }),
+    D('B', { tipo: 'Processo', area: 'Compras', prazo: '2026-11-05', chegou_em: '2026-10-20' }),
+    D('B2', { tipo: 'Memorando', prazo: '2026-11-05', chegou_em: '2026-10-01', area: 'Pessoal' }),
+    D('C', { tipo: 'Protocolo', area: 'Pessoal' }),
+    D('D', { tipo: 'Protocolo', area: 'Geral', prazo: '2026-11-12', chegou_em: '2026-11-01' }),
+    D('E', { tipo: 'Memorando', origem: 'Gabinete da Prefeita', prazo: '2026-11-02', chegou_em: '2026-09-01' }),
+    D('F', { tipo: 'Processo', area: 'Geral', chegou_em: '2026-10-15' }),
+    D('G', { tipo: 'Ofício', prazo: '2026-10-20', chegou_em: '2026-10-05', etapa: 'Finalizado', concluida_em: '2026-11-01' }), D('H2', { prazo: '2026-10-20', arquivada_em: '2026-11-01T00:00:00Z' }),
+  ];
+  const sec = montarSecoes(S, H, []), por = Object.fromEntries(sec.map((x) => [x.chave, x.demandas.map((d) => d.id).join()]));
+  ok(sec.map((x) => x.chave).join() === 'urgentes,gabinete,prazos,oficios,aguardando,pessoal,compras,protocolo,sem-prazo', 'cards: as nove seções, na ordem pedida');
+  ok(por.urgentes === 'E,A,B2,B', `cards, Urgentes: Prefeita e Gabinete primeiro, depois as atrasadas, com o maior atraso e a chegada mais antiga no desempate (${por.urgentes})`);
+  ok(por.gabinete === 'E,A', `cards, Gabinete: origem Prefeita ou Gabinete (${por.gabinete})`);
+  ok(por.prazos === 'E,B2,B,D,F,C', `cards, Prazos da Secretaria: sem ofícios, atrasos mais antigos e depois os vencimentos, sem data por último (${por.prazos})`);
+  ok(por.oficios === 'A', 'cards, Ofícios: só os ofícios ativos');
+  ok(por.aguardando === 'E,A,B2,F,B,D,C' && sec[4].semChegada.has('C') && sec[4].semChegada.size === 1, `cards, Aguardando há mais tempo: maior permanência primeiro, sem chegada no fim e sinalizada (${por.aguardando})`);
+  ok(por.pessoal === 'C' && por.compras === 'B' && por.protocolo === 'D,F', `cards: Pessoal, Compras e Protocolo Geral pela classificação real, só nos documentos que têm área (${por.pessoal} | ${por.compras} | ${por.protocolo})`);
+  ok(sec[5].cor === 'verde' && sec[6].cor === 'amar' && sec[7].cor === 'azul', 'cards: o tratamento visual das classificações (verde, amarelo e azul)');
+  ok(por['sem-prazo'] === 'F,C', `cards, Sem prazo: só as sem vencimento calculado (${por['sem-prazo']})`);
+  ok(sec.every((x) => new Set(x.demandas.map((d) => d.id)).size === x.demandas.length) && !sec.some((x) => x.demandas.some((d) => d.id === 'G' || d.id === 'H2')) && sec.filter((x) => x.demandas.some((d) => d.id === 'A')).length === 4, 'cards: nenhuma repetição dentro da fila, finalizada e arquivada fora, e o mesmo id em várias filas');
+  const mesmo = montarSecoes([...S].reverse(), H, []).map((x) => x.demandas.map((d) => d.id).join()).join('|');
+  ok(mesmo === sec.map((x) => x.demandas.map((d) => d.id).join()).join('|'), 'cards: a mesma coleção em outra ordem de entrada dá exatamente as mesmas filas (desempate estável)');
 }
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);
