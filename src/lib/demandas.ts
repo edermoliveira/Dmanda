@@ -113,10 +113,8 @@ export function filtrar(lista: Demanda[], f: Filtro, hoje: string, dias: readonl
     if (f.origem && chaveOpcao(origemDe(d)) !== chaveOpcao(f.origem)) return false;
     if (f.ano && String(anoDoDocumento(d) ?? '') !== f.ano) return false;
     if (f.prazo === 'sem' && d.prazo) return false;
-    if (f.prazo === 'atrasadas' || f.prazo === 'hoje' || f.prazo === 'sete') {
-      const data = dataFiltro(d, hoje, dias), n = data ? diasAte(data, hoje) : null;
-      if (n === null || (f.prazo === 'atrasadas' ? n >= 0 : f.prazo === 'hoje' ? n !== 0 : n < 0 || n > 7)) return false;
-    }
+    // os três recortes de prazo são exatamente os grupos dos contadores do Início (mesma função, mesma data aplicável): "sete" é de amanhã até o sétimo dia, sem repetir o que vence hoje
+    if ((f.prazo === 'atrasadas' || f.prazo === 'hoje' || f.prazo === 'sete') && grupoFiltro(d, hoje, dias) !== f.prazo) return false;
     return !q || `${d.tipo ?? ''} ${d.numero} ${d.assunto} ${d.origem} ${d.descricao}`.toLowerCase().includes(q);
   });
 }

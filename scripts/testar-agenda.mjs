@@ -490,11 +490,12 @@ const t5 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   await ir(pg, '/');
   const grupos = await pg.$$eval('.stats.tres .stat', (b) => b.map((x) => Number(x.querySelector('.n').textContent)));
   ok(grupos[0] === 1, 'Início: Atrasadas conta só o Relatório atrasado (a Prefeita com 12 dias de espera não é atrasada)');
-  await pg.click('.stats.tres .st-atrasadas');
-  const naoAtrasadas = await pg.$$eval('.sub-f + .cartas .assunto', (c) => c.map((x) => x.textContent));
+  // o Início não tem mais as listas (decisão 80): o contador abre Demandas já filtrada, e o Quadro mostra o conjunto
+  const abrirContador = async (g) => { await pg.click(`.stats.tres .st-${g}`); await pg.waitForURL('**/demandas', { timeout: 20000 }); await pg.click('.toolbar .tabs button[data-v="quadro"]'); await pg.waitForTimeout(500); return pg.$$eval('.quadro .mini-card .assunto', (c) => c.map((x) => x.textContent)); };
+  const naoAtrasadas = await abrirContador('atrasadas');
   ok(naoAtrasadas.join() === 'Relatório atrasado', 'Início: a lista de atrasadas traz só quem tem data aplicável vencida');
-  await pg.click('.stats.tres .st-sete'); await pg.waitForTimeout(250);
-  const sete = await pg.$$eval('.sub-f + .cartas .assunto', (c) => c.map((x) => x.textContent));
+  await ir(pg, '/');
+  const sete = await abrirContador('sete');
   ok(sete.includes('Aguarda a Contabilidade') && !sete.some((t) => /Prefeita/.test(t)), 'Início: quem aguarda retorno entra pelo "Acompanhar em" mais próximo e a Prefeita não aparece nos prazos');
   await ir(pg, '/demandas');
   await pg.click('.toolbar .btn[aria-label^="Só atrasadas"]'); await pg.waitForTimeout(350);
@@ -709,7 +710,8 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
     await pg.fill('#ev-titulo', 'Reunião que vai começar'); await pg.fill('#ev-inicio', `${hh}:${mm}`); await pg.selectOption('#ev-aviso', '15');
     await pg.click('[data-salvar-evento]'); await janelaFechada(pg); await pg.waitForTimeout(600);
     ok(!!(await pg.$('.agd-aviso[data-evento]')) && /Reunião que vai começar/.test(await pg.textContent('.agd-avisos')) && /começa em \d+ min/.test(await pg.textContent('.agd-avisos')), 'um evento a 10 minutos do início, com aviso de 15, mostra o aviso dentro do aplicativo');
-    ok(/Avisos: 1 para hoje/.test(await pg.getAttribute('.sino', 'aria-label')) && (await pg.textContent('.sino-n')) === '1', 'o sino mostra a quantidade de avisos');
+    const rotSino = await pg.getAttribute('.sino', 'aria-label');
+    ok(/Avisos: 1 para hoje/.test(rotSino) && (await pg.textContent('.sino-n')) === '1', `o sino mostra a quantidade de avisos (${rotSino}; ${(await pg.$$eval('.agd-aviso', (l) => l.map((e) => e.textContent.trim().slice(0, 60)))).join(' | ')})`);
     await pg.click('.agd-aviso .btn:has-text("Dispensar")'); await pg.waitForTimeout(300);
     ok(!(await pg.$('.agd-aviso')) && /nenhum agora/.test(await pg.getAttribute('.sino', 'aria-label')), 'dispensar tira o aviso e o contador');
     await pg.reload({ waitUntil: 'load' }); await ir(pg);

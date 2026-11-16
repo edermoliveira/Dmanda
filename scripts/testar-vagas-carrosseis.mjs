@@ -3,7 +3,8 @@
 //   A) sem vagas guardadas: duas sessões abrindo juntas, as quatro vagas, a Urgência (Prefeita e Gabinete, atrasadas, Ofício a sete e a oito dias), sem "Na fila", recarga, virada do dia, as nove filas
 //      (ordem, filtros, rolagem própria, deck independente no iPhone, mesmo id em várias filas, falha de gravação, conclusão e reabertura);
 //   B) três vagas já guardadas (o que a versão anterior deixou): a quarta é preenchida, as posições 1 a 3 ficam e uma prioridade nova vai para a Urgência sem expulsar ninguém;
-//   C) tudo em dia: a Urgência mostra os vencimentos mais próximos.
+//   C) tudo em dia: a Urgência mostra os vencimentos mais próximos;
+//   D) os três contadores do Início contra o conjunto aberto em Demandas (hoje, amanhã, 7º e 8º dias, finalizada e arquivada).
 // Claro e Escuro, computador, iPad e iPhone EMULADOS, texto a 125%. O WebKit do Playwright NÃO é o Safari do aparelho. Nunca toca o Supabase real. Uso: node scripts/testar-vagas-carrosseis.mjs
 import { chromium, webkit, devices } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
@@ -35,7 +36,14 @@ async function semear(nome, tipo, vagas = []) {
     if (prazo !== null) await db.query('update public.demandas set prazo = $1, prazo_original = $1 where id = $2', [dia(prazo), d.id]);
     ID[chave] = d.id; return d;
   };
-  if (tipo === 'C') {
+  if (tipo === 'D') {
+    await mk('DA1', 'DA1 atrasada de ontem', { tipo: 'Memorando', prazo: -1 });
+    for (const [i, k] of ['DH1', 'DH2', 'DH3', 'DH4'].entries()) await mk(k, `${k} vence hoje`, { tipo: 'Memorando', prazo: 0, chegou: -i });
+    await mk('DM', 'DM vence amanhã', { tipo: 'Memorando', prazo: 1 }); await mk('D7', 'D7 vence no sétimo dia', { tipo: 'Memorando', prazo: 7 }); await mk('D8', 'D8 vence no oitavo dia', { tipo: 'Memorando', prazo: 8 });
+    await mk('DO7', 'DO7 Ofício no sétimo dia', { tipo: 'Ofício', prazo: 7, chegou: -3 }); await mk('DO8', 'DO8 Ofício no oitavo dia', { tipo: 'Ofício', prazo: 8, chegou: -3 });
+    await mk('DF', 'DF finalizada com prazo', { tipo: 'Memorando', prazo: 3 }); await c('concluir_demanda', { p_id: ID.DF });
+    await mk('DR', 'DR arquivada com prazo', { tipo: 'Memorando', prazo: 3 }); await c('arquivar_demanda', { p_id: ID.DR });
+  } else if (tipo === 'C') {
     await mk('F3', 'F3 em dia 1', { tipo: 'Memorando', prazo: 1 }); await mk('F1', 'F1 em dia 2', { tipo: 'Memorando', prazo: 2 }); await mk('F6', 'F6 em dia 3', { tipo: 'Memorando', prazo: 3 }); await mk('F4', 'F4 em dia 4', { tipo: 'Memorando', prazo: 4 });
     await mk('F2', 'F2 em dia 5', { tipo: 'Memorando', prazo: 5 }); await mk('F5', 'F5 em dia 6', { tipo: 'Memorando', prazo: 6 }); await mk('F7', 'F7 longe', { tipo: 'Memorando', prazo: 20 }); await mk('F8', 'F8 sem prazo', { tipo: 'Memorando' });
     await mk('F9', 'F9 oficio em nove dias', { tipo: 'Ofício', prazo: 9 });
@@ -374,6 +382,40 @@ await subir(C.pasta);
   ok(/rgba\(0, 0, 0, 0\)|transparent/.test(fundo), `sem urgência de verdade o fundo de alerta não aparece (${fundo})`);
   await pg.screenshot({ path: `${CAPTURAS}/inicio-fallback.png`, fullPage: true });
   await ctx.close();
+}
+parar(); await esperar(2500);
+
+// =============================================================================================================================================
+// D) contadores do Início x conjunto aberto em Demandas
+// =============================================================================================================================================
+const D = await semear('d', 'D');
+const nD = nomeDe(D.ID);
+await subir(D.pasta);
+{
+  const ESPERADO = { atrasadas: 'DA1', hoje: 'DH1,DH2,DH3,DH4', sete: 'D7,DM,DO7' };
+  for (const [rot, perfil, motor] of [['computador', 'desktop', edge], ['iPad', 'ipad', edge], ...(wk ? [['WebKit emulado iPad', 'ipad', wk]] : [])]) {
+    const { ctx, pg } = await abrir(perfil, { motor });
+    await pg.waitForFunction(() => document.querySelectorAll('[data-painel="para-hoje"] > .cards > [data-vaga]').length === 4, null, { timeout: 30000 }).catch(() => {});
+    // o Para hoje e a Urgência: quem vence hoje ou está atrasado aparece uma só vez, nas vagas ou na Urgência
+    const vagasIds = (await vagasNaGrade(pg)).map((x) => x.split(':')[1]), urg = await urgenciaNaFaixa(pg);
+    const obrig = ['DA1', 'DH1', 'DH2', 'DH3', 'DH4'].map((k) => D.ID[k]);
+    ok(obrig.every((id) => [...vagasIds, ...urg].filter((x) => x === id).length === 1) && urg.every((id) => !vagasIds.includes(id)), `${rot}: o atraso e as quatro que vencem hoje aparecem uma só vez, nas vagas ou na Urgência, sem repetir (vagas ${emNomes(D.ID, vagasIds)}; Urgência ${emNomes(D.ID, urg)})`);
+    ok(urg.includes(D.ID.DO7) || vagasIds.includes(D.ID.DO7), `${rot}: o Ofício no sétimo dia está no Para hoje ou na Urgência`);
+    ok(![...urg, ...vagasIds].includes(D.ID.DO8), `${rot}: o Ofício no oitavo dia fica de fora do Para hoje e da Urgência`);
+    for (const g of ['atrasadas', 'hoje', 'sete']) {
+      await ir(pg, '/', '.stat.st-hoje');
+      const n = Number((await pg.textContent(`.stat.st-${g} .n`)).trim());
+      await pg.click(`.stat.st-${g}`); await pg.waitForURL('**/demandas', { timeout: 20000 }); await pg.waitForSelector('[data-secao="urgentes"]', { timeout: 60000 }); await esperar(600);
+      const nomes = (ids) => [...new Set(ids)].map(nD).sort().join(',');
+      const cards = await pg.$$eval('.grupo-cards .dcard', (l) => l.map((e) => e.dataset.id));
+      await pg.click('button[data-v="quadro"]'); await esperar(800);
+      const quadro = await pg.$$eval('.mini-card', (l) => l.map((e) => e.dataset.id));
+      await pg.click('button[data-v="cards"]'); await pg.waitForSelector('[data-secao="urgentes"]');
+      const certo = ESPERADO[g].split(',').sort().join(',');
+      ok(n === ESPERADO[g].split(',').length && nomes(cards) === certo && nomes(quadro) === certo && new Set(cards).size === n, `${rot}, contador ${g}: ${n} contadas, Cards abre ${new Set(cards).size} ids únicos e o Quadro ${new Set(quadro).size}, os mesmos (${nomes(cards)})`);
+    }
+    await ctx.close();
+  }
 }
 parar();
 await wk?.close();

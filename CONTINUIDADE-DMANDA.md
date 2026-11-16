@@ -668,9 +668,133 @@ Branch `bloco/configuracoes-catalyst`, a partir de `c2876dc`, sem push, sem publ
 
 **Próximo ponto de retomada.** Avaliação do Éder no iPhone. Depois: conferência das migrações (A1) e a escolha do próximo item da auditoria. Push da `main` e deploy dependem de autorização específica. Andamento do projeto segue em 45% (`ANDAMENTO.md`, sem critério novo cumprido).
 
-## AE. Calendário aprovado, ajustes pós-iPhone e fila de cards (15/11/2026, decisões 76 e 77; publicados em recorte com autorização expressa do Éder)
+**Publicação (14/11/2026, autorizada expressamente pelo Éder).** O Éder aprovou a versão local `b7f3d25` e autorizou o push direto à `origin/main` e o deploy automático. Conferido antes: branch `main`, árvore limpa, avanço direto sobre `35c15a9`, 7 commits (`64fefb4`, `c76a8ec`, `29f3258`, `efdc761`, `64c6757`, `96f5b51`, `b7f3d25`), sem `.env`, dados reais ou segredos no diff (só dois atalhos novos no `package.json`); o stash do Clima e as branches paralelas ficaram intactos. Código idêntico ao que passou nos testes e no build, então nada foi repetido. **Push:** `35c15a9..b7f3d25`; `git ls-remote origin refs/heads/main` devolveu `b7f3d25a3b3d0bbfd7c0d4a2c9fc36c1bad624f8`. **Deploy:** estado `success` na Vercel (https://vercel.com/eder-abd8/dmanda/8SgfyLjHF2uWvKvwqpG7J5jnLSpx). **Produção** (https://dmanda-adm.vercel.app, 14/11/2026, 23:57 GMT, região `gru1`): `/login` 200, `/manifest.webmanifest` 200, `/agenda` e `/` sem sessão respondem 307 para `/login`, `/api/cron/diaria` sem segredo 401, e o CSS servido já contém as regras novas (`agd-ir-rot` e `ph-fundo`). **Não verificado:** qualquer tela com sessão, o Supabase real e o achado A1 (migrações 16 a 20 contra o código agora publicado); a avaliação no iPhone continua com o Éder.
+
+## AE. Campos de Configurações, cabeçalho comum da Agenda, Pagamentos e prévia dos lançamentos (15/11/2026, decisão 76; prévia local, avaliação no iPhone pendente)
+
+Ponto de retomada depois da publicação de `b7f3d25` (a `origin/main` está em `b7f3d25`; a `main` local tem à frente `5e7f521`, `b6c6452`, `c9c9783`, as correções da revisão e este registro, nada enviado). **Lido primeiro:** `DECISOES.md`, decisão 76.
+
+- **Feito (local, dados fictícios):** (1) Configurações, Dias indisponíveis com borda, rótulo, foco e dica no campo de data vazio nos dois temas (causa: `--grp-campo` igual a `--card` no claro, sem borda; campo de data vazio sem desenho no Safari; sem `color-scheme`); (2) cabeçalho comum de Dia, Semana e Mês, com o Novo evento do Mês fora da linha das visões; (3) Pagamentos (cadastrar, editar, excluir, uma data por usuário, só informativo), migração mínima `20261115000000_pagamentos`, cópia versão 5; (4) prévia dos lançamentos do dia em commit separado (`#previa=lancamentos`).
+- **Prévia pronta:** `$env:DMANDA_ORIGENS_DEV='192.168.18.12'; npm.cmd run previa:lancamentos`, endereço `http://192.168.18.12:7100/agenda#previa=lancamentos` (visão Dia). Sem o `#previa=lancamentos` a Agenda é a de sempre. Só um `next dev` por vez no projeto.
+- **Antes de publicar:** aplicar a migração de pagamentos no Supabase real com dry-run (a cópia dos dados passa a lê-la) e conferir o achado A1 (migrações 16 a 20). Push, deploy e Supabase real dependem de autorização específica.
+- **Depende do Éder:** avaliar no iPhone os campos de Configurações, o cabeçalho de Dia, Semana e Mês e a prévia; decidir como trazer o mini calendário do Início (hoje só na branch `bloco/inicio-perfil-clima` e em `bloco/mini-calendario-domingo`, dentro do redesenho do Início) para a categoria "Pagamento"; decidir se as janelas também ganham borda nos campos.
+- **Ao incorporar a branch do Início:** descartar `20261115000000_pagamentos.sql` e manter a migração 23 original.
+- **Testes novos:** `npm run testar:campos` (434 verificações, Edge e WebKit, mede pixels). Contagens atuais: `testar:banco` 462, `testar:agenda` 389, `testar:config` 175, `testar:ajustes` 604, `testar:interface` 148.
+- **Regra permanente nova:** conferir a interface renderizada em Claro e Escuro em todo bloco que altera UI (ver `CLAUDE.md`, Regras de trabalho).
+- Andamento do projeto segue em 45% (`ANDAMENTO.md`, sem critério novo cumprido).
+## AF. Calendário aprovado, ajustes pós-iPhone e fila de cards (15/11/2026, decisões 76 e 77; publicados em recorte com autorização expressa do Éder)
 
 O Éder aprovou o calendário depois de usar a prévia no Safari do iPhone e autorizou o push direto à `main` e o deploy. Publicado: o recorte da decisão 76 (campos de Configurações e cabeçalho comum da Agenda, sem Pagamentos e sem a prévia dos lançamentos) mais os ajustes da decisão 77 (data centralizada, painéis, legenda, próximo card revelado, Cards por grupo, fila completa no Início). **Fica só na `main` local:** Pagamentos (migração `20261115000000_pagamentos` e cópia versão 5) e a prévia dos lançamentos (`#previa=lancamentos`).
 
 **A1 resolvido (leitura):** as migrações 16 a 20 estão aplicadas no Supabase real; só `20261115000000_pagamentos` está pendente (dry-run). **Para liberar Pagamentos:** autorizar `npx supabase db push --linked` com dry-run antes, sem reset; depois publicar o código de Pagamentos da `main` local. A convivência com a migração 23 do Início está na decisão 77, item 8. **A avaliar no iPhone:** campos de data centralizados, painéis e legenda da Agenda, arrasto do baralho com o próximo card, Demandas em Cards por grupo, Nova urgência e "Na fila" do Para hoje. **Depende de validação autenticada em produção:** tudo isso com os dados reais do Éder (só ele entra).
 
+**Resultado da publicação (15/11/2026).** Push direto, sem force: `origin/main` passou de `b7f3d25` para `ed1e63e148192e3a7216e4b161950180d68adab7` (branch temporária local `publicacao-76`, já incorporada à `main` local). A Vercel reportou "Deployment has completed" para esse commit (https://vercel.com/eder-abd8/dmanda/BTW4HVtYBV5FzUj4QQiohEPYxZ1T). Servido em https://dmanda-adm.vercel.app: `/login` e o manifesto respondem 200; `/`, `/agenda`, `/demandas`, `/config` e `/api/exportar` redirecionam (307) para o login sem sessão; `/api/cron/diaria` responde 401. O arquivo de estilos servido tem o mesmo conteúdo (md5) do build local desse commit e contém as classes novas (`agd-chip`, `agd-linha-carga`, `campo-data-dica`, `grupos-cards`, `ph-atras[data-face]`). **Não verificado:** páginas autenticadas (só o Éder entra). A `main` local = merge do publicado com Pagamentos e a prévia; suítes verdes nela (`testar:banco` 462, `campos` 461, `config` 175, `app` 132, `sessao` 97, `agenda` 390).
+
+## AG. Correções da auditoria das decisões 76 e 77 (15/11/2026, decisão 78; só local, sem push, sem deploy, sem Supabase real)
+
+Partida: `origin/main` = `ed1e63e` (publicado), HEAD local `1a6dd5f`. Relatório da auditoria: `docs/auditoria-frontend-decisoes-76-77.md`. Commits de correção (só frontend e testes; **Pagamentos, a migração `20261115000000_pagamentos` e a prévia dos lançamentos não foram tocados**, então a publicação futura pode levar os quatro sem eles): `3986484` (Agenda: painéis em falha e sugestões de carga), `a89a263` (campo de data só no iOS), `be1acc3` (foco dos botões do baralho e suíte `testar:auditoria`), `52175dd` (arrasto com `@property`), mais o commit de registro. Detalhes, medições e guias aplicados na decisão 78.
+
+**Estado.** Nada enviado. Pagamentos (migração ainda não aplicada no Supabase real) e a prévia seguem só na `main` local; a publicação continua dependendo da autorização à parte do `db push` e do push.
+
+**Roteiro curto para conferir no Safari real (iPhone e iPad).**
+1. **Campo de data** (Configurações, Dias indisponíveis; janela "Dia indisponível" da Agenda; e Pagamentos na versão local): vazio, a dica "Escolher a data" aparece no meio da altura; tocar abre o seletor nativo; ao escolher, a data aparece em dd/mm/aaaa no meio da altura, sem o valor nativo em duplicidade, com borda e foco visíveis, nos dois temas. **Se o campo vazio aparecer em branco**, o Safari não atendeu `-webkit-touch-callout`: avisar.
+2. **Arrasto do baralho** (Início, Para hoje e Nova urgência; Demandas em Cards): arrastar devagar para a esquerda mostra o card de baixo sem engasgo; soltar curto devolve; um gesto longo leva à frente o card que apareceu; rolar a página com o dedo sobre o card rola e não arrasta.
+3. **Teclado Bluetooth no iPad ou VoiceOver**: Tab até "Passar para o fim", Enter e Espaço várias vezes: o foco fica no botão; "Finalizar" com tarefas pendentes abre a confirmação e Cancelar devolve o foco; em etapa de espera o menu abre e Esc devolve o foco.
+4. **Agenda**: dia cheio sugere "antecipar" quando o dia mais leve é anterior e "redistribuir" quando é posterior, e nunca para dias que já passaram. A falha de carga só se reproduz com a rede cortada no meio da carga; foi coberta em emulação.
+5. **Toque no card**: tocar a caixa da próxima tarefa e o lápis de um card (hipótese aberta sobre o verso no motor do Safari).
+
+**Fica para decisão de produto do Éder:** selo de prioridade da Prefeita e do Gabinete, cabeçalho fixo e atalhos de grupo em listas longas (iPad e web), revelar o próximo card ao arrastar para a direita no Para hoje, unificar as duas ordenações da fila, e se "Onde o período aperta" deve mostrar dias passados.
+
+## AH. Etapa 1 de 6: inventário e consolidação (16/11/2026; concluída com o GitHub e o NOTE-EDER por decisão do Éder, ver a decisão 79 e a seção AI)
+
+**Roteiro aprovado:** 1 inventário e consolidação; 2 correções de interface (cards empilhados, três ações do deck, cabeçalho e ajuda de "Para hoje", "Urgência" em carrossel na web e no iPad); 3 vagas persistentes e carrosséis (quatro vagas, duas seções no Início, nove carrosséis em Demandas/Cards, mesma demanda pelo mesmo ID, Kanban à parte); 4 regras de prazo (dias corridos desde a chegada, antecipar ao dia útil anterior, revisar o impacto nos registros antigos antes de recalcular dado real); 5 remover o login do aplicativo (aparelhos autorizados, controle de acesso mantido no servidor); 6 release, deploy e limpeza. **Estado:** etapa 1 parcial (falta o computador do trabalho); etapas 2 a 6 não iniciadas. Pagamentos, cópia v5, prévia dos lançamentos e mini calendário ficam para o futuro.
+
+**Preflight (NOTE-EDER, casa).** Checkout principal `C:\Users\Éder\Desktop\Dmanda`, branch `main`, working tree limpo, origem `https://github.com/edermoliveira/Dmanda.git`. Após `git fetch origin`: `origin/main` = `ed1e63e`; `main` local = `5a999e0`, **12 commits à frente e 0 atrás**, portanto nada a puxar (sem fast-forward). Ferramentas ativas: Git 2.56.1, gh 2.103.3, Node 24.22.2, npm 12.2.2, Claude Code 2.1.325. Nada foi instalado nem atualizado. Existem `.env.local`, `node_modules`, `.dados-teste` e `.next` no principal (conteúdo não lido).
+
+**Os 12 commits locais da `main` (nenhum enviado):** `5e7f521`, `b6c6452` (Pagamentos, migração `20261115000000`), `c9c9783` (prévia dos lançamentos), `50de3ab`, `d56a2e4`, `1a6dd5f` (incorporação do recorte publicado), `3986484`, `a89a263`, `be1acc3`, `52175dd`, `f02060c`, `5a999e0` (decisão 78, Safari real pendente). O `git cherry` aponta 11 exclusivos por patch (o `1a6dd5f` tem conteúdo em parte equivalente ao publicado). Os de Pagamentos e da prévia não devem ir ao release sem decisão do Éder.
+
+### Matriz de checkouts e worktrees (NOTE-EDER)
+
+| Pasta | Branch | HEAD | Upstream | Working tree | Papel recomendado |
+|---|---|---|---|---|---|
+| `Dmanda` | `main` | `5a999e0` | `origin/main` (+12) | limpo | **checkout principal** e partida da etapa 2 |
+| `Dmanda-agenda-retomada` | `bloco/agenda-retomada` | `fc947bf` | igual ao remoto | limpo, sem `node_modules` | referência (Agenda, decisão 69, prévia da Semana) |
+| `Dmanda-inicio-perfil-clima` | `bloco/inicio-perfil-clima` | `914c435` | igual ao remoto | limpo | fonte do Início (vagas, decisões 63 a 68), só leitura |
+| `Dmanda-mini-calendario` | `bloco/mini-calendario-domingo` | `f6cd534` | nenhum (só local) | limpo | preservar (1 commit sobre a ponta do Início) |
+| `Dmanda-para-hoje` | `bloco/para-hoje-origem` | `b8a0a72` | remoto 1 à frente (`4e16aaf`) | limpo | contido em `origin/main`; aposentar na etapa 6 |
+| `Dmanda-correcao-perfil` | `entrega/aprovados-2026-11-07` | `30c87a3` | atrás 4 | limpo | contido em `origin/main`; aposentar na etapa 6 |
+| `Dmanda-ref-395e45a` | HEAD solto | `395e45a` | nenhum | 1 arquivo não rastreado: `scripts/capturar-calendarios.mjs` | commit contido em `origin/main`; **o arquivo não rastreado só existe ali: copiar e comparar com a versão da `main` antes de qualquer remoção** |
+
+**Stash** (principal): `stash@{0}` "preserva-claude-md-local-bloco-inicio-clima-2026-11-12", sobre `2fc246c`, altera só `CLAUDE.md` (+8/-19). Preservado, não aplicado. Branches só locais: `bloco/inicio-clima` (`2fc246c`, 3 commits exclusivos: checkpoint do Clima `918b756` com achados não aplicados e documentação) e `bloco/perfil-indicadores` (`8d81a58`, 1 commit). `publicacao-76` = `ed1e63e`.
+
+### Referências comparadas com `origin/main` (ancestralidade e `git cherry`)
+
+| Referência | Situação | Destino recomendado |
+|---|---|---|
+| `publicacao-76`, `bloco/busca-global-atalhos`, `bloco/configuracoes-catalyst` (local e remota), `bloco/para-hoje-origem` (local e remota), `entrega/aprovados-2026-11-07` (local e remota), `checkpoint/continuidade-2026-11-05`, `checkpoint/resistencia-desempenho` (local e remota), `visual/apple-design` | 100% contidas em `origin/main` | aposentar na etapa 6 (sem perda; recuperáveis pelo SHA em `origin/main`) |
+| `origin/checkpoint/retomada-casa-2026-11-09` (`f8b6a74`, só documentação) | 1 exclusivo | preservar; aposentar na etapa 6 com o SHA registrado |
+| `origin/checkpoint/rascunho-apple-design-2026-11-11` (`31f9798`, 9 arquivos) | 1 exclusivo, rascunho visual | preservar para o futuro (design segue a decisão 71) |
+| `origin/checkpoint/stash-desempenho-2026-11-11` (`b4e70eb`, `1ecef8e`) | 2 exclusivos, rascunhos de desempenho | preservar para o futuro (Issue #7) |
+| `bloco/perfil-indicadores` (`8d81a58`) | exclusivo por patch, mas a decisão 57 foi readaptada em `3595a7e` na branch do Início | aposentar na etapa 6 depois de conferir que `3595a7e` cobre; SHA registrado |
+| `bloco/inicio-clima` (`2fc246c`) | 3 exclusivos; o Clima foi reaplicado em `0b7af37` e seguintes na branch do Início | preservar até o Clima ser integrado, depois aposentar |
+| `bloco/inicio-perfil-clima` (local e remota, `914c435`) | 44 exclusivos, base `5ad1d56` (já em `origin/main`) | **fonte de reaproveitamento seletivo** (abaixo) |
+| `bloco/agenda-retomada` (local e remota, `fc947bf`) | contém toda a do Início e mais 3 (`574249c` Agenda decisão 69, `d2d8cb0` skills decisão 71, `fc947bf` prévia da Semana); 47 exclusivos | referência da Agenda; integrar só o que o roteiro pedir |
+| `bloco/mini-calendario-domingo` (`f6cd534`) | 1 commit sobre a ponta do Início | futuro (fora do roteiro) |
+
+As três branches grandes divergem da `main` desde `5ad1d56` e colidem com as decisões 74 a 78 (baralho de três vagas, calendários de domingo a sábado). **Não fazer merge integral.**
+
+### Quatro vagas: onde está a implementação anterior e as dependências
+
+- Linha do tempo na branch do Início: `d22889b` (decisão 63, migração 22) e `53e1f8e` (Início refinado) foram **revertidos** (`36e0bc2`, `0f93e39`; decisão 63 revogada em `6c656a6`, limite de três vagas) e **reaplicados** em `3567cf6` ("Para hoje com quatro vagas reais": `src/lib/para-hoje.ts`, `src/ui/paginas.tsx`, quatro scripts de teste e a migração) e `42d3738` ("Início em duas colunas com quatro vagas, mini calendário e pilha no celular", decisão 64) com `7097b86` (regras do mini calendário e da pilha). Depois: `2e744ba`, `423fe58` (decisão 65), `887b116` (**decisão 66: tamanho único dos cards e ajuda do Para hoje, material da etapa 2**) e `ecc8de0` (decisão 68, janela de consulta).
+- **Migração** `20261111000000_para_hoje_quatro_vagas.sql`: `posicao between 1 and 4` e `atualizar_para_hoje` até a posição 4; depende da `20261110000100_prazo_base_do_atalho` (21).
+- **As migrações 21 a 24 das branches nunca foram aplicadas no Supabase real** (a 20 é a última aplicada). A 23 (evento externo e pagamentos) sobrepõe a `20261115000000_pagamentos` da `main` (decisão 77, item 8): usar só uma. A 24 (transições de demanda) é de métricas. A 21 interessa à etapa 4 (prazos). Nada foi tocado no Supabase real.
+- **Na `main`:** `c76a8ec` portou o baralho do celular com **três** vagas (decisão 74); `src/lib/para-hoje.ts` e `atualizar_para_hoje` ainda limitam a 3. A etapa 3 deve subir o limite a 4 de forma seletiva (SQL, `para-hoje.ts`, baralho e testes) e conferir conflitos com `3986484` a `5a999e0`.
+
+### GitHub (consultado em 16/11/2026)
+
+11 branches remotas (conferem com as acima) e PR #8 `MERGED`. Issues: **#2** (conferir a aplicação nos aparelhos) parcialmente atendida (calendário aprovado no iPhone; falta o Safari real da decisão 78); **#3** (publicar e ativar a rotina diária) parcialmente atendida (publicado em `ed1e63e`, falta confirmar a rotina); **#4** (cópia privada dos dados) aberta e adiada (a cópia v5 depende de Pagamentos); **#7** (resistência, confiabilidade e desempenho) aberta e adiada (rascunhos em `checkpoint/stash-desempenho`). #1, #5 e #6 estão fechadas. Nenhuma Issue foi alterada.
+
+### Computador do trabalho (pendente)
+
+Sem acesso a esta máquina nesta sessão. **Handoff, somente leitura:** `git fetch origin`; `git status -sb`; `git worktree list`; `git branch -vv`; `git stash list`; em cada worktree `git log --oneline origin/main..HEAD`; `git cherry origin/main <branch>` para cada branch local; presença (sem ler) de `.env.local`; versões de Git, gh, Node, npm e Claude Code. Devolver o resultado para consolidar aqui. Se houver commits ou stashes que não existam em nenhuma branch do GitHub, enviar para um único `checkpoint/trabalho-<data>` (só com autorização).
+
+### Decisões que dependem do Éder
+
+1. **Base da etapa 2:** a `main` local (`5a999e0`, com a decisão 78, Pagamentos e a prévia, que ficam fora do release) ou `origin/main` (`ed1e63e`) reaplicando só a decisão 78. Recomendação: `main` local, e na etapa 6 enviar só o aceito, sem a migração de Pagamentos.
+2. **Pagamentos (`20261115000000`) ou migração 23 da branch do Início:** decidir na etapa 3, com as quatro vagas.
+3. Rodar o handoff no computador do trabalho.
+
+**Ponto de partida da etapa 2:** pasta `C:\Users\Éder\Desktop\Dmanda`, branch `main`, SHA do commit de documentação desta etapa (acima de `5a999e0`), informado no relatório.
+
+## AI. Etapa 2 de 6: correções de interface dos cards no Início (16/11/2026, decisão 79; só local, avaliação no Safari real pendente)
+
+**Etapa 1 encerrada** com o inventário de casa (seção AH) por decisão do Éder; o computador do trabalho recomeça de um fresh clone da `main` do GitHub, em outra pasta, depois do aceite e do push autorizado.
+
+**Commits locais (sobre `d2db53e`):** `2568b34` tamanho do card ativo; `8744bb2` três ações na mesma faixa; `d2a87b0` cabeçalho e ajuda do Para hoje; `5be0b49` Nova urgência em faixa; `f2782bc` testes e prévia. Nada enviado.
+
+**Causa e resultado** estão na decisão 79 (`DECISOES.md`). Resumo: a `.ph-pilha` era item de um contêiner flex sem largura e encolhia com o conteúdo (362 para 294,7 px em 390 px); agora o card ativo mede 362x340 px em todas as trocas.
+
+**Estado das seis etapas:** 1 concluída (GitHub e NOTE-EDER); 2 implementada e verificada localmente, aguardando o aceite no aparelho; 3 (quatro vagas persistentes e carrosséis, com `3567cf6`, `42d3738` e a migração 22 como fonte seletiva) a fazer; 4 (regras de prazo), 5 (remover o login do aplicativo) e 6 (release, deploy e limpeza) a fazer. Pagamentos, cópia v5, prévia dos lançamentos e mini calendário ficam para o futuro.
+
+**Prévia:** `npm run previa:cards-inicio` (banco de teste descartável, dados fictícios; para o aparelho na rede, `DMANDA_ORIGENS_DEV=<IPv4 exato do computador>`). Conferida em 16/11/2026 pelo IPv4 do Wi-Fi do NOTE-EDER (192.168.18.12): a página renderiza os dados e responde aos controles no iPhone, no iPad e no computador emulados. O IP muda conforme a rede.
+
+**Roteiro de aceite no Safari real (iPhone e iPad):** 1. Início: o card do Para hoje mede a largura do painel com texto curto e longo, ao passar para o fim várias vezes, ao deslizar curto e longo (o de baixo aparece) e ao virar; a página não salta. 2. As três ações na mesma faixa; com texto a 125% e em Configurações com o menor card os rótulos quebram sem sair da tela; "Avançar etapa" abre o menu nas etapas de espera e pede confirmação ao finalizar com tarefas pendentes. 3. "Para hoje" numa linha; tocar o ⓘ mostra "Demandas para focar hoje, as prioridades do dia" e tocar fora fecha. 4. iPad: a Nova urgência em cards lado a lado, da mais para a menos urgente, rolando com o dedo e pelas setas; iPhone: continua o baralho. 5. Claro e Escuro. **Não comprovado ainda:** toque real no Safari, o arrasto entre cards no WebKit e a sensação da rolagem horizontal.
+
+**Pendência fora do escopo:** `testar:auditoria` tem 2 falhas nos painéis da Agenda no Mês (também em `d2db53e`).
+
+
+## AJ. Etapa 3 de 6: quatro vagas persistentes, Urgência e nove carrosséis (16/11/2026, decisão 80; só local, avaliação no Safari real pendente)
+
+**Aceite:** o Éder aprovou a etapa 2 (decisão 79). Estado das seis etapas: 1 e 2 concluídas; 3 implementada e verificada localmente, aguardando o aceite no aparelho; 4 (prazos pela chegada), 5 (remover o login do aplicativo) e 6 (release, deploy e limpeza) a fazer.
+
+**Commits locais (sobre `5fc9125`):** `5713dd4` migração e testes do banco; `44fa4c3` regras (quatro vagas, Urgência, nove seções); `6bb894e` interface; `0b2fc02` testes e prévia; `37998a5` revisão; mais o da documentação. Nada enviado; `origin/main` segue `ed1e63e` e o stash do Clima foi preservado.
+
+**O que mudou:** ver a decisão 80 (`DECISOES.md`). Resumo: `para_hoje` aceita a posição 4 (migração `20261116000000`, **ainda não aplicada no Supabase real**; aplicar com dry-run antes de publicar, depois da de Pagamentos, que também não está aplicada); o Início tem só Para hoje e Urgência; Demandas > Cards tem as nove seções.
+
+**Prévia:** `npm run previa:vagas-carrosseis` (banco de teste descartável, dados fictícios, vagas vazias para o aplicativo preencher; para o aparelho na rede, `DMANDA_ORIGENS_DEV=<IPv4 exato do computador>`; só um `next dev` por vez).
+
+**Roteiro de aceite no Safari real (iPhone e iPad):** 1. Início: o Para hoje mostra quatro cards (iPhone: baralho "1 de 4"); a Urgência vem logo abaixo, sem "Na fila" nem listas; tocar num contador leva a Demandas já filtrada. 2. Urgência: pedido da Prefeita ou do Gabinete primeiro, depois o maior atraso; o Ofício com vencimento em 7 dias aparece e o de 8 não. 3. Recarregar e abrir em outro aparelho: as quatro vagas ficam as mesmas. 4. Demandas > Cards: as nove seções na ordem pedida; iPad: rolar cada seção com o dedo e pelas setas, chegando ao último card; iPhone: cada seção é um baralho com posição própria (passar em uma não mexe nas outras). 5. Concluir um Ofício que aparece em várias seções: sai de todas ao mesmo tempo; reabrir pelo Quadro devolve às seções. 6. Claro e Escuro; texto a 125%. **Não comprovado ainda:** toque real no Safari, rolagem horizontal com o dedo, arrasto no WebKit e o custo de desenho com muitas demandas.
+
+**Fechamento (16/11/2026, pedido do Éder):** "Próximos 7 dias" conta de amanhã ao sétimo dia e o filtro de Demandas passou a usar a mesma função dos contadores (decisão 80, item 10). Os três contadores foram comparados, por ids únicos, com o que abrem em Demandas (Cards e Quadro), cobrindo hoje, amanhã, 7º e 8º dias, finalizada e arquivada. `testar:agenda` foi adaptada ao Início sem listas. A diferença entre o contador e o filtro está resolvida. Seguem como estão, por instrução do Éder: as demandas que vencem hoje (qualquer tipo) ficam na Urgência, e as finalizadas saem dos carrosséis ativos e voltam pelo Quadro.
+
+**Depende do Éder:** o aceite no aparelho; a confirmação de que as demandas que vencem hoje (qualquer tipo) seguem na Urgência; a autorização para publicar (push) e, depois, para aplicar as migrações no Supabase real.
