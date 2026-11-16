@@ -85,7 +85,7 @@ const trazer = async (pg, alvo) => { for (let i = 0; i < 6 && !(await ativo(pg))
 // ---------- 1) computador e iPad: a grade da main, sem baralho ----------
 for (const perfil of ['desktop', 'ipad']) {
   const { ctx, pg } = await abrir(perfil);
-  const info = await pg.evaluate(() => ({ pilhas: document.querySelectorAll('.ph-pilha, .ph-atras').length, vagas: [...document.querySelectorAll('[data-painel="para-hoje"] > .cards > [data-vaga]')].map((e) => e.dataset.vaga).join(), urg: document.querySelectorAll('[data-nova-urgencia] .cards .dcard').length, modo: document.querySelector('[data-painel="para-hoje"]').dataset.modo }));
+  const info = await pg.evaluate(() => ({ pilhas: document.querySelectorAll('.ph-pilha, .ph-atras').length, vagas: [...document.querySelectorAll('[data-painel="para-hoje"] > .cards > [data-vaga]')].map((e) => e.dataset.vaga).join(), urg: document.querySelectorAll('[data-nova-urgencia] .cards-urg .dcard').length, modo: document.querySelector('[data-painel="para-hoje"]').dataset.modo }));
   ok(info.pilhas === 0 && info.vagas === '1,2,3' && info.urg === 2 && info.modo === 'grade', `${perfil}: sem baralho; as três vagas na grade de sempre (${info.vagas}) e a Nova urgência com ${info.urg} cards`);
   await pg.click('.stat.st-atrasadas'); await esperar(400);
   ok((await pg.$$eval('.cartas[data-modo="grade"] .cards .dcard', (l) => l.length)) >= 3 && !(await pg.$('.cartas .ph-pilha')), `${perfil}: o filtro Atrasadas mostra a grade de cards de sempre`);
@@ -101,7 +101,7 @@ for (const perfil of ['desktop', 'ipad']) {
   let a = await ativo(pg);
   ok(a?.assunto.startsWith('Alfa') && a.vaga === '1' && (await pg.$eval(`${ATIVA} .ph-posicao`, (e) => e.textContent.trim())) === '1 de 3', `celular: pilha com um card ativo (vaga 1, ${a?.assunto}) e "1 de 3"`);
   ok((await pg.$$eval(`${ATIVA} .ph-arrasto .vaga`, (l) => l.length)) === 1 && (await pg.$$eval(`${ATIVA} .ph-atras`, (l) => l.map((e) => e.dataset.nivel).sort().join())) === '1,2', 'dois cards traseiros visíveis atrás do da frente, como um baralho (o primeiro com a face do próximo card)');
-  ok((await pg.$eval(AVANCAR, (e) => e.textContent.trim())) === 'Avançar para Vistos', 'em Cadastro o botão equivalente diz "Avançar para Vistos"');
+  ok((await pg.$eval(AVANCAR, (e) => e.getAttribute('aria-label'))) === 'Avançar etapa: para Vistos' && (await pg.$eval(AVANCAR, (e) => e.textContent.trim())) === 'Avançar etapa', 'em Cadastro o botão diz "Avançar etapa" e o nome acessível, "para Vistos"');
   const alvos = await pg.$$eval(`${ATIVA} .ph-botoes .btn, ${ABRIR}`, (l) => l.map((e) => e.getBoundingClientRect().height));
   ok(alvos.every((h) => h >= 32), `os botões equivalentes ao gesto existem e têm altura de botão (${alvos.map(Math.round).join(', ')} px)`);
   // Nova urgência no celular: a mesma pilha com a ordem só em memória
@@ -226,12 +226,12 @@ for (const perfil of ['desktop', 'ipad']) {
   await pg.waitForFunction(() => ![...document.querySelectorAll('[data-painel="para-hoje"] > .ph-pilha .assunto')].some((e) => e.textContent.startsWith('Delta')), null, { timeout: 10000 }).catch(() => {});
   // --- etapas de espera: o gesto abre o menu; a pilha só avança com a etapa gravada
   ok(await trazer(pg, 'Eco'), 'Eco continua na pilha');
-  ok((await pg.$eval(AVANCAR, (e) => e.textContent.trim())) === 'Escolher a etapa', 'em Aguardando Prefeita o botão diz "Escolher a etapa"');
+  ok((await pg.$eval(AVANCAR, (e) => e.getAttribute('aria-label'))) === 'Avançar etapa: escolher a etapa', 'em Aguardando Prefeita o botão oferece "escolher a etapa"');
   await deslizarAtivo(pg, 220);
   ok(await pg.waitForSelector('.mv-menu', { timeout: 5000 }).then(() => true, () => false) && (await ativo(pg)).assunto.startsWith('Eco'), 'o gesto à direita numa etapa de espera abre o menu e não passa o card');
   await pg.click('.mv-menu button:has-text("Fazendo")');
   ok(await pg.waitForFunction(() => !document.querySelector('[data-painel="para-hoje"] > .ph-pilha .vaga[data-ativo] .assunto')?.textContent.startsWith('Eco'), null, { timeout: 10000 }).then(() => true, () => false), 'escolhida a etapa e confirmada a gravação, a pilha avança');
-  ok(await trazer(pg, 'Foxtrot') && (await pg.$eval(AVANCAR, (e) => e.textContent.trim())) === 'Escolher a etapa', 'Foxtrot (Aguardando retorno) entrou na vaga de Delta e também oferece a escolha de etapa');
+  ok(await trazer(pg, 'Foxtrot') && (await pg.$eval(AVANCAR, (e) => e.getAttribute('aria-label'))) === 'Avançar etapa: escolher a etapa', 'Foxtrot (Aguardando retorno) entrou na vaga de Delta e também oferece a escolha de etapa');
   await pg.click(AVANCAR);
   ok(await pg.waitForSelector('.mv-menu', { timeout: 4000 }).then(() => true, () => false), 'o botão equivalente abre o mesmo menu');
   await pg.keyboard.press('Escape'); await esperar(300);
