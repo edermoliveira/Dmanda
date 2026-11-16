@@ -436,11 +436,11 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
   await pg.fill('#n-assunto', 'Resposta ao ofício da Secretaria de Obras sobre a reforma do prédio da Prefeitura'); await pg.fill('#n-descricao', 'Descrição longa '.repeat(30));
   await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou'); await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt');
   await pg.click('.modal .btn:has-text("Pular tarefas")'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 20000 });
-  await pg.waitForSelector('.cards .dcard');
+  await pg.waitForSelector('.grupos-cards .dcard');
   for (const [c, t] of [[300, 125], [420, 100], [340, 100]]) {
     await pg.evaluate(([c, t]) => localStorage.setItem('dmanda:aparencia', JSON.stringify({ card: c, textoPct: t })), [c, t]);
-    await pg.goto(BASE + '/demandas'); await pg.waitForSelector('.cards .dcard'); await pg.waitForTimeout(500);
-    const r = await pg.evaluate(() => { const d = document.querySelector('.cards .dcard'); const pesos = [...d.querySelectorAll('*')].filter((e) => e.scrollHeight > e.clientHeight + 1 && ['auto', 'scroll'].includes(getComputedStyle(e).overflowY)); const tit = d.querySelector('h3, .titulo, .assunto'); return { h: Math.round(d.getBoundingClientRect().height), rolagem: pesos.length, tit: !!tit && tit.getBoundingClientRect().height > 0 }; });
+    await pg.goto(BASE + '/demandas'); await pg.waitForSelector('.grupos-cards .dcard'); await pg.waitForTimeout(500);
+    const r = await pg.evaluate(() => { const d = document.querySelector('.grupos-cards .dcard'); const pesos = [...d.querySelectorAll('*')].filter((e) => e.scrollHeight > e.clientHeight + 1 && ['auto', 'scroll'].includes(getComputedStyle(e).overflowY)); const tit = d.querySelector('h3, .titulo, .assunto'); return { h: Math.round(d.getBoundingClientRect().height), rolagem: pesos.length, tit: !!tit && tit.getBoundingClientRect().height > 0 }; });
     ok(Math.abs(r.h - c) <= 1 && r.rolagem === 0 && r.tit, `card a ${c} px com texto a ${t}%: altura certa, sem barra de rolagem e com título visível (${r.h} px)`);
   }
   await ctx.close();

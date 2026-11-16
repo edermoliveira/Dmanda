@@ -38,6 +38,8 @@ const PERFIS = {
   820: { viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 390: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 320: { viewport: { width: 320, height: 700 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
 };
 const abrir = async (pg, texto) => {
+  // as filas de Cards (decisão 80) repetem a mesma demanda e, no celular, mostram um card por vez: o filtro de texto deixa só a demanda procurada
+  await pg.fill('#fq', texto); await pg.waitForTimeout(500);
   const card = pg.locator('.dcard', { hasText: texto }).first();
   await card.evaluate((e) => e.scrollIntoView({ block: 'center' })); await card.locator('.assunto').click();
   await pg.waitForSelector('.modal', { timeout: 15000 }); await pg.waitForTimeout(700);

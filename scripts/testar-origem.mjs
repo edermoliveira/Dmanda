@@ -1,4 +1,4 @@
-// Para hoje, origem, documento associado e filtros (decisão 60) no navegador (Edge) com o banco local de TESTE (PGlite): as três vagas e a prioridade (Rápida, atrasadas, vencem hoje, sem prazo),
+// Para hoje, origem, documento associado e filtros (decisão 60) no navegador (Edge) com o banco local de TESTE (PGlite): as quatro vagas e a prioridade (Prefeita e Gabinete, Rápida, atrasadas, vencem hoje, sem prazo),
 // reposição só da vaga liberada, arquivamento, nova urgência à parte, duas sessões, virada do dia, o dropdown Catalyst de origem e de tipo (mouse, teclado, Esc, foco, criação, duplicidade, erro),
 // cadastro sem documento e o documento chegando depois, ano reconhecido ou confirmado e os filtros combinados sobre registros antigos. Computador e celular EMULADOS, claro e escuro.
 // Todas as mudanças durante o teste passam pela interface (o banco de teste pertence ao servidor); as conferências no banco acontecem no fim, com o servidor parado.
@@ -67,7 +67,7 @@ const ir = async (pg, rota) => {
   await estavel(pg);
 };
 const vagas = (pg) => pg.$$eval('[data-painel="para-hoje"] [data-vaga]', (l) => l.map((e) => `${e.dataset.vaga}:${e.querySelector('.assunto')?.textContent.trim()}`));
-const esperarVagas = (pg, n = 3) => pg.waitForFunction((k) => document.querySelectorAll('[data-painel="para-hoje"] [data-vaga]').length === k, n, { timeout: 30000, polling: 100 });
+const esperarVagas = (pg, n = 4) => pg.waitForFunction((k) => document.querySelectorAll('[data-painel="para-hoje"] [data-vaga]').length === k, n, { timeout: 30000, polling: 100 });
 const toast = async (pg, re) => { await pg.waitForFunction((r) => { const t = document.querySelector('#toast'); return !!t && t.classList.contains('on') && (!r || new RegExp(r).test(t.textContent ?? '')); }, re ? re.source : null, { timeout: 15000 }); };
 const assuntos = (pg) => pg.$$eval('.dcard .assunto', (e) => e.map((x) => x.textContent.trim()));
 const lum = (css) => { const x = css.match(/[\d.]+/g).map(Number); return 0.2126 * x[0] + 0.7152 * x[1] + 0.0722 * x[2]; };
@@ -85,11 +85,11 @@ const A = await novo(), B = await novo();
 await Promise.all([ir(A.pg, '/'), ir(B.pg, '/')]);
 await Promise.all([esperarVagas(A.pg), esperarVagas(B.pg)]);
 const [vA, vB] = [await vagas(A.pg), await vagas(B.pg)];
-ok(vA.join('|') === '1:Atrasada rapida|2:Atrasada lenta|3:Vence hoje', `Para hoje: três vagas, atrasadas primeiro e a Rápida à frente da mais atrasada (${vA.join(' | ')})`);
-ok(vA.join() === vB.join(), 'duas sessões abrindo ao mesmo tempo mostram as mesmas três vagas (nenhuma demanda repetida)');
+ok(vA.join('|') === '1:Atrasada lenta|2:Atrasada rapida|3:Vence hoje|4:Proxima em tres dias', `Para hoje: quatro vagas, o pedido da Prefeita primeiro, depois as atrasadas com a Rápida à frente, vence hoje e a mais próxima (${vA.join(' | ')})`);
+ok(vA.join() === vB.join(), 'duas sessões abrindo ao mesmo tempo mostram as mesmas quatro vagas (nenhuma demanda repetida)');
 {
   const rapidas = await A.pg.$$eval('[data-painel="para-hoje"] [data-vaga]', (l) => l.map((e) => !!e.querySelector('[data-rapida]')));
-  ok(rapidas.join() === 'true,false,false' && (await A.pg.$$('.dcard [data-rapida]')).length === 1, 'a marca Rápida aparece no card de Para hoje só nas demandas marcadas (vaga 1) e não nas outras');
+  ok(rapidas.join() === 'false,true,false,false' && (await A.pg.$$('.dcard [data-rapida]')).length === 1, 'a marca Rápida aparece no card de Para hoje só nas demandas marcadas (vaga 2) e não nas outras');
   const stats = (await A.pg.textContent('.stats')) ?? '';
   ok(/Vencem hoje/.test(stats) && !/Para hoje/.test(stats) && /Para hoje/.test((await A.pg.textContent('[data-painel="para-hoje"] h3')) ?? ''), 'Para hoje é o painel de execução; o grupo de prazo chama-se Vencem hoje (os dois não se confundem)');
   ok(!vA.some((x) => /Aguardando sem cobranca/.test(x)), 'Para hoje: demanda que aguarda terceiros, sem cobrança devida, não entra');
@@ -97,23 +97,23 @@ ok(vA.join() === vB.join(), 'duas sessões abrindo ao mesmo tempo mostram as mes
 }
 
 // ================= 2) concluir repõe só a vaga liberada; outro aparelho vê as mesmas vagas =================
-await A.pg.click('[data-vaga="2"] button:has-text("Concluir demanda")');
-await A.pg.waitForFunction(() => /Proxima em tres dias/.test(document.querySelector('[data-vaga="2"]')?.textContent ?? ''), null, { timeout: 20000 });
+await A.pg.click('[data-vaga="3"] button:has-text("Concluir demanda")');
+await A.pg.waitForFunction(() => /Sem prazo com acao/.test(document.querySelector('[data-vaga="3"]')?.textContent ?? ''), null, { timeout: 20000 });
 {
   const v = await vagas(A.pg);
-  ok(v.join('|') === '1:Atrasada rapida|2:Proxima em tres dias|3:Vence hoje', `concluir repõe só a vaga liberada (2); as vagas 1 e 3 continuam (${v.join(' | ')})`);
+  ok(v.join('|') === '1:Atrasada lenta|2:Atrasada rapida|3:Sem prazo com acao|4:Proxima em tres dias', `concluir repõe só a vaga liberada (3); as vagas 1, 2 e 4 continuam (${v.join(' | ')})`);
   await ir(B.pg, '/'); await esperarVagas(B.pg);
   ok((await vagas(B.pg)).join() === v.join(), 'as vagas persistem no banco: o outro aparelho, ao recarregar, vê as mesmas demandas nas mesmas posições');
 }
 
 // ================= 3) arquivar em outro aparelho: ao recarregar, só a vaga 3 muda =================
 await ir(B.pg, '/demandas');
-await B.pg.click('.dcard:has-text("Vence hoje") .assunto'); await B.pg.waitForSelector('.modal .ler');
+await B.pg.locator('.dcard:has-text("Sem prazo com acao") .assunto').first().click(); await B.pg.waitForSelector('.modal .ler');
 await B.pg.click('.modal .m-sec:has-text("Arquivar")'); await B.pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 });
 await ir(A.pg, '/'); await esperarVagas(A.pg);
 {
   const v = await vagas(A.pg);
-  ok(v.join('|') === '1:Atrasada rapida|2:Proxima em tres dias|3:Sem prazo com acao', `arquivar libera só a sua vaga (3), reposta por uma demanda sem prazo com ação possível (${v.join(' | ')})`);
+  ok(v.join('|') === '1:Atrasada lenta|2:Atrasada rapida|3:Numero ambiguo|4:Proxima em tres dias', `arquivar libera só a sua vaga (3), reposta por uma demanda sem prazo com ação possível (${v.join(' | ')})`);
 }
 
 // ================= 4) nova urgência: destacada à parte, sem trocar a seleção; cadastro sem documento =================
@@ -133,7 +133,7 @@ await abrirNova(B.pg);
 await ir(A.pg, '/'); await esperarVagas(A.pg);
 {
   const v = await vagas(A.pg), nova = (await A.pg.textContent('[data-nova-urgencia]').catch(() => '')) ?? '';
-  ok(v.join('|') === '1:Atrasada rapida|2:Proxima em tres dias|3:Sem prazo com acao' && /Nova urgência/.test(nova) && /Urgencia nova/.test(nova), 'uma urgência nova é destacada à parte e a seleção das vagas é preservada');
+  ok(v.join('|') === '1:Atrasada lenta|2:Atrasada rapida|3:Numero ambiguo|4:Proxima em tres dias' && /Urgência/.test(nova) && /Urgencia nova/.test(nova), 'uma urgência nova vai para a Urgência e a seleção das vagas é preservada (ninguém é expulso)');
 }
 await A.ctx.close();
 
@@ -145,7 +145,7 @@ await ir(D.pg, '/'); await esperarVagas(D.pg);
   await D.pg.clock.fastForward(25 * 60 * 1000);   // 00h15 do dia seguinte
   await ir(D.pg, '/'); await esperarVagas(D.pg);
   const depois = await vagas(D.pg);
-  ok(antes.join() === depois.join() && antes.length === 3, `virada do dia: as mesmas demandas nas mesmas posições depois da meia-noite (${depois.join(' | ')})`);
+  ok(antes.join() === depois.join() && antes.length === 4, `virada do dia: as mesmas demandas nas mesmas posições depois da meia-noite (${depois.join(' | ')})`);
 }
 await D.ctx.close();
 
@@ -235,7 +235,7 @@ await ir(C.pg, '/demandas');
     await pg.selectOption('#f-origem', o.origem ?? ''); await pg.selectOption('#f-tipo', o.tipo ?? ''); await pg.selectOption('#f-ano', o.ano ?? '');
     await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.painel-filtros'));
     await estavel(pg, '.main');
-    return assuntos(pg);
+    return [...new Set(await assuntos(pg))];   // a mesma demanda aparece em mais de uma seção dos Cards
   };
   const todos = await filtrar({});
   ok(['Antiga sem nada', 'Numero ambiguo', 'Ano manual', 'Atrasada rapida'].every((a) => todos.includes(a)), 'Todos: demandas sem origem, sem documento, sem ano ou de número ambíguo continuam na lista');
@@ -253,7 +253,7 @@ await ir(C.pg, '/demandas');
   const obras = await filtrar({ origem: 'secretaria de obras' });
   ok(obras.includes('Numero ambiguo'), 'origem antiga digitada "  secretaria de obras " aparece sob a opção "Secretaria de Obras", sem duplicar');
   await filtrar({});
-  ok((await assuntos(pg)).length === todos.length, 'limpar os filtros volta a todas as demandas');
+  ok(new Set(await assuntos(pg)).size === todos.length, 'limpar os filtros volta a todas as demandas');
 }
 await C.ctx.close();
 
@@ -277,7 +277,7 @@ db = await abrirBancoTeste({ pasta: PASTA });
 {
   const q = async (sql, p = []) => (await db.query(sql, p)).rows;
   const vg = await q('select p.posicao, d.assunto from public.para_hoje p join public.demandas d on d.id = p.demanda_id order by p.posicao');
-  ok(vg.length === 3 && vg.map((v) => v.posicao).join() === '1,2,3', `banco: exatamente três vagas, uma por posição (${vg.map((v) => v.assunto).join(' | ')})`);
+  ok(vg.length === 4 && vg.map((v) => v.posicao).join() === '1,2,3,4', `banco: exatamente quatro vagas, uma por posição (${vg.map((v) => v.assunto).join(' | ')})`);
   const [pv] = await q("select tipo, origem, numero, rapida, documento_ano from public.demandas where assunto = 'Pedido verbal da reuniao'");
   ok(pv.tipo === 'Memorando' && pv.origem === 'Reunião' && pv.numero === '45/2026' && pv.rapida === true && pv.documento_ano === 2025, 'banco: a demanda de reunião ficou com o memorando, o número como informado, a marca Rápida e o ano confirmado');
   const [un] = await q("select tipo, origem from public.demandas where assunto = 'Urgencia nova'");

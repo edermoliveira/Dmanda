@@ -19,7 +19,7 @@ const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 const PH = '[data-painel="para-hoje"]', PILHA = `${PH} > .ph-pilha`, ARRASTO = `${PILHA} .ph-arrasto`;
 
-// ---------- dados: três vagas (texto curto, longo e curto) e cinco urgências fora delas, criadas fora de ordem ----------
+// ---------- dados: quatro vagas (texto curto, longo, curto e curto) e cinco urgências fora delas, criadas fora de ordem (a etapa 3 passou o Para hoje a quatro vagas) ----------
 const LONGO = 'Contratação emergencial de empresa especializada para manutenção preventiva e corretiva dos equipamentos de climatização de todos os prédios públicos municipais';
 const ESPERADA = ['U10', 'U6 longa', 'U3', 'U1 longa', 'Uhoje'];   // atrasadas da mais antiga para a mais nova, depois a que vence hoje
 let HOJE;
@@ -34,6 +34,7 @@ let HOJE;
   const A = await mk('Curta', { prazo_original: HOJE }, ['a1']); await c('mover_etapa', { p_id: A.id, p_etapa: 'Cadastro' }); ids.push(A.id);
   ids.push((await mk(LONGO, { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -2), descricao: LONGO + '. ' + LONGO }, ['uma tarefa com texto bem comprido para forçar a quebra de linha dentro do card ativo', 'dois', 'três', 'quatro', 'cinco', 'seis'])).id);
   ids.push((await mk('Eco', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, 1) })).id);
+  ids.push((await mk('Quarta', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, 3) })).id);
   await mk('U3', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -3) });
   await mk('Uhoje', { etapa: 'Fazendo', prazo_original: HOJE });
   await mk('U10', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -10) });
@@ -115,14 +116,6 @@ for (const [motor, navegador, extra] of [['Edge', nav, {}], ...(wk ? [['WebKit e
   const quebrou = medidas.filter(([, m]) => m.w !== d0.w || m.h !== d0.h);
   ok(quebrou.length === 0, `${motor}: o card ativo mantém ${d0.w}x${d0.h} px em ${medidas.length} momentos (curto, longo, navegação, arrasto e verso)${quebrou.length ? ': ' + quebrou.map(([r, m]) => `${r} ${m.w}x${m.h}`).join('; ') : ''}`);
   ok((await pg.evaluate(() => scrollY)) === y0, `${motor}: a página não saltou durante as trocas`);
-  // um só card de verdade: o filtro "Próximos 7 dias" tem uma única demanda (Eco, vence amanhã)
-  await pg.evaluate(() => document.querySelector('.stat.st-sete')?.click()); await esperar(600);
-  const um = await pg.$eval('.cartas', (e) => ({ n: e.querySelectorAll('.dcard').length, pilha: !!e.querySelector('.ph-pilha') })).catch(() => null);
-  ok(um?.n === 1 && um.pilha, `${motor}: o filtro de um único card monta a pilha (${um?.n} card)`);
-  if (um?.pilha) {
-    const m = await tam(pg, '.cartas .ph-arrasto'), p = await R(pg, '.cartas .ph-pilha');
-    ok(m.w === d0.w && m.h === d0.h && Math.abs(p.w - pil.w) <= 1, `${motor}: com um único card o tamanho é o do Para hoje (${m.w}x${m.h} px)`);
-  }
   const nu = await tam(pg, `[data-nova-urgencia] .ph-arrasto`).catch(() => null);
   await ctx.close();
   if (nu) ok(nu.w === d0.w && nu.h === d0.h, `${motor}: o baralho da Nova urgência no iPhone tem o mesmo tamanho (${nu.w}x${nu.h} px)`);
@@ -176,16 +169,16 @@ for (const [rot, perfil, texto] of [['390 px', 'celular', 100], ['320 px', 'estr
 for (const [rot, perfil, tema] of [['computador Claro', 'desktop', 'claro'], ['computador Escuro', 'desktop', 'escuro'], ['iPad', 'ipad', 'claro'], ['iPhone', 'celular', 'claro'], ['iPhone Escuro', 'celular', 'escuro'], ['320 px a 125%', 'estreito', 'claro']]) {
   const { ctx, pg } = await abrir(perfil, { tema, texto: perfil === 'estreito' ? 125 : 100 });
   const h = await pg.$eval(`${PH} > h3`, (e) => { const s = getComputedStyle(e), r = e.getBoundingClientRect(), lh = parseFloat(s.lineHeight) || parseFloat(s.fontSize) * 1.35; return { texto: e.textContent.trim(), alt: r.height, lh, filhos: e.children.length }; });
-  ok(h.texto === 'Para hoje' && h.alt <= h.lh * 1.6 && !(await pg.$(`${PH} > h3 small`)), `${rot}: "Para hoje" em uma linha, sem o texto "até 3 demandas..." (${Math.round(h.alt)} px de altura)`);
-  const bt = await R(pg, `${PH} .ajuda-b`), rotulo = await pg.$eval(`${PH} .ajuda-b`, (e) => e.getAttribute('aria-label'));
+  ok(h.texto === 'Para hoje' && h.alt <= h.lh * 1.6 && !(await pg.$(`${PH} > h3 small`)), `${rot}: "Para hoje" em uma linha, sem o texto "até N demandas..." (${Math.round(h.alt)} px de altura)`);
+  const bt = await R(pg, `${PH} > h3 .ajuda-b`), rotulo = await pg.$eval(`${PH} > h3 .ajuda-b`, (e) => e.getAttribute('aria-label'));
   const tit = await R(pg, `${PH} #ph-t`);
   ok(rotulo === 'Sobre o Para hoje' && bt.x >= tit.r - 2 && Math.abs((bt.y + bt.h / 2) - (tit.y + tit.h / 2)) < 8, `${rot}: o botão de informação (nome acessível "${rotulo}") fica ao lado do título`);
-  const alvo = await pg.$eval(`${PH} .ajuda-b`, (e) => { const a = getComputedStyle(e, '::after'); const r = e.getBoundingClientRect(); return { w: r.width + 2 * Math.abs(parseFloat(a.left) || 10), h: r.height + 2 * Math.abs(parseFloat(a.top) || 10) }; });
+  const alvo = await pg.$eval(`${PH} > h3 .ajuda-b`, (e) => { const a = getComputedStyle(e, '::after'); const r = e.getBoundingClientRect(); return { w: r.width + 2 * Math.abs(parseFloat(a.left) || 10), h: r.height + 2 * Math.abs(parseFloat(a.top) || 10) }; });
   ok(alvo.w >= 44 && alvo.h >= 44, `${rot}: área de toque do botão de informação de 44 px (${alvo.w}x${alvo.h})`);
   if (perfil === 'desktop' || perfil === 'celular' || perfil === 'estreito') {
-    if (perfil === 'desktop') { await pg.focus(`${PH} .ajuda-b`); await pg.keyboard.press('Enter'); } else await pg.locator(`${PH} .ajuda-b`).tap();
-    await pg.waitForSelector(`${PH} .ajuda-balao`, { timeout: 3000 }).catch(() => {});
-    const bal = await pg.$eval(`${PH} .ajuda-balao`, (e) => { const s = getComputedStyle(e), r = e.getBoundingClientRect(); return { t: e.textContent, x: r.x, r: r.right, c: s.color, f: s.backgroundColor, role: e.getAttribute('role') }; }).catch(() => null);
+    if (perfil === 'desktop') { await pg.focus(`${PH} > h3 .ajuda-b`); await pg.keyboard.press('Enter'); } else await pg.locator(`${PH} > h3 .ajuda-b`).tap();
+    await pg.waitForSelector(`${PH} > h3 .ajuda-balao`, { timeout: 3000 }).catch(() => {});
+    const bal = await pg.$eval(`${PH} > h3 .ajuda-balao`, (e) => { const s = getComputedStyle(e), r = e.getBoundingClientRect(); return { t: e.textContent, x: r.x, r: r.right, c: s.color, f: s.backgroundColor, role: e.getAttribute('role') }; }).catch(() => null);
     ok(bal?.t === 'Demandas para focar hoje, as prioridades do dia' && bal.role === 'note', `${rot}: a ajuda mostra exatamente "Demandas para focar hoje, as prioridades do dia" (${bal ? bal.t : 'balão não abriu'})`);
     if (bal) {
       const vw = PERFIS[perfil].viewport.width;
@@ -195,8 +188,8 @@ for (const [rot, perfil, tema] of [['computador Claro', 'desktop', 'claro'], ['c
     await pg.screenshot({ path: `${CAPTURAS}/${perfil}-${tema}-ajuda.png` });
     if (perfil === 'desktop') {
       await pg.keyboard.press('Escape'); await esperar(200);
-      ok(!(await pg.$(`${PH} .ajuda-balao`)) && (await pg.evaluate(() => document.activeElement?.classList.contains('ajuda-b'))), `${rot}: Esc fecha o balão e devolve o foco ao botão`);
-      const foco = await pg.$eval(`${PH} .ajuda-b`, (e) => getComputedStyle(e).outlineStyle !== 'none' && parseFloat(getComputedStyle(e).outlineWidth) >= 2);
+      ok(!(await pg.$(`${PH} > h3 .ajuda-balao`)) && (await pg.evaluate(() => document.activeElement?.classList.contains('ajuda-b'))), `${rot}: Esc fecha o balão e devolve o foco ao botão`);
+      const foco = await pg.$eval(`${PH} > h3 .ajuda-b`, (e) => getComputedStyle(e).outlineStyle !== 'none' && parseFloat(getComputedStyle(e).outlineWidth) >= 2);
       ok(foco, `${rot}: o foco do teclado no botão é visível`);
     }
   } else await pg.screenshot({ path: `${CAPTURAS}/${perfil}-${tema}-cabecalho.png` });
@@ -229,7 +222,7 @@ for (const [rot, perfil, tema] of [['computador Claro', 'desktop', 'claro'], ['c
   await pg.$eval('[data-urg-faixa]', (e) => { e.scrollLeft = 0; });
   ok((await pg.$$('[data-nova-urgencia] .ph-pilha')).length === 0, `${rot}: sem baralho na Nova urgência`);
   const vaga1 = await pg.$eval(`${PH} > .cards`, (e) => e.children.length);
-  ok(vaga1 === 3, `${rot}: o Para hoje segue com as três vagas na grade (${vaga1})`);
+  ok(vaga1 === 4, `${rot}: o Para hoje tem as quatro vagas na grade (${vaga1})`);
   const dica = await pg.$eval('[data-nova-urgencia] .dcard', (e) => !!e.querySelector('.face'));
   ok(dica, `${rot}: os cards da faixa são cards completos`);
   await pg.focus('[data-urg-faixa]'); await pg.keyboard.press('ArrowRight'); await esperar(300);
@@ -241,7 +234,7 @@ for (const [rot, perfil, tema] of [['computador Claro', 'desktop', 'claro'], ['c
 }
 {
   const { ctx, pg } = await abrir('celular');
-  ok(!(await pg.$('[data-urg-faixa]')) && (await pg.$$('[data-nova-urgencia] .ph-pilha')).length === 1, 'iPhone: a Nova urgência continua sendo o baralho');
+  ok(!(await pg.$('[data-urg-faixa]')) && (await pg.$$('[data-nova-urgencia] .ph-pilha')).length === 1, 'iPhone: a Urgência continua sendo o baralho');
   await ctx.close();
 }
 

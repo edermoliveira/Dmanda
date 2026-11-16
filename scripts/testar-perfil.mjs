@@ -332,7 +332,10 @@ const T = await novo({ viewport: { width: 1360, height: 900 } });
   await abrirPerfil(pg);
   ok(/1 demanda finalizada hoje/.test((await pg.textContent('[data-indicador="produtividade"]')) ?? '') && Number(await pg.getAttribute(`.grafico .gcol[data-dia="${HOJE}"]`, 'data-n')) === 1 && /Hoje: 1 demanda finalizada/.test((await pg.textContent('.frase')) ?? ''), 'produtividade: concluir uma demanda hoje mostra 1 finalizada hoje (independe do prazo), no indicador, no gráfico e na frase');
   await fecharPerfil(pg);
-  await pg.locator('article.dcard').filter({ hasText: 'Demanda aberta para concluir' }).first().locator('button:has-text("Reabrir demanda")').click(); await toast(pg);
+  // as filas de Cards só mostram demandas ativas (decisão 80): a finalizada é reaberta pelo Quadro e o teste volta para os Cards
+  await pg.click('.toolbar .tabs button[data-v="quadro"]');
+  await pg.locator('.mini-card').filter({ hasText: 'Demanda aberta para concluir' }).first().locator('button:has-text("Reabrir demanda")').click(); await toast(pg);
+  await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.waitForSelector('article.dcard');
   await abrirPerfil(pg);
   ok(/0 demandas finalizadas hoje/.test((await pg.textContent('[data-indicador="produtividade"]')) ?? '') && Number(await pg.getAttribute(`.grafico .gcol[data-dia="${HOJE}"]`, 'data-n')) === 0, 'produtividade: reabrir tira a demanda do dia em que foi concluída (o histórico guarda só a última conclusão: lacuna registrada)');
   await fecharPerfil(pg);

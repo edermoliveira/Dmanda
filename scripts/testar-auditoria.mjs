@@ -16,7 +16,7 @@ let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ---------- dados: três vagas (Alfa em Cadastro, Charlie com pendências, Eco aguardando a Prefeita) e duas urgências fora delas; nenhuma demanda sem data e nenhum dia cheio ----------
+// ---------- dados: quatro vagas (Alfa em Cadastro, Charlie com pendências, Eco aguardando a Prefeita, Quarta em Fazendo) e duas urgências fora delas; nenhuma demanda sem data e nenhum dia cheio ----------
 const ID = {};
 {
   const db = await abrirBancoTeste({ pasta: PASTA });
@@ -30,9 +30,10 @@ const ID = {};
   await mk('C', 'Charlie em Fazendo com pendências', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -2) }, ['c1', 'c2', 'c3']);
   const E = await mk('E', 'Eco aguardando a Prefeita', { etapa: 'Aguardando Prefeita', prazo_original: somarDias(HOJE, 20) }, ['e1']);
   await db.query(`update public.demandas set etapa_desde = (($1::date + time '12:00') at time zone 'America/Sao_Paulo') - interval '12 days' where id = $2`, [HOJE, E.id]);
+  await mk('Q', 'Quarta em Fazendo', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, 2) }, ['q1']);
   await mk('D', 'Delta em Fazendo sem pendências', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -3) }, ['d1']);
   await mk('F', 'Foxtrot aguardando retorno do setor', { etapa: 'Aguardando retorno', setor: 'Obras', acompanhar_em: somarDias(HOJE, -1) }, ['f1']);
-  for (const [i, k] of ['A', 'C', 'E'].entries()) await db.query('insert into public.para_hoje (user_id, posicao, demanda_id) values ($1, $2, $3)', [USUARIO, i + 1, ID[k]]);
+  for (const [i, k] of ['A', 'C', 'E', 'Q'].entries()) await db.query('insert into public.para_hoje (user_id, posicao, demanda_id) values ($1, $2, $3)', [USUARIO, i + 1, ID[k]]);
   await c('criar_evento', { p: { titulo: 'Reunião de teste', tipo: 'Reunião', data: HOJE, inicio: '09:00', fim: '10:00', aviso_min: null } });
   await db.close();
 }
@@ -95,14 +96,14 @@ for (const [nome, motor, device] of [['Edge', edge, null], ...(wk ? [['WebKit em
     const depois = await pg.$eval(`${NU} [data-pilha-passar]`, (b) => ({ aria: b.getAttribute('aria-disabled'), foco: document.activeElement === b }));
     ok(depois.aria === null && depois.foco, `${R}: ao fim da animação o bloqueio sai e o foco continua no botão`);
   }
-  // Para hoje: três cards; dois Enter rápidos valem como uma só ação (bloqueio de verdade, sem dupla ação)
+  // Para hoje: quatro cards; dois Enter rápidos valem como uma só ação (bloqueio de verdade, sem dupla ação)
   await aoCentro(pg, PH);
   const t0 = await topo(pg, PH);
   await pg.focus(`${PH} [data-pilha-passar]`);
   await pg.keyboard.press('Enter'); await pg.keyboard.press('Enter'); await pg.keyboard.press(' '); await esperar(reduzido ? 300 : 700);
   const t1 = await topo(pg, PH), q = await quem(pg);
-  // com animação, o bloqueio de verdade faz as três teclas valerem uma só ação; com movimento reduzido não há animação a esperar e cada tecla é uma ação (três passes fecham o ciclo de três cards)
-  ok((reduzido ? t1 === t0 : t1 !== t0 && /Charlie/.test(t1)) && q === 'passar', `${R}: Enter, Enter e Espaço em sequência rápida ${reduzido ? 'passam três cards (o ciclo fecha)' : 'viram uma só ação'} no Para hoje (${t0.slice(0, 12)} -> ${t1.slice(0, 12)}) e o foco fica no botão (${q})`);
+  // com animação, o bloqueio de verdade faz as três teclas valerem uma só ação; com movimento reduzido não há animação a esperar e cada tecla é uma ação (três passes de quatro cards levam o último à frente)
+  ok((reduzido ? t1 !== t0 && /Quarta/.test(t1) : t1 !== t0 && /Charlie/.test(t1)) && q === 'passar', `${R}: Enter, Enter e Espaço em sequência rápida ${reduzido ? 'passam três cards (o último vem à frente)' : 'viram uma só ação'} no Para hoje (${t0.slice(0, 12)} -> ${t1.slice(0, 12)}) e o foco fica no botão (${q})`);
   if (!reduzido) {
     // clique repetido também só vale uma vez
     await esperar(300); const a0 = await topo(pg, PH);

@@ -18,7 +18,7 @@ let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ---------- dados: três vagas ocupadas (Alfa, Charlie, Eco) e duas urgências fora delas (Delta, Foxtrot) ----------
+// ---------- dados: quatro vagas ocupadas (Alfa, Charlie, Eco, Quarta) e duas urgências fora delas (Delta, Foxtrot) ----------
 const ID = {};
 let HOJE;
 {
@@ -35,8 +35,9 @@ let HOJE;
   await db.query(`update public.demandas set etapa_desde = (($1::date + time '12:00') at time zone 'America/Sao_Paulo') - interval '12 days' where id = $2`, [HOJE, E.id]);
   await mk('D', 'Delta em Fazendo sem pendências', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -3) }, ['d1'], 1);
   await mk('F', 'Foxtrot aguardando retorno do setor', { etapa: 'Aguardando retorno', setor: 'Obras', acompanhar_em: somarDias(HOJE, -1) }, ['f1']);
+  await mk('Q', 'Quarta em Fazendo', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, 2) }, ['q1']);
   await mk('B', 'Bravo em Vistos distante', { etapa: 'Vistos', prazo_original: somarDias(HOJE, 25) }, ['b1']);   // além de 7 dias: nunca candidata
-  for (const [i, k] of ['A', 'C', 'E'].entries()) await db.query('insert into public.para_hoje (user_id, posicao, demanda_id) values ($1, $2, $3)', [USUARIO, i + 1, ID[k]]);
+  for (const [i, k] of ['A', 'C', 'E', 'Q'].entries()) await db.query('insert into public.para_hoje (user_id, posicao, demanda_id) values ($1, $2, $3)', [USUARIO, i + 1, ID[k]]);
   await db.close();
 }
 
@@ -86,9 +87,8 @@ const trazer = async (pg, alvo) => { for (let i = 0; i < 6 && !(await ativo(pg))
 for (const perfil of ['desktop', 'ipad']) {
   const { ctx, pg } = await abrir(perfil);
   const info = await pg.evaluate(() => ({ pilhas: document.querySelectorAll('.ph-pilha, .ph-atras').length, vagas: [...document.querySelectorAll('[data-painel="para-hoje"] > .cards > [data-vaga]')].map((e) => e.dataset.vaga).join(), urg: document.querySelectorAll('[data-nova-urgencia] .cards-urg .dcard').length, modo: document.querySelector('[data-painel="para-hoje"]').dataset.modo }));
-  ok(info.pilhas === 0 && info.vagas === '1,2,3' && info.urg === 2 && info.modo === 'grade', `${perfil}: sem baralho; as três vagas na grade de sempre (${info.vagas}) e a Nova urgência com ${info.urg} cards`);
-  await pg.click('.stat.st-atrasadas'); await esperar(400);
-  ok((await pg.$$eval('.cartas[data-modo="grade"] .cards .dcard', (l) => l.length)) >= 3 && !(await pg.$('.cartas .ph-pilha')), `${perfil}: o filtro Atrasadas mostra a grade de cards de sempre`);
+  ok(info.pilhas === 0 && info.vagas === '1,2,3,4' && info.urg === 2 && info.modo === 'grade', `${perfil}: sem baralho; as quatro vagas na grade (${info.vagas}) e a Urgência com ${info.urg} cards`);
+  ok(!(await pg.$('.cartas')) && !(await pg.$('[data-fila-hoje]')), `${perfil}: o Início tem só o Para hoje e a Urgência (sem "Na fila" nem listas dos contadores)`);
   await pg.screenshot({ path: `${CAPTURAS}/${perfil}-inicio.png`, fullPage: true });
   await ctx.close();
 }
@@ -99,7 +99,7 @@ for (const perfil of ['desktop', 'ipad']) {
   const { ctx, pg } = await abrir('celular', { antes: async (_pg, c2) => { await c2.route('**/*', (r) => (bloquear && r.request().method() === 'POST' && r.request().headers()['next-action'] ? r.abort() : r.continue())); } });
   await pg.waitForSelector(`${ATIVA} .vaga[data-ativo]`);
   let a = await ativo(pg);
-  ok(a?.assunto.startsWith('Alfa') && a.vaga === '1' && (await pg.$eval(`${ATIVA} .ph-posicao`, (e) => e.textContent.trim())) === '1 de 3', `celular: pilha com um card ativo (vaga 1, ${a?.assunto}) e "1 de 3"`);
+  ok(a?.assunto.startsWith('Alfa') && a.vaga === '1' && (await pg.$eval(`${ATIVA} .ph-posicao`, (e) => e.textContent.trim())) === '1 de 4', `celular: pilha com um card ativo (vaga 1, ${a?.assunto}) e "1 de 4"`);
   ok((await pg.$$eval(`${ATIVA} .ph-arrasto .vaga`, (l) => l.length)) === 1 && (await pg.$$eval(`${ATIVA} .ph-atras`, (l) => l.map((e) => e.dataset.nivel).sort().join())) === '1,2', 'dois cards traseiros visíveis atrás do da frente, como um baralho (o primeiro com a face do próximo card)');
   ok((await pg.$eval(AVANCAR, (e) => e.getAttribute('aria-label'))) === 'Avançar etapa: para Vistos' && (await pg.$eval(AVANCAR, (e) => e.textContent.trim())) === 'Avançar etapa', 'em Cadastro o botão diz "Avançar etapa" e o nome acessível, "para Vistos"');
   const alvos = await pg.$$eval(`${ATIVA} .ph-botoes .btn, ${ABRIR}`, (l) => l.map((e) => e.getBoundingClientRect().height));
@@ -123,7 +123,7 @@ for (const perfil of ['desktop', 'ipad']) {
   await deslizarAtivo(pg, -220);
   ok(await aguardarAtivo(pg, 'Charlie'), 'deslizar à esquerda manda o card para o fim e revela o próximo');
   let o = await lsOrdem(pg);
-  ok(o && o.dia === HOJE && o.ids.join() === [ID.C, ID.E, ID.A].join(), 'a ordem fica guardada só neste aparelho, com a data de hoje em Brasília');
+  ok(o && o.dia === HOJE && o.ids.join() === [ID.C, ID.E, ID.Q, ID.A].join(), 'a ordem fica guardada só neste aparelho, com a data de hoje em Brasília');
   await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector(`${ATIVA} .vaga[data-ativo]`); await pg.locator('button:has-text("Agora não")').first().click({ timeout: 3000 }).catch(() => {});
   ok(await aguardarAtivo(pg, 'Charlie'), 'depois de recarregar a pilha mantém a ordem guardada');
   // --- deslizes que não valem: curto, vertical (rolagem), sobre a tarefa
@@ -219,7 +219,7 @@ for (const perfil of ['desktop', 'ipad']) {
   await pg.click(AVANCAR); await pg.waitForSelector('[data-confirma-finalizar]', { timeout: 4000 });
   await pg.click('[data-confirma-finalizar] button.pri');
   await pg.waitForFunction(() => ![...document.querySelectorAll('[data-painel="para-hoje"] > .ph-pilha .assunto')].some((e) => e.textContent.startsWith('Charlie')), null, { timeout: 10000 }).catch(() => {});
-  ok(await pg.waitForFunction(() => [...document.querySelectorAll('[data-painel="para-hoje"] .ph-posicao')][0]?.textContent.trim() === '1 de 3', null, { timeout: 10000 }).then(() => true, () => false), 'confirmada a gravação, Charlie sai e a vaga liberada é reposta (a pilha volta a 3)');
+  ok(await pg.waitForFunction(() => [...document.querySelectorAll('[data-painel="para-hoje"] .ph-posicao')][0]?.textContent.trim() === '1 de 4', null, { timeout: 10000 }).then(() => true, () => false), 'confirmada a gravação, Charlie sai e a vaga liberada é reposta (a pilha volta a 3)');
   ok(await trazer(pg, 'Delta'), 'a vaga liberada foi para Delta, a urgência mais antiga');
   await pg.click(AVANCAR); await esperar(400);
   ok(!(await pg.$('[data-confirma-finalizar]')), 'sem tarefas pendentes a finalização é direta, sem confirmação');
@@ -242,11 +242,10 @@ for (const perfil of ['desktop', 'ipad']) {
   await pg.evaluate(() => localStorage.setItem('dmanda:para-hoje-ordem', '{quebrado'));
   await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector(`${ATIVA} .vaga[data-ativo]`);
   ok(!!(await ativo(pg)), 'armazenamento corrompido da ordem não quebra a pilha');
-  // --- as listas dos filtros do Início: o mesmo baralho, só navegando
-  await pg.locator('button:has-text("Agora não")').first().click({ timeout: 3000 }).catch(() => {});
-  await pg.click('.stat.st-atrasadas'); await esperar(500);
-  const filtro = await pg.$eval('.cartas', (e) => ({ modo: e.dataset.modo, pilha: !!e.querySelector('.ph-pilha'), pos: e.querySelector('.ph-posicao')?.textContent.trim() })).catch(() => null);
-  ok(filtro?.modo === 'pilha' && filtro.pilha && /^1 de \d+$/.test(filtro.pos ?? ''), `o filtro Atrasadas no celular vira o mesmo baralho (${filtro?.pos})`);
+  // --- as seções de Demandas > Cards no celular: o mesmo baralho, só navegando
+  await pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await pg.waitForSelector('[data-secao="prazos"] .ph-pilha', { timeout: 60000 }).catch(() => {});
+  const filtro = await pg.$eval('[data-secao="prazos"]', (e) => ({ pilha: !!e.querySelector('.ph-pilha'), pos: e.querySelector('.ph-posicao')?.textContent.trim() })).catch(() => null);
+  ok(filtro?.pilha && /^1 de \d+$/.test(filtro.pos ?? ''), `a seção Prazos da Secretaria, em Demandas, no celular é o mesmo baralho (${filtro?.pos})`);
   await pg.screenshot({ path: `${CAPTURAS}/celular-pilha.png` });
   await ctx.close();
 }
@@ -260,7 +259,7 @@ for (const perfil of ['desktop', 'ipad']) {
   await deslizar(pg, c.x + c.w / 2 + 110, y, c.x + c.w / 2 - 110, y);
   ok((await ativo(pg)).assunto !== antes && !(await animou), 'com movimento reduzido o gesto troca o card na hora, sem saída animada');
   const um = await pg.$eval('[data-nova-urgencia]', (e) => ({ pos: e.querySelector('.ph-posicao')?.textContent.trim(), passar: e.querySelector('[data-pilha-passar]')?.getAttribute('aria-disabled') === 'true' })).catch(() => null);
-  ok(um === null || (um.pos === '1 de 1' && um.passar === true), `com um card só, a pilha mostra "1 de 1" e não oferece passar (${JSON.stringify(um)})`);
+  ok(um === null || um.pos === undefined || (um.pos === '1 de 1' && um.passar === true), `com um card só, a pilha mostra "1 de 1" e não oferece passar (${JSON.stringify(um)})`);
   await ctx.close();
 }
 parar();
@@ -274,12 +273,12 @@ parar();
   ok(por(ID.D)?.etapa === 'Finalizado' && por(ID.E)?.etapa === 'Fazendo' && por(ID.F)?.etapa === 'Aguardando retorno' && por(ID.B)?.etapa === 'Vistos', 'banco: Delta finalizado direto, Eco em Fazendo pelo menu; Foxtrot e Bravo intactos');
   const vagas = await c('listar_para_hoje', {}), nome = (id) => Object.entries(ID).find(([, v]) => v === id)?.[0];
   const mapa = Object.fromEntries(vagas.filter((v) => por(v.demanda_id)?.etapa !== 'Finalizado').map((v) => [v.posicao, nome(v.demanda_id)]));
-  ok(mapa[1] === 'A' && mapa[2] === 'F' && mapa[3] === 'E' && Object.keys(mapa).length === 3, `banco: três vagas; só a vaga 2 foi reposta (Charlie, depois Delta, depois Foxtrot), a 1 e a 3 ficaram (${JSON.stringify(mapa)})`);
-  // dados da regressão da rolagem (decisão 75), semeados com o servidor parado: três vagas novas (Golf, Hotel e India, as três atrasadas, para o filtro Atrasadas); Alfa e Foxtrot ficam
-  // fora das vagas e viram a Nova urgência. India tem uma tarefa pendente (finalizar pede confirmação).
+  ok(mapa[1] === 'A' && mapa[2] === 'F' && mapa[3] === 'E' && mapa[4] === 'Q' && Object.keys(mapa).length === 4, `banco: quatro vagas; só a vaga 2 foi reposta (Charlie, depois Delta, depois Foxtrot), a 1, a 3 e a 4 ficaram (${JSON.stringify(mapa)})`);
+  // dados da regressão da rolagem (decisão 75), semeados com o servidor parado: quatro vagas novas (Golf, Hotel, India e Juliet, atrasadas, que também montam o baralho de uma seção de Demandas > Cards); Alfa e Foxtrot ficam
+  // fora das vagas e viram a Urgência. India tem uma tarefa pendente (finalizar pede confirmação).
   await db.query('delete from public.para_hoje where user_id = $1', [USUARIO]);
   const nova = async (assunto, o, textos = []) => { const d = await c('criar_demanda', { p: { assunto, tipo: 'Memorando', numero: '', ...o } }); for (const t of textos) await c('adicionar_tarefa', { p_demanda: d.id, p_texto: t }); return d.id; };
-  const vagasNovas = [await nova('Golf atrasada em Cadastro', { prazo_original: somarDias(HOJE, -4) }), await nova('Hotel atrasada em Vistos', { etapa: 'Vistos', prazo_original: somarDias(HOJE, -3) }), await nova('India em Fazendo com pendência', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -1) }, ['i1'])];
+  const vagasNovas = [await nova('Golf atrasada em Cadastro', { prazo_original: somarDias(HOJE, -4) }), await nova('Hotel atrasada em Vistos', { etapa: 'Vistos', prazo_original: somarDias(HOJE, -3) }), await nova('India em Fazendo com pendência', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -1) }, ['i1']), await nova('Juliet em Fazendo', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -5) })];
   for (const [i, id] of vagasNovas.entries()) await db.query('insert into public.para_hoje (user_id, posicao, demanda_id) values ($1, $2, $3)', [USUARIO, i + 1, id]);
   await db.close();
 }
@@ -328,7 +327,7 @@ const firme = (rot, { ini, fim }, { troca = true } = {}) => {
   ok(ini.st > 0 && trocou && dSt <= 1, `${rot}: a rolagem fica em ${Math.round(ini.st)} px durante a troca e depois (variação ${dSt.toFixed(1)} px em ${fim.n} leituras${troca ? `; no instante da troca: ${fim.naTroca.join(', ')}` : '; o card não troca'})`);
   ok(dTopo <= 1 && (!troca || fim.minPalco >= ini.card - 0.5), `${rot}: a pilha não sai do lugar (variação ${dTopo.toFixed(1)} px)${troca ? ` e o palco nunca fica menor que o card (${Math.round(fim.minPalco)} de ${Math.round(ini.card)} px)` : ''}`);
 };
-const NU = '[data-nova-urgencia] .ph-pilha', FILTRO = '.cartas .ph-pilha';
+const NU = '[data-nova-urgencia] .ph-pilha', FILTRO = '[data-secao="prazos"] .ph-pilha';
 for (const [motor, navegador, extra, toqueReal] of [['Edge', nav, {}, true], ...(wk ? [['WebKit emulado', wk, { ...devices['iPhone 13'] }, false]] : [])]) {
   const { ctx, pg } = await abrir('celular', { extra, motor: navegador });
   await instrumentar(pg);
@@ -360,17 +359,18 @@ for (const [motor, navegador, extra, toqueReal] of [['Edge', nav, {}, true], ...
     await pg.evaluate(() => document.querySelector('[data-confirma-finalizar] .btn:not(.pri)')?.click()); // sem a rolagem automática do clique do Playwright
   }), { troca: false });
   const nNU = await pg.$eval(NU, (e) => Number(e.dataset.total)).catch(() => 0);
-  ok(nNU >= 2, `${motor}: a Nova urgência tem mais de um card para a pilha navegar (${nNU})`);
+  ok(nNU >= 2, `${motor}: a Urgência tem mais de um card para a pilha navegar (${nNU})`);
   if (nNU >= 2) {
     firme(`${motor}, Nova urgência, deslizar à esquerda com a página no fim`, await medirTroca(pg, NU, () => gesto(NU, -220), { fim: true }));
     firme(`${motor}, Nova urgência, deslizar à direita com a página no fim`, await medirTroca(pg, NU, () => gesto(NU, 220), { fim: true }));
   }
-  await pg.evaluate(() => document.querySelector('.stat.st-atrasadas')?.click()); await esperar(600);
+  await pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await pg.waitForSelector(FILTRO, { timeout: 60000 }).catch(() => {}); await esperar(600);
+  await instrumentar(pg);
   const nF = await pg.$eval(FILTRO, (e) => Number(e.dataset.total)).catch(() => 0);
-  ok(nF >= 2, `${motor}: o filtro Atrasadas tem mais de um card na pilha (${nF})`);
+  ok(nF >= 2, `${motor}: a seção Prazos da Secretaria, em Demandas, tem mais de um card na pilha (${nF})`);
   if (nF >= 2) {
-    firme(`${motor}, lista filtrada, deslizar à esquerda`, await medirTroca(pg, FILTRO, () => gesto(FILTRO, -220)));
-    firme(`${motor}, lista filtrada, deslizar à direita`, await medirTroca(pg, FILTRO, () => gesto(FILTRO, 220)));
+    firme(`${motor}, seção de Demandas, deslizar à esquerda`, await medirTroca(pg, FILTRO, () => gesto(FILTRO, -220)));
+    firme(`${motor}, seção de Demandas, deslizar à direita`, await medirTroca(pg, FILTRO, () => gesto(FILTRO, 220)));
   }
   await ctx.close();
 }

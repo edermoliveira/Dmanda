@@ -30,7 +30,7 @@ const ir = async (rota) => { await pg.goto(BASE + rota, { waitUntil: 'load', tim
 // espera o aviso que combina com o padrão (evita ler um aviso antigo ainda na tela)
 const avisoRe = async (re) => pg.waitForFunction((p) => { const t = document.querySelector('#toast'); return t && t.classList.contains('on') && new RegExp(p, 'i').test(t.textContent); }, re.source, { timeout: 8000 }).then(() => true, () => false);
 const aviso = async () => { await pg.waitForSelector('#toast.on', { timeout: 8000 }); return pg.textContent('#toast'); };
-const assuntos = (sel = '.dcard .assunto') => pg.$$eval(sel, (e) => e.map((x) => x.textContent.trim()));
+const assuntos = (sel = '[data-secao="aguardando"] .dcard .assunto') => pg.$$eval(sel, (e) => e.map((x) => x.textContent.trim()));
 
 // 1) estado vazio e cadastro guiado em três passos
 const hojeSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -57,14 +57,14 @@ await pg.click('.modal .btn.pri'); await pg.waitForTimeout(300);
 ok(/Informe o assunto/.test(await pg.textContent('.modal')) && await passoAtual() === 1, 'passo 1: avançar sem assunto mostra a validação e não sai do passo');
 await pg.fill('#n-assunto', 'Resposta ao TCE sobre diárias'); await pg.fill('#n-num', '1842/2026'); await escolherOpcao(pg, 'n', 'origem', 'TCE-RS'); await pg.fill('#n-descricao', 'Texto da descrição da demanda de teste');
 await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou');
-ok(await passoAtual() === 2 && (await pg.$$('.dcard')).length === 0, 'passo 1 para o 2 não grava nada: ainda não existe nenhum card');
+ok(await passoAtual() === 2 && (await pg.$$('[data-secao="aguardando"] .dcard')).length === 0, 'passo 1 para o 2 não grava nada: ainda não existe nenhum card');
 ok(/Não informada|não informada/.test(await pg.textContent('.modal')) && /sem ela não existe contagem/i.test(await pg.textContent('.modal')), 'passo 2: sem data de chegada, a tela diz que não foi informada e que não há contagem de permanência');
 ok(/salva no Dmanda e fica na etapa Cadastro/.test(await pg.textContent('.modal .aviso-passo')) && await primario() === 'Pular e salvar demanda', 'passo 2: o aviso e o botão dizem que a demanda é criada aqui, na etapa Cadastro (com tudo vazio o botão é "Pular e salvar demanda")');
 // X no meio do cadastro guarda o rascunho e não cria nada; reabrir recupera
 await pg.fill('#n-chegou', '2020-01-02');
 await pg.waitForTimeout(700);
 await pg.click('.modal [aria-label="Fechar"]'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 5000 });
-ok((await pg.$$('.dcard')).length === 0, 'fechar pelo X antes de salvar não cria demanda');
+ok((await pg.$$('[data-secao="aguardando"] .dcard')).length === 0, 'fechar pelo X antes de salvar não cria demanda');
 await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('.modal');
 ok(!!(await pg.$('.modal .rec')) && await passoAtual() === 2 && (await pg.inputValue('#n-chegou')) === '2020-01-02' && (await pg.click('.modal .btn:has-text("Voltar")'), await pg.waitForSelector('#n-assunto'), await pg.inputValue('#n-assunto')) === 'Resposta ao TCE sobre diárias' && (await pg.click('.modal .btn.pri'), await pg.waitForSelector('#n-chegou'), true), 'o rascunho do cadastro volta no mesmo passo, com tudo o que foi digitado');
 // chegada antiga, tipo de prazo e os botões de dias: contam a partir de hoje, nunca da chegada
@@ -79,14 +79,14 @@ ok(await primario() === 'Salvar demanda e continuar', 'com chegada e prazo preen
 // duplo clique: a demanda é criada uma só vez
 await pg.dblclick('.modal .btn.pri'); await pg.waitForSelector('#n-nt', { timeout: 15000 });
 ok(await avisoRe(/Demanda criada e salva em Cadastro/) && await passoAtual() === 3, 'passo 2: confirmar cria a demanda, avisa que ela já foi criada e abre o passo de tarefas');
-ok((await pg.$$('.dcard')).length === 1 && /Cadastro/.test(await pg.textContent('.dcard .tags .chip')), 'duplo clique em salvar cria um único card, na etapa Cadastro');
+ok((await pg.$$('[data-secao="aguardando"] .dcard')).length === 1 && /Cadastro/.test(await pg.textContent('[data-secao="aguardando"] .dcard .tags .chip')), 'duplo clique em salvar cria um único card, na etapa Cadastro');
 // voltar edita o MESMO registro
 await pg.click('.modal .btn:has-text("Voltar")'); await pg.waitForSelector('#n-chegou'); await pg.click('.modal .btn:has-text("Voltar")'); await pg.waitForSelector('#n-assunto');
 ok((await pg.inputValue('#n-assunto')) === 'Resposta ao TCE sobre diárias' && (await pg.inputValue('#n-num')) === '1842/2026', 'voltar aos passos anteriores mostra o que foi digitado');
 await pg.fill('#n-num', '1842/26'); await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou');
 ok(await primario() === 'Salvar alterações e continuar', 'com a demanda já criada, o botão do passo 2 diz que salva as alterações dela');
 await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt');
-ok((await pg.$$('.dcard')).length === 1 && /1842\/26/.test(await pg.textContent('.dcard .tags')), 'voltar e salvar edita a mesma demanda (continua um só card, com o número novo)');
+ok((await pg.$$('[data-secao="aguardando"] .dcard')).length === 1 && /1842\/26/.test(await pg.textContent('[data-secao="aguardando"] .dcard .tags')), 'voltar e salvar edita a mesma demanda (continua um só card, com o número novo)');
 // fechar sem concluir, com tarefas digitadas: escolha clara, rascunho guardado, demanda em Cadastro
 await pg.fill('#n-nt', 'Levantar diárias de 2025'); await pg.press('#n-nt', 'Enter'); await pg.fill('#n-nt', 'Conferir com a Contabilidade'); await pg.press('#n-nt', 'Enter');
 ok(await primario() === 'Concluir cadastro' && await pg.isEnabled('.modal .m-f .btn.pri'), 'passo 3: com tarefas válidas o botão Concluir cadastro fica habilitado');
@@ -94,16 +94,16 @@ await pg.click('.modal [aria-label="Fechar"]'); await pg.waitForSelector('.confi
 ok(/ainda sem salvar/.test(await pg.textContent('.confirma-fechar')) && (await pg.$$eval('.confirma-fechar .btn', (b) => b.map((x) => x.textContent))).join('|') === 'Continuar editando|Descartar e fechar|Guardar rascunho e fechar', 'fechar com tarefas não salvas apresenta uma escolha clara (continuar, descartar ou guardar como rascunho)');
 await pg.click('.confirma-fechar .btn:has-text("Guardar rascunho")'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 5000 });
 await pg.waitForTimeout(400);
-ok(/Cadastro/.test(await pg.textContent('.dcard .tags .chip')) && (await pg.evaluate(() => localStorage.getItem('dmanda:rascunhos') ?? '')).includes('Levantar diárias de 2025'), 'fechar sem concluir mantém a demanda em Cadastro e guarda as tarefas como rascunho nela');
-await pg.click('.dcard .assunto'); await pg.waitForSelector('.modal .ler');
+ok(/Cadastro/.test(await pg.textContent('[data-secao="aguardando"] .dcard .tags .chip')) && (await pg.evaluate(() => localStorage.getItem('dmanda:rascunhos') ?? '')).includes('Levantar diárias de 2025'), 'fechar sem concluir mantém a demanda em Cadastro e guarda as tarefas como rascunho nela');
+await pg.click('[data-secao="aguardando"] .dcard .assunto'); await pg.waitForSelector('.modal .ler');
 ok(!!(await pg.$('.modal .rec')) && (await pg.$$eval('.modal .t-campo', (e) => e.map((x) => x.value))).join('|') === 'Levantar diárias de 2025|Conferir com a Contabilidade', 'ao abrir a demanda o rascunho de tarefas é recuperado na seção Tarefas, pronto para salvar');
 await pg.click('.modal [data-salvar="tarefas"]'); ok(await avisoRe(/alterações salvas/), 'salvar o rascunho de tarefas grava e avisa só depois do banco');
 await pg.waitForTimeout(500);
-ok(/Vistos/.test(await pg.textContent('.dcard .tags .chip')), 'ao ganhar a primeira tarefa a demanda sai de Cadastro e vai para Vistos');
+ok(/Vistos/.test(await pg.textContent('[data-secao="aguardando"] .dcard .tags .chip')), 'ao ganhar a primeira tarefa a demanda sai de Cadastro e vai para Vistos');
 await pg.click('.modal .m-f .btn:has-text("Fechar")'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 5000 });
 // pular as tarefas mantém em Cadastro; só o assunto é exigido
 await criarRapido(pg, 'Revisão do contrato de limpeza', { tipo: 'Memorando' });
-const cartaoContrato = pg.locator('.dcard:has-text("Revisão do contrato")');
+const cartaoContrato = pg.locator('[data-secao="aguardando"] .dcard:has-text("Revisão do contrato")');
 ok((await cartaoContrato.count()) === 1 && /Cadastro/.test(await cartaoContrato.locator('.tags .chip').textContent()) && /Nenhuma tarefa|0\/0|—/.test(await cartaoContrato.textContent()), 'só o assunto basta: pular chegada, prazo e tarefas cria a demanda em Cadastro, sem número, origem, prazo ou chegada inventados');
 ok(!/s\/n|Não informada/.test(await cartaoContrato.textContent()) && (await cartaoContrato.locator('.chips .pz').count()) === 0, 'o card sem número, origem e prazo não mostra "s/n", "Não informada" nem prazo');
 // falha de rede na criação: nada de sucesso falso, nada duplicado, o texto fica; repetir cria uma só
@@ -111,36 +111,36 @@ falhaProposital = true;
 await pg.click('button[aria-label="Nova demanda"]'); await pg.waitForSelector('#n-assunto'); await pg.fill('#n-assunto', 'Falha de rede TESTE'); await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou');
 await pg.route('**/*', (r) => (r.request().method() === 'POST' && r.request().headers()['next-action'] ? r.abort('failed') : r.continue()));
 await pg.click('.modal .btn.pri'); await pg.waitForSelector('#toast.on.erro', { timeout: 20000 }); await pg.waitForTimeout(500);
-ok(!/criada e salva/.test(await pg.textContent('#toast')) && await passoAtual() === 2 && (await pg.$$('.dcard:has-text("Falha de rede")')).length === 0 && /Nada foi criado/.test(await pg.textContent('#n-erro')), 'falha de rede ao criar: sem aviso de sucesso, continua no passo 2, nenhum card novo e a mensagem diz que nada foi criado');
+ok(!/criada e salva/.test(await pg.textContent('#toast')) && await passoAtual() === 2 && (await pg.$$('[data-secao="aguardando"] .dcard:has-text("Falha de rede")')).length === 0 && /Nada foi criado/.test(await pg.textContent('#n-erro')), 'falha de rede ao criar: sem aviso de sucesso, continua no passo 2, nenhum card novo e a mensagem diz que nada foi criado');
 await pg.unroute('**/*'); falhaProposital = false;
 await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt', { timeout: 15000 });
-ok((await pg.$$('.dcard:has-text("Falha de rede")')).length === 1, 'repetir depois da falha cria uma única demanda (sem duplicar)');
+ok((await pg.$$('[data-secao="aguardando"] .dcard:has-text("Falha de rede")')).length === 1, 'repetir depois da falha cria uma única demanda (sem duplicar)');
 // falha de rede ao concluir as tarefas: não conclui, não avança a etapa e não mostra conclusão
 await pg.fill('#n-nt', 'Tarefa da falha'); await pg.press('#n-nt', 'Enter');
 falhaProposital = true;
 await pg.route('**/*', (r) => (r.request().method() === 'POST' && r.request().headers()['next-action'] ? r.abort('failed') : r.continue()));
 await pg.click('.modal .btn.pri'); await pg.waitForSelector('#toast.on.erro', { timeout: 20000 }); await pg.waitForTimeout(500);
-ok(!/concluído/i.test(await pg.textContent('#toast')) && !!(await pg.$('.modal')) && /Cadastro/.test(await pg.locator('.dcard:has-text("Falha de rede") .tags .chip').textContent()) && (await pg.inputValue('.modal .t-campo')) === 'Tarefa da falha', 'falha de rede ao concluir as tarefas: sem mensagem de conclusão, a demanda continua em Cadastro e a tarefa digitada continua na janela');
+ok(!/concluído/i.test(await pg.textContent('#toast')) && !!(await pg.$('.modal')) && /Cadastro/.test(await pg.locator('[data-secao="aguardando"] .dcard:has-text("Falha de rede") .tags .chip').textContent()) && (await pg.inputValue('.modal .t-campo')) === 'Tarefa da falha', 'falha de rede ao concluir as tarefas: sem mensagem de conclusão, a demanda continua em Cadastro e a tarefa digitada continua na janela');
 await pg.unroute('**/*'); falhaProposital = false;
 await pg.click('.modal .btn.pri'); ok(await avisoRe(/Cadastro concluído: 1 tarefa salva, a demanda foi para Vistos/), 'repetir depois da falha conclui: tarefa salva e a demanda vai para Vistos');
 await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 8000 });
 await pg.waitForTimeout(400);
-ok(/Vistos/.test(await pg.locator('.dcard:has-text("Falha de rede") .tags .chip').textContent()), 'depois de concluir, o card mostra Vistos');
+ok(/Vistos/.test(await pg.locator('[data-secao="aguardando"] .dcard:has-text("Falha de rede") .tags .chip').textContent()), 'depois de concluir, o card mostra Vistos');
 // limpeza: a demanda criada só para este teste sai (as verificações finais do banco esperam exatamente as duas de antes)
-await pg.click('.dcard:has-text("Falha de rede") .girar >> nth=0'); await pg.waitForTimeout(600);
-await pg.click('.dcard:has-text("Falha de rede") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
+await pg.click('[data-secao="aguardando"] .dcard:has-text("Falha de rede") .girar >> nth=0'); await pg.waitForTimeout(600);
+await pg.click('[data-secao="aguardando"] .dcard:has-text("Falha de rede") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
 await ir('/arquivo'); await pg.click('.linha:has-text("Falha de rede") .btn:has-text("Excluir")'); await pg.click('.linha:has-text("Falha de rede") .btn:has-text("Confirmar exclusão")'); await pg.waitForTimeout(600);
 await ir('/demandas');
 ok((await assuntos()).sort().join() === 'Resposta ao TCE sobre diárias,Revisão do contrato de limpeza' && /2 demandas, 1 atrasada/.test(await pg.textContent('.pagehead')), 'depois do cadastro as duas demandas aparecem em Cards e a contagem do cabeçalho conta a atrasada (vencimento ajustado de 10/10 para 09/10)');
 ok((await assuntos()).length === 2, 'depois de recarregar a página as demandas continuam (vieram do banco)');
 // a data de hoje chega junto das demandas: nenhum quadro da carga pode mostrar a data provisória (2000-01-01) como se fosse prazo real
-await pg.addInitScript(() => { window.__amostras = []; setInterval(() => { window.__amostras.push(document.querySelector('.dcard') ? [...document.querySelectorAll('.dcard .pz, .tempo')].map((e) => e.textContent).join('|') : ''); }, 25); });
-await pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await pg.waitForSelector('.dcard'); await pg.waitForTimeout(1500);
+await pg.addInitScript(() => { window.__amostras = []; setInterval(() => { window.__amostras.push(document.querySelector('[data-secao="aguardando"] .dcard') ? [...document.querySelectorAll('[data-secao="aguardando"] .dcard .pz, .tempo')].map((e) => e.textContent).join('|') : ''); }, 25); });
+await pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await pg.waitForSelector('[data-secao="aguardando"] .dcard'); await pg.waitForTimeout(1500);
 const amostras = await pg.evaluate(() => window.__amostras);
 ok(amostras.some((x) => x) && !amostras.some((x) => /faltam \d{4,}|há -\d/.test(x)), 'na carga, nenhum quadro mostra prazo calculado com a data provisória (faltam milhares de dias)');
 
 // 2) consulta da demanda e edição pelo lápis, seção por seção
-await pg.click('.dcard:has-text("Resposta ao TCE") .assunto'); await pg.waitForSelector('.modal .ler');
+await pg.click('[data-secao="aguardando"] .dcard:has-text("Resposta ao TCE") .assunto'); await pg.waitForSelector('.modal .ler');
 const ler = await pg.textContent('.modal');
 ok(/Chegou em.*02\/01\/2020/.test(ler.replace(/\s+/g, ' ')) && /Na Secretaria há\s*\d+ dias/.test(ler) && /Vencimento.*sex, 09\/10\/2026/.test(ler) && /Prazo original.*sáb, 10\/10\/2026/.test(ler) && /Dias pulados: 10\/10 sábado/.test(ler) && /Tipo de prazo.*Legal/.test(ler.replace(/\s+/g, ' ')), 'a consulta mostra a chegada, a permanência desde a chegada, o vencimento ajustado, o prazo original e o motivo do ajuste');
 ok((await pg.$$eval('.modal .sec-h h4', (e) => e.map((x) => x.textContent))).join('|') === 'Identificação|Descrição|Chegada e prazo|Andamento|Tarefas' && (await pg.$$('.modal [data-lapis]')).length === 5, 'a consulta tem cinco seções, cada uma com seu lápis, numa única janela');
@@ -154,13 +154,13 @@ await pg.click('.modal [data-salvar="tarefas"]'); ok(await avisoRe(/alterações
 await pg.waitForTimeout(500);
 ok((await pg.$$eval('.modal .t-ler li span', (e) => e.map((x) => x.textContent))).join('|') === 'Levantar diárias de 2025|Conferir com a Contabilidade|Redigir a resposta final' && !(await pg.$('[data-secao="tarefas"] .add-t')), 'depois de salvar a seção volta ao modo de leitura, com as tarefas na ordem');
 await pg.click('.modal .m-f .btn:has-text("Fechar")'); await pg.waitForTimeout(300);
-let card = pg.locator('.dcard:has-text("Resposta ao TCE")');
+let card = pg.locator('[data-secao="aguardando"] .dcard:has-text("Resposta ao TCE")');
 ok(/1\/3 · 33%/.test(await card.locator('.prog b').textContent()) && /Vistos/.test(await card.locator('.tags .chip').textContent()), 'progresso 1/3 e a demanda segue em Vistos');
 await ir('/demandas');
-card = pg.locator('.dcard:has-text("Resposta ao TCE")');
+card = pg.locator('[data-secao="aguardando"] .dcard:has-text("Resposta ao TCE")');
 ok(/1\/3 · 33%/.test(await card.locator('.prog b').textContent()) && /Vistos/.test(await card.locator('.tags .chip').textContent()) && /Conferir com a Contabilidade/.test(await card.locator('.prox-t').textContent()), 'após recarregar: tarefas, progresso, etapa e a próxima tarefa preservados');
 // edição por seção: identificação, chegada e prazo
-await pg.click('.dcard:has-text("Resposta ao TCE") .assunto'); await pg.waitForSelector('.modal .ler');
+await pg.click('[data-secao="aguardando"] .dcard:has-text("Resposta ao TCE") .assunto'); await pg.waitForSelector('.modal .ler');
 await pg.click('[data-lapis="identificacao"]'); await escolherOpcao(pg, 'd', 'origem', 'TCE-RS (Porto Alegre)'); await pg.click('.modal [data-salvar="identificacao"]'); ok(await avisoRe(/Identificação: alterações salvas/), 'editar a identificação pelo lápis grava só essa seção');
 await pg.waitForTimeout(500);
 ok(/TCE-RS \(Porto Alegre\)/.test(await pg.textContent('[data-secao="identificacao"]')), 'a seção volta à leitura com o valor novo');
@@ -275,7 +275,7 @@ await pg.click('button[aria-label="Nova demanda"]'); await pg.waitForSelector('#
 await pg.fill('#n-prazo', '2027-03-06'); // sábado
 ok(/sex, 05\/03\/2027/.test(await pg.textContent('.modal .prev-prazo')), 'prévia no cadastro: sábado 06/03 será antecipado para sexta 05/03');
 await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt'); await pg.click('.modal .btn:has-text("Pular tarefas")'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 8000 });
-const chipDe = () => pg.locator('.dcard:has-text("Prazo TESTE") .pz').first().textContent();
+const chipDe = () => pg.locator('[data-secao="aguardando"] .dcard:has-text("Prazo TESTE") .pz').first().textContent();
 ok(/5 mar/.test(await chipDe()), 'o card mostra o vencimento ajustado (5 mar), não o prazo original');
 await ir('/config');
 ok(/Dias indisponíveis/.test(await pg.textContent('.main')) && /Nenhum dia cadastrado/.test(await pg.textContent('.main')), 'Configurações: o cadastro de dias indisponíveis começa vazio (nada de feriado presumido)');
@@ -291,11 +291,11 @@ await ir('/config');
 ok(/Feriado de teste/.test(await pg.textContent('.cfg-lista')), 'depois de recarregar o dia continua (está no banco)');
 await ir('/demandas');
 const emTodasAsVisoes = async (re) => { const r = {}; for (const v of ['cards', 'quadro', 'tabela', 'lista']) { await pg.click(`.toolbar .tabs button[data-v="${v}"]`); await pg.waitForTimeout(300); r[v] = re.test(await pg.textContent('#vista')); } await pg.click('.toolbar .tabs button[data-v="cards"]'); return Object.entries(r).filter(([, x]) => !x).map(([v]) => v); };
-await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.waitForSelector('.dcard');
+await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.waitForSelector('[data-secao="aguardando"] .dcard');
 ok(/4 mar/.test(await chipDe()), 'com a sexta indisponível o vencimento recua para quinta (4 mar), recalculado no servidor');
 const faltam = await emTodasAsVisoes(/4 mar/);
 ok(faltam.length === 0, 'Cards, Quadro, Tabela e Lista mostram o mesmo vencimento ajustado' + (faltam.length ? ' (faltou em ' + faltam.join(', ') + ')' : ''));
-await pg.click('.dcard:has-text("Prazo TESTE") .assunto'); await pg.waitForSelector('.modal .ler');
+await pg.click('[data-secao="aguardando"] .dcard:has-text("Prazo TESTE") .assunto'); await pg.waitForSelector('.modal .ler');
 ok(/Dias pulados: 06\/03 sábado; 05\/03 feriado: Feriado de teste/.test(await pg.textContent('[data-secao="chegada"]')) && /qui, 04\/03\/2027/.test(await pg.textContent('[data-secao="chegada"]')) && /sáb, 06\/03\/2027/.test(await pg.textContent('[data-secao="chegada"]')), 'a consulta explica o ajuste: original sábado, vencimento quinta, dias pulados com o motivo');
 await pg.click('.modal .m-f .btn:has-text("Fechar")');
 // alterar a data do feriado devolve a sexta; evento externo no mesmo dia recua de novo; excluir devolve
@@ -317,12 +317,15 @@ await pg.waitForTimeout(400);
 ok(/Nenhum dia cadastrado/.test(await pg.textContent('.main')), 'a lista fica vazia depois de excluir os dias');
 // limpeza da demanda do teste
 await ir('/demandas');
-await pg.click('.dcard:has-text("Prazo TESTE") .girar >> nth=0'); await pg.waitForTimeout(600);
-await pg.click('.dcard:has-text("Prazo TESTE") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
+await pg.click('[data-secao="aguardando"] .dcard:has-text("Prazo TESTE") .girar >> nth=0'); await pg.waitForTimeout(600);
+await pg.click('[data-secao="aguardando"] .dcard:has-text("Prazo TESTE") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
 await ir('/arquivo'); await pg.click('.linha:has-text("Prazo TESTE") .btn:has-text("Excluir")'); await pg.click('.linha:has-text("Prazo TESTE") .btn:has-text("Confirmar exclusão")'); await pg.waitForTimeout(600);
 await ir('/demandas');
 
 // 9) filtros, arquivar, desarquivar e excluir
+// as filas de Cards só mostram as demandas ativas (a decisão 80 tirou as finalizadas): a demanda concluída acima é reaberta pelo Quadro antes dos filtros
+await pg.click('.toolbar .tabs button[data-v="quadro"]'); await pg.waitForSelector('.mini-card');
+await pg.click('.mini-card:has-text("Revisão do contrato") button:has-text("Reabrir demanda")'); await pg.waitForTimeout(800);
 await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.fill('#fq', 'contrato'); await pg.waitForTimeout(300);
 ok((await assuntos()).join() === 'Revisão do contrato de limpeza', 'o filtro por texto mostra só a demanda que combina');
 await pg.fill('#fq', ''); await pg.click('.toolbar .btn[aria-label^="Só atrasadas"]'); await pg.waitForTimeout(300);
@@ -330,8 +333,8 @@ ok((await assuntos()).join() === 'Resposta ao TCE sobre diárias', '"Só atrasad
 await pg.click('.toolbar .btn[aria-label^="Só atrasadas"]');
 await pg.click('[data-filtros]'); await pg.selectOption('#f-tipo', 'Memorando'); await pg.waitForTimeout(300);
 ok((await assuntos()).join() === 'Revisão do contrato de limpeza', 'o filtro por tipo funciona'); await pg.selectOption('#f-tipo', ''); await pg.keyboard.press('Escape');
-await pg.click('.dcard:has-text("Revisão do contrato") .girar >> nth=0'); await pg.waitForTimeout(600);
-await pg.click('.dcard:has-text("Revisão do contrato") [aria-label="Arquivar"]'); ok(await avisoRe(/arquivada/), 'arquivar avisa e tira a demanda da lista');
+await pg.click('[data-secao="aguardando"] .dcard:has-text("Revisão do contrato") .girar >> nth=0'); await pg.waitForTimeout(600);
+await pg.click('[data-secao="aguardando"] .dcard:has-text("Revisão do contrato") [aria-label="Arquivar"]'); ok(await avisoRe(/arquivada/), 'arquivar avisa e tira a demanda da lista');
 await pg.waitForTimeout(400); ok((await assuntos()).join() === 'Resposta ao TCE sobre diárias', 'a demanda arquivada some das visões');
 await ir('/arquivo');
 ok(/Revisão do contrato/.test(await pg.textContent('.main')), 'o Arquivo mostra a demanda arquivada (veio do banco)');
@@ -339,6 +342,8 @@ await pg.click('.linha .btn:has-text("Excluir")'); ok(/Excluir de vez/.test(awai
 await pg.click('.linha .btn:has-text("Cancelar")');
 await pg.click('.linha .btn:has-text("Desarquivar")'); await aviso(); await pg.waitForTimeout(400);
 await ir('/demandas'); ok((await assuntos()).length === 2, 'desarquivar devolve a demanda às visões');
+// volta ao estado de antes da reabertura: concluída de novo (o restante do teste espera o contrato Finalizado)
+await pg.click('[data-secao="aguardando"] .dcard:has-text("Revisão do contrato") button:has-text("Concluir demanda")'); await pg.waitForTimeout(900);
 
 // 10) Início: resumos ligados aos mesmos dados
 await ir('/');
@@ -351,11 +356,11 @@ for (const [w, h, rotulo] of [[390, 800, 'celular'], [820, 1000, 'iPad vertical'
   for (const modo of ['claro', 'escuro']) {
     await ir('/demandas'); if ((await pg.getAttribute('.app', 'data-tema')) !== modo) { await pg.click('.icbtn[aria-label^="Alternar tema"]'); await pg.waitForTimeout(300); }
     await pg.click('.toolbar .tabs button[data-v="cards"]'); await pg.waitForTimeout(400);
-    const larg = await pg.evaluate(() => ({ main: document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1, cards: document.querySelectorAll('.dcard').length }));
-    await pg.click('.dcard .assunto >> nth=0'); await pg.waitForSelector('.modal .ler');
+    const larg = await pg.evaluate(() => ({ main: document.querySelector('.main').scrollWidth <= document.querySelector('.main').clientWidth + 1, cards: new Set([...document.querySelectorAll('[data-secao="aguardando"] .dcard')].map((e) => e.dataset.id)).size }));
+    await pg.click('[data-secao="aguardando"] .dcard .assunto >> nth=0'); await pg.waitForSelector('.modal .ler');
     const jan = await pg.evaluate(() => { const m = document.querySelector('.modal'), f = document.querySelector('.m-f').getBoundingClientRect(), r = m.getBoundingClientRect(); return { lateral: m.scrollWidth > m.clientWidth + 1, rodape: f.bottom <= r.bottom + 1 && f.height > 0 }; });
     await pg.keyboard.press('Escape'); await pg.waitForTimeout(250);
-    ok(larg.main && larg.cards === 2 && !jan.lateral && jan.rodape, `${rotulo}, ${modo}: página sem rolagem lateral, 2 cards, janela de edição sem corte e com o rodapé à vista`);
+    ok(larg.main && larg.cards === 1 && !jan.lateral && jan.rodape, `${rotulo}, ${modo}: página sem rolagem lateral, 1 card ativo (a outra demanda está finalizada), janela de edição sem corte e com o rodapé à vista`);
   }
 }
 await pg.setViewportSize({ width: 1360, height: 780 });
@@ -370,14 +375,14 @@ await pg.setViewportSize({ width: 1360, height: 780 });
   const volta = () => pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await pg.click('button[aria-label="Nova demanda"]'); await pg.waitForSelector('#n-assunto');
   await volta(); await pg.waitForTimeout(1500);
-  const comJanela = (await pg.locator('.dcard, .mini-card, tr, .linha').filter({ hasText: 'Criada no outro aparelho' }).count()) > 0;
+  const comJanela = (await pg.locator('[data-secao="aguardando"] .dcard, .mini-card, tr, .linha').filter({ hasText: 'Criada no outro aparelho' }).count()) > 0;
   await pg.click('.modal .btn:has-text("Cancelar")'); await pg.waitForTimeout(300);
   await volta();
   const apareceu = await pg.waitForFunction(() => document.body.innerText.includes('Criada no outro aparelho'), null, { timeout: 10000 }).then(() => true, () => false);
   ok(!comJanela && apareceu, 'dois aparelhos: com a janela aberta a lista não muda; ao voltar para a tela (sem janela) aparece o que outro aparelho gravou, sem recarregar');
   // limpeza: arquiva e exclui a demanda criada só para este teste (as verificações finais do banco esperam exatamente as duas de antes)
-  await pg.click('.dcard:has-text("Criada no outro aparelho") .girar >> nth=0'); await pg.waitForTimeout(600);
-  await pg.click('.dcard:has-text("Criada no outro aparelho") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
+  await pg.click('[data-secao="aguardando"] .dcard:has-text("Criada no outro aparelho") .girar >> nth=0'); await pg.waitForTimeout(600);
+  await pg.click('[data-secao="aguardando"] .dcard:has-text("Criada no outro aparelho") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
   await ir('/arquivo');
   await pg.click('.linha:has-text("Criada no outro aparelho") .btn:has-text("Excluir")'); await pg.click('.linha:has-text("Criada no outro aparelho") .btn:has-text("Confirmar exclusão")'); await pg.waitForTimeout(600);
   await ir('/demandas');
@@ -388,7 +393,7 @@ await pg.setViewportSize({ width: 1360, height: 780 });
   await ir('/demandas');
   await criarRapido(pg, 'Conflito TESTE');
   // aparelho 1 abre a seção de tarefas e digita, sem salvar
-  await pg.click('.dcard:has-text("Conflito TESTE") .assunto'); await pg.waitForSelector('.modal .ler');
+  await pg.click('[data-secao="aguardando"] .dcard:has-text("Conflito TESTE") .assunto'); await pg.waitForSelector('.modal .ler');
   await pg.click('[data-lapis="tarefas"]'); await pg.fill('#m-nt', 'tarefa do aparelho 1'); await pg.press('#m-nt', 'Enter');
   ok(!(await pg.$('#m-conflito')), 'edição simultânea: com a demanda ainda na versão aberta não há aviso de conflito');
   // aparelho 2 abre a mesma demanda e grava uma tarefa (contexto próprio: outro aparelho não compartilha o armazenamento do navegador, nem os rascunhos do aparelho 1)
@@ -396,7 +401,7 @@ await pg.setViewportSize({ width: 1360, height: 780 });
   const outro = await outroCtx.newPage();
   await outro.goto(BASE + '/demandas', { waitUntil: 'load', timeout: 120000 });
   await outro.waitForSelector('.app .main'); await outro.waitForFunction(() => !document.body.innerText.includes('Carregando as demandas'), null, { timeout: 60000 });
-  await outro.click('.dcard:has-text("Conflito TESTE") .assunto'); await outro.waitForSelector('.modal .ler');
+  await outro.click('[data-secao="aguardando"] .dcard:has-text("Conflito TESTE") .assunto'); await outro.waitForSelector('.modal .ler');
   await outro.click('[data-lapis="tarefas"]'); await outro.fill('#m-nt', 'criada no outro aparelho'); await outro.press('#m-nt', 'Enter');
   await outro.click('.modal [data-salvar="tarefas"]'); await outro.waitForSelector('#toast.on');
   await outroCtx.close();
@@ -411,17 +416,17 @@ await pg.setViewportSize({ width: 1360, height: 780 });
   await pg.waitForTimeout(700); // deixa o rascunho automático gravar
   // fechar pelo X guarda a edição como rascunho com a versão em que ela se baseia: ao reabrir a demanda o aviso já aparece e Salvar segue bloqueado
   await pg.click('.modal [aria-label="Fechar"]'); await pg.waitForTimeout(300);
-  await pg.click('.dcard:has-text("Conflito TESTE") .assunto'); await pg.waitForSelector('.modal .ler');
+  await pg.click('[data-secao="aguardando"] .dcard:has-text("Conflito TESTE") .assunto'); await pg.waitForSelector('.modal .ler');
   ok(!!(await pg.$('#m-conflito')) && /Rascunho recuperado/.test(await pg.textContent('.modal')) && (await pg.$$eval('.t-campo', (e) => e.map((x) => x.value))).includes('tarefa do aparelho 1') && await pg.isDisabled('.modal [data-salvar="tarefas"]'), 'edição simultânea: o rascunho guardado lembra a versão de origem, então ao reabrir o aviso aparece de novo, a edição recuperada está nos campos e Salvar continua bloqueado');
   // nada do aparelho 1 foi gravado e a tarefa do aparelho 2 permanece (lido do banco por uma página nova)
   await pg.click('.modal [data-secao="tarefas"] .btn:has-text("Cancelar")'); await pg.click('.modal .m-f .btn:has-text("Fechar")'); await ir('/demandas');
-  await pg.click('.dcard:has-text("Conflito TESTE") .assunto'); await pg.waitForSelector('.modal .ler');
+  await pg.click('[data-secao="aguardando"] .dcard:has-text("Conflito TESTE") .assunto'); await pg.waitForSelector('.modal .ler');
   const tarefas = await pg.$$eval('.t-ler li span', (e) => e.map((x) => x.textContent));
   ok(tarefas.join('|') === 'criada no outro aparelho' && !(await pg.$('#m-conflito')), 'edição simultânea: no banco ficou só o que o outro aparelho gravou (a tarefa dele permanece, nada do aparelho 1 foi gravado) e a demanda reaberta mostra a versão atual sem aviso');
   // limpeza: arquiva e exclui a demanda criada só para este teste (as verificações finais do banco esperam exatamente as duas de antes)
   await pg.click('.modal .m-f .btn:has-text("Fechar")'); await pg.waitForTimeout(300);
-  await pg.click('.dcard:has-text("Conflito TESTE") .girar >> nth=0'); await pg.waitForTimeout(600);
-  await pg.click('.dcard:has-text("Conflito TESTE") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
+  await pg.click('[data-secao="aguardando"] .dcard:has-text("Conflito TESTE") .girar >> nth=0'); await pg.waitForTimeout(600);
+  await pg.click('[data-secao="aguardando"] .dcard:has-text("Conflito TESTE") [aria-label="Arquivar"]'); await aviso(); await pg.waitForTimeout(400);
   await ir('/arquivo');
   await pg.click('.linha:has-text("Conflito TESTE") .btn:has-text("Excluir")'); await pg.click('.linha:has-text("Conflito TESTE") .btn:has-text("Confirmar exclusão")'); await pg.waitForTimeout(600);
   await ir('/demandas');

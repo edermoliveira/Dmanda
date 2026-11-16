@@ -357,7 +357,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
 // ---------- Para hoje, ano do documento e filtros (decisão 60) ----------
 {
   const { anoReconhecido, anoDoDocumento, chaveOpcao } = await import('../src/lib/documentos.ts');
-  const { elegiveisParaHoje, vagasAbertas, precisaCompletar, urgenciasDoInicio, candidatasParaVagas, ehOficio, ehUrgente } = await import('../src/lib/para-hoje.ts');
+  const { elegiveisParaHoje, vagasAbertas, precisaCompletar, urgenciasDoInicio, ehUrgente } = await import('../src/lib/para-hoje.ts');
   ok(anoReconhecido('32/2026') === 2026 && anoReconhecido('2024/1250') === 2024 && anoReconhecido(' 1842 / 2026 ') === 2026 && anoReconhecido('45/2026') === 2026, 'ano do documento: reconhece formatos inequívocos ("32/2026", "2024/1250", com espaços)');
   ok(anoReconhecido('2024/2025') === null && anoReconhecido('') === null && anoReconhecido('s/n') === null && anoReconhecido('12/34') === null && anoReconhecido('Proc. 12/2026') === null && anoReconhecido('1/2/2026') === null && anoReconhecido('1250/1990') === 1990 && anoReconhecido('12/1800') === null, 'ano do documento: ausente, ambíguo ("2024/2025"), fora de formato ou fora de 1990 a 2100 fica sem ano');
   ok(anoDoDocumento({ numero: '32/2026', documento_ano: 2025 }) === 2025 && anoDoDocumento({ numero: '32/2026', documento_ano: null }) === 2026 && anoDoDocumento({ numero: '', documento_ano: 2023 }) === 2023, 'ano do documento: o ano confirmado à mão vale mais que o reconhecido');
