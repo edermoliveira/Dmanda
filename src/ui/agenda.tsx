@@ -45,6 +45,9 @@ function EtiquetaMarco({ m, hoje }: { m: Marco; hoje: string }) {
   return <span className="agd-tag" data-tipo={m.tipo} data-atrasado={m.atrasado || undefined}>{ROTULO_MARCO[m.tipo]}{m.atrasado ? ` · atrasado há ${plural(diasDesde(m.data, hoje), 'dia')}` : ''}</span>;
 }
 
+/** Marcos com nota na lista do dia: acompanhamento e retorno, e o vencimento que foi antecipado (mostra o prazo original e os dias pulados, decisão 81). */
+const comNota = (m: Marco) => m.tipo !== 'vencimento' || m.detalhe.startsWith('Prazo original');
+
 /** Uma demanda no dia: os marcos dela que caem no dia (um item só, mesmo com dois marcos) e as tarefas pendentes, que se marcam aqui mesmo e atualizam a carga. */
 function ItemDemanda({ marcos, hoje, concluidas, compacto = false }: { marcos: Marco[]; hoje: string; concluidas: boolean; compacto?: boolean }) {
   const { abrirJanela, marcarTarefa } = useApp();
@@ -59,7 +62,7 @@ function ItemDemanda({ marcos, hoje, concluidas, compacto = false }: { marcos: M
         <span className="agd-sub mono">{titulo(d)}{d.setor && d.etapa === 'Aguardando retorno' ? ` · ${d.setor}` : ''} · {d.etapa === 'Finalizado' ? 'Finalizada' : d.etapa}</span>
       </button>
       <div className="agd-chips"><ChipEspera d={d} />{pendentes ? <span className="chip neutro">{pl(pendentes, 'tarefa pendente', 'tarefas pendentes')}</span> : d.etapa !== 'Finalizado' ? <span className="chip neutro">{d.tarefas.length ? 'Todas as tarefas concluídas' : 'Sem tarefas'}</span> : null}</div>
-      {!compacto && marcos.some((m) => m.tipo !== 'vencimento') ? <p className="agd-nota">{marcos.filter((m) => m.tipo !== 'vencimento').map((m) => `${ROTULO_MARCO[m.tipo]}: ${m.detalhe}.`).join(' ')}</p> : null}
+      {!compacto && marcos.some(comNota) ? <p className="agd-nota">{marcos.filter(comNota).map((m) => `${ROTULO_MARCO[m.tipo]}: ${m.detalhe}.`).join(' ')}</p> : null}
       {!compacto && tarefas.length ? (
         <ul className="agd-tarefas">
           {tarefas.map((t) => (

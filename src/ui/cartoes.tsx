@@ -28,7 +28,6 @@ export function ChipPrazo({ d }: { d: Demanda }) {
   if (n < 0) return <span className="pz venc"><Icone nome="calendar" />Prazo vencido</span>;
   return <span className={`pz${nivelPrazo(n)}`}><Icone nome="calendar" />{dataCurta(d.prazo)} · {n === 0 ? 'vence hoje' : `faltam ${curto(n)}`}</span>;
 }
-export const ChipSelo = ({ d }: { d: Demanda }) => (d.prazo ? <span className={`selo${d.prazo_tipo === 'Legal' ? ' legal' : ''}`}><Icone nome="flag" />{d.prazo_tipo}</span> : null);
 function ChipTempo({ d }: { d: Demanda }) {
   const { hoje } = useApp();
   if (!d.prazo || !d.chegou_em) return null; // sem prazo, ou sem a data de chegada, nada é mostrado nem inventado
@@ -36,7 +35,7 @@ function ChipTempo({ d }: { d: Demanda }) {
   const n = diasDesde(d.chegou_em, hoje);
   return <span className="tempo mono" title="Desde que chegou"><Icone nome="clock" />{n === 0 ? 'Chegou hoje' : `Chegou há ${curto(n)}`}</span>;
 }
-// O selo Legal/Próprio saiu do resumo dos cards (poluía); o tipo do prazo continua nos dados, no cadastro, na consulta, nos filtros e na Tabela.
+// A distinção Legal/Próprio saiu da interface (decisão 81): o campo prazo_tipo só continua nos dados, para ler, gravar e restaurar as cópias antigas.
 /** Aguardando Prefeita: "há N dias" (dias corridos na etapa). A partir do 11º dia usa o mesmo visual do prazo vencido. Só descreve: nada muda sozinho. */
 export function ChipEspera({ d }: { d: Demanda }) {
   const { hoje } = useApp();

@@ -78,7 +78,7 @@ export function marcosDaDemanda(d: Demanda, dias: readonly DiaIndisponivel[], ho
   if (d.arquivada_em) return [];
   if (d.etapa === 'Finalizado') return comFinalizadas && d.prazo ? [{ tipo: 'vencimento', data: d.prazo, demanda: d, atrasado: false, detalhe: 'Demanda finalizada' }] : [];
   const m: Marco[] = [];
-  if (d.prazo) m.push({ tipo: 'vencimento', data: d.prazo, demanda: d, atrasado: diasAte(d.prazo, hoje) < 0, detalhe: d.prazo_original && d.prazo_original !== d.prazo ? `Prazo original ${dataBR(d.prazo_original)}, antecipado` : `Prazo ${d.prazo_tipo.toLowerCase()}` });
+  if (d.prazo) m.push({ tipo: 'vencimento', data: d.prazo, demanda: d, atrasado: diasAte(d.prazo, hoje) < 0, detalhe: d.prazo_original && d.prazo_original !== d.prazo ? `Prazo original ${dataBR(d.prazo_original)}, antecipado${d.prazo_ajuste ? `. Dias pulados: ${d.prazo_ajuste}` : ''}` : 'Prazo' });
   if (d.acompanhar_em) m.push({ tipo: 'acompanhamento', data: d.acompanhar_em, demanda: d, atrasado: diasAte(d.acompanhar_em, hoje) < 0, detalhe: 'Data digitada em Acompanhar em' });
   const r = contagemRetorno(d, dias);
   if (r) m.push({ tipo: 'retorno', data: r.data, demanda: d, atrasado: diasAte(r.data, hoje) < 0, detalhe: `${DIAS_RETORNO_SETOR} dias desde ${dataBR(r.base)} (${r.origemBase})${r.ajuste ? `; antecipado: ${r.ajuste}` : ''}` });

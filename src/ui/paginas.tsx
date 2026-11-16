@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Icone } from './Icone';
 import { useApp, type EstadoRotina } from './contexto';
-import { ChipPrazo, ChipSelo, ChipTipo, OrigemP } from './cartoes';
+import { ChipPrazo, ChipTipo, OrigemP } from './cartoes';
 import { Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
@@ -164,7 +164,7 @@ export function PaginaArquivo() {
         <div className="lista">
           {arquivadas.map((d: Demanda) => (
             <div key={d.id} className="linha"><div className="linha-c">
-              <span className="mono num">{titulo(d)}</span><span className="ass">{d.assunto}</span><OrigemP d={d} /><ChipTipo d={d} /><span className="chip neutro">{d.etapa === 'Finalizado' ? 'Finalizada' : d.etapa}</span><ChipPrazo d={d} /><ChipSelo d={d} />
+              <span className="mono num">{titulo(d)}</span><span className="ass">{d.assunto}</span><OrigemP d={d} /><ChipTipo d={d} /><span className="chip neutro">{d.etapa === 'Finalizado' ? 'Finalizada' : d.etapa}</span><ChipPrazo d={d} />
               <button className="btn mini" onClick={() => abrirJanela({ t: 'editar', id: d.id })}>Abrir</button>
               <button className="btn mini" onClick={() => void desarquivar(d.id)}>Desarquivar</button>
               {confirmando === d.id

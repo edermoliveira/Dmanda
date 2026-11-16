@@ -7,39 +7,39 @@ import { Opcoes } from './janela-base';
 import { SeletorOpcao } from './seletor';
 import { anoReconhecido } from '@/lib/documentos';
 import {
-  areasDoTipo, dataBR, diasAte, numeroDe, origemDe, permanencia, plural, PRAZOS, temArea, type Area, type DadosDemanda, type Demanda, type PrazoTipo,
+  areasDoTipo, dataBR, diasAte, numeroDe, origemDe, permanencia, plural, temArea, type Area, type DadosDemanda, type Demanda,
 } from '@/lib/demandas';
-import { ajustarPrazo, BOTOES_PRAZO, dataComSemana, prazoPorDias, type DiaIndisponivel } from '@/lib/prazos';
+import { ajustarPrazo, BOTOES_PRAZO, dataComSemana, duracaoViva, prazoPorDias, recontarPelaChegada, textoFaltaChegada, type DiaIndisponivel } from '@/lib/prazos';
 import type { TarefaEdicao } from '@/nucleo/operacoes';
 
 export type Campos = {
   assunto: string; numero: string; origem: string; descricao: string; tipo: string; area: Area; rapida: boolean; ano_documento: string;
-  chegou_em: string; prazo_original: string; prazo_dias: number | null; prazo_tipo: PrazoTipo;
+  chegou_em: string; prazo_original: string; prazo_dias: number | null; prazo_base_em: string;
   setor: string; acompanhar_em: string; encaminhada_em: string; reiterada_em: string;
 };
-export const CAMPOS_VAZIOS: Campos = { assunto: '', numero: '', origem: '', descricao: '', tipo: '', area: 'Geral', rapida: false, ano_documento: '', chegou_em: '', prazo_original: '', prazo_dias: null, prazo_tipo: 'Próprio', setor: '', acompanhar_em: '', encaminhada_em: '', reiterada_em: '' };
+export const CAMPOS_VAZIOS: Campos = { assunto: '', numero: '', origem: '', descricao: '', tipo: '', area: 'Geral', rapida: false, ano_documento: '', chegou_em: '', prazo_original: '', prazo_dias: null, prazo_base_em: '', setor: '', acompanhar_em: '', encaminhada_em: '', reiterada_em: '' };
 
 export const doCampos = (d: Demanda): Campos => ({
   assunto: d.assunto, numero: numeroDe(d), origem: origemDe(d), descricao: d.descricao, tipo: d.tipo ?? '', area: d.area, rapida: d.rapida, ano_documento: d.documento_ano ? String(d.documento_ano) : '',
-  chegou_em: d.chegou_em ?? '', prazo_original: d.prazo_original ?? '', prazo_dias: d.prazo_dias, prazo_tipo: d.prazo_tipo, setor: d.setor ?? '', acompanhar_em: d.acompanhar_em ?? '', encaminhada_em: d.encaminhada_em ?? '', reiterada_em: d.reiterada_em ?? '',
+  chegou_em: d.chegou_em ?? '', prazo_original: d.prazo_original ?? '', prazo_dias: d.prazo_dias, prazo_base_em: d.prazo_base_em ?? '', setor: d.setor ?? '', acompanhar_em: d.acompanhar_em ?? '', encaminhada_em: d.encaminhada_em ?? '', reiterada_em: d.reiterada_em ?? '',
 });
 
 export type Secao = 'identificacao' | 'descricao' | 'chegada' | 'andamento' | 'tarefas';
 export const CAMPOS_DA_SECAO: Record<Exclude<Secao, 'tarefas'>, (keyof Campos)[]> = {
   identificacao: ['assunto', 'numero', 'origem', 'tipo', 'area', 'rapida', 'ano_documento'],
   descricao: ['descricao'],
-  chegada: ['chegou_em', 'prazo_tipo', 'prazo_original', 'prazo_dias'],
+  chegada: ['chegou_em', 'prazo_original', 'prazo_dias', 'prazo_base_em'],
   andamento: ['setor', 'acompanhar_em', 'encaminhada_em', 'reiterada_em'],
 };
 
 /**
- * O que enviar ao servidor sobre o prazo. Vai sempre a data original (vazia = sem prazo). Os dias do botão só vão quando acabaram de ser escolhidos
- * (o banco parte de hoje ao receber os dias): regravar o mesmo prazo não muda a referência da contagem.
+ * O que enviar ao servidor sobre o prazo. Vai sempre a data original (vazia = sem prazo). Os dias só vão quando a contagem é viva (feita a partir da chegada que vai gravada)
+ * e acabou de ser escolhida ou recontada: o banco conta a partir da chegada ao recebê-los, então regravar o mesmo prazo não muda a referência. Duração de outra regra nunca vai.
  */
 /** O ano confirmado à mão: vazio ou inválido vira nulo (então vale o ano reconhecido no número). */
 const anoDeCampo = (v: string): number | null => { const n = Number(v.trim()); return v.trim() && Number.isInteger(n) && n >= 1900 && n <= 2100 ? n : null; };
 function dadosDoPrazo(c: Campos, base: Demanda | null): DadosDemanda {
-  const dias = c.prazo_dias !== null && c.prazo_original && (!base || c.prazo_original !== base.prazo_original || c.prazo_dias !== base.prazo_dias);
+  const dias = c.prazo_original && duracaoViva({ ...c, chegou_em: c.chegou_em || null, prazo_base_em: c.prazo_base_em || null }) && (!base || c.prazo_original !== base.prazo_original || c.prazo_dias !== base.prazo_dias);
   return { prazo_original: c.prazo_original || null, ...(dias ? { prazo_dias: c.prazo_dias } : {}) };
 }
 
@@ -47,7 +47,7 @@ function dadosDoPrazo(c: Campos, base: Demanda | null): DadosDemanda {
 export function paraDadosNovos(c: Campos, base: Demanda | null = null): DadosDemanda {
   return {
     assunto: c.assunto, numero: c.numero, origem: c.origem, descricao: c.descricao, tipo: c.tipo.trim() || null, area: c.area, rapida: c.rapida, documento_ano: anoDeCampo(c.ano_documento),
-    chegou_em: c.chegou_em || null, prazo_tipo: c.prazo_tipo, ...dadosDoPrazo(c, base),
+    chegou_em: c.chegou_em || null, ...dadosDoPrazo(c, base),
   };
 }
 
@@ -55,7 +55,7 @@ export function paraDadosNovos(c: Campos, base: Demanda | null = null): DadosDem
 export function paraDadosSecao(secao: Exclude<Secao, 'tarefas'>, c: Campos, base: Demanda | null): DadosDemanda {
   if (secao === 'identificacao') return { assunto: c.assunto, numero: c.numero, origem: c.origem, tipo: c.tipo.trim() || null, area: c.area, rapida: c.rapida, documento_ano: anoDeCampo(c.ano_documento) };
   if (secao === 'descricao') return { descricao: c.descricao };
-  if (secao === 'chegada') return { chegou_em: c.chegou_em || null, prazo_tipo: c.prazo_tipo, ...dadosDoPrazo(c, base) };
+  if (secao === 'chegada') return { chegou_em: c.chegou_em || null, ...dadosDoPrazo(c, base) };
   return { setor: c.setor.trim() || null, acompanhar_em: c.acompanhar_em || null, encaminhada_em: c.encaminhada_em || null, reiterada_em: c.reiterada_em || null };
 }
 
@@ -115,45 +115,58 @@ export function Descricao({ c, mudar, prefixo }: { c: Campos; mudar: (p: Partial
 }
 
 // ---------- chegada e prazo ----------
-/** Descreve o vencimento que o banco vai gravar para a data original escolhida, com a mesma regra dele (antecipa para o primeiro dia disponível). */
+/** Descreve o vencimento que o banco vai gravar para a data original escolhida, com a mesma regra dele (antecipa para o último dia disponível anterior). */
 export function PreviaPrazo({ c, dias, hoje }: { c: Campos; dias: readonly DiaIndisponivel[]; hoje: string }) {
   if (!c.prazo_original) return <p className="prev-prazo" role="status">Sem prazo: a demanda fica sem vencimento e nada é inventado.</p>;
   let r: ReturnType<typeof ajustarPrazo>;
   try { r = ajustarPrazo(c.prazo_original, dias); } catch (e) { return <p className="prev-prazo" role="alert">{(e as Error).message}</p>; }
   const k = diasAte(r.prazo, hoje);
   const quanto = k < 0 ? `vencida há ${plural(-k, 'dia')}` : k === 0 ? 'vence hoje' : `faltam ${plural(k, 'dia')}`;
+  const viva = duracaoViva({ ...c, chegou_em: c.chegou_em || null, prazo_base_em: c.prazo_base_em || null });
   return (
     <p className="prev-prazo" role="status">
-      {c.prazo_dias ? <>{c.prazo_dias} dias corridos a partir de hoje ({dataBR(hoje)}), excluindo o dia de hoje: prazo original <b>{dataComSemana(c.prazo_original)}</b>. </> : <>Prazo original: <b>{dataComSemana(c.prazo_original)}</b>. </>}
+      {viva ? <>{c.prazo_dias} dias corridos a partir da chegada ({dataBR(c.chegou_em)}), sem contar o dia da chegada: prazo original <b>{dataComSemana(c.prazo_original)}</b>. </> : <>Prazo original: <b>{dataComSemana(c.prazo_original)}</b>. </>}
       {r.ajuste ? <>Vencimento antecipado para <b>{dataComSemana(r.prazo)}</b> ({quanto}).<span className="ajuste">Dias pulados: {r.ajuste}.</span></> : <>Vencimento: <b>{dataComSemana(r.prazo)}</b> ({quanto}).</>}
     </p>
   );
 }
 
-export function CamposChegadaPrazo({ c, mudar, prefixo, hoje, dias, legado }: { c: Campos; mudar: (p: Partial<Campos>) => void; prefixo: string; hoje: string; dias: readonly DiaIndisponivel[]; legado?: boolean }) {
+/**
+ * Chegada e prazo (decisão 81). Os botões de dias contam a partir da data de chegada (nunca do cadastro, da edição nem de hoje); sem chegada dizem o que falta.
+ * Mudar a chegada de um prazo por duração recalcula e mostra o novo resultado na prévia antes de salvar. `legado` marca o prazo que já existia antes (mostra a nota de que falta a base);
+ * `recontar` é falso na finalizada, que guarda o prazo de então.
+ */
+export function CamposChegadaPrazo({ c, mudar, prefixo, hoje, dias, legado, recontar = true }: { c: Campos; mudar: (p: Partial<Campos>) => void; prefixo: string; hoje: string; dias: readonly DiaIndisponivel[]; legado?: boolean; recontar?: boolean }) {
+  const [falta, setFalta] = useState<number | null>(null);
   const perm = c.chegou_em ? permanencia({ chegou_em: c.chegou_em }, hoje) : null;
+  const cheg = c.chegou_em || null, base = c.prazo_base_em || null;
+  const outraRegra = c.prazo_dias !== null && !!cheg && !!base && base !== cheg, semChegada = !cheg;
+  const mudarChegada = (v: string) => { setFalta(null); mudar({ chegou_em: v, ...((recontar && recontarPelaChegada({ chegou_em: cheg, prazo_dias: c.prazo_dias, prazo_base_em: base }, v || null)) || {}) }); };
   return (
     <>
       <div className="fld">
         <label htmlFor={`${prefixo}-chegou`}>Quando chegou <small className="data">(opcional)</small></label>
         <div className="add-t">
-          <input id={`${prefixo}-chegou`} type="date" value={c.chegou_em} onChange={(e) => mudar({ chegou_em: e.target.value })} />
-          {c.chegou_em ? <button className="btn mini" type="button" onClick={() => mudar({ chegou_em: '' })}>Sem data</button> : null}
+          <input id={`${prefixo}-chegou`} type="date" value={c.chegou_em} onChange={(e) => mudarChegada(e.target.value)} />
+          {c.chegou_em ? <button className="btn mini" type="button" onClick={() => mudarChegada('')}>Sem data</button> : null}
         </div>
-        <span className="data">{c.chegou_em ? (perm === null ? '' : `Na Secretaria há ${plural(perm, 'dia')} corridos (contados desde a chegada, não desde o cadastro).`) : 'Data de chegada não informada. Sem ela não existe contagem de permanência.'}</span>
+        <span className="data">{c.chegou_em ? (perm === null ? '' : `Na Secretaria há ${plural(perm, 'dia')} corridos (contados desde a chegada, não desde o cadastro).`) : 'Data de chegada não informada. Sem ela não existe contagem de permanência nem prazo em dias.'}</span>
       </div>
-      <div className="fld"><label>Tipo de prazo</label><Opcoes lista={PRAZOS} valor={c.prazo_tipo} rotulo="Tipo de prazo" aoEscolher={(v) => mudar({ prazo_tipo: v })} /></div>
       <div className="fld">
         <label htmlFor={`${prefixo}-prazo`}>Data final do prazo <small className="data">(opcional)</small></label>
         <div className="add-t">
-          <input id={`${prefixo}-prazo`} type="date" value={c.prazo_original} onChange={(e) => mudar({ prazo_original: e.target.value, prazo_dias: null })} />
-          {c.prazo_original ? <button className="btn mini" type="button" onClick={() => mudar({ prazo_original: '', prazo_dias: null })}>Sem prazo</button> : null}
+          <input id={`${prefixo}-prazo`} type="date" value={c.prazo_original} onChange={(e) => { setFalta(null); mudar({ prazo_original: e.target.value, prazo_dias: null, prazo_base_em: '' }); }} />
+          {c.prazo_original ? <button className="btn mini" type="button" onClick={() => { setFalta(null); mudar({ prazo_original: '', prazo_dias: null, prazo_base_em: '' }); }}>Sem prazo</button> : null}
         </div>
-        <div className="dias-btns" role="group" aria-label="Prazo em dias corridos a partir de hoje">
-          {BOTOES_PRAZO.map((n) => <button key={n} type="button" className="btn mini" aria-pressed={c.prazo_dias === n} onClick={() => mudar({ prazo_original: prazoPorDias(n, hoje), prazo_dias: n })}>{n} dias</button>)}
+        <div className="dias-btns" role="group" aria-label="Prazo em dias corridos a partir da chegada">
+          {BOTOES_PRAZO.map((n) => <button key={n} type="button" className="btn mini" aria-pressed={c.prazo_dias === n && !outraRegra} onClick={() => { if (!c.chegou_em) { setFalta(n); return; } setFalta(null); mudar({ prazo_original: prazoPorDias(n, c.chegou_em), prazo_dias: n, prazo_base_em: c.chegou_em }); }}>{n} dias</button>)}
         </div>
-        <span className="data">Os botões contam dias corridos a partir de hoje, não da chegada. Se a data cair em fim de semana, feriado ou evento externo de dia inteiro, o vencimento é antecipado para o dia disponível anterior.</span>
+        {falta !== null && semChegada ? <p className="prev-prazo" role="alert" data-falta-chegada>{textoFaltaChegada(falta)}</p> : null}
+        <span className="data">Os botões contam dias corridos a partir da data de chegada, sem contar o dia da chegada. Se a data cair em fim de semana, feriado ou dia indisponível cadastrado, o vencimento é antecipado para o último dia disponível anterior.</span>
         <PreviaPrazo c={c} dias={dias} hoje={hoje} />
+        {outraRegra ? <span className="data" data-nota-regra-anterior>Este prazo de {c.prazo_dias} dias foi contado a partir de {dataBR(base!)} pela regra anterior e foi mantido. Escolha a duração de novo para contar pela chegada.</span> : null}
+        {c.prazo_dias !== null && semChegada && base ? <span className="data" data-nota-sem-chegada>Sem a data de chegada, o prazo em dias não pode ser recalculado: a data acima fica como está.</span> : null}
+        {legado && c.prazo_original && semChegada ? <span className="data" data-nota-sem-base>Sem data de chegada: o vencimento registrado foi mantido e não há base para recalculá-lo pela chegada.</span> : null}
         {legado ? <span className="data">Este prazo existia antes do cálculo por prazo original e foi mantido como referência.</span> : null}
       </div>
     </>

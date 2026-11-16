@@ -4,12 +4,12 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { Icone } from './Icone';
 import { emLote, epocaDoApp, pendentes, registrar, type Pedido } from './ajuste';
 import { useApp } from './contexto';
-import { AcaoCard, BarraProg, ChipEspera, ChipPrazo, ChipSelo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
+import { AcaoCard, BarraProg, ChipEspera, ChipPrazo, ChipTipo, ItemTarefa, MiniCard, NovaTarefaInline, OrigemP } from './cartoes';
 import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordemDaEtapa, ordenar, origemDe, titulo, type Coluna, type Demanda, type Etapa } from '@/lib/demandas';
 
 // O título é a informação principal do card: ele nunca é espremido para dar lugar ao resto. Linhas que o título mantém: o que o texto precisar, até TETO_TITULO, e nunca
 // menos que MINIMO_TITULO (ou o que o texto tiver, se for curto). Quando falta altura, cede primeiro a descrição (menos linhas, depois some), depois o tempo, só
-// então o título perde linhas (até o mínimo) e por último saem a etapa e a barra de progresso. (O selo Legal/Próprio não aparece mais nos cards: fica na Tabela e nos detalhes.) O título sempre ocupa linhas inteiras (nunca uma letra cortada ao meio).
+// então o título perde linhas (até o mínimo) e por último saem a etapa e a barra de progresso. (A distinção Legal/Próprio saiu da interface, decisão 81.) O título sempre ocupa linhas inteiras (nunca uma letra cortada ao meio).
 // Tudo é recalculado do zero a cada ajuste: ao voltar a existir espaço (janela maior, menu recolhido, zoom menor), o que saiu reaparece.
 const TETO_TITULO = 4;
 const MINIMO_TITULO = 2;
@@ -215,7 +215,7 @@ export function Tabela({ lista }: { lista: Demanda[] }) {
               <td className="mono"><ChipTipo d={d} /> {numeroDe(d)}</td>
               <td><b role="link" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => abrirJanela({ t: 'editar', id: d.id })} onKeyDown={(e) => { if (e.key === 'Enter') abrirJanela({ t: 'editar', id: d.id }); }}>{d.assunto}</b></td>
               <td><OrigemP d={d} /></td>
-              <td><ChipPrazo d={d} /> <ChipSelo d={d} /></td>
+              <td><ChipPrazo d={d} /></td>
               <td><span className="et-p" style={{ '--et': ETAPA_COR[d.etapa] } as CSSProperties}><i className="dot" />{d.etapa}</span></td>
               <td style={{ minWidth: 150 }}><BarraProg d={d} /></td>
             </tr>

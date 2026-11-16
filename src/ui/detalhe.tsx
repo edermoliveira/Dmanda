@@ -9,7 +9,7 @@ import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { Janela } from './janela-base';
 import { OrigemEntrada } from './entradas';
-import { ChipEspera, ChipPrazo, ChipSelo } from './cartoes';
+import { ChipEspera, ChipPrazo } from './cartoes';
 import {
   CAMPOS_DA_SECAO, CamposChegadaPrazo, CamposIdentificacao, chaveTarefa, Descricao, doCampos, EditorTarefas, mudou, paraDadosSecao, paraEnvio, type Campos, type Secao, type TarefaForm,
 } from './campos';
@@ -158,7 +158,7 @@ function Detalhe({ d }: { d: Demanda }) {
         </p>
       ) : null}
       {d.entrada_id ? <OrigemEntrada id={d.entrada_id} /> : null}
-      <div className="resumo-chips"><span className="chip neutro">{fin ? 'Finalizada' : d.etapa}</span><ChipEspera d={d} /><ChipPrazo d={d} /><ChipSelo d={d} />{d.arquivada_em ? <span className="chip neutro">Arquivada</span> : null}</div>
+      <div className="resumo-chips"><span className="chip neutro">{fin ? 'Finalizada' : d.etapa}</span><ChipEspera d={d} /><ChipPrazo d={d} />{d.arquivada_em ? <span className="chip neutro">Arquivada</span> : null}</div>
 
       <div className="det"><div className="det-grade">
       <Bloco ctx={ctx} s="identificacao" editor={<CamposIdentificacao c={c} mudar={mudar} prefixo="d" />}>
@@ -177,16 +177,16 @@ function Detalhe({ d }: { d: Demanda }) {
         <p className={`ler-texto${d.descricao.trim() ? '' : ' vazio'}`}>{d.descricao.trim() || 'Sem descrição'}</p>
       </Bloco>
 
-      <Bloco ctx={ctx} s="chegada" editor={<CamposChegadaPrazo c={c} mudar={mudar} prefixo="d" hoje={hoje} dias={dias} legado={d.prazo_legado} />}>
+      <Bloco ctx={ctx} s="chegada" editor={<CamposChegadaPrazo c={c} mudar={mudar} prefixo="d" hoje={hoje} dias={dias} legado={d.prazo_legado} recontar={!fin} />}>
         <dl className="ler">
           <Linha rotulo="Chegou em" valor={d.chegou_em ? dataBR(d.chegou_em) : null} />
           {d.chegou_em ? (fin && d.concluida_em ? <><dt>Resolvida em</dt><dd>{plural(Math.max(0, diasDesde(d.chegou_em, d.concluida_em)), 'dia')} (da chegada à conclusão)</dd></> : <><dt>Na Secretaria há</dt><dd>{plural(perm ?? 0, 'dia')} corridos</dd></>) : null}
-          <Linha rotulo="Tipo de prazo" valor={d.prazo ? d.prazo_tipo : null} />
           {d.prazo ? (
             <>
               <dt>Vencimento</dt><dd><b>{dataComSemana(d.prazo)}</b>{situacaoPrazo}</dd>
               {d.prazo_original && d.prazo_original !== d.prazo ? <><dt>Prazo original</dt><dd>{dataComSemana(d.prazo_original)}</dd><dt>Ajuste</dt><dd>Antecipado para o dia disponível anterior. Dias pulados: {d.prazo_ajuste}.</dd></> : null}
-              {d.prazo_dias && d.prazo_base_em ? <><dt>Contagem</dt><dd>{d.prazo_dias} dias corridos a partir de {dataBR(d.prazo_base_em)}</dd></> : null}
+              {d.prazo_dias && d.prazo_base_em ? <><dt>Contagem</dt><dd>{d.prazo_dias} dias corridos {d.prazo_base_em === d.chegou_em ? `a partir da chegada (${dataBR(d.prazo_base_em)})` : `a partir de ${dataBR(d.prazo_base_em)} (regra anterior, mantida)`}</dd></> : null}
+              {!d.chegou_em && (d.prazo_legado || d.prazo_dias) ? <><dt>Base do cálculo</dt><dd data-sem-base>Sem data de chegada: o vencimento registrado foi mantido e não há base para recalculá-lo pela chegada.</dd></> : null}
               {d.prazo_legado ? <><dt>Origem do prazo</dt><dd>Já existia antes do cálculo por prazo original e foi mantido como referência.</dd></> : null}
             </>
           ) : <><dt>Vencimento</dt><dd className="vazio">Sem prazo</dd></>}

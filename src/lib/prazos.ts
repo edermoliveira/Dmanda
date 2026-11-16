@@ -7,7 +7,7 @@ export type CategoriaDia = (typeof CATEGORIAS_DIA)[number];
 export const ROTULO_CATEGORIA: Record<CategoriaDia, string> = { Feriado: 'Feriado', 'Evento externo': 'Evento externo de dia inteiro' };
 export type DiaIndisponivel = { id: string; data: string; descricao: string; categoria: CategoriaDia; criado_em?: string };
 
-/** Botões de prazo: dias corridos a partir de hoje, excluindo o dia inicial e incluindo o último. */
+/** Botões de prazo: dias corridos a partir da data de chegada, excluindo o dia da chegada e incluindo o último (decisão 81). */
 export const BOTOES_PRAZO = [5, 10, 20, 30] as const;
 
 const MS_DIA = 86_400_000;
@@ -22,8 +22,19 @@ const NOMES_DIA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', '
 export const nomeDoDia = (iso: string) => NOMES_DIA[diaDaSemana(iso)];
 const diaMes = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 
-/** Prazo original calculado pelos botões: hoje mais N dias corridos (a referência é o dia da definição, nunca "quando chegou"). */
-export const prazoPorDias = (dias: number, hoje: string) => somarDias(hoje, dias);
+/** Prazo original calculado pelos botões: a data de chegada mais N dias corridos. A referência é sempre a chegada: nunca o dia do cadastro, o da edição nem o de hoje. */
+export const prazoPorDias = (dias: number, chegada: string) => somarDias(chegada, dias);
+/** O que falta quando se pede um prazo por duração sem a data de chegada (o banco devolve exatamente este texto). */
+export const textoFaltaChegada = (dias: number) => `Informe a data de chegada para calcular o prazo de ${dias} dias.`;
+/**
+ * A duração em dias está "viva" quando foi contada a partir da chegada que a demanda tem agora (prazo_base_em = chegou_em). Só então mudar a chegada recalcula o prazo.
+ * Duração gravada pela regra anterior (contada de outro dia) e data escolhida à mão não são recalculadas: o vencimento registrado e o seu significado ficam.
+ */
+export const duracaoViva = (c: { chegou_em: string | null; prazo_dias: number | null; prazo_base_em: string | null }) => c.prazo_dias !== null && !!c.chegou_em && c.prazo_base_em === c.chegou_em;
+/** Nova data original e nova base quando a chegada muda numa demanda de duração viva; nulo quando não há o que recalcular (sem nova chegada ou sem duração viva). */
+export function recontarPelaChegada(c: { chegou_em: string | null; prazo_dias: number | null; prazo_base_em: string | null }, nova: string | null): { prazo_original: string; prazo_base_em: string } | null {
+  return nova && duracaoViva(c) ? { prazo_original: prazoPorDias(c.prazo_dias!, nova), prazo_base_em: nova } : null;
+}
 
 export type PrazoAjustado = { prazo: string; ajuste: string | null };
 

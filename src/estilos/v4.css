@@ -61,7 +61,6 @@
 .app[data-tema="escuro"] { --cc-chip-bg: rgba(252,252,252,.14); --cc-chip-tx: #F2F2F2; --cc-text2: #D2D2D2; }
 .app :is(.face.front[class*="cat-"], .dcard.atrasada .face.front, .mini-card[class*="cat-"], .mini-card.atrasada) { --text2: var(--cc-text2); color: var(--text); }
 .app :is(.face.front[class*="cat-"], .dcard.atrasada .face.front, .mini-card[class*="cat-"], .mini-card.atrasada) :is(.chip.neutro, .selo, .pz:not(.venc):not(.n-amar):not(.n-lar):not(.n-verm), .prox-t) { background: var(--cc-chip-bg); color: var(--cc-chip-tx); }
-.app :is(.face.front[class*="cat-"], .dcard.atrasada .face.front, .mini-card[class*="cat-"], .mini-card.atrasada) .selo.legal { color: var(--cc-chip-tx); }
 .app :is(.face.front[class*="cat-"], .dcard.atrasada .face.front, .mini-card[class*="cat-"], .mini-card.atrasada) .prox-t small { color: var(--cc-text2); }
 .app :is(.face.front[class*="cat-"], .dcard.atrasada .face.front, .mini-card[class*="cat-"], .mini-card.atrasada) .barra { background: color-mix(in srgb, var(--text) 16%, transparent); }
 .app .dcard.atrasada .face.front, .app .mini-card.atrasada { background: var(--cat-venc); border-color: var(--perigo); }
