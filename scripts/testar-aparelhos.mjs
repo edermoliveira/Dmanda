@@ -57,7 +57,8 @@ const caminho = (pg) => new URL(pg.url()).pathname + new URL(pg.url()).search;
 const cookieDe = async (ctx) => (await ctx.cookies()).filter((c) => c.value).map((c) => `${c.name}=${c.value}`).join('; ');
 const nCookiesSessao = async (ctx) => (await ctx.cookies()).filter((c) => /^sb-.+-auth-token/.test(c.name) && c.value).length;
 const pedir = (rota, cookie, extra = {}) => fetch(BASE + rota, { redirect: 'manual', headers: cookie ? { cookie } : {}, ...extra });
-const autorizar = async (pg, codigo) => { await ir(pg, '/acesso'); await pg.waitForSelector('#acesso-codigo', { timeout: 120000 }); await pg.fill('#acesso-codigo', codigo); await pg.click('.login-form button[type=submit]'); };
+const hidratou = (pg) => pg.waitForFunction(() => { const f = document.querySelector('.login-form'); return !!f && Object.keys(f).some((k) => k.startsWith('__reactProps')); }, null, { timeout: 120000 });
+const autorizar = async (pg, codigo) => { await ir(pg, '/acesso'); await pg.waitForSelector('#acesso-codigo', { timeout: 120000 }); await hidratou(pg); await pg.fill('#acesso-codigo', codigo); await pg.click('.login-form button[type=submit]'); };
 const entrarComCodigo = async (perfil, opcoes) => { const c = await novo(perfil, opcoes), codigo = await novoCodigo(); await autorizar(c.pg, codigo); await c.pg.waitForURL((u) => new URL(u).pathname === '/', { timeout: 120000 }); await painel(c.pg); return { ...c, codigo }; };
 const tokenDoContexto = async (ctx) => { const c = (await ctx.cookies()).find((x) => /^sb-.+-auth-token$/.test(x.name)); try { return JSON.parse(Buffer.from(decodeURIComponent(c.value).replace(/^base64-/, ''), 'base64url').toString()).access_token; } catch { return ''; } };
 const aparelhosNoBanco = () => sqlq('select nome, revogado_em is not null as revogado, sessao_id::text from dmanda_privado.aparelhos order by criado_em');
@@ -72,6 +73,13 @@ const aparelhosNoBanco = () => sqlq('select nome, revogado_em is not null as rev
     ok(r.status === 307 && dest === '/acesso', `sem cookie, ${rota} redireciona para /acesso (${r.status} ${dest})`);
   }
   const html = await (await pedir('/acesso')).text();
+  {
+    // sem JavaScript (ou antes de a página carregar) o formulário é enviado pelo navegador: o código não pode ir para o endereço
+    const sj = await edge.newContext({ javaScriptEnabled: false }), p = await sj.newPage();
+    await p.goto(BASE + '/acesso', { waitUntil: 'load', timeout: 120000 }); await p.fill('#acesso-codigo', 'ABCD-2345'); await p.click('.login-form button[type=submit]'); await p.waitForLoadState('load'); await esperar(500);
+    ok(!/codigo|ABCD/i.test(p.url()), `o código digitado nunca vai para o endereço, nem sem JavaScript (${new URL(p.url()).search || 'sem parâmetros'})`);
+    await sj.close();
+  }
   ok(/Acesso restrito/.test(html) && /acesso-codigo/.test(html) && !/type="password"|type="email"|login-senha|login-email/.test(html), 'a tela /acesso é um estado de acesso restrito com campo de código, sem e-mail nem senha');
   ok((await pedir('/api/cron/diaria')).status === 401 && (await pedir('/api/cron/diaria', null, { headers: { authorization: 'Bearer segredo-de-teste' } })).status === 200, 'a rotina diária mantém a autenticação própria: sem o segredo 401, com o segredo 200, sem sessão nem aparelho');
   const rpcSemToken = await fetch(`${falso.url}/rest/v1/rpc/listar_demandas`, { method: 'POST', headers: { apikey: CHAVE_PUBLICA, 'content-type': 'application/json' }, body: '{"p_arquivadas":false}' });
@@ -83,7 +91,7 @@ const aparelhosNoBanco = () => sqlq('select nome, revogado_em is not null as rev
 // =============================================================================================================================================
 const A = await (async () => {
   const c = await novo('desktop');
-  await ir(c.pg, '/acesso'); await c.pg.waitForSelector('#acesso-codigo', { timeout: 120000 });
+  await ir(c.pg, '/acesso'); await c.pg.waitForSelector('#acesso-codigo', { timeout: 120000 }); await hidratou(c.pg);
   // código fora do formato, código errado e a trava por tentativas
   await c.pg.fill('#acesso-codigo', 'abc'); await c.pg.click('.login-form button[type=submit]');
   ok(/Confira o código/.test(await c.pg.textContent('.login-form [role=alert]')), 'código fora do formato: a tela pede para conferir');
