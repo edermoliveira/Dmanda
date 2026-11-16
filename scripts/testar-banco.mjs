@@ -494,16 +494,19 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   x = await nova({ prazo_original: '2027-03-08', prazo_tipo: 'Legal' });
   ok(x.prazo === '2027-03-08', 'prazo: segunda-feira é dia útil');
 
-  // botões de 5, 10, 20 e 30 dias: a partir de hoje, nunca de "quando chegou"; excluem o dia inicial e incluem o último
+  // botões de 5, 10, 20 e 30 dias (decisão 81): a partir da CHEGADA, nunca de hoje, do cadastro nem da edição; excluem o dia da chegada e incluem o último
   const hoje0 = (await sqlq('select public.hoje()::text as h'))[0].h;
-  const somaHoje = async (n) => (await sqlq('select ($1::date + $2::int)::text as d', [hoje0, n]))[0].d;
   x = await nova({ prazo_dias: 10, chegou_em: '2020-01-02' });
-  ok(x.prazo_original === (await somaHoje(10)) && x.prazo_dias === 10 && x.prazo_base_em === hoje0 && x.chegou_em === '2020-01-02', 'prazo: o botão de 10 dias parte de hoje (não da chegada, que era de 2020), exclui o dia inicial e guarda dias e dia de partida');
-  const sem = await Promise.all([5, 10, 20, 30].map(async (n) => (await nova({ prazo_dias: n })).prazo_original));
-  const esperados = await Promise.all([5, 10, 20, 30].map(somaHoje));
-  ok(sem.join() === esperados.join(), 'prazo: 5, 10, 20 e 30 dias corridos somam exatamente isso a hoje');
-  const cinco = await nova({ prazo_dias: 5 });
-  ok(cinco.prazo !== null && cinco.prazo <= cinco.prazo_original && (await sqlq('select extract(isodow from $1::date)::int as w', [cinco.prazo]))[0].w < 6, 'prazo: o vencimento por dias também é antecipado se cair em fim de semana (nunca passa do original)');
+  ok(x.prazo_original === '2020-01-12' && x.prazo_dias === 10 && x.prazo_base_em === '2020-01-02' && x.chegou_em === '2020-01-02' && x.prazo_base_em !== hoje0, 'prazo: o botão de 10 dias parte da chegada (02/01/2020, não de hoje), exclui o dia da chegada e guarda os dias e a chegada como base');
+  const cheg5 = await Promise.all([5, 10, 20, 30].map(async (n) => (await nova({ prazo_dias: n, chegou_em: '2027-03-01' })).prazo_original));
+  ok(cheg5.join() === '2027-03-06,2027-03-11,2027-03-21,2027-03-31', 'prazo: 5, 10, 20 e 30 dias corridos somam exatamente isso à chegada (01/03/2027)');
+  const cinco = await nova({ prazo_dias: 5, chegou_em: '2027-03-01' });
+  ok(cinco.prazo === '2027-03-05' && cinco.prazo_original === '2027-03-06' && cinco.prazo_ajuste === '06/03 sábado', 'prazo: o vencimento por dias também é antecipado se cair em fim de semana (nunca passa do original)');
+  const antes0 = (await cu('listar_demandas', {})).length;
+  const semCheg = await eu('criar_demanda', { p: { assunto: 'Sem chegada', prazo_dias: 10 } });
+  ok(semCheg === 'Informe a data de chegada para calcular o prazo de 10 dias.' && (await cu('listar_demandas', {})).length === antes0, 'prazo: pedir dias sem a data de chegada é recusado dizendo o que falta, e nada é criado');
+  const semData = await nova({ assunto: 'Sem prazo nem chegada' });
+  ok(semData.prazo === null && semData.chegou_em === null, 'prazo: cadastrar sem chegada e sem prazo segue possível');
 
   // repetir a chamada com o mesmo identificador não cria outra demanda
   const idFixo = '88888888-8888-4888-8888-888888888888';
@@ -547,15 +550,16 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   ok(s.prazo === '2027-03-05' && s.prazo_original === '2027-03-07' && s.prazo_dias === null, 'prazo: data digitada ou escolhida no calendário também é antecipada');
 
   // referência da contagem: mantida enquanto a data original não muda; trocada ao escolher outra data
-  const porDias = await nova({ prazo_dias: 20 });
+  const porDias = await nova({ prazo_dias: 20, chegou_em: '2027-03-01' });
   const mesmaData = await cu('atualizar_demanda', { p_id: porDias.id, p: { prazo_original: porDias.prazo_original, prazo_tipo: 'Legal' } });
-  ok(mesmaData.prazo_dias === 20 && mesmaData.prazo_base_em === hoje0 && mesmaData.prazo_tipo === 'Legal', 'prazo: gravar de novo a mesma data original mantém os dias e o dia de partida da contagem');
+  ok(mesmaData.prazo_dias === 20 && mesmaData.prazo_base_em === '2027-03-01' && mesmaData.prazo_tipo === 'Legal', 'prazo: gravar de novo a mesma data original mantém os dias e a chegada-base da contagem (e o campo legado prazo_tipo segue gravável)');
   const outraData = await cu('atualizar_demanda', { p_id: porDias.id, p: { prazo_original: '2027-06-01' } });
-  ok(outraData.prazo_dias === null && outraData.prazo_base_em === null && outraData.prazo_original === '2027-06-01', 'prazo: escolher outra data à mão desfaz a referência de "N dias a partir de hoje"');
+  ok(outraData.prazo_dias === null && outraData.prazo_base_em === null && outraData.prazo_original === '2027-06-01', 'prazo: escolher outra data à mão desfaz a referência de "N dias a partir da chegada"');
   const limpo = await cu('atualizar_demanda', { p_id: porDias.id, p: { prazo_original: null } });
   ok(limpo.prazo === null && limpo.prazo_original === null && limpo.prazo_ajuste === null, 'prazo: tirar o prazo limpa vencimento, original e explicação');
   const passaDias = await cu('atualizar_demanda', { p_id: porDias.id, p: { prazo_original: null, prazo_dias: 5 } });
-  ok(passaDias.prazo_dias === 5 && passaDias.prazo_base_em === hoje0 && passaDias.prazo_original === (await somaHoje(5)), 'prazo: definir 5 dias depois de não ter prazo parte de hoje');
+  ok(passaDias.prazo_dias === 5 && passaDias.prazo_base_em === '2027-03-01' && passaDias.prazo_original === '2027-03-06', 'prazo: definir 5 dias depois de não ter prazo parte da chegada que a demanda já tem');
+  ok((await eu('atualizar_demanda', { p_id: porDias.id, p: { chegou_em: null, prazo_original: null, prazo_dias: 5 } })) === 'Informe a data de chegada para calcular o prazo de 5 dias.', 'prazo: tirar a chegada e pedir dias na mesma gravação é recusado dizendo o que falta');
 
   // compatibilidade com o aplicativo antigo: a chave "prazo" é tratada como data original; o eco do vencimento atual não muda nada
   const antiga = await nova({ prazo_original: '2027-03-06' });
@@ -621,6 +625,96 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
     }
     ok(diferentes === 0, 'equivalência: a prévia em TypeScript e a função do banco dão o mesmo vencimento e o mesmo texto em 150 datas seguidas (com feriados e eventos, inclusive no mesmo dia)');
     await limparDias();
+  }
+
+  // ---------- etapa 4 (decisão 81): prazo por duração contado da chegada ----------
+  {
+    const { ajustarPrazo, prazoPorDias, textoFaltaChegada, duracaoViva, recontarPelaChegada } = await import('../src/lib/prazos.ts');
+    await limparDias();
+    const lerDias = async () => { const criado = new Map((await sqlq('select id::text, criado_em::text as criado_em from public.dias_indisponiveis where user_id = $1', [U])).map((y) => [y.id, y.criado_em])); return (await cu('listar_dias_indisponiveis', {})).map((y) => ({ ...y, criado_em: criado.get(y.id) })); };
+
+    // equivalência cadastro: a conta do TypeScript (prévia) e a do banco, em chegadas de virada de mês, de ano e de ano bissexto
+    const chegadas = ['2027-03-01', '2026-12-28', '2026-12-20', '2028-02-25', '2028-02-29', '2027-12-31', '2026-10-23', '2027-01-30'];
+    let dif = 0, n = 0;
+    for (const ch of chegadas) for (const d of [5, 10, 20, 30]) {
+      const r = await nova({ prazo_dias: d, chegou_em: ch }), t = ajustarPrazo(prazoPorDias(d, ch), []);
+      n++; if (r.prazo_original !== prazoPorDias(d, ch) || r.prazo !== t.prazo || (r.prazo_ajuste ?? null) !== t.ajuste || r.prazo_base_em !== ch) { dif++; if (dif < 4) console.log('  diferença', ch, d, r.prazo_original, r.prazo, r.prazo_ajuste, JSON.stringify(t)); }
+    }
+    ok(dif === 0, `equivalência: a prévia em TypeScript e o banco dão a mesma data original, o mesmo vencimento e o mesmo texto em ${n} contas (8 chegadas, com viradas de mês, ano e ano bissexto, por 5, 10, 20 e 30 dias)`);
+    ok(prazoPorDias(10, '2026-12-28') === '2027-01-07' && prazoPorDias(5, '2028-02-25') === '2028-03-01' && prazoPorDias(30, '2027-12-31') === '2028-01-30', 'datas de virada: 28/12 + 10 = 07/01, 25/02/2028 + 5 = 01/03 (bissexto) e 31/12 + 30 = 30/01');
+    ok((await eu('criar_demanda', { p: { assunto: 'X', prazo_dias: 20 } })) === textoFaltaChegada(20), 'o texto de "falta a chegada" é o mesmo no TypeScript e no banco');
+
+    // chegada diferente do cadastro: hoje, a data do cadastro e a edição nunca entram
+    const antiga = await nova({ prazo_dias: 10, chegou_em: '2026-10-23' });
+    ok(antiga.prazo_original === '2026-11-02' && antiga.prazo_base_em === '2026-10-23' && antiga.criado_em.slice(0, 10) !== antiga.chegou_em, 'cadastro com chegada de outro dia: 23/10/2026 + 10 = 02/11/2026, não a partir do dia do cadastro');
+
+    // 02/11/2026 como feriado: o vencimento efetivo é 30/10/2026, com os dias pulados à vista (e o recálculo ao cadastrar, mudar e excluir a indisponibilidade)
+    const finados = await dia('2026-11-02', 'Finados');
+    ok(finados.recalculadas >= 1, 'cadastrar o feriado recalcula as demandas abertas abrangidas');
+    s = await busca(antiga.id);
+    ok(s.prazo === '2026-10-30' && s.prazo_original === '2026-11-02' && s.prazo_ajuste === '02/11 feriado: Finados; 01/11 domingo; 31/10 sábado' && s.prazo_dias === 10, '02/11/2026 feriado: o vencimento efetivo é 30/10/2026 (original 02/11 preservado, motivo com os três dias pulados)');
+    const viaTS = ajustarPrazo('2026-11-02', await lerDias());
+    ok(viaTS.prazo === s.prazo && viaTS.ajuste === s.prazo_ajuste, 'a prévia em TypeScript dá o mesmo vencimento e o mesmo motivo que o banco gravou');
+    const ponte = await dia('2026-10-30', 'Ponte');
+    ok((await busca(antiga.id)).prazo === '2026-10-29' && /30\/10 feriado: Ponte/.test((await busca(antiga.id)).prazo_ajuste), 'cadastrar mais um dia indisponível (30/10) recua o vencimento para 29/10');
+    const trocou = await dia('2026-10-28', 'Ponte movida', 'Feriado', ponte.dia.id);
+    ok((await busca(antiga.id)).prazo === '2026-10-30' && trocou.recalculadas >= 1, 'mudar a data do dia indisponível (30/10 para 28/10) devolve o vencimento a 30/10');
+    await cu('excluir_dia_indisponivel', { p_id: trocou.dia.id }); await cu('excluir_dia_indisponivel', { p_id: finados.dia.id });
+    s = await busca(antiga.id);
+    ok(s.prazo === '2026-11-02' && s.prazo_ajuste === null, 'excluir os dias volta o vencimento ao dia original (02/11/2026)');
+    await dia('2026-11-02', 'Finados');
+
+    // editar a chegada de uma duração viva recalcula (o recálculo parte da chegada nova, e o calendário vigente ajusta)
+    let e = await cu('atualizar_demanda', { p_id: antiga.id, p: { chegou_em: '2026-10-26' } });
+    ok(e.prazo_original === '2026-11-05' && e.prazo === '2026-11-05' && e.prazo_base_em === '2026-10-26' && e.prazo_dias === 10 && e.prazo_ajuste === null && e.versao > s.versao, 'editar só a chegada (26/10) recalcula: 26/10 + 10 = 05/11, dias e nova base gravados');
+    e = await cu('atualizar_demanda', { p_id: antiga.id, p: { chegou_em: '2026-10-23', prazo_original: '2026-11-02', prazo_dias: 10 } });
+    ok(e.prazo === '2026-10-30' && e.prazo_original === '2026-11-02' && e.prazo_base_em === '2026-10-23', 'o formulário envia chegada, data e dias juntos: o banco conta de novo e chega ao mesmo resultado da prévia (30/10, com Finados)');
+    e = await cu('atualizar_demanda', { p_id: antiga.id, p: { chegou_em: '2026-10-19', prazo_original: '2030-01-01', prazo_dias: 10 } });
+    ok(e.prazo_original === '2026-10-29' && e.prazo_dias === 10, 'com os dias na gravação, o banco conta pela chegada e ignora uma data enviada que não bate');
+    await cu('excluir_dia_indisponivel', { p_id: (await cu('listar_dias_indisponiveis', {}))[0].id });
+
+    // chegada apagada: o vencimento fica; a contagem deixa de estar viva e uma chegada nova depois não recalcula sozinha
+    const vi = await nova({ prazo_dias: 10, chegou_em: '2027-03-01' });
+    let q = await cu('atualizar_demanda', { p_id: vi.id, p: { chegou_em: null } });
+    ok(q.chegou_em === null && q.prazo_original === '2027-03-11' && q.prazo === '2027-03-11' && q.prazo_dias === 10 && q.prazo_base_em === '2027-03-01', 'apagar a chegada mantém o vencimento e o registro da contagem (a base antiga não é a chegada, então já não está viva)');
+    q = await cu('atualizar_demanda', { p_id: vi.id, p: { chegou_em: '2027-04-05' } });
+    ok(q.prazo_original === '2027-03-11' && q.prazo_base_em === '2027-03-01', 'uma chegada nova depois de apagada não recalcula uma contagem que ficou sem base: o vencimento registrado é preservado');
+    q = await cu('atualizar_demanda', { p_id: vi.id, p: { prazo_dias: 10 } });
+    ok(q.prazo_original === '2027-04-15' && q.prazo_base_em === '2027-04-05', 'escolher a duração de novo conta da chegada atual (05/04 + 10 = 15/04)');
+
+    // data escolhida à mão e prazo sem duração: a chegada não recalcula nada
+    const manual = await nova({ prazo_original: '2027-03-11', chegou_em: '2027-03-01' });
+    q = await cu('atualizar_demanda', { p_id: manual.id, p: { chegou_em: '2027-03-08' } });
+    ok(q.prazo_original === '2027-03-11' && q.prazo_dias === null, 'data escolhida à mão: mudar a chegada não mexe no vencimento');
+
+    // legado da regra anterior (duração contada de outro dia): preservado; só uma nova escolha de duração conta pela chegada
+    const leg = await nova({ prazo_dias: 10, chegou_em: '2027-03-01' });
+    await db.query("update public.demandas set prazo_base_em = '2027-02-20', prazo_original = '2027-03-02', prazo = '2027-03-02', prazo_ajuste = null where id = $1", [leg.id]);
+    q = await cu('atualizar_demanda', { p_id: leg.id, p: { chegou_em: '2027-03-15' } });
+    ok(q.prazo_original === '2027-03-02' && q.prazo_dias === 10 && q.prazo_base_em === '2027-02-20', 'legado da regra anterior (contado de 20/02): editar a chegada preserva o vencimento e o significado do registro');
+    q = await cu('atualizar_demanda', { p_id: leg.id, p: { chegou_em: '2027-03-15', prazo_original: '2027-03-02' } });
+    ok(q.prazo_original === '2027-03-02' && q.prazo_base_em === '2027-02-20', 'o formulário que só devolve a data do legado também preserva');
+    ok(duracaoViva({ chegou_em: q.chegou_em, prazo_dias: q.prazo_dias, prazo_base_em: q.prazo_base_em }) === false && recontarPelaChegada({ chegou_em: q.chegou_em, prazo_dias: q.prazo_dias, prazo_base_em: q.prazo_base_em }, '2027-03-20') === null, 'o TypeScript reconhece o legado como "não viva" e não propõe recálculo');
+    // legado sem chegada: o vencimento registrado continua, o calendário continua recalculando a partir do original
+    const legSem = await nova({ prazo_original: '2027-03-06' });
+    await db.query('update public.demandas set prazo_legado = true, chegou_em = null where id = $1', [legSem.id]);
+    const diaSem = await dia('2027-03-05', 'Sexta indisponível');
+    s = await busca(legSem.id);
+    ok(s.chegou_em === null && s.prazo_original === '2027-03-06' && s.prazo === '2027-03-04' && s.prazo_legado === true, 'legado sem chegada: o calendário segue ajustando a partir do original (sábado, sexta indisponível, quinta) e nada é inventado sobre a chegada');
+    await cu('excluir_dia_indisponivel', { p_id: diaSem.dia.id });
+
+    // finalizadas: o histórico não é recalculado nem pela chegada nem pelo calendário
+    const fin = await nova({ prazo_dias: 10, chegou_em: '2027-03-01' });
+    await cu('concluir_demanda', { p_id: fin.id });
+    q = await cu('atualizar_demanda', { p_id: fin.id, p: { chegou_em: '2027-03-03' } });
+    ok(q.etapa === 'Finalizado' && q.prazo_original === '2027-03-11' && q.prazo === '2027-03-11' && q.chegou_em === '2027-03-03', 'finalizada: a chegada pode ser corrigida, mas o prazo do histórico não é recalculado');
+    const diaFin = await dia('2027-03-11', 'Feriado depois da conclusão');
+    ok((await busca(fin.id)).prazo === '2027-03-11', 'finalizada: o calendário novo também não mexe no vencimento do histórico');
+    await cu('excluir_dia_indisponivel', { p_id: diaFin.dia.id });
+
+    // isolamento: o recálculo e as chegadas são de cada usuário
+    const deV = await c(V, 'criar_demanda', { p: { assunto: 'Do V', prazo_dias: 10, chegou_em: '2027-03-01' } });
+    ok(deV.prazo_original === '2027-03-11' && (await cu('listar_demandas', {})).every((y) => y.id !== deV.id), 'RLS: a demanda por duração de V não aparece para U');
   }
 }
 
@@ -968,7 +1062,8 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova15 = todas.find((f) => f.includes('alinha_regras_agenda')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
   const nova20 = todas.find((f) => f.includes('origem_documento_para_hoje'));   // depende da migração 8: entra depois dela, não no banco antigo
   const novaQ = todas.find((f) => f.includes('para_hoje_quatro_vagas'));   // depende da 20 (tabela para_hoje): entra depois dela
-  for (const f of todas.filter((f) => f !== nova20 && f !== novaQ && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const novaC = todas.find((f) => f.includes('prazo_pela_chegada'));   // depende da 8 (ajustar_prazo): entra depois dela, não no banco antigo
+  for (const f of todas.filter((f) => f !== nova20 && f !== novaQ && f !== novaC && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -1686,6 +1781,91 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
   const outro = await preparar(await abrirBancoTeste(), 'f5f5f5f5-4444-4444-8444-f5f5f5f5f5f5', 'c5y@teste');
   ok(await rodar(outro, copia) === null && (await chamarComoUsuario(outro, 'f5f5f5f5-4444-4444-8444-f5f5f5f5f5f5', 'listar_pagamentos', {})).length === 2, 'cópia v5: restaura também em outra conta (o dono é a conta da base de destino)');
   for (const d of [origem, destino, outro]) await d.close();
+}
+
+// ---------- Prazo pela chegada (decisão 81, etapa 4): migração aditiva desde o esquema publicado, passando pela das quatro vagas, sem Pagamentos ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m5 = todas.find((f) => f.includes('prazo_pela_chegada')), m4 = todas.find((f) => f.includes('para_hoje_quatro_vagas')), m20 = todas.find((f) => f.includes('origem_documento_para_hoje'));
+  ok(!!m5 && todas.indexOf(m5) > todas.indexOf(m4) && todas.indexOf(m4) > todas.indexOf(m20), 'prazo pela chegada: a migração é um arquivo novo, depois da 20 e das quatro vagas, e nenhuma anterior foi reescrita');
+  const texto = readFileSync(join('supabase/migrations', m5), 'utf8'), codigo = texto.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  const topo = [...codigo.matchAll(/^(create|alter|drop|insert|update|delete|grant|revoke)\b.*/gim)].map((m) => m[0]);
+  ok(topo.length === 2 && topo.every((l) => /^create or replace function public\.(criar_demanda|atualizar_demanda)\(/i.test(l)) && !/pagamentos/i.test(codigo), 'prazo pela chegada: a migração só substitui as duas funções (nada de tabela, coluna, remoção, privilégio nem backfill) e não depende de Pagamentos');
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-chegada-'));
+  try {
+    // o esquema publicado (até a 20) mais as quatro vagas, sem Pagamentos
+    for (const f of todas.filter((f) => f <= m20 || f === m4)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    const a = await abrirBancoTeste({ raizMigracoes: pasta });
+    const U = 'e4e4e4e4-4444-4444-8444-e4e4e4e4e4e4', O = 'e5e5e5e5-4444-4444-8444-e5e5e5e5e5e5';
+    for (const [id, e] of [[U, 'ch-a@teste'], [O, 'ch-b@teste']]) { await a.exec(`insert into auth.users (id, email) values ('${id}', '${e}')`); await a.exec(`insert into dmanda_privado.acesso_autorizado (email) values ('${e}')`); }
+    const ua = (f, x) => chamarComoUsuario(a, U, f, x), uo = (f, x) => chamarComoUsuario(a, O, f, x);
+    const hoje0 = (await a.query('select public.hoje()::text as h')).rows[0].h;
+    // registros da regra anterior: duração contada de hoje (com e sem chegada), data escolhida, finalizada e legado
+    const L1 = await ua('criar_demanda', { p: { assunto: 'L1 duração com chegada', prazo_dias: 10, chegou_em: '2026-10-01' } });
+    const L2 = await ua('criar_demanda', { p: { assunto: 'L2 duração sem chegada', prazo_dias: 20 } });
+    const L3 = await ua('criar_demanda', { p: { assunto: 'L3 data escolhida', prazo_original: '2027-03-11', chegou_em: '2027-03-01' } });
+    const L4 = await ua('criar_demanda', { p: { assunto: 'L4 data sem chegada', prazo_original: '2027-03-11' } });
+    const L5 = await ua('criar_demanda', { p: { assunto: 'L5 finalizada', prazo_dias: 10, chegou_em: '2026-09-01' } });
+    await ua('concluir_demanda', { p_id: L5.id });
+    const L6 = await ua('criar_demanda', { p: { assunto: 'L6 legado', prazo_original: '2027-03-06' } });
+    await a.query('update public.demandas set prazo_legado = true where id = $1', [L6.id]);
+    const foto = async () => JSON.stringify((await a.query('select * from public.demandas order by id')).rows);
+    const sig = async () => JSON.stringify((await a.query("select proname, pg_get_function_arguments(oid) args, pg_get_function_result(oid) res, prosecdef, proconfig::text cfg, has_function_privilege('anon', oid, 'execute') an, has_function_privilege('authenticated', oid, 'execute') au, has_function_privilege('public', oid, 'execute') pu from pg_proc where proname in ('criar_demanda', 'atualizar_demanda') order by proname")).rows);
+    const antes = await foto(), sAntes = await sig();
+    ok(L1.prazo_base_em === hoje0 && L1.prazo_dias === 10 && L2.prazo_base_em === hoje0 && L2.chegou_em === null, 'prazo pela chegada (antes): no esquema publicado a duração conta de hoje, inclusive sem chegada');
+
+    await a.exec(texto);
+    ok((await foto()) === antes, 'prazo pela chegada (upgrade): nenhuma linha de demanda mudou (nem o vencimento, nem a versão): não há backfill na migração');
+    ok((await sig()) === sAntes, 'prazo pela chegada: assinaturas, retorno, SECURITY INVOKER, search_path e privilégios de criar_demanda e atualizar_demanda não mudaram');
+    ok((await a.query("select relrowsecurity from pg_class where oid = 'public.demandas'::regclass")).rows[0].relrowsecurity === true, 'prazo pela chegada: a RLS de demandas continua ligada');
+    // comportamento novo sobre os dados antigos
+    const lerL = async (id) => ua('buscar_demanda', { p_id: id });
+    const l1 = await lerL(L1.id), l2 = await lerL(L2.id);
+    ok(l1.prazo_original === L1.prazo_original && l1.prazo_base_em === hoje0 && l2.prazo_original === L2.prazo_original && l2.chegou_em === null, 'prazo pela chegada: os legados com duração da regra anterior mantêm vencimento e base');
+    const e1 = await ua('atualizar_demanda', { p_id: L1.id, p: { chegou_em: '2026-10-05' } });
+    ok(e1.prazo_original === L1.prazo_original && e1.prazo_base_em === hoje0, 'prazo pela chegada: editar a chegada de um legado da regra anterior não recalcula (a base não era a chegada)');
+    const e1b = await ua('atualizar_demanda', { p_id: L1.id, p: { prazo_dias: 10 } });
+    ok(e1b.prazo_original === '2026-10-15' && e1b.prazo_base_em === '2026-10-05', 'prazo pela chegada: escolher a duração de novo conta pela chegada (05/10 + 10 = 15/10)');
+    ok((await ua('atualizar_demanda', { p_id: L2.id, p: { prazo_dias: 10 } }).then(() => '', (e) => e.message)) === 'Informe a data de chegada para calcular o prazo de 10 dias.', 'prazo pela chegada: o legado sem chegada não recebe duração sem a chegada, e a mensagem diz o que falta');
+    const e4 = await ua('atualizar_demanda', { p_id: L4.id, p: { chegou_em: '2027-03-02' } });
+    ok(e4.prazo_original === '2027-03-11' && e4.prazo_dias === null, 'prazo pela chegada: data escolhida sem chegada continua como estava depois de informar a chegada');
+    const e5 = await ua('atualizar_demanda', { p_id: L5.id, p: { chegou_em: '2026-09-03' } });
+    ok(e5.etapa === 'Finalizado' && e5.prazo_original === L5.prazo_original, 'prazo pela chegada: a finalizada do histórico não é recalculada');
+    ok((await uo('listar_demandas', {})).length === 0 && (await uo('criar_demanda', { p: { assunto: 'Outro usuário', prazo_dias: 5, chegou_em: '2027-03-01' } })).prazo_original === '2027-03-06', 'prazo pela chegada: o isolamento por usuário continua e a regra vale para cada um');
+    // cópia v4 (exportação e restauração): o prazo_tipo legado, a duração da regra anterior e a base seguem voltando exatamente como estavam
+    {
+      await ua('atualizar_demanda', { p_id: L3.id, p: { prazo_tipo: 'Legal' } });
+      const copia = JSON.parse(JSON.stringify({ formato: 'dmanda-exportacao', versao: 4, exportado_em: new Date().toISOString(), fuso: 'America/Sao_Paulo', demandas: await ua('listar_demandas', { p_arquivadas: false }), arquivadas: await ua('listar_demandas', { p_arquivadas: true }), dias_indisponiveis: [], entradas: [], entradas_arquivadas: [], eventos: [] }));
+      const SQLR = readFileSync('supabase/restaurar-copia.sql', 'utf8');
+      const N = 'e6e6e6e6-4444-4444-8444-e6e6e6e6e6e6';
+      const dest = await abrirBancoTeste({ raizMigracoes: pasta });
+      await dest.exec(texto);
+      await dest.query('insert into auth.users (id, email) values ($1, $2)', [N, 'ch-c@teste']); await dest.query('insert into dmanda_privado.acesso_autorizado (email) values ($1) on conflict do nothing', ['ch-c@teste']);
+      await dest.exec(SQLR.replace('__COLE_AQUI_O_JSON__', () => JSON.stringify(copia)));
+      const cols = 'assunto, chegou_em::text, prazo::text, prazo_original::text, prazo_dias, prazo_base_em::text, prazo_ajuste, prazo_legado, prazo_tipo, etapa';
+      const lerTudo = async (d) => JSON.stringify((await d.query(`select ${cols} from public.demandas order by assunto`)).rows);
+      const origemDados = JSON.stringify((await a.query(`select ${cols} from public.demandas where user_id = $1 order by assunto`, [U])).rows);
+      ok((await lerTudo(dest)) === origemDados && (await dest.query("select count(*)::int n from public.demandas where prazo_tipo = 'Legal'")).rows[0].n === 1, 'cópia v4 depois da migração: restaurar devolve o prazo_tipo legado, a duração da regra anterior e a base exatamente como estavam');
+      await dest.close();
+    }
+    // reaplicar é inofensivo
+    const f2 = await foto(), s2 = await sig();
+    await a.exec(texto);
+    ok((await foto()) === f2 && (await sig()) === s2, 'prazo pela chegada: aplicar de novo não muda dados, assinaturas nem privilégios');
+    // caminho de volta: reaplicar as duas funções da migração 20 restaura a regra anterior (a migração não guarda estado)
+    const m20t = readFileSync(join('supabase/migrations', m20), 'utf8');
+    const ini = m20t.indexOf('create or replace function public.criar_demanda'), fim = m20t.indexOf('-- Funções novas nascem executáveis');
+    ok(ini > 0 && fim > ini, 'prazo pela chegada: o trecho das funções antigas existe na migração 20 (o caminho de volta)');
+    await a.exec(m20t.slice(ini, fim));
+    const volta = await ua('criar_demanda', { p: { assunto: 'Volta', prazo_dias: 5 } });
+    ok(volta.prazo_base_em === hoje0 && (await sig()) === sAntes, 'prazo pela chegada: reaplicar as funções da migração 20 devolve a regra anterior (duração a partir de hoje) com as mesmas assinaturas e privilégios');
+    await a.exec(texto);
+    ok((await ua('criar_demanda', { p: { assunto: 'De novo', prazo_dias: 5, chegou_em: '2027-03-01' } })).prazo_base_em === '2027-03-01', 'prazo pela chegada: e reaplicar a migração nova volta à regra da chegada');
+    await a.close();
+  } finally { rmSync(pasta, { recursive: true, force: true }); }
 }
 
 // ---------- Para hoje com quatro vagas (decisão 80, etapa 3): migração aditiva sobre o esquema publicado (até a 20261110000000), com as três vagas já ocupadas ----------
