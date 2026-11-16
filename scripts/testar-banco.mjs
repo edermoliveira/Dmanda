@@ -718,6 +718,22 @@ ok(privSvc.map((x) => x.proname).join() === 'consumir_convite_aparelho,criar_con
     ok((await busca(fin.id)).prazo === '2027-03-11', 'finalizada: o calendário novo também não mexe no vencimento do histórico');
     await cu('excluir_dia_indisponivel', { p_id: diaFin.dia.id });
 
+    // dois comportamentos ATUAIS que dependem de decisão de produto (nada mudou na etapa 4; o teste só os registra para ninguém os alterar sem querer)
+    // 1) arquivada: o calendário a recalcula como qualquer demanda não finalizada (já era assim); a chegada, não
+    const arq2 = await nova({ prazo_original: '2027-03-08' });
+    await cu('arquivar_demanda', { p_id: arq2.id });
+    const diaArq = await dia('2027-03-08', 'Feriado depois de arquivar');
+    s = await busca(arq2.id);
+    ok(s.arquivada_em !== null && s.prazo === '2027-03-05' && /08\/03 feriado: Feriado depois de arquivar/.test(s.prazo_ajuste), 'comportamento atual: uma demanda arquivada (não finalizada) segue sendo recalculada pelo calendário, a partir do original');
+    await cu('excluir_dia_indisponivel', { p_id: diaArq.dia.id });
+    // 2) indisponibilidade prolongada: o vencimento recua sem limite inferior e pode ficar ANTES da chegada
+    const longa = await nova({ prazo_dias: 5, chegou_em: '2027-03-01' });
+    for (const d of ['2027-03-01', '2027-03-02', '2027-03-03', '2027-03-04', '2027-03-05']) await dia(d, `Recesso ${d.slice(8)}`);
+    s = await busca(longa.id);
+    ok(s.prazo_original === '2027-03-06' && s.prazo === '2027-02-26' && s.prazo < s.chegou_em, `comportamento atual: com a semana da chegada inteira indisponível, 01/03 + 5 dias (original 06/03) recua para ${s.prazo}, antes da chegada (01/03), sem aviso; decisão de produto pendente`);
+    await limparDias();
+    ok((await busca(longa.id)).prazo === '2027-03-05', 'e sem os dias indisponíveis o vencimento volta a 05/03');
+
     // isolamento: o recálculo e as chegadas são de cada usuário
     const deV = await c(V, 'criar_demanda', { p: { assunto: 'Do V', prazo_dias: 10, chegou_em: '2027-03-01' } });
     ok(deV.prazo_original === '2027-03-11' && (await cu('listar_demandas', {})).every((y) => y.id !== deV.id), 'RLS: a demanda por duração de V não aparece para U');
@@ -1857,6 +1873,22 @@ ok(privSvc.map((x) => x.proname).join() === 'consumir_convite_aparelho,criar_con
     await serv('exigir_aparelhos', { p_exigir: false });
     ok((await em(U, S1, 'listar_demandas', { p_arquivadas: false })).length === 3 && (await em(U, S3, 'listar_demandas', { p_arquivadas: false })).length === 3, 'aparelhos (rollback): com a exigência desligada tudo volta ao que era, inclusive para sessões revogadas (o conta_autorizada de antes)');
     ok((await em(O, S1, 'listar_demandas', { p_arquivadas: false })).length === 0, 'aparelhos: a lista protegida de e-mails continua valendo com a exigência desligada');
+    // proposta de reversão das etapas 3 a 5 (supabase/propostas): aplicada no banco completo devolve o comportamento das migrações anteriores, sem apagar demandas
+    {
+      const rev = readFileSync('supabase/propostas/reverter_migracoes_etapas_3_a_5.sql', 'utf8');
+      const ids = []; for (let i = 0; i < 4; i++) ids.push((await em(U, S3, 'criar_demanda', { p: { assunto: `Para as vagas ${i}` } })).id);
+      ok((await em(U, S3, 'atualizar_para_hoje', { p_candidatas: ids })).length === 4, 'reversão (antes): o banco completo preenche quatro vagas');
+      const totalAntes = (await sqlq('select count(*)::int n from public.demandas'))[0].n;
+      await a.exec(rev);
+      await a.query("update dmanda_privado.config_acesso set exigir_aparelho = true");
+      ok((await em(U, 'cc050000-0000-4000-8000-000000000005', 'listar_demandas', { p_arquivadas: false })).length === totalAntes, 'reversão: conta_autorizada volta ao que era (uma sessão sem registro lê, mesmo com a chave ligada) e nenhuma demanda foi apagada');
+      await a.query("update dmanda_privado.config_acesso set exigir_aparelho = false");
+      const velha = await em(U, S3, 'criar_demanda', { p: { assunto: 'Regra anterior', prazo_dias: 5, chegou_em: '2020-01-02' } });
+      ok(velha.prazo_base_em === (await sqlq('select public.hoje()::text h'))[0].h && !(await erroDe(em(U, S3, 'criar_demanda', { p: { assunto: 'Sem chegada', prazo_dias: 5 } }))), 'reversão: a duração volta a contar a partir de hoje, também sem chegada');
+      ok((await em(U, S3, 'listar_para_hoje')).length === 3 && /check/i.test(await a.query(`insert into public.para_hoje (user_id, posicao, demanda_id) values ('${U}', 4, '${ids[3]}')`).then(() => '', (e) => e.message)), 'reversão: o Para hoje volta a três vagas e a quarta posição é recusada de novo');
+      await a.exec(texto.slice(texto.indexOf('-- ---------- a decisão de acesso'))); // reaplica as funções da migração 18 sobre o banco revertido: o caminho de ida continua funcionando
+      ok((await sqlq('select exigir_aparelho from dmanda_privado.config_acesso'))[0].exigir_aparelho === false, 'reversão: reaplicar a migração dos aparelhos depois não quebra');
+    }
     // reaplicar é inofensivo e não apaga registros
     const antes = JSON.stringify([await sqlq('select * from dmanda_privado.aparelhos order by id'), await sqlq('select * from dmanda_privado.config_acesso')]);
     await a.exec(texto.slice(texto.indexOf('-- ---------- a decisão de acesso')));
