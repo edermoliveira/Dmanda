@@ -99,7 +99,7 @@ function useArrasto(aoLado: (lado: Lado) => boolean | void, desligado: boolean) 
 }
 
 type Acao = { rotulo: string; executar: () => void; desabilitado?: boolean };
-type AcaoDireita = { rotulo: string; executar: (ancora: HTMLElement | null) => void; desabilitado?: boolean; animar?: boolean; menu?: boolean; icone?: string };
+type AcaoDireita = { rotulo: string; /** Texto visível do botão quando é mais curto que o rótulo da dica do gesto (a dica mantém o rótulo). */ curto?: string; /** Nome acessível do botão quando o texto visível não diz tudo (começa pelo texto visível). */ descricao?: string; executar: (ancora: HTMLElement | null) => void; desabilitado?: boolean; animar?: boolean; menu?: boolean; icone?: string };
 type Props = {
   nome: string;
   ordem: string[];
@@ -179,14 +179,12 @@ export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado
       </div>
       {rodape ?? (
         <>
-          <div className="ph-botoes" role="group" aria-label="Navegar pelos cards">
-            <button type="button" className="btn mini" data-pilha-passar aria-disabled={bloqueadoEsq || undefined} onClick={() => { if (!bloqueadoEsq) irEsquerda(); }}><Icone nome="chevron-right" />{esquerda.rotulo}</button>
-            <button ref={botaoDireita} type="button" className="btn mini pri" data-pilha-avancar aria-haspopup={direita.menu ? 'menu' : undefined} aria-disabled={bloqueadoDir || undefined} onClick={() => { if (!bloqueadoDir) irDireita(); }}>{direita.rotulo}<Icone nome={direita.icone ?? 'chevron-right'} /></button>
+          <div className="ph-botoes" role="group" aria-label="Ações do card">
+            <button type="button" className="btn mini" data-pilha-passar aria-disabled={bloqueadoEsq || undefined} onClick={() => { if (!bloqueadoEsq) irEsquerda(); }}><Icone nome="chevron-right" /><span>{esquerda.rotulo}</span></button>
+            <button type="button" className="btn mini" data-pilha-abrir aria-label="Abrir a demanda" onClick={() => abrirJanela({ t: 'editar', id: ativa.id })}><Icone nome="pencil" /><span>Abrir</span></button>
+            <button ref={botaoDireita} type="button" className="btn mini pri" data-pilha-avancar aria-label={direita.descricao} aria-haspopup={direita.menu ? 'menu' : undefined} aria-disabled={bloqueadoDir || undefined} onClick={() => { if (!bloqueadoDir) irDireita(); }}><span>{direita.curto ?? direita.rotulo}</span><Icone nome={direita.icone ?? 'chevron-right'} /></button>
           </div>
-          <div className="ph-meta">
-            <span className="ph-posicao data" aria-live="polite">1 de {total}</span>
-            <button type="button" className="btn mini" data-pilha-abrir onClick={() => abrirJanela({ t: 'editar', id: ativa.id })}><Icone nome="pencil" />Abrir a demanda</button>
-          </div>
+          <div className="ph-meta"><span className="ph-posicao data" aria-live="polite">1 de {total}</span></div>
         </>
       )}
       <p className="sr-only" role="status" aria-live="polite">{aviso}</p>

@@ -94,6 +94,7 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
   if (!ativa) return null;
   const d = ativa, destino = ETAPA_SEGUINTE[d.etapa];
   const rotuloAvancar = etapaDeEspera(d.etapa) ? 'Escolher a etapa' : destino ? (destino === 'Finalizado' ? 'Finalizar' : `Avançar para ${destino}`) : 'Sem etapa seguinte';
+  const descricaoAvancar = etapaDeEspera(d.etapa) ? 'escolher a etapa' : destino ? (destino === 'Finalizado' ? 'finalizar' : `para ${destino}`) : 'sem etapa seguinte';
   const rodape = confirmarAtivo ? (
     <div className="ph-confirma" role="alertdialog" aria-label="Finalizar a demanda" data-confirma-finalizar>
       <p>Ao finalizar, {confirmarAtivo.pendentes === 1 ? '1 tarefa pendente será marcada' : `${confirmarAtivo.pendentes} tarefas pendentes serão marcadas`} como concluída{confirmarAtivo.pendentes === 1 ? '' : 's'}.</p>
@@ -106,7 +107,7 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
   return (
     <Baralho nome="Para hoje" ordem={ordem} porId={porId} vagaDe={vagaDe} aviso={aviso} travado={ocupado || !!confirmarAtivo} rodape={rodape}
       esquerda={{ rotulo: 'Passar para o fim', executar: passar }}
-      direita={{ rotulo: rotuloAvancar, executar: avancar, desabilitado: !destino && !etapaDeEspera(d.etapa), menu: etapaDeEspera(d.etapa) }} />
+      direita={{ rotulo: rotuloAvancar, curto: 'Avançar etapa', descricao: `Avançar etapa: ${descricaoAvancar}`, executar: avancar, desabilitado: !destino && !etapaDeEspera(d.etapa), menu: etapaDeEspera(d.etapa) }} />
   );
 }
 
