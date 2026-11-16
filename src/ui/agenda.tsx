@@ -238,7 +238,7 @@ function PainelDiasCheios({ pan, aoVer, rotulo, indisponivel = false }: { pan: R
   if (indisponivel) return <section className="agd-painel agd-aux" aria-labelledby="agd-cheios-t" data-vazio="sim" data-indisponivel="sim"><header className="agd-cab agd-cab-aux"><h3 id="agd-cheios-t">Onde {rotulo} aperta</h3></header><p className="agd-vazio">{INDISPONIVEL}</p></section>;
   return (
     <section className="agd-painel agd-aux" aria-labelledby="agd-cheios-t" data-vazio={pan.cheios.length ? undefined : 'sim'}>
-      <header className="agd-cab agd-cab-aux"><h3 id="agd-cheios-t">Onde {rotulo} aperta</h3>{pan.cheios.length ? <span className="agd-qtd" title="Dias de carga média ou alta de hoje em diante, para antecipar ou redistribuir o trabalho"><span className="sr-only">{plural(pan.cheios.length, 'dia')} de carga média ou alta</span><span aria-hidden="true">{pan.cheios.length}</span></span> : null}</header>
+      <header className="agd-cab agd-cab-aux"><h3 id="agd-cheios-t">Onde {rotulo} aperta</h3>{pan.cheios.length ? <span className="agd-qtd" title="Dias de carga média ou alta, para antecipar ou redistribuir o trabalho"><span className="sr-only">{plural(pan.cheios.length, 'dia')} de carga média ou alta</span><span aria-hidden="true">{pan.cheios.length}</span></span> : null}</header>
       {pan.cheios.length ? (
         <ul className="agd-lista">
           {pan.cheios.map((c) => {
@@ -247,7 +247,7 @@ function PainelDiasCheios({ pan, aoVer, rotulo, indisponivel = false }: { pan: R
               <li key={c.data}>
                 <button type="button" className="agd-linha agd-linha-carga" data-nivel={nivel} onClick={() => aoVer(c.data)}>
                   <span className="agd-linha-topo"><b className="agd-linha-data">{maiuscula(dataPorExtenso(c.data))}</b><span className="agd-chip" data-nivel={nivel} title={ROTULO_NIVEL[nivel]}>{plural(c.carga, 'pendência')}<span className="sr-only"> ({ROTULO_NIVEL[nivel]})</span></span></span>
-                  <small className="agd-linha-sug">{c.sugestao ? c.sugestao : 'Nenhum dia próximo está mais leve.'}</small>
+                  {c.sugestao || c.buscou ? <small className="agd-linha-sug">{c.sugestao ?? 'Nenhum dia próximo está mais leve.'}</small> : null}
                 </button>
               </li>
             );

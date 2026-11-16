@@ -191,7 +191,8 @@ export function descreverDia(data: string, o: { carga?: CargaDia; eventos: numbe
 }
 
 // ---------- panorama do período ----------
-export type DiaCheio = { data: string; carga: number; sugestao: string | null };
+/** `buscou`: a busca por um dia mais leve foi feita (dias de hoje em diante). Nos dias passados não há busca nem sugestão, e a tela não diz que "nenhum dia está mais leve". */
+export type DiaCheio = { data: string; carga: number; sugestao: string | null; buscou: boolean };
 export type Panorama = { pendencias: number; demandas: number; atrasadas: number; compromissos: number; cheios: DiaCheio[] };
 /** Dia útil sem feriado ou evento externo (para sugerir uma data de alívio). */
 const disponivel = (data: string, indisponiveis: readonly DiaIndisponivel[]) => !fimDeSemana(data) && !indisponiveis.some((x) => x.data === data);
@@ -219,10 +220,10 @@ export function panorama(carga: ReadonlyMap<string, CargaDia>, eventos: readonly
   for (const [data, c] of carga) {
     if (data < de || data > ate) continue;
     pendencias += c.carga; demandas += c.demandas; if (c.atrasada) atrasadas += c.demandas;
-    // Dias que já passaram continuam no calendário e nos totais (carga e atrasos), mas não recebem recomendação de planejamento: não há mais o que reorganizar neles.
-    if (c.carga >= LIMIARES_CARGA.media && data >= hoje) {
-      const alvo = diaMaisLivre(data, carga, indisponiveis, hoje);
-      cheios.push({ data, carga: c.carga, sugestao: alvo ? sugestaoDeAlivio(data, alvo, carga.get(alvo)?.carga ?? 0) : null });
+    // Dias que já passaram entram na lista (carga e atrasos continuam à vista), mas sem busca nem sugestão de planejamento: não há mais o que reorganizar neles.
+    if (c.carga >= LIMIARES_CARGA.media) {
+      const buscou = data >= hoje, alvo = buscou ? diaMaisLivre(data, carga, indisponiveis, hoje) : null;
+      cheios.push({ data, carga: c.carga, sugestao: alvo ? sugestaoDeAlivio(data, alvo, carga.get(alvo)?.carga ?? 0) : null, buscou });
     }
   }
   cheios.sort((a, b) => b.carga - a.carga || a.data.localeCompare(b.data));

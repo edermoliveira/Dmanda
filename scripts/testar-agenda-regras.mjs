@@ -133,7 +133,8 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
   ok(semAlvo.cheios.length === 3 && semAlvo.cheios.every((x) => x.sugestao === null), 'sem nenhum dia mais leve por perto: o dia cheio continua listado e a sugestão é nula (a tela diz que nenhum dia próximo está mais leve)');
   const passado = new Map([['2026-11-13', { carga: 9, demandas: 4, atrasada: true }], ['2026-11-15', { carga: 5, demandas: 2, atrasada: false }], ['2026-11-16', { carga: 0, demandas: 0, atrasada: false }]]);
   const pas = panorama(passado, [], [], '2026-11-15', '2026-11-01', '2026-11-30');
-  ok(pas.cheios.map((x) => x.data).join() === '2026-11-15' && pas.pendencias === 14 && pas.demandas === 6 && pas.atrasadas === 4, 'dia passado: não vira recomendação, mas a carga e o atraso dele continuam nos totais do período; hoje ainda recebe sugestão');
+  ok(pas.cheios.map((x) => x.data).join() === '2026-11-13,2026-11-15' && pas.cheios[0].sugestao === null && pas.cheios[0].buscou === false && pas.cheios[1].buscou === true && /redistribuir/.test(pas.cheios[1].sugestao) && pas.pendencias === 14 && pas.atrasadas === 4, 'dia passado: entra na lista pela carga, sem busca nem sugestão (buscou=false); hoje recebe a busca e a sugestão; os totais não mudam');
+  ok(semAlvo.cheios.every((x) => x.buscou === true), 'dia de hoje em diante sem alvo mais leve: a busca foi feita (a tela pode dizer que nenhum dia próximo está mais leve)');
   ok(JSON.stringify([...cc]) === antes, 'a sugestão não altera a carga nem os dados recebidos');
 }
 
