@@ -82,7 +82,7 @@ const arrastar = (pg, sel, dx, soltar) => pg.evaluate(async ({ sel, dx, soltar }
   const p = el.closest('.ph-pilha');
   const faces = [...p.querySelectorAll('.ph-atras[data-face]')].map((f) => { const c = f.querySelector('.face.front'); return { lado: f.dataset.face, vis: getComputedStyle(f).visibility, op: parseFloat(getComputedStyle(f.querySelector('.vaga')).opacity), titulo: f.querySelector('.assunto')?.textContent.trim(), inert: f.inert, pe: getComputedStyle(f).pointerEvents, cor: c ? ([...c.classList].find((k) => k.startsWith('cat-')) ?? '') : null }; });
   const frente = { titulo: el.querySelector('.assunto')?.textContent.trim(), cor: [...el.querySelector('.face.front').classList].find((k) => k.startsWith('cat-')) ?? '', x: el.getBoundingClientRect().left - r.left };
-  const estado = { revela: p.dataset.revela ?? null, prog: parseFloat(p.style.getPropertyValue('--prog') || '0'), faces, frente };
+  const estado = { revela: p.dataset.revela ?? null, prog: parseFloat(p.querySelector('.ph-atras')?.style.getPropertyValue('--prog') || '0'), faces, frente };
   if (soltar !== 'nao') ev('pointerup', x + dx);
   return estado;
 }, { sel, dx, soltar });

@@ -1,3 +1,9 @@
+/* Variáveis do arrasto (decisão 78): registradas sem herança. Uma propriedade personalizada comum herda, então escrever --prog, --ph-dx ou --ph-rot a cada movimento do dedo reestilizava toda a subárvore
+   (o card da frente e os dois cards de fundo inteiros). Registrada com inherits: false, só o elemento que a recebe é reestilizado; quem lê o valor recebe o valor nele mesmo (baralho.tsx, definirProg).
+   Navegadores sem @property ignoram o registro e o comportamento volta ao de antes (correto, só mais lento). */
+@property --prog { syntax: '<number>'; inherits: false; initial-value: 0; }
+@property --ph-dx { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --ph-rot { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 /* ---------- Início: baralho do celular (decisão 65, aprovado na prévia 887b116, decisão 67) ----------
    Portado da branch bloco/inicio-perfil-clima em 14/11/2026 só com o que o baralho precisa: o Para hoje, a Nova urgência e as listas de cards do Início viram uma pilha abaixo de 520 px de
    largura do painel; no computador e no iPad a grade de cards da main não muda. Cores só por tokens. */
@@ -7,7 +13,7 @@
    frente é remontado a cada troca e era o único filho com altura; sem a reserva a página ficava um card mais curta por um layout e, no WebKit, a rolagem era cortada (a tela saltava; decisão 75). */
 .app[data-dir="d"] .ph-pilha { --ph-degrau: 11px; --ph-fundo: calc(var(--ph-degrau) * 2); display: grid; gap: 10px; }
 .app[data-dir="d"] .ph-palco { position: relative; padding-bottom: var(--ph-fundo); min-height: calc(var(--cardh, 340px) + var(--ph-fundo)); }
-.app[data-dir="d"] .ph-arrasto { position: relative; z-index: 2; touch-action: pan-y; transform: translateX(var(--dx, 0px)) rotate(var(--rot, 0deg)); transform-origin: 50% 90%; transition: transform .26s var(--suave, ease-out), opacity .26s ease-out; will-change: transform; }
+.app[data-dir="d"] .ph-arrasto { position: relative; z-index: 2; touch-action: pan-y; transform: translateX(var(--ph-dx, 0px)) rotate(var(--ph-rot, 0deg)); transform-origin: 50% 90%; transition: transform .26s var(--suave, ease-out), opacity .26s ease-out; will-change: transform; }
 .app[data-dir="d"] .ph-arrasto[data-arrastando] { transition: none; }
 .app[data-dir="d"] .ph-arrasto .vaga { min-width: 0; }
 .app[data-dir="d"] .ph-pilha[data-saindo="esq"] .ph-arrasto { transform: translateX(-125%) rotate(-16deg); opacity: 0; }

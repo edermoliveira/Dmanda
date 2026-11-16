@@ -40,6 +40,11 @@ const TEMPO_SAIDA = 260;
 
 type Lado = 'esq' | 'dir';
 /**
+ * `--prog` (0 a 1) só é lido pelos cards de trás (a posição de cada um) e pela camada `.vaga` dos cards revelados (a opacidade). Escrito neles, e não na pilha, a cada movimento do dedo o navegador
+ * não reestiliza o card da frente nem os cards de fundo inteiros (propriedade personalizada comum herda para toda a subárvore; ver o @property em inicio.css, decisão 78).
+ */
+const definirProg = (pilha: HTMLElement, v: string) => pilha.querySelectorAll<HTMLElement>('.ph-atras, .ph-atras[data-face] > .vaga').forEach((e) => e.style.setProperty('--prog', v));
+/**
  * Arrasto horizontal com o dedo (ou a caneta). O gesto só começa quando o movimento é claramente horizontal; a rolagem vertical continua do navegador. Um deslize curto ou cancelado volta ao lugar.
  * Depois de um arrasto o clique seguinte é engolido (não abre a demanda, não marca tarefa, não vira o card). `aoLado` devolve true quando assume a saída do card (ele então fica onde está).
  */
@@ -51,13 +56,13 @@ function useArrasto(aoLado: (lado: Lado) => boolean | void, desligado: boolean) 
   const aplicar = (dx: number) => {
     const el = ref.current; if (!el) return;
     const w = largura(), prog = Math.min(1, Math.abs(dx) / Math.max(72, w * 0.22));
-    el.style.setProperty('--dx', `${dx}px`); el.style.setProperty('--rot', `${Math.max(-14, Math.min(14, (dx / w) * 18)).toFixed(2)}deg`);
+    el.style.setProperty('--ph-dx', `${dx}px`); el.style.setProperty('--ph-rot', `${Math.max(-14, Math.min(14, (dx / w) * 18)).toFixed(2)}deg`);
     const pilha = el.closest<HTMLElement>('.ph-pilha');
-    pilha?.style.setProperty('--prog', prog.toFixed(3));
+    if (pilha) definirProg(pilha, prog.toFixed(3));
     if (pilha) { if (Math.abs(dx) >= 4) pilha.dataset.revela = dx < 0 ? 'esq' : 'dir'; else delete pilha.dataset.revela; }
     if (prog >= 1) el.dataset.lado = dx < 0 ? 'esq' : 'dir'; else delete el.dataset.lado;
   };
-  const zerar = () => { const el = ref.current; if (el) { delete el.dataset.arrastando; delete el.dataset.lado; el.style.setProperty('--dx', '0px'); el.style.setProperty('--rot', '0deg'); const p = el.closest<HTMLElement>('.ph-pilha'); p?.style.setProperty('--prog', '0'); if (p) delete p.dataset.revela; } };
+  const zerar = () => { const el = ref.current; if (el) { delete el.dataset.arrastando; delete el.dataset.lado; el.style.setProperty('--ph-dx', '0px'); el.style.setProperty('--ph-rot', '0deg'); const p = el.closest<HTMLElement>('.ph-pilha'); if (p) { definirProg(p, '0'); delete p.dataset.revela; } } };
   const final = () => { zerar(); est.current = null; };
   return {
     ref,
@@ -133,7 +138,7 @@ export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado
 
   const sair = useCallback((lado: Lado, depois: () => void) => {
     if (trava.current) return;
-    const limpar = () => { const p = pilhaRef.current; if (p) { p.style.setProperty('--prog', '0'); delete p.dataset.revela; } };
+    const limpar = () => { const p = pilhaRef.current; if (p) { definirProg(p, '0'); delete p.dataset.revela; } };
     if (movimentoReduzido()) { depois(); limpar(); return; }
     trava.current = true; setSaindo(lado);
     setTimeout(() => {

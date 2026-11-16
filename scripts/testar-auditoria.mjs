@@ -199,6 +199,42 @@ for (const [largura, tema] of [[390, 'celular'], [1360, 'computador']]) for (con
   await ctx.close();
 }
 
+// ================= 3) arrasto: as variáveis ficam só em quem as lê (@property sem herança) e continuam corretas sem o suporte =================
+/** Segura o arrasto a `dx` px, lê o estado e solta (curto: o card volta). `semRegistro`: remove as regras @property antes, para imitar um navegador sem suporte. */
+const arrastoMedido = (pg, dx, semRegistro) => pg.evaluate(async ({ sel, dx, semRegistro }) => {
+  if (semRegistro) for (const f of document.styleSheets) { let r; try { r = f.cssRules; } catch { continue; } for (let i = r.length - 1; i >= 0; i--) if (r[i].constructor.name === 'CSSPropertyRule') f.deleteRule(i); }
+  const p = document.querySelector(sel), el = p.querySelector('.ph-arrasto'), r0 = el.getBoundingClientRect(), y = r0.top + r0.height * 0.45, x = r0.left + r0.width / 2; el.setPointerCapture = () => {};
+  const ev = (t, px) => el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 9, pointerType: 'touch', isPrimary: true, clientX: px, clientY: y }));
+  ev('pointerdown', x); for (let i = 1; i <= 8; i++) { ev('pointermove', x + (dx * i) / 8); await new Promise((r2) => setTimeout(r2, 16)); }
+  await new Promise((r2) => requestAnimationFrame(() => requestAnimationFrame(r2)));
+  const face = p.querySelector('.ph-atras[data-face]'), nivel2 = p.querySelector('.ph-atras:not([data-face])'), card = el.querySelector('.dcard');
+  const durante = { progNaPilha: p.style.getPropertyValue('--prog'), progFace: parseFloat(face.style.getPropertyValue('--prog') || '0'), progVaga: parseFloat(face.querySelector('.vaga').style.getPropertyValue('--prog') || '0'), opVaga: parseFloat(getComputedStyle(face.querySelector('.vaga')).opacity), frenteX: Math.round(el.getBoundingClientRect().left - r0.left), dxNoCard: getComputedStyle(card).getPropertyValue('--ph-dx').trim(), dxNoCardFundo: getComputedStyle(face.querySelector('.dcard')).getPropertyValue('--prog').trim(), revela: p.dataset.revela ?? null, nivel2: nivel2 ? getComputedStyle(nivel2).transform : null };
+  ev('pointerup', x + dx); await new Promise((r2) => setTimeout(r2, 500));
+  const depois = { frenteX: Math.round(el.getBoundingClientRect().left - r0.left), progFace: parseFloat(face.style.getPropertyValue('--prog') || '0'), revela: p.dataset.revela ?? null, total: p.dataset.total };
+  return { durante, depois };
+}, { sel: NU, dx, semRegistro });
+for (const [nome, motor, device] of [['Edge', edge, null], ...(wk ? [['WebKit emulado', wk, 'iPhone 13']] : [])]) for (const semRegistro of [false, true]) {
+  const R = `${nome}, ${semRegistro ? 'sem @property (fallback)' : 'com @property'}`;
+  const { ctx, pg } = await abrir(motor, { device });
+  await aoCentro(pg, NU);
+  const total0 = await pg.$eval(NU, (e) => e.dataset.total), ordem0 = await topo(pg, NU);
+  const a = await arrastoMedido(pg, -50, semRegistro);
+  ok(a.durante.progNaPilha === '' && a.durante.progFace > 0.4 && a.durante.progVaga > 0.4, `${R}: --prog é escrito nos cards de fundo (${a.durante.progFace}) e na camada revelada (${a.durante.progVaga}), e não na pilha`);
+  ok(a.durante.opVaga > 0.9 && a.durante.frenteX < -40 && a.durante.revela === 'esq', `${R}: o próximo card aparece (opacidade ${a.durante.opVaga}) enquanto o da frente acompanha o dedo (${a.durante.frenteX} px)`);
+  if (!semRegistro) ok(a.durante.dxNoCard === '0px' && a.durante.dxNoCardFundo === '0', `${R}: o valor do arrasto não herda para dentro dos cards (--ph-dx no card: ${a.durante.dxNoCard}; --prog no card de fundo: ${a.durante.dxNoCardFundo})`);
+  ok(a.depois.frenteX === 0 && a.depois.progFace === 0 && a.depois.revela === null && a.depois.total === total0 && (await topo(pg, NU)) === ordem0, `${R}: soltar um gesto curto devolve o card (x ${a.depois.frenteX}), zera --prog (${a.depois.progFace}) e não muda a ordem`);
+  // cancelar (o navegador tomou o gesto para rolar) devolve tudo
+  const c = await pg.evaluate(async (sel) => { const p = document.querySelector(sel), el = p.querySelector('.ph-arrasto'), r0 = el.getBoundingClientRect(), y = r0.top + r0.height * .45, x = r0.left + r0.width / 2; el.setPointerCapture = () => {}; const ev = (t, px) => el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 11, pointerType: 'touch', isPrimary: true, clientX: px, clientY: y })); ev('pointerdown', x); for (let i = 1; i <= 6; i++) { ev('pointermove', x - 8 * i); await new Promise((r2) => setTimeout(r2, 16)); } ev('pointercancel', x - 48); await new Promise((r2) => setTimeout(r2, 650)); return { x: Math.round(el.getBoundingClientRect().left - r0.left), prog: parseFloat(p.querySelector('.ph-atras').style.getPropertyValue('--prog') || '0'), revela: p.dataset.revela ?? null }; }, NU);
+  ok(Math.abs(c.x) <= 2 && c.prog === 0 && c.revela === null, `${R}: o gesto cancelado pelo navegador devolve o card e zera o que foi revelado (${JSON.stringify(c)})`);
+  // gesto completo: assume a frente o card revelado
+  const t0 = await topo(pg, NU);
+  const full = await pg.evaluate(async (sel) => { const p = document.querySelector(sel), el = p.querySelector('.ph-arrasto'), r0 = el.getBoundingClientRect(), y = r0.top + r0.height * .45, x = r0.left + r0.width / 2; el.setPointerCapture = () => {}; const ev = (t, px) => el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, pointerId: 12, pointerType: 'touch', isPrimary: true, clientX: px, clientY: y })); ev('pointerdown', x); for (let i = 1; i <= 10; i++) { ev('pointermove', x - 19 * i); await new Promise((r2) => setTimeout(r2, 16)); } const rev = p.querySelector('.ph-atras[data-face] .assunto')?.textContent.trim(); ev('pointerup', x - 190); await new Promise((r2) => setTimeout(r2, 700)); return { rev, frente: p.querySelector('.ph-arrasto .assunto').textContent.trim() }; }, NU);
+  ok(full.rev === full.frente && full.frente !== t0, `${R}: o gesto completo leva à frente exatamente o card revelado ("${full.frente.slice(0, 18)}")`);
+  await pg.$eval('.main', (m) => { m.scrollTop = 0; }); await esperar(100); await pg.$eval('.main', (m) => { m.scrollTop += 120; }); await esperar(150);
+  ok((await pg.evaluate(() => document.querySelector('.main').scrollTop)) > 60, `${R}: a rolagem vertical continua livre depois dos gestos`);
+  await ctx.close();
+}
+
 ok(erros.length === 0, 'nenhum erro de console ou de página' + (erros.length ? `: ${erros.slice(0, 3).join(' | ')}` : ''));
 await edge.close(); if (wk) await wk.close(); parar();
 console.log(falhas ? `\n${falhas} verificação(ões) falharam de ${total}.` : `\nTudo certo: ${total} verificações.`);
