@@ -72,19 +72,22 @@
 .app[data-dir="d"] .ph-pilha .dcard .chips { flex-wrap: wrap; }
 .app[data-dir="d"] .ph-pilha .dcard .chips .pz { max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
 
-/* Demandas, visão Cards, por categoria (decisão 77): cada grupo com a cor do próprio card; "Na fila" do Para hoje ao lado da Nova urgência */
+/* Demandas, visão Cards: nove seções temáticas (decisão 80), cada uma com a cor da classificação e a faixa de cards própria (a mesma faixa da Urgência do Início) */
 .app[data-dir="d"] .grupos-cards { display: grid; gap: 22px; min-width: 0; }
 .app[data-dir="d"] .grupo-cards { min-width: 0; }
+.app[data-dir="d"] .secao-cards { container: nova-urg / inline-size; }
 .app[data-dir="d"] .grupo-cab { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
 .app[data-dir="d"] .grupo-cor { flex: none; width: 12px; height: 12px; border-radius: 4px; background: var(--text2); }
 .app[data-dir="d"] .grupo-cards[data-cor="azul"] .grupo-cor { background: var(--cat-azul); box-shadow: inset 0 0 0 1px var(--brd); }
 .app[data-dir="d"] .grupo-cards[data-cor="verde"] .grupo-cor { background: var(--cat-verde); box-shadow: inset 0 0 0 1px var(--brd); }
 .app[data-dir="d"] .grupo-cards[data-cor="amar"] .grupo-cor { background: var(--cat-amar); box-shadow: inset 0 0 0 1px var(--brd); }
-.app[data-dir="d"] .fila-hoje { margin-top: 14px; }
-.app[data-dir="d"] .fila-hoje h4 { margin: 0 0 8px; font-size: calc(14px * var(--esc)); color: var(--text); }
-.app[data-dir="d"] .fila-hoje h4 small { font-weight: 400; color: var(--text2); }
+.app[data-dir="d"] .dcard .nota-fila { margin: -2px 0 6px; }
+/* a Urgência sem urgências (só os próximos vencimentos, ou vazia) não usa o fundo de alerta: vermelho só para atrasado ou crítico */
+.app[data-dir="d"] .nova-urgencia[data-proximos], .app[data-dir="d"] .nova-urgencia[data-vazia] { background: transparent; box-shadow: inset 0 0 0 1px var(--card-brd); }
 
 /* Cabeçalho do Para hoje (etapa 2): o título numa só linha e, ao lado, o botão de informação (decisão 66, componente Ajuda); o balão abre por clique, toque, Enter ou Espaço, e fecha com Esc ou fora. */
+/* a grade das vagas ocupa a linha inteira: item flex sem largura tomava a de uma coluna (as quatro vagas ficavam empilhadas em computador e iPad) */
+.app[data-dir="d"] .ph > .cards { flex: 1 1 100%; min-width: 0; }
 .app[data-dir="d"] .ph > h3 { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; margin-bottom: 10px; flex: 1 1 100%; min-width: 0; }
 .app[data-dir="d"] .ph > h3 > span { white-space: nowrap; }
 .app[data-dir="d"] .ajuda { position: relative; display: inline-flex; }

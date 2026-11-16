@@ -12,8 +12,9 @@ import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { CardDemanda } from './cartoes';
 import { gestoValido, ordemDaPilha, ultimoParaAFrente, ativoParaOFim } from '@/lib/para-hoje';
-import { plural, type Demanda } from '@/lib/demandas';
-import { agruparPorCategoria } from '@/lib/fila';
+import { permanencia, plural, type Demanda } from '@/lib/demandas';
+import { montarSecoes } from '@/lib/secoes-cards';
+import { Ajuda } from './ajuda';
 
 export type Modo = 'grade' | 'pilha';
 /** Largura do painel em px de layout (não de fonte): abaixo de 520 é celular (pilha); acima, a grade de cards de sempre (computador e iPad seguem como na main). */
@@ -113,9 +114,11 @@ type Props = {
   /** Troca a linha de botões (por exemplo, a confirmação de finalizar). */
   rodape?: ReactNode;
   aviso?: string;
+  /** Observações por card (por exemplo, "Sem data de chegada" na fila "Aguardando há mais tempo"). */
+  notas?: ReadonlyMap<string, string>;
 };
 
-export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado = false, rodape, aviso }: Props) {
+export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado = false, rodape, aviso, notas }: Props) {
   const { abrirJanela } = useApp();
   const [saindo, setSaindo] = useState<Lado | null>(null);
   const [volta, setVolta] = useState<string | null>(null);
@@ -160,7 +163,7 @@ export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado
   // os cards que podem assumir a frente: o próximo (esquerda) e, quando a direita é "voltar ao anterior", o último da ordem (com só dois cards os dois lados revelam o mesmo)
   const proximo = total >= 2 ? porId.get(ordem[1]) : undefined, anterior = navDir && total >= 3 ? porId.get(ordem[total - 1]) : undefined;
   const atras = ordem.slice(2, 3), fantasma = volta && total >= 4 ? porId.get(volta) : undefined;
-  const face = (d: Demanda, lado: 'esq' | 'dir' | 'ambos') => <div key={`face-${lado}`} className="ph-atras" data-nivel="1" data-face={lado} aria-hidden="true" inert><div className="vaga"><CardDemanda d={d} mostrarRapida lado="frente" /></div></div>;
+  const face = (d: Demanda, lado: 'esq' | 'dir' | 'ambos') => <div key={`face-${lado}`} className="ph-atras" data-nivel="1" data-face={lado} aria-hidden="true" inert><div className="vaga"><CardDemanda d={d} mostrarRapida lado="frente" nota={notas?.get(d.id)} /></div></div>;
   return (
     <div ref={pilhaRef} className="ph-pilha" data-pilha data-total={total} data-saindo={saindo ?? undefined} data-nav-dir={navDir || undefined} aria-label={nome} role="group">
       <div className="ph-palco">
@@ -170,7 +173,7 @@ export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado
           <span className="ph-dica ph-dica-esq" aria-hidden="true">{esquerda.rotulo}</span>
           <span className="ph-dica ph-dica-dir" aria-hidden="true">{direita.rotulo}</span>
           <div className="vaga" {...(vagaDe?.(ativoId) !== undefined ? { 'data-vaga': vagaDe(ativoId) } : {})} data-ativo>
-            <CardDemanda d={ativa} mostrarRapida lado={verso ? 'verso' : 'frente'} aoGirar={(para) => setVirado({ id: ativoId, verso: para === 'verso' })} />
+            <CardDemanda d={ativa} mostrarRapida lado={verso ? 'verso' : 'frente'} nota={notas?.get(ativa.id)} aoGirar={(para) => setVirado({ id: ativoId, verso: para === 'verso' })} />
           </div>
         </div>
         {/* depois do card da frente no documento: quem procura o card pelo id encontra primeiro o da frente; a sobreposição é do CSS */}
@@ -192,46 +195,76 @@ export function Baralho({ nome, ordem, porId, vagaDe, esquerda, direita, travado
   );
 }
 
-/**
- * Cards de demanda das seções do Início (os filtros Atrasadas, Vencem hoje e Próximos 7 dias): no celular viram um baralho com a ordem só em memória (volta ao normal ao recarregar); nas demais
- * larguras ficam como eram (a grade de cards). Esquerda manda o card ao fim da ordem visual; direita volta ao anterior. A etapa muda pelos controles que o card já tem.
- */
-export function CardsDeDemandas({ lista, classe = 'cards' }: { lista: Demanda[]; classe?: string }) {
-  const secao = useRef<HTMLDivElement>(null);
-  const modo = useModo(secao);
-  return <div ref={secao} className="cartas" data-modo={modo}>{modo === 'pilha' && lista.length ? <BaralhoSimples lista={lista} /> : <div className={classe}>{lista.map((d) => <CardDemanda key={d.id} d={d} />)}</div>}</div>;
-}
-
-export function BaralhoSimples({ lista, nome = 'Demandas' }: { lista: Demanda[]; nome?: string }) {
+export function BaralhoSimples({ lista, nome = 'Demandas', notas }: { lista: Demanda[]; nome?: string; notas?: ReadonlyMap<string, string> }) {
   const [guardada, setGuardada] = useState<string[]>([]);
   const ids = useMemo(() => lista.map((d) => d.id), [lista]);
   const ordem = useMemo(() => ordemDaPilha(ids, guardada), [ids, guardada]);
   const porId = useMemo(() => new Map(lista.map((d) => [d.id, d] as const)), [lista]);
   const [aviso, setAviso] = useState('');
   return (
-    <Baralho nome={nome} ordem={ordem} porId={porId} aviso={aviso}
+    <Baralho nome={nome} ordem={ordem} porId={porId} aviso={aviso} notas={notas}
       esquerda={{ rotulo: 'Passar para o fim', executar: () => { setGuardada(ativoParaOFim(ordem)); setAviso(`Passado para o fim. Agora: ${porId.get(ordem[1])?.assunto ?? ''}`); } }}
       direita={{ rotulo: 'Voltar ao anterior', icone: 'chevron-right', desabilitado: ordem.length < 2, animar: true, executar: () => { setGuardada(ultimoParaAFrente(ordem)); setAviso(`Voltou ao anterior: ${porId.get(ordem[ordem.length - 1])?.assunto ?? ''}`); } }} />
   );
 }
 
 /**
- * Demandas, visão Cards (decisão 77): uma fila por categoria funcional (tipo e área), cada demanda em um só grupo e cada grupo com a sua cor e a sua contagem. No iPhone cada grupo é um baralho
- * independente (navegar em um não mexe nos outros, e nada muda de etapa); na web e no iPad as mesmas filas ficam como grades de cards, todas à vista. A ordem é a mesma nas duas (lib/fila.ts).
+ * Cards em faixa (web e iPad): cards lado a lado, na ordem recebida, numa faixa com rolagem horizontal própria (a largura de cada card é a de uma célula do Para hoje). As setas aparecem só quando há mais cards
+ * do que cabem e ficam no lugar (aria-disabled) nas pontas. É a Urgência do Início e cada uma das nove seções de Demandas > Cards.
  */
-export function CardsPorGrupo({ lista }: { lista: Demanda[] }) {
+export function FaixaCards({ lista, rotulo, notas }: { lista: Demanda[]; rotulo: string; notas?: ReadonlyMap<string, string> }) {
+  const faixa = useRef<HTMLDivElement>(null);
+  const [pode, setPode] = useState({ esq: false, dir: false, tem: false });
+  useEffect(() => {
+    const el = faixa.current; if (!el) return;
+    const medir = () => setPode((a) => { const n = { esq: el.scrollLeft > 2, dir: el.scrollLeft + el.clientWidth < el.scrollWidth - 2, tem: el.scrollWidth > el.clientWidth + 2 }; return a.esq === n.esq && a.dir === n.dir && a.tem === n.tem ? a : n; });
+    medir(); el.addEventListener('scroll', medir, { passive: true });
+    const ro = new ResizeObserver(medir); ro.observe(el);
+    return () => { el.removeEventListener('scroll', medir); ro.disconnect(); };
+  }, [lista.length]);   // só a quantidade: a lista é um array novo a cada desenho e reinscrever os ouvintes a cada vez seria trabalho à toa
+  const rolar = (sentido: 1 | -1) => { const el = faixa.current; if (el) el.scrollBy({ left: sentido * el.clientWidth, behavior: movimentoReduzido() ? 'auto' : 'smooth' }); };
+  return (
+    <div className="urg-caixa">
+      <div ref={faixa} className="cards-urg" role="region" aria-label={`${rotulo}; role para o lado para ver as demais`} tabIndex={0} data-urg-faixa>
+        {lista.map((d) => <div key={d.id} className="vaga"><CardDemanda d={d} mostrarRapida nota={notas?.get(d.id)} /></div>)}
+      </div>
+      {pode.tem ? (
+        <>
+          <button type="button" className="urg-seta urg-ant" aria-label={`Ver os anteriores: ${rotulo}`} aria-disabled={!pode.esq || undefined} data-urg-ant onClick={() => { if (pode.esq) rolar(-1); }}><Icone nome="chevron-right" /></button>
+          <button type="button" className="urg-seta urg-prox" aria-label={`Ver os próximos: ${rotulo}`} aria-disabled={!pode.dir || undefined} data-urg-prox onClick={() => { if (pode.dir) rolar(1); }}><Icone nome="chevron-right" /></button>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/** A observação de cada card da fila "Aguardando há mais tempo": há quantos dias chegou, ou a falta da data de chegada (a permanência nunca vem da criação do card). */
+const notaDeChegada = (d: Demanda, hoje: string) => { const n = permanencia(d, hoje); return n === null ? 'Sem data de chegada' : n === 0 ? 'Chegou hoje' : `Chegou há ${plural(n, 'dia')}`; };
+
+/**
+ * Demandas, visão Cards (decisão 80): nove seções temáticas (lib/secoes-cards.ts), cada uma com a sua fila. Na web e no iPad cada seção é uma faixa de cards lado a lado com rolagem horizontal própria; no iPhone
+ * cada seção é um baralho com a posição de navegação só dela (navegar em uma não mexe nas outras, e nada muda de etapa). O mesmo id pode estar em várias seções e todas leem o mesmo estado: editar, mudar a etapa,
+ * concluir ou reabrir aparece em todas as ocorrências.
+ */
+export function SecoesCards({ lista }: { lista: Demanda[] }) {
   const { hoje, dias } = useApp();
   const secao = useRef<HTMLDivElement>(null);
   const modo = useModo(secao);
-  const grupos = useMemo(() => agruparPorCategoria(lista, hoje, dias), [lista, hoje, dias]);
+  const secoes = useMemo(() => montarSecoes(lista, hoje, dias), [lista, hoje, dias]);
   return (
     <div ref={secao} className="grupos-cards" data-modo={modo}>
-      {grupos.map((g) => (
-        <section key={g.chave} className="grupo-cards" data-grupo={g.chave} data-cor={g.cor} aria-label={`${g.rotulo}, ${plural(g.demandas.length, 'demanda')}`}>
-          <h3 className="sub-f grupo-cab"><i className="grupo-cor" aria-hidden="true" />{g.rotulo} <small>{plural(g.demandas.length, 'demanda')}</small></h3>
-          {modo === 'pilha' ? <BaralhoSimples lista={g.demandas} nome={g.rotulo} /> : <div className="cards">{g.demandas.map((d) => <CardDemanda key={d.id} d={d} />)}</div>}
-        </section>
-      ))}
+      {secoes.map((s) => {
+        const notas = s.chave === 'aguardando' ? new Map(s.demandas.map((d) => [d.id, notaDeChegada(d, hoje)] as const)) : undefined;
+        const nome = `${s.rotulo}, ${plural(s.demandas.length, 'demanda')}`;
+        return (
+          <section key={s.chave} className="grupo-cards secao-cards" data-secao={s.chave} data-cor={s.cor ?? undefined} aria-label={nome}>
+            <h3 className="sub-f grupo-cab"><i className="grupo-cor" aria-hidden="true" /><span>{s.rotulo}</span> <small>{plural(s.demandas.length, 'demanda')}</small><Ajuda rotulo={`Sobre ${s.rotulo}`}>{s.criterio}</Ajuda></h3>
+            {!s.demandas.length ? <div className="vazio-c">Nenhuma demanda nesta fila.</div>
+              : modo === 'pilha' ? <BaralhoSimples lista={s.demandas} nome={s.rotulo} notas={notas} />
+                : <FaixaCards lista={s.demandas} rotulo={s.rotulo} notas={notas} />}
+          </section>
+        );
+      })}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
 import { ParaHoje } from './para-hoje';
-import { CardsDeDemandas, CardsPorGrupo } from './baralho';
+import { SecoesCards } from './baralho';
 import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, type Demanda } from '@/lib/demandas';
 import { anoDoDocumento, chaveOpcao } from '@/lib/documentos';
 
@@ -30,9 +30,9 @@ function textoRotina(r: EstadoRotina | null) {
 }
 
 export function PaginaInicio() {
-  const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina, dias } = useApp();
-  const [sel, setSel] = useState<'atrasadas' | 'hoje' | 'sete' | null>(null);
-  useAjustar(`${demandas.length}${sel}`);
+  const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina, dias, setFiltro } = useApp();
+  const router = useRouter();
+  useAjustar(`${demandas.length}`);
   return (
     <>
       <CabecaPagina titulo="Início" sub="Seu dia em um só lugar." />
@@ -44,20 +44,16 @@ export function PaginaInicio() {
       {demandas.length ? (
         <>
           <section className="sec">
-            <div className="stats tres" role="group" aria-label="Filtrar demandas por prazo">
+            <div className="stats tres" role="group" aria-label="Ver as demandas por prazo em Demandas">
               {GRUPOS_INICIO.map(([g, nome, icone, alerta]) => {
                 const n = porGrupo(demandas, g, hoje, dias).length;
                 return (
-                  <button key={g} className={`stat st-${g}${alerta && n ? ' alerta' : ''}`} aria-pressed={sel === g} onClick={() => setSel(sel === g ? null : g)}>
+                  <button key={g} className={`stat st-${g}${alerta && n ? ' alerta' : ''}`} onClick={() => { setFiltro({ ...FILTRO_VAZIO, prazo: g }); router.push('/demandas'); }}>
                     <span className="st-ic"><Icone nome={icone} /></span><span className="n">{n}</span><span className="r">{nome}</span>
                   </button>
                 );
               })}
             </div>
-            {sel ? (() => {
-              const l = porGrupo(demandas, sel, hoje, dias), nome = GRUPOS_INICIO.find((g) => g[0] === sel)![1];
-              return <><h3 className="sub-f">{nome} <small>{plural(l.length, 'demanda')}</small></h3>{l.length ? <CardsDeDemandas lista={l} /> : <div className="vazio-c">Nenhuma demanda neste filtro.</div>}</>;
-            })() : null}
           </section>
           <ParaHoje />
         </>
@@ -142,7 +138,7 @@ export function PaginaDemandas() {
           : !demandas.length && erroCarga ? null // a leitura falhou: o erro e o botão de tentar de novo já estão no topo; não se diz que não há demandas
           : !demandas.length ? <div className="vazio"><Icone nome="nav-demandas" extra="grande" /><h3>Nenhuma demanda cadastrada</h3><p>Cadastre a primeira com o botão Nova demanda.</p><button className="btn pri" onClick={() => abrirJanela({ t: 'nova' })}>Nova demanda</button></div>
           : !lista.length ? <div className="vazio"><Icone nome="busca" extra="grande" /><h3>Nenhuma demanda encontrada</h3><p>Ajuste o filtro para ver mais.</p><button className="btn mini" onClick={() => setFiltro({ ...FILTRO_VAZIO })}>Limpar filtros</button></div>
-          : visao === 'cards' ? <CardsPorGrupo lista={lista} /> : visao === 'quadro' ? <Quadro lista={lista} /> : visao === 'tabela' ? <Tabela lista={lista} /> : <Lista lista={lista} />}
+          : visao === 'cards' ? <SecoesCards lista={lista} /> : visao === 'quadro' ? <Quadro lista={lista} /> : visao === 'tabela' ? <Tabela lista={lista} /> : <Lista lista={lista} />}
       </div>
     </>
   );

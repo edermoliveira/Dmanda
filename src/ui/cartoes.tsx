@@ -139,7 +139,8 @@ const Desc = ({ d }: { d: Demanda }) => (d.descricao.trim() ? <div className="de
 
 /** `mostrarRapida`: o painel Para hoje mostra a marca Rápida (só quando está ativa) no card; nas demais telas o card segue como era. */
 /** `lado` e `aoGirar`: o baralho do celular controla a face do card da frente (o toque numa área livre vira o card). */
-export function CardDemanda({ d, mostrarRapida = false, lado, aoGirar }: { d: Demanda; mostrarRapida?: boolean; lado?: 'frente' | 'verso'; aoGirar?: (para: 'frente' | 'verso') => void }) {
+/** `nota`: uma observação da fila em que o card aparece (por exemplo, "Sem data de chegada"), mostrada como etiqueta na frente. */
+export function CardDemanda({ d, mostrarRapida = false, lado, aoGirar, nota }: { d: Demanda; mostrarRapida?: boolean; lado?: 'frente' | 'verso'; aoGirar?: (para: 'frente' | 'verso') => void; nota?: string }) {
   const { abrirJanela, arquivar, mover, abrirMenuMover, hoje } = useApp();
   const [fixo, setFixo] = useState<'frente' | 'verso' | undefined>();
   const fin = d.etapa === 'Finalizado';
@@ -160,6 +161,7 @@ export function CardDemanda({ d, mostrarRapida = false, lado, aoGirar }: { d: De
             {fin ? <span className="chip">Finalizada</span> : <span className="chip neutro">{d.etapa}{d.etapa === 'Aguardando retorno' && d.setor ? ` · ${d.setor} ${curto(dias)}` : ''}</span>}
             {mostrarRapida && d.rapida ? <span className="chip rapida" data-rapida title="Marcada como rápida: ajuda a escolher o Para hoje">Rápida</span> : null}
           </div>
+          {nota ? <div className="nota-fila"><span className="chip neutro" data-nota>{nota}</span></div> : null}
           <div className="assunto fit" role="link" tabIndex={0} title={d.assunto} onClick={abrirEd} onKeyDown={teclaAbrir}>{d.assunto}</div>
           <Desc d={d} />
           <ChipsRow d={d} />

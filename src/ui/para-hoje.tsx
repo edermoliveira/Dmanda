@@ -1,5 +1,5 @@
 'use client';
-// Para hoje e Nova urgência no Início. As três vagas, a seleção, a prioridade e a reposição são as da main (lib/para-hoje.ts e o banco); o baralho do celular (decisão 65, aprovado na prévia 887b116,
+// Para hoje e Urgência no Início. As quatro vagas persistentes (decisão 80), a seleção, a prioridade e a reposição são as de lib/para-hoje.ts e do banco; o baralho do celular (decisão 65, aprovado na prévia 887b116,
 // decisão 67) foi portado da branch do Início em 14/11/2026 só como apresentação:
 //  - computador e iPad: a grade de cards de sempre;
 //  - celular: pilha com um card ativo. Deslizar à esquerda manda o card para o fim da ordem de apresentação (guardada só neste aparelho, até a virada do dia em Brasília);
@@ -7,14 +7,12 @@
 //    A pilha só avança depois da gravação confirmada; cancelar ou falhar deixa o card ativo. Botões equivalentes fazem o mesmo.
 // A vaga, a etapa e a prioridade nunca mudam pelo gesto da esquerda. O primeiro desenho é o mesmo no servidor e no navegador: a ordem guardada só entra depois de montar.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { CardDemanda } from './cartoes';
 import { Ajuda } from './ajuda';
-import { Baralho, BaralhoSimples, useModo } from './baralho';
+import { Baralho, BaralhoSimples, FaixaCards, useModo } from './baralho';
 import { eObjeto } from '@/lib/armazenamento';
-import { prioritariasPrimeiro } from '@/lib/prioridade';
-import { ativoParaOFim, elegiveisParaHoje, ETAPA_SEGUINTE, etapaDeEspera, novasUrgencias, ordemDaPilha, precisaCompletar, vagasAbertas } from '@/lib/para-hoje';
+import { ativoParaOFim, candidatasParaVagas, elegiveisParaHoje, ETAPA_SEGUINTE, etapaDeEspera, ordemDaPilha, precisaCompletar, urgenciasDoInicio, vagasAbertas } from '@/lib/para-hoje';
 import { plural, type Demanda } from '@/lib/demandas';
 
 const CHAVE_ORDEM = 'dmanda:para-hoje-ordem';
@@ -113,35 +111,8 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
   );
 }
 
-/** Nova urgência na web e no iPad: cards lado a lado, do mais para o menos urgente, numa faixa com rolagem horizontal própria. As setas aparecem só quando há mais cards do que cabem e continuam no lugar (aria-disabled) nas pontas. */
-function FaixaUrgencia({ lista }: { lista: Demanda[] }) {
-  const faixa = useRef<HTMLDivElement>(null);
-  const [pode, setPode] = useState({ esq: false, dir: false, tem: false });
-  useEffect(() => {
-    const el = faixa.current; if (!el) return;
-    const medir = () => setPode((a) => { const n = { esq: el.scrollLeft > 2, dir: el.scrollLeft + el.clientWidth < el.scrollWidth - 2, tem: el.scrollWidth > el.clientWidth + 2 }; return a.esq === n.esq && a.dir === n.dir && a.tem === n.tem ? a : n; });
-    medir(); el.addEventListener('scroll', medir, { passive: true });
-    const ro = new ResizeObserver(medir); ro.observe(el);
-    return () => { el.removeEventListener('scroll', medir); ro.disconnect(); };
-  }, [lista.length]);   // só a quantidade: a lista é um array novo a cada desenho e reinscrever os ouvintes a cada vez seria trabalho à toa
-  const rolar = (sentido: 1 | -1) => { const el = faixa.current; if (el) el.scrollBy({ left: sentido * el.clientWidth, behavior: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };
-  return (
-    <div className="urg-caixa">
-      <div ref={faixa} className="cards-urg" role="region" aria-label="Nova urgência, da mais urgente para a menos urgente; role para o lado para ver as demais" tabIndex={0} data-urg-faixa>
-        {lista.map((d) => <div key={d.id} className="vaga"><CardDemanda d={d} mostrarRapida /></div>)}
-      </div>
-      {pode.tem ? (
-        <>
-          <button type="button" className="urg-seta urg-ant" aria-label="Ver as urgências anteriores" aria-disabled={!pode.esq || undefined} data-urg-ant onClick={() => { if (pode.esq) rolar(-1); }}><Icone nome="chevron-right" /></button>
-          <button type="button" className="urg-seta urg-prox" aria-label="Ver as próximas urgências" aria-disabled={!pode.dir || undefined} data-urg-prox onClick={() => { if (pode.dir) rolar(1); }}><Icone nome="chevron-right" /></button>
-        </>
-      ) : null}
-    </div>
-  );
-}
-
-// O painel de execução do dia (o antigo Foco do dia): até 3 vagas, guardadas no banco. Ao concluir ou arquivar uma demanda, só a vaga liberada é reposta. Uma urgência que surge depois
-// das vagas escolhidas aparece à parte, sem trocar a seleção. Não é o grupo "Vencem hoje" (que lista tudo o que vence hoje, com ou sem ação).
+// O painel de execução do dia (o antigo Foco do dia): até 4 vagas persistentes, guardadas no banco. Ao concluir ou arquivar uma demanda, só a vaga liberada é reposta. Uma urgência que surge depois
+// das vagas escolhidas aparece na Urgência, sem trocar a seleção. Não é o grupo "Vencem hoje" (que lista tudo o que vence hoje, com ou sem ação).
 export function ParaHoje() {
   const { demandas, hoje, dias, paraHoje, sincronizarParaHoje, carregando } = useApp();
   const secao = useRef<HTMLElement>(null);
@@ -150,36 +121,25 @@ export function ParaHoje() {
   const abertas = useMemo(() => vagasAbertas(paraHoje, demandas), [paraHoje, demandas]);
   const ocupadas = new Set(abertas.map((v) => v.demanda.id));
   const faltaCompletar = precisaCompletar(paraHoje, demandas, elegiveis);
-  const candidatas = faltaCompletar ? elegiveis.filter((e) => !ocupadas.has(e.demanda.id)).slice(0, 10).map((e) => e.demanda.id).join(',') : '';
+  // as livres são preenchidas pela melhor candidata: pedidos da Prefeita e do Gabinete primeiro, depois a ordem das elegíveis
+  const candidatas = faltaCompletar ? candidatasParaVagas(elegiveis, ocupadas).slice(0, 10).map((e) => e.demanda.id).join(',') : '';
   // preenche (ou repõe) só as vagas livres; a lista só muda quando as candidatas mudam, então uma resposta sem efeito não repete a chamada
   useEffect(() => { if (!carregando && hoje !== '2000-01-01' && candidatas) void sincronizarParaHoje(candidatas.split(',')); }, [candidatas, carregando, hoje, sincronizarParaHoje]);
-  // Nova urgência e a fila inteira (decisão 77): sem corte em três; as pedidas pela Prefeita ou pelo Gabinete vão primeiro, depois a ordem da própria seção (atrasadas, vencem hoje, próximas e sem prazo).
-  // Cada demanda aparece uma só vez na seção: nas vagas, ou na Nova urgência, ou na fila. Na web e no iPad a Nova urgência é uma faixa de cards lado a lado com rolagem horizontal própria, na ordem do ranking
-  // (pedidas pela Prefeita ou pelo Gabinete, depois atrasadas, vencem hoje...); no iPhone segue o baralho.
-  const urgentes = prioritariasPrimeiro(novasUrgencias(paraHoje, demandas, elegiveis).map((e) => e.demanda));
-  const idsUrgentes = new Set(urgentes.map((d) => d.id));
-  // enquanto há vaga livre a preencher, a fila espera (senão as demandas apareceriam aqui e pulariam para as vagas um instante depois)
-  const fila = faltaCompletar ? [] : prioritariasPrimeiro(elegiveis.filter((e) => !ocupadas.has(e.demanda.id) && !idsUrgentes.has(e.demanda.id)).map((e) => e.demanda));
+  // Urgência (decisão 80): fora das vagas, sem repetir nenhuma demanda; na web e no iPad é uma faixa de cards lado a lado com rolagem horizontal própria, no iPhone segue o baralho.
+  // O Início tem só estas duas seções de demandas: o antigo "Na fila" e as listas dos contadores saíram (as demais demandas estão em Demandas).
+  const { demandas: urgentes, proximos } = useMemo(() => urgenciasDoInicio(paraHoje, demandas, hoje, dias), [paraHoje, demandas, hoje, dias]);
   return (
     <section ref={secao} className="sec ph" data-painel="para-hoje" data-modo={modo} aria-labelledby="ph-t">
       <h3><span id="ph-t">Para hoje</span><Ajuda rotulo="Sobre o Para hoje">Demandas para focar hoje, as prioridades do dia</Ajuda></h3>
       {!abertas.length ? <div className="vazio-c">Nada para tocar hoje por enquanto.</div>
         : modo === 'pilha' ? <Pilha vagas={abertas} />
           : <div className="cards">{abertas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}</div>}
-      {urgentes.length ? (
-        <div className="nova-urgencia" role="status" data-nova-urgencia>
-          <h4>Nova urgência <small>fora das suas vagas, sem trocar a seleção</small></h4>
-          {modo === 'pilha' ? <BaralhoSimples lista={urgentes} nome="Nova urgência" />
-            : <FaixaUrgencia lista={urgentes} />}
-        </div>
-      ) : null}
-      {fila.length ? (
-        <div className="fila-hoje" data-fila-hoje>
-          <h4>Na fila <small>{plural(fila.length, 'demanda')} que também podem ser tocadas hoje, sem ocupar vaga</small></h4>
-          {modo === 'pilha' ? <BaralhoSimples lista={fila} nome="Na fila de hoje" />
-            : <div className="cards">{fila.map((d) => <CardDemanda key={d.id} d={d} mostrarRapida />)}</div>}
-        </div>
-      ) : null}
+      <div className="nova-urgencia" data-nova-urgencia data-proximos={proximos || undefined} data-vazia={!urgentes.length || undefined}>
+        <h4 id="urg-t"><span>Urgência</span><Ajuda rotulo="Sobre a Urgência">{proximos ? 'Sem urgências agora: os próximos vencimentos' : 'Pedidos da Prefeita e do Gabinete, atrasadas, as que vencem hoje e os ofícios dos próximos 7 dias'}</Ajuda></h4>
+        {!urgentes.length ? <div className="vazio-c">Nenhuma urgência no momento.</div>
+          : modo === 'pilha' ? <BaralhoSimples lista={urgentes} nome="Urgência" />
+            : <FaixaCards lista={urgentes} rotulo={proximos ? 'Urgência, os próximos vencimentos' : 'Urgência, da mais urgente para a menos urgente'} />}
+      </div>
     </section>
   );
 }
