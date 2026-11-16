@@ -11,7 +11,13 @@
    A rolagem vertical segue livre (touch-action: pan-y). Movimento reduzido tira todas as animações. */
 /* A pilha ocupa a altura de um card (o token --cardh, o tamanho escolhido em Configurações) mais o degrau de cada um dos dois cards de trás. O palco reserva essa altura inteira: o card da
    frente é remontado a cada troca e era o único filho com altura; sem a reserva a página ficava um card mais curta por um layout e, no WebKit, a rolagem era cortada (a tela saltava; decisão 75). */
-.app[data-dir="d"] .ph-pilha { --ph-degrau: 11px; --ph-fundo: calc(var(--ph-degrau) * 2); display: grid; gap: 10px; }
+/* Largura do card da pilha (etapa 2). Causa da redução no iPhone: a seção do Para hoje (.ph, tema.css) é um contêiner flex com quebra de linha e a pilha era um item flex sem largura, então ela tomava a
+   largura do conteúdo do card da frente (de 362 para uns 295 px num celular de 390 px quando o texto era curto, e voltava a 362 ao trocar para um card de texto longo). A pilha agora ocupa a linha inteira
+   (width: 100%, min-width: 0), a coluna do grid é única (minmax(0, 1fr)) e o card preenche a célula: a largura e a altura (--cardh) do card ativo não dependem mais do conteúdo, do número de cards,
+   da navegação, do arrasto nem do verso. */
+.app[data-dir="d"] .ph-pilha { --ph-degrau: 11px; --ph-fundo: calc(var(--ph-degrau) * 2); display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; min-width: 0; box-sizing: border-box; }
+.app[data-dir="d"] .ph-palco, .app[data-dir="d"] .ph-arrasto, .app[data-dir="d"] .ph-arrasto .vaga { width: 100%; min-width: 0; box-sizing: border-box; }
+.app[data-dir="d"] .ph-arrasto .dcard, .app[data-dir="d"] .ph-atras[data-face] .dcard { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .app[data-dir="d"] .ph-palco { position: relative; padding-bottom: var(--ph-fundo); min-height: calc(var(--cardh, 340px) + var(--ph-fundo)); }
 .app[data-dir="d"] .ph-arrasto { position: relative; z-index: 2; touch-action: pan-y; transform: translateX(var(--ph-dx, 0px)) rotate(var(--ph-rot, 0deg)); transform-origin: 50% 90%; transition: transform .26s var(--suave, ease-out), opacity .26s ease-out; will-change: transform; }
 .app[data-dir="d"] .ph-arrasto[data-arrastando] { transition: none; }
