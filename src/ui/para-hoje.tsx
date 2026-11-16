@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from './contexto';
 import { CardDemanda } from './cartoes';
+import { Ajuda } from './ajuda';
 import { Baralho, BaralhoSimples, useModo } from './baralho';
 import { eObjeto } from '@/lib/armazenamento';
 import { prioritariasPrimeiro } from '@/lib/prioridade';
@@ -132,7 +133,7 @@ export function ParaHoje() {
   const fila = faltaCompletar ? [] : prioritariasPrimeiro(elegiveis.filter((e) => !ocupadas.has(e.demanda.id) && !idsUrgentes.has(e.demanda.id)).map((e) => e.demanda));
   return (
     <section ref={secao} className="sec ph" data-painel="para-hoje" data-modo={modo} aria-labelledby="ph-t">
-      <h3 id="ph-t">Para hoje <small>até 3 demandas para tocar hoje: atrasadas e as que vencem hoje primeiro</small></h3>
+      <h3><span id="ph-t">Para hoje</span><Ajuda rotulo="Sobre o Para hoje">Demandas para focar hoje, as prioridades do dia</Ajuda></h3>
       {!abertas.length ? <div className="vazio-c">Nada para tocar hoje por enquanto.</div>
         : modo === 'pilha' ? <Pilha vagas={abertas} />
           : <div className="cards">{abertas.map((v) => <div key={v.demanda.id} data-vaga={v.posicao} className="vaga"><CardDemanda d={v.demanda} mostrarRapida /></div>)}</div>}
