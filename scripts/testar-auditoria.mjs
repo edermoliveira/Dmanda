@@ -5,7 +5,7 @@
 // O WebKit do Playwright é o motor do Safari no Windows, NÃO o Safari do iPhone. Uso: node scripts/testar-auditoria.mjs (nunca toca o Supabase real)
 import { chromium, webkit, devices } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
-import { rmSync, mkdirSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { somarDias } from '../src/lib/prazos.ts';
 
