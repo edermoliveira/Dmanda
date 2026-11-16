@@ -69,6 +69,7 @@ const auth = http.createServer(async (req, res) => {
   }
   // listas vazias: demandas, dias indisponíveis e entradas (a cópia dos dados, /api/exportar, lê as três; uma função desconhecida aqui vira 404 e a rota responde 500)
   if (['listar_demandas', 'listar_dias_indisponiveis', 'listar_entradas', 'listar_eventos', 'listar_registros_dia'].some((f) => u.pathname === `/rest/v1/rpc/${f}`)) return json(res, 200, []);
+  if (u.pathname === '/rest/v1/rpc/estado_aparelho') return json(res, 200, { exigido: false, ativo: true });
   if (u.pathname === '/rest/v1/rpc/estado_rotina') return json(res, 200, { ultima_ok: null, ultima_falha: null, resumo_data: null, resumo_calculado_em: null });
   return json(res, 404, {});
 });
@@ -79,7 +80,7 @@ const env = { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${PORT
 const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env, stdio: 'ignore' });
 const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } auth.close(); };
 process.on('exit', parar);
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/login', { redirect: 'manual' }); if (r.status < 500) break; } catch { /* subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/acesso', { redirect: 'manual' }); if (r.status < 500) break; } catch { /* subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
 
 // ---- cookies fabricados (formato do @supabase/ssr) ----
 // sid: identifica a sessão (um aparelho); n: número do token de renovação; expiraEm: segundos até o token de acesso vencer (negativo = já venceu)
@@ -131,7 +132,7 @@ const renovacoes = () => contar(/grant_type=refresh_token/);
 // 1) sem sessão
 atual = usuario(EMAIL);
 let r = await pedir(null);
-ok(r.status === 307 && local(r) === '/login', 'sem sessão: /demandas redireciona ao login (primeira visita, sem aviso de sessão encerrada)');
+ok(r.status === 307 && local(r) === '/acesso', 'sem sessão: /demandas redireciona ao login (primeira visita, sem aviso de sessão encerrada)');
 
 // 2) a sessão persiste: sem carimbo de último uso, com carimbo antigo, adulterado ou no futuro, a sessão válida continua entrando (a regra das 6 horas foi removida)
 chamadas.length = 0;
@@ -142,12 +143,12 @@ for (const [rotulo, valor] of [['de 7 horas atrás', Date.now() - 7 * HORA], ['d
   ok(r.status === 200 && apagado(setCookies(r), 'dmanda-ultimo-uso'), `sessão válida com o carimbo antigo ${rotulo}: continua entrando, e o carimbo antigo é apenas apagado do navegador`);
 }
 ok(!chamadas.some((c) => /logout/.test(c)), 'nenhuma dessas entradas encerrou a sessão no Auth (nada de logout por "inatividade")');
-r = await pedir(cookieHeader({ sid: 'persiste' }), '/login');
+r = await pedir(cookieHeader({ sid: 'persiste' }), '/acesso');
 ok(r.status === 307 && local(r) === '/', 'login com sessão válida (mesmo sem carimbo): vai ao Início');
 r = await pedir(cookieHeader({ sid: 'persiste' }), '/api/sessao');
 ok(r.status === 204, 'sonda /api/sessao com sessão válida: 204 sem corpo');
 r = await pedir(null, '/api/sessao');
-ok(r.status === 307 && local(r) === '/login', 'sonda /api/sessao sem sessão: redireciona ao login (é o sinal de "sessão encerrada" para a tela)');
+ok(r.status === 307 && local(r) === '/acesso', 'sonda /api/sessao sem sessão: redireciona ao login (é o sinal de "sessão encerrada" para a tela)');
 
 // 3) renovação do token de acesso vencido: o servidor renova uma vez, grava os cookies novos e a sessão segue; o token de renovação gasto não é reaproveitado
 chamadas.length = 0;
@@ -165,18 +166,18 @@ r = await pedir(cookieHeader({ sid: 'renova2', expiraEm: -3600, n: 0 }), '/api/e
 ok(r.status === 200 && renovacoes() === 1, `a renovação feita no proxy chega à rota do servidor na mesma requisição: uma única renovação, não duas (renovar duas vezes gastaria o token e revogaria a sessão) [status ${r.status}, renovações ${renovacoes()}, rotas do Auth falso chamadas: ${[...new Set(chamadas.map((c) => c.replace(/\?.*/, '')))].join(' ')}]`);
 // redirecionamento depois de renovar também leva os cookies novos
 chamadas.length = 0;
-r = await pedir(cookieHeader({ sid: 'renova3', expiraEm: -3600, n: 0 }), '/login');
+r = await pedir(cookieHeader({ sid: 'renova3', expiraEm: -3600, n: 0 }), '/acesso');
 ok(r.status === 307 && local(r) === '/' && !!gravado(setCookies(r), 'sb-127-auth-token') && renovacoes() === 1, 'redirecionamento logo após renovar também entrega os cookies renovados (senão o token gasto se perderia)');
 // token de renovação já usado e fora da janela: o Auth recusa; sessão inválida vai ao login com o aviso de sessão encerrada e cookies limpos
 chamadas.length = 0;
 rotacao.set('velha', 5);
 r = await pedir(cookieHeader({ sid: 'velha', expiraEm: -3600, n: 1 }));
-ok(r.status === 307 && local(r) === '/login?encerrada=1' && apagado(setCookies(r), 'sb-127-auth-token'), 'token de renovação inválido ou já usado: vai ao login com o aviso de sessão encerrada e limpa os cookies');
+ok(r.status === 307 && local(r) === '/acesso?encerrada=1' && apagado(setCookies(r), 'sb-127-auth-token'), 'token de renovação inválido ou já usado: vai ao login com o aviso de sessão encerrada e limpa os cookies');
 
 // 4) sessão revogada no Auth (por exemplo, saída em outro aparelho com escopo global, ou revogação no painel)
 revogadas.add('revogada'); chamadas.length = 0;
 r = await pedir(cookieHeader({ sid: 'revogada' }));
-ok(r.status === 307 && local(r) === '/login?encerrada=1', 'sessão revogada pelo Auth: vai ao login com o aviso de sessão encerrada');
+ok(r.status === 307 && local(r) === '/acesso?encerrada=1', 'sessão revogada pelo Auth: vai ao login com o aviso de sessão encerrada');
 ok(apagado(setCookies(r), 'sb-127-auth-token'), 'sessão revogada: os cookies de sessão deste navegador são limpos');
 
 // 5) falha de rede ou do Auth ao conferir: a sessão NÃO é apagada e o acesso NÃO é liberado
@@ -186,7 +187,7 @@ for (const [modo, rotulo] of [['500', 'erro do servidor de Auth (500)'], ['cai',
   const corpo = await r.text();
   ok(r.status === 503 && /Tentar de novo/.test(corpo) && /sess[ãa]o foi mantida/.test(corpo) && !/<main[^>]*class="app/.test(corpo), `${rotulo}: a página mostra "tente de novo" (503), sem liberar o painel`);
   ok(!apagado(setCookies(r), 'sb-127-auth-token') && !gravado(setCookies(r), 'sb-127-auth-token') && !chamadas.some((c) => /logout/.test(c)), `${rotulo}: nenhum cookie de sessão é apagado nem trocado e não há logout`);
-  r = await pedir(cookieHeader({ sid: 'rede' }), '/login');
+  r = await pedir(cookieHeader({ sid: 'rede' }), '/acesso');
   ok(r.status === 200, `${rotulo}: a tela de login continua abrindo`);
   r = await pedir(cookieHeader({ sid: 'rede', expiraEm: -3600 }));
   ok(r.status === 503 && !apagado(setCookies(r), 'sb-127-auth-token'), `${rotulo} com o token de acesso vencido: também 503, sem apagar a sessão recuperável`);
@@ -203,82 +204,53 @@ ok((await pedir(cookieHeader(aparelhoA))).status === 200 && (await pedir(cookieH
 // conta fora da lista e provedor diferente de Google e e-mail e senha
 atual = usuario('outra-conta@exemplo.invalid'); chamadas.length = 0;
 r = await pedir(cookieHeader({ sid: 'fora' }));
-ok(r.status === 307 && local(r) === '/login?negado=1' && chamadas.includes('POST /auth/v1/logout?scope=local'), 'conta fora da lista com sessão válida: negada e a sessão é encerrada (escopo local)');
+ok(r.status === 307 && local(r) === '/acesso?negado=1' && chamadas.includes('POST /auth/v1/logout?scope=local'), 'conta fora da lista com sessão válida: negada e a sessão é encerrada (escopo local)');
 atual = usuario(EMAIL, 'github');
 r = await pedir(cookieHeader({ sid: 'fora2' }));
-ok(r.status === 307 && local(r) === '/login?negado=1', 'e-mail certo mas provedor fora de Google e e-mail e senha: negado');
+ok(r.status === 307 && local(r) === '/acesso?negado=1', 'e-mail certo mas provedor fora de Google e e-mail e senha: negado');
 atual = usuario(EMAIL, 'email');
 r = await pedir(cookieHeader({ sid: 'email1' }));
 ok(r.status === 200, 'e-mail certo entrando por e-mail e senha: passa');
 atual = usuario(EMAIL);
 
 // páginas antigas de desenvolvimento e a página /marca não ficam abertas sem login
-for (const rota of ['/marca', '/pecas', '/tokens']) { r = await pedir(null, rota); ok(r.status === 307 && local(r) === '/login', `sem login, ${rota} redireciona ao login`); }
+for (const rota of ['/marca', '/pecas', '/tokens']) { r = await pedir(null, rota); ok(r.status === 307 && local(r) === '/acesso', `sem login, ${rota} redireciona ao login`); }
 r = await pedir(null, '/marca/icone-app.svg');
 ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) continuam públicos para o login e a instalação');
 
-// ---- entrada por e-mail e senha, no navegador ----
+// ---- tela de acesso e painel no navegador (a entrada por e-mail e senha foi retirada na decisão 82; a autorização de aparelhos é provada em testar:aparelhos) ----
 {
   const nav0 = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
   const c0 = await nav0.newContext({ viewport: { width: 1100, height: 800 } });
   const p0 = await c0.newPage();
-  const abrirLogin = async () => { await p0.goto(BASE + '/login', { waitUntil: 'load', timeout: 120000 }); await p0.waitForSelector('#login-email', { timeout: 60000 }); };
-  const entrar = async (email, senha) => { await p0.fill('#login-email', email); await p0.fill('#login-senha', senha); await p0.click('.login-form button[type=submit]'); };
   const nomesCookies = async () => (await c0.cookies()).filter((c) => c.value).map((c) => c.name);
-  const avisoLogin = () => p0.evaluate(() => document.querySelector('.login-form .login-aviso')?.textContent ?? '');
   atual = null; chamadas.length = 0;
-  await abrirLogin();
-  ok(await p0.isVisible('#login-senha') && !(await p0.textContent('.login-caixa')).includes('Google') && (await p0.locator('.login-ou').count()) === 0, 'login: com a variável do Google ausente aparece só o formulário de e-mail e senha (sem botão do Google nem o "ou")');
-  // tipografia do login (decisão 35): escala de 85% sobre o desenho anterior (28, 13 e 16 px viram 23,8, 11,05 e 13,6); no toque o campo fica em 16 px para o Safari não dar zoom
-  const tipoLogin = await p0.evaluate(() => { const px = (s) => parseFloat(getComputedStyle(document.querySelector(s)).fontSize); return { h1: px('.login-caixa h1'), rotulo: px('.login-form .fld > label'), campo: px('#login-email'), senha: px('#login-senha') }; });
-  ok(Math.abs(tipoLogin.h1 - 23.8) < 0.05 && Math.abs(tipoLogin.rotulo - 11.05) < 0.05 && Math.abs(tipoLogin.campo - 13.6) < 0.05 && Math.abs(tipoLogin.senha - 13.6) < 0.05, `login: tipografia na escala de 85% (título ${tipoLogin.h1}, rótulo ${tipoLogin.rotulo}, campos ${tipoLogin.campo} e ${tipoLogin.senha})`);
+  await p0.goto(BASE + '/acesso', { waitUntil: 'load', timeout: 120000 }); await p0.waitForSelector('#acesso-codigo', { timeout: 60000 });
+  ok(!(await p0.$('input[type=password]')) && !(await p0.$('input[type=email]')) && (await p0.locator('.login-ou').count()) === 0 && !(await p0.textContent('.login-caixa')).includes('Google'), 'acesso: a tela só tem o campo de código (sem e-mail, sem senha e sem botão do Google)');
+  // tipografia da tela de acesso (decisão 35): escala de 85% sobre o desenho anterior (28 e 16 px viram 23,8 e 13,6); no toque o campo fica em 16 px para o Safari não dar zoom
+  const tipo = await p0.evaluate(() => { const px = (s) => parseFloat(getComputedStyle(document.querySelector(s)).fontSize); return { h1: px('.login-caixa h1'), rotulo: px('.login-form .fld > label'), campo: px('#acesso-codigo') }; });
+  ok(Math.abs(tipo.h1 - 23.8) < 0.05 && Math.abs(tipo.rotulo - 11.05) < 0.05 && Math.abs(tipo.campo - 13.6) < 0.05, `acesso: tipografia na escala de 85% (título ${tipo.h1.toFixed(2)}, rótulo ${tipo.rotulo.toFixed(2)}, campo ${tipo.campo.toFixed(2)})`);
   {
     const cT = await nav0.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
     const pT = await cT.newPage();
-    await pT.goto(BASE + '/login', { waitUntil: 'load', timeout: 120000 }); await pT.waitForSelector('#login-email', { timeout: 60000 });
-    const toque = await pT.evaluate(() => ({ email: parseFloat(getComputedStyle(document.querySelector('#login-email')).fontSize), senha: parseFloat(getComputedStyle(document.querySelector('#login-senha')).fontSize), horizontal: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
-    ok(toque.email === 16 && toque.senha === 16 && toque.horizontal <= 0, `login no iPhone emulado: campos de e-mail e senha com 16 px (sem zoom ao focar) e sem rolagem horizontal (${toque.email}, ${toque.senha})`);
+    await pT.goto(BASE + '/acesso', { waitUntil: 'load', timeout: 120000 }); await pT.waitForSelector('#acesso-codigo', { timeout: 60000 });
+    const toque = await pT.evaluate(() => ({ campo: parseFloat(getComputedStyle(document.querySelector('#acesso-codigo')).fontSize), horizontal: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
+    ok(toque.campo === 16 && toque.horizontal <= 0, `acesso no iPhone emulado: campo do código com 16 px (sem zoom ao focar) e sem rolagem horizontal (${toque.campo}, ${toque.horizontal})`);
     await cT.close();
   }
-  // senha errada
-  await entrar(EMAIL, 'senha-errada-qualquer');
-  await p0.waitForFunction(() => document.querySelector('.login-form .login-aviso')?.textContent === 'E-mail ou senha incorretos.', null, { timeout: 60000 });
-  ok(new URL(p0.url()).pathname === '/login', 'login: senha errada mostra mensagem genérica e continua no login');
-  ok((await p0.inputValue('#login-email')) === EMAIL && (await p0.inputValue('#login-senha')) === '', 'login: após erro o e-mail digitado é mantido e a senha não volta para a tela');
-  ok((await nomesCookies()).length === 0, 'login: senha errada não cria nenhum cookie de sessão');
-  // conta fora da lista, mesmo com senha correta para o Auth falso
-  chamadas.length = 0;
-  await entrar(EMAIL_FORA, SENHA);
-  await p0.waitForFunction(() => document.querySelector('.login-form .login-aviso')?.textContent === 'E-mail ou senha incorretos.' && document.querySelector('#login-senha')?.value === '', null, { timeout: 60000 });
-  await p0.waitForTimeout(300);
-  ok(new URL(p0.url()).pathname === '/login' && (await nomesCookies()).length === 0 && chamadas.includes('POST /auth/v1/logout?scope=local'), 'login: conta fora da lista é recusada com a mesma mensagem, sem cookies, e a sessão criada é encerrada (escopo local)');
-  // provedor não aceito
-  provedorSenha = 'github'; await entrar(EMAIL, SENHA);
-  await p0.waitForTimeout(1500);
-  ok((await avisoLogin()) === 'E-mail ou senha incorretos.' && (await nomesCookies()).length === 0, 'login: e-mail certo por provedor não aceito (GitHub) é recusado e não deixa cookies');
-  // limite de tentativas do Auth
-  await entrar(EMAIL_LIMITE, SENHA);
-  await p0.waitForFunction(() => /Muitas tentativas/.test(document.querySelector('.login-form .login-aviso')?.textContent ?? ''), null, { timeout: 60000 });
-  ok(true, 'login: limite de tentativas do Auth vira aviso claro');
-  // entrada correta (usuário criado pelo Google, que ganhou senha: provider continua google); o servidor regrava a sessão por Set-Cookie
-  provedorSenha = 'google';
-  const acoes = [];
+  ok((await nomesCookies()).length === 0, 'acesso: abrir a tela de acesso não cria nenhum cookie de sessão');
+  // sessão da conta autorizada (cookie no formato do @supabase/ssr, como o servidor o grava depois da autorização do aparelho); o painel abre e o servidor regrava a sessão
+  atual = usuario(EMAIL, 'google');
+  await c0.addCookies([{ name: 'sb-127-auth-token', value: sessaoSb({ sid: 'navegador' }), domain: 'localhost', path: '/' }]);
   const capturadas = [];   // as ações do servidor que o painel chamou (para repeti-las sem sessão)
   p0.on('response', async (resp) => {
     const rq = resp.request();
     if (rq.method() === 'POST' && rq.headers()['next-action']) {
-      acoes.push(String((await resp.allHeaders().catch(() => ({})))['set-cookie'] ?? '').split(String.fromCharCode(10)));
       capturadas.push({ url: rq.url(), id: rq.headers()['next-action'], tipo: rq.headers()['content-type'] ?? 'text/plain;charset=UTF-8', corpo: rq.postData() ?? '[]', texto: await resp.text().catch(() => '') });
     }
   });
-  await Promise.all([p0.waitForURL((u) => u.pathname === '/', { timeout: 120000 }), entrar(EMAIL, SENHA)]);
+  await p0.goto(BASE + '/', { waitUntil: 'load', timeout: 120000 });
   await p0.waitForSelector('.app .main', { timeout: 120000 });
-  const ck = await c0.cookies();
-  const sessaoCk = ck.find((c) => c.name.startsWith('sb-') && c.value);
-  ok(!!sessaoCk && !ck.some((c) => c.name === 'dmanda-ultimo-uso'), 'login: entrada correta cria a sessão e abre o Início, sem criar o carimbo de último uso (a regra das 6 horas não existe mais)');
-  ok(acoes.flat().some((c) => /^sb-127-auth-token/.test(c) && /Max-Age=\d{7,}/i.test(c)), 'login: o servidor regrava a sessão por Set-Cookie com validade longa (cookies escritos só por script têm validade limitada no Safari do iPhone)');
-  ok(!!sessaoCk && (sessaoCk.expires === -1 || sessaoCk.expires * 1000 - Date.now() > 300 * 24 * HORA), 'login: o cookie da sessão é persistente (vale por mais de 300 dias), não de sessão do navegador');
-  ok(!(await p0.content()).includes(SENHA), 'login: a senha não aparece na página depois da entrada');
   // a carga conjunta (uma só ação com demandas, entradas, eventos, dias, rotina e ambiente) só responde com a sessão da conta autorizada
   {
     const acharCarga = () => capturadas.find((x) => /"demandas":{"ok":true/.test(x.texto) && /"eventos":{"ok":true/.test(x.texto));
@@ -288,7 +260,7 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
     const repetir = async (ctx) => { const r = await ctx.request.post(carga.url, { headers: { 'next-action': carga.id, 'content-type': carga.tipo, accept: 'text/x-component' }, data: carga.corpo, maxRedirects: 0, failOnStatusCode: false }); return { status: r.status(), local: r.headers()['location'] ?? '', texto: await r.text().catch(() => '') }; };
     const anonimo = await nav0.newContext();
     const semSessao = await repetir(anonimo);
-    ok(carga && semSessao.status >= 300 && semSessao.status < 400 && /login/.test(semSessao.local) && !/"dados"/.test(semSessao.texto), `carga conjunta: repetida sem sessão é desviada para o login (status ${semSessao.status}) e não devolve nenhum dado`);
+    ok(carga && semSessao.status >= 300 && semSessao.status < 400 && /acesso/.test(semSessao.local) && !/"dados"/.test(semSessao.texto), `carga conjunta: repetida sem sessão é desviada para o login (status ${semSessao.status}) e não devolve nenhum dado`);
     await anonimo.close();
     const adulterado = await nav0.newContext();
     await adulterado.addCookies((await c0.cookies()).map(({ name, value, domain, path }) => ({ name, value: name.startsWith('sb-') ? 'adulterado' + value.slice(10) : value, domain, path })));
@@ -319,10 +291,10 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
     await pa.goto(BASE + '/', { waitUntil: 'load', timeout: 120000 });
     await pa.waitForTimeout(800);
     await pa.keyboard.press('Control+k'); await pa.waitForTimeout(400);
-    ok(new URL(pa.url()).pathname === '/login' && !(await pa.$('.top .buscabtn')) && !(await pa.$('.busca-ov')), 'busca: sem sessão o navegador cai no login, sem lupa, e Ctrl+K não abre busca nenhuma');
+    ok(new URL(pa.url()).pathname === '/acesso' && !(await pa.$('.top .buscabtn')) && !(await pa.$('.busca-ov')), 'busca: sem sessão o navegador cai no login, sem lupa, e Ctrl+K não abre busca nenhuma');
     for (const a of arquivos) {
       const r = await repetir(anonimo, a);
-      ok(r.status >= 300 && r.status < 400 && /login/.test(r.local) && !/"dados"/.test(r.texto), `busca: a leitura dos arquivados repetida sem sessão é desviada para o login (status ${r.status}) e não devolve dados`);
+      ok(r.status >= 300 && r.status < 400 && /acesso/.test(r.local) && !/"dados"/.test(r.texto), `busca: a leitura dos arquivados repetida sem sessão é desviada para o login (status ${r.status}) e não devolve dados`);
     }
     await anonimo.close();
     // cookie de sessão adulterado
@@ -354,7 +326,7 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
     const rotasRegistro = chamadas.filter((c) => /rpc\/registrar_dias/.test(c)).length;
     const anonP = await nav0.newContext();
     const semP = await repetirP(anonP);
-    ok(semP.status >= 300 && semP.status < 400 && /login/.test(semP.local) && !/"dados"/.test(semP.texto), `perfil: registrar sem sessão é desviado para o login (status ${semP.status}) e não devolve dados`);
+    ok(semP.status >= 300 && semP.status < 400 && /acesso/.test(semP.local) && !/"dados"/.test(semP.texto), `perfil: registrar sem sessão é desviado para o login (status ${semP.status}) e não devolve dados`);
     await anonP.close();
     const falsoP = await nav0.newContext();
     await falsoP.addCookies((await c0.cookies()).map(({ name, value, domain, path }) => ({ name, value: name.startsWith('sb-') ? 'adulterado' + value.slice(10) : value, domain, path })));
@@ -379,20 +351,6 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
   await p0b.waitForSelector('.app .main', { timeout: 120000 });
   ok(new URL(p0b.url()).pathname === '/demandas', 'reabrir o aplicativo com os mesmos cookies (como reabrir a PWA depois de horas parada): entra direto, sem pedir login');
   await c0b.close();
-  // provedor e-mail também entra
-  // sai da página do painel antes de limpar os cookies, para respostas atrasadas dela não recriarem a sessão no meio do teste
-  await p0.goto('about:blank'); await c0.clearCookies(); provedorSenha = 'email';
-  await abrirLogin();
-  await entrar(EMAIL, SENHA);
-  const entrouEmail = await p0.waitForURL((u) => u.pathname === '/', { timeout: 60000 }).then(() => true, () => false);
-  ok(entrouEmail, 'login: usuário com provedor "email" também entra pela senha' + (entrouEmail ? '' : ' (aviso na tela: ' + (await avisoLogin()) + '; Auth: ' + chamadas.slice(-6).join(' | ') + ')'));
-  // tela de login velha: abre sem sessão, outra aba entra (cookies válidos aparecem) e o formulário é enviado: o servidor redireciona a ação e o cliente cai no painel
-  await p0.goto('about:blank'); await c0.clearCookies(); provedorSenha = 'google';
-  await abrirLogin();
-  await c0.addCookies([{ name: 'sb-127-auth-token', value: sessaoSb({ sid: 'outra-aba' }), domain: 'localhost', path: '/' }]);
-  await entrar(EMAIL, SENHA);
-  const velha = await p0.waitForURL((u) => u.pathname === '/', { timeout: 60000 }).then(() => true, () => false);
-  ok(velha, 'login: tela de login velha, com outra aba já logada, termina no painel (sem mensagem de erro falsa)');
   await nav0.close();
 }
 
@@ -437,11 +395,11 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
   revogadas.add('meio-do-uso');
   await p1.waitForSelector('#toast:not(.on)', { timeout: 15000 }).catch(() => {});
   await salvar();
-  const foiAoLogin = await p1.waitForURL(/\/login\?encerrada=1/, { timeout: 30000 }).then(() => true, () => false);
+  const foiAoLogin = await p1.waitForURL(/\/acesso\?encerrada=1/, { timeout: 30000 }).then(() => true, () => false);
   ok(foiAoLogin, 'sessão revogada no meio do uso: gravar leva ao login com o aviso de sessão encerrada (sem sucesso de mentira)');
   const rascunho = await p1.evaluate(() => localStorage.getItem('dmanda:rascunhos'));
   ok(foiAoLogin && !!rascunho && rascunho.includes('Texto que não pode se perder'), 'sessão revogada: o texto digitado continua guardado como rascunho neste navegador');
-  ok(foiAoLogin && /sess[ãa]o foi encerrada/i.test(await p1.textContent('.login-info').catch(() => '') ?? ''), 'o login explica que a sessão foi encerrada (aviso neutro, não de erro)');
+  ok(foiAoLogin && /sess[ãa]o deste aparelho terminou/i.test(await p1.textContent('.login-info').catch(() => '') ?? ''), 'a tela de acesso explica que a sessão terminou (aviso neutro, não de erro)');
   await nav1.close();
 }
 
@@ -464,7 +422,7 @@ await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label=
 const item = await pg.evaluate(() => ({ nome: document.querySelector('.mv-menu .mv-t')?.textContent, bloqueado: document.querySelector('.mv-menu [role=menuitem]:last-of-type')?.getAttribute('aria-disabled') }));
 ok(item.nome === 'Conta de Teste' && item.bloqueado === null, 'no celular o menu do avatar mostra a conta e o "Sair" habilitado');
 await pg.click('.mv-menu [role=menuitem]:last-of-type');
-const parcial = await pg.waitForURL(/\/login\?saiu=parcial/, { timeout: 30000 }).then(() => true, () => false);
+const parcial = await pg.waitForURL(/\/acesso\?saiu=parcial/, { timeout: 30000 }).then(() => true, () => false);
 const avisoParcial = await pg.textContent('.login-aviso').catch(() => '');
 const cks = await ctx.cookies();
 ok(parcial && /não confirmou/.test(avisoParcial ?? '') && !/Você saiu do Dmanda neste navegador\.$/.test(avisoParcial ?? ''), 'falha do Auth ao sair: vai ao login com o aviso honesto (servidor não confirmou), sem mensagem de saída limpa');
@@ -477,7 +435,7 @@ await semarCookies('sair-2'); await ir('/demandas');
 const outroAparelho = cookieHeader({ sid: 'outro-aparelho' });
 ok((await pedir(outroAparelho)).status === 200, 'antes de sair, o outro aparelho (outra sessão) está logado');
 await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label="Conta"]');
-await Promise.all([pg.waitForURL(/\/login\?saiu=1/, { timeout: 30000 }), pg.click('.mv-menu [role=menuitem]:last-of-type')]);
+await Promise.all([pg.waitForURL(/\/acesso\?saiu=1/, { timeout: 30000 }), pg.click('.mv-menu [role=menuitem]:last-of-type')]);
 const aviso = await pg.textContent('.login-info').catch(() => '');
 const cks2 = await ctx.cookies();
 ok(/saiu do Dmanda/.test(aviso ?? ''), 'depois de sair: login com a mensagem "Você saiu do Dmanda neste navegador"');
@@ -491,11 +449,11 @@ const prefDepois = await lerPref();
 const prefTarde = prefAntes === prefDepois ? prefDepois : (await pg.waitForTimeout(1000), await lerPref());
 ok(prefAntes === prefDepois && prefAntes.includes('dmanda-tema'), 'as preferências do navegador (tema e outras) continuam depois de sair' + (prefAntes === prefDepois ? '' : ` [antes: ${prefAntes} | depois: ${prefDepois} | depois+1s: ${prefTarde} | url: ${pg.url()} | tema e ui gravados antes de sair: ${prefProntas}]`));
 await pg.goto(BASE + '/demandas', { waitUntil: 'load', timeout: 60000 });
-ok(new URL(pg.url()).pathname === '/login', 'depois de sair, /demandas exige novo login');
+ok(new URL(pg.url()).pathname === '/acesso', 'depois de sair, /demandas exige novo login');
 const semAuth = await pedir(null, '/');
-ok(semAuth.status === 307 && local(semAuth) === '/login', 'depois de sair, o Início também exige novo login');
+ok(semAuth.status === 307 && local(semAuth) === '/acesso', 'depois de sair, o Início também exige novo login');
 await pg.goBack().catch(() => {}); await pg.waitForTimeout(500);
-ok(new URL(pg.url()).pathname === '/login' || !(await pg.$('.dcard')), 'voltar no histórico não mostra demandas de volta');
+ok(new URL(pg.url()).pathname === '/acesso' || !(await pg.$('.dcard')), 'voltar no histórico não mostra demandas de volta');
 
 await nav.close(); parar();
 console.log(`\n${total - falhas} de ${total} verificações passaram.`);

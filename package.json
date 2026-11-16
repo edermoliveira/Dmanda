@@ -29,6 +29,8 @@
     "testar:baralho": "node scripts/testar-baralho.mjs",
     "testar:cards-inicio": "node scripts/testar-cards-inicio.mjs",
     "comparar:prazos-legados": "node scripts/comparar-prazos-legados.mjs",
+    "aparelhos": "node --env-file=.env.local scripts/aparelhos.mjs",
+    "testar:aparelhos": "node scripts/testar-aparelhos.mjs",
     "testar:prazo-chegada": "node scripts/testar-prazo-chegada.mjs",
     "testar:vagas-carrosseis": "node scripts/testar-vagas-carrosseis.mjs",
     "testar:auditoria": "node scripts/testar-auditoria.mjs",

@@ -270,7 +270,7 @@ ok(privFn.length === 0, 'privilégios: nenhuma função do Dmanda é executável
 const privAtualizar = (await sql("select has_function_privilege('anon', 'public.atualizar_demanda(uuid, jsonb)', 'execute') as anon, has_function_privilege('public', 'public.atualizar_demanda(uuid, jsonb)', 'execute') as pub, has_function_privilege('authenticated', 'public.atualizar_demanda(uuid, jsonb)', 'execute') as logado"))[0];
 ok(privAtualizar.anon === false && privAtualizar.pub === false && privAtualizar.logado === true, 'privilégios: atualizar_demanda só é executável pelo usuário logado (nunca anônimo nem público)');
 const privSvc = await sql("select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and has_function_privilege('service_role', p.oid, 'execute') order by 1");
-ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diaria', 'privilégios: o papel de serviço executa somente rotina_diaria e registrar_falha_rotina');
+ok(privSvc.map((x) => x.proname).join() === 'consumir_convite_aparelho,criar_convite_terminal,exigir_aparelhos,registrar_aparelho,registrar_falha_rotina,revogar_todos_aparelhos,rotina_diaria', 'privilégios: o papel de serviço executa somente a rotina diária (rotina_diaria e registrar_falha_rotina) e as cinco funções de aparelhos (decisão 82)');
 
 // proteção contra edição simultânea (migração 7). Antes dela, o teste que ficava aqui reproduzia o defeito: salvar uma janela antiga apagava a tarefa criada
 // em outro aparelho, sem aviso. Agora a janela antiga é recusada pelo banco (código DM409), inteira, e nada do que foi gravado depois se perde.
@@ -1870,6 +1870,111 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
     ok(volta.prazo_base_em === hoje0 && (await sig()) === sAntes, 'prazo pela chegada: reaplicar as funções da migração 20 devolve a regra anterior (duração a partir de hoje) com as mesmas assinaturas e privilégios');
     await a.exec(texto);
     ok((await ua('criar_demanda', { p: { assunto: 'De novo', prazo_dias: 5, chegou_em: '2027-03-01' } })).prazo_base_em === '2027-03-01', 'prazo pela chegada: e reaplicar a migração nova volta à regra da chegada');
+    await a.close();
+  } finally { rmSync(pasta, { recursive: true, force: true }); }
+}
+
+// ---------- Aparelhos autorizados (decisão 82, etapa 5): desde o esquema publicado, passando pelas quatro vagas e pelo prazo pela chegada, sem Pagamentos ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m6 = todas.find((f) => f.includes('aparelhos_autorizados')), m5 = todas.find((f) => f.includes('prazo_pela_chegada')), m4 = todas.find((f) => f.includes('para_hoje_quatro_vagas')), m20 = todas.find((f) => f.includes('origem_documento_para_hoje'));
+  ok(!!m6 && todas.indexOf(m6) > todas.indexOf(m5) && todas.indexOf(m5) > todas.indexOf(m4), 'aparelhos: a migração é um arquivo novo, depois das quatro vagas e do prazo pela chegada, e nenhuma anterior foi reescrita');
+  const texto = readFileSync(join('supabase/migrations', m6), 'utf8'), codigo = texto.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  ok(!/pagamentos/i.test(codigo) && !/drop\s+(table|policy)|alter\s+table\s+public\./i.test(codigo) && !/create\s+policy/i.test(codigo), 'aparelhos: a migração não depende de Pagamentos e não mexe em tabela de dados nem em política (só troca a função que as políticas já chamam)');
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-aparelhos-'));
+  try {
+    for (const f of todas.filter((f) => f <= m20 || f === m4 || f === m5)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    const a = await abrirBancoTeste({ raizMigracoes: pasta });
+    const U = 'ab010000-0000-4000-8000-000000000001', O = 'ab020000-0000-4000-8000-000000000002';
+    const S1 = 'cc010000-0000-4000-8000-000000000001', S2 = 'cc020000-0000-4000-8000-000000000002', S3 = 'cc030000-0000-4000-8000-000000000003';
+    await a.exec(`insert into auth.users (id, email) values ('${U}', 'titular@teste'), ('${O}', 'intruso@teste')`);
+    await a.exec("insert into dmanda_privado.acesso_autorizado (email) values ('titular@teste')");
+    const em = (u, sessaoId, f, x = {}) => chamarComoUsuario(a, u, f, x, { provedor: 'email', sessaoId });
+    const erroDe = async (p) => { try { await p; return null; } catch (e) { return e.message || String(e); } };
+    const serv = (f, x = {}) => chamarComoServico(a, f, x);
+    const sqlq = async (q, pr = []) => (await a.query(q, pr)).rows;
+    // dados antigos, criados por uma sessão qualquer antes da migração (sem registro de aparelho)
+    const antiga = await em(U, S3, 'criar_demanda', { p: { assunto: 'Criada antes da migração' } });
+    const fotoDados = JSON.stringify(await sqlq('select * from public.demandas order by id'));
+    await a.exec(texto);
+    ok(JSON.stringify(await sqlq('select * from public.demandas order by id')) === fotoDados, 'aparelhos (upgrade): nenhuma linha de demanda mudou');
+    ok((await sqlq('select exigir_aparelho from dmanda_privado.config_acesso'))[0].exigir_aparelho === false, 'aparelhos: a exigência nasce desligada (transição)');
+    // transição: com a exigência desligada, a sessão que já existia (sem registro) continua lendo e gravando
+    ok((await em(U, S3, 'listar_demandas', { p_arquivadas: false })).length === 1 && (await em(U, S3, 'criar_demanda', { p: { assunto: 'Gravada na transição' } })).assunto === 'Gravada na transição', 'aparelhos (transição): com a exigência desligada a sessão antiga, sem registro, segue lendo e gravando como antes');
+    ok((await em(U, S3, 'estado_aparelho')).ativo === true && (await em(U, S3, 'estado_aparelho')).exigido === false, 'aparelhos (transição): estado_aparelho diz exigido=false e ativo=true');
+    // privilégios e RLS das tabelas novas
+    const tabs = await sqlq("select c.relname, c.relrowsecurity, has_table_privilege('authenticated', c.oid, 'select') s1, has_table_privilege('anon', c.oid, 'select') s2, has_table_privilege('service_role', c.oid, 'select') s3 from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'dmanda_privado' and c.relname in ('aparelhos', 'convites_aparelho', 'falhas_pareamento', 'config_acesso') order by 1");
+    ok(tabs.length === 4 && tabs.every((t) => t.relrowsecurity && !t.s1 && !t.s2), 'aparelhos: as quatro tabelas novas têm RLS ligada e nenhum privilégio para usuário logado nem visitante');
+    const fns = await sqlq("select p.proname, has_function_privilege('anon', p.oid, 'execute') an, has_function_privilege('authenticated', p.oid, 'execute') au, has_function_privilege('service_role', p.oid, 'execute') sv, has_function_privilege('public', p.oid, 'execute') pu from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('estado_aparelho','criar_convite_aparelho','listar_aparelhos','revogar_aparelho','consumir_convite_aparelho','registrar_aparelho','criar_convite_terminal','exigir_aparelhos','revogar_todos_aparelhos') order by 1");
+    const logado = ['criar_convite_aparelho', 'estado_aparelho', 'listar_aparelhos', 'revogar_aparelho'];
+    ok(fns.length === 9 && fns.every((f) => !f.an && !f.pu && f.au === logado.includes(f.proname) && f.sv === !logado.includes(f.proname)), 'aparelhos: as quatro funções do aparelho são do usuário logado e as cinco do servidor e do terminal só da chave de serviço (nenhuma de visitante)');
+    // convites: formato, uso único, validade, trava de tentativas
+    ok(/inválido/.test(await erroDe(serv('criar_convite_terminal', { p_codigo: 'curto' }))), 'convite: código fora do formato é recusado');
+    await serv('criar_convite_terminal', { p_codigo: 'abcd2345' });
+    ok((await serv('consumir_convite_aparelho', { p_codigo: 'ZZZZ9999' })).motivo === 'invalido', 'convite: código errado é recusado');
+    const bom = await serv('consumir_convite_aparelho', { p_codigo: ' abcd-2345'.replace('-', '') });
+    ok(bom.ok === true && bom.user_id === U, 'convite: o código certo (qualquer caixa, com espaços) devolve o titular');
+    ok((await serv('consumir_convite_aparelho', { p_codigo: 'ABCD2345' })).motivo === 'invalido', 'convite: o mesmo código não vale duas vezes (uso único)');
+    await serv('criar_convite_terminal', { p_codigo: 'VENCIDO7' }); await a.query("update dmanda_privado.convites_aparelho set expira_em = now() - interval '1 minute'");
+    ok((await serv('consumir_convite_aparelho', { p_codigo: 'VENCIDO7' })).motivo === 'invalido', 'convite: depois de 10 minutos o código vence');
+    await a.query('delete from dmanda_privado.falhas_pareamento');
+    await serv('criar_convite_terminal', { p_codigo: 'LIMITE22' });
+    for (let i = 0; i < 10; i++) await serv('consumir_convite_aparelho', { p_codigo: `ERRADO${String(i).padStart(2, '0')}` });
+    ok((await serv('consumir_convite_aparelho', { p_codigo: 'LIMITE22' })).motivo === 'limite' && (await sqlq("select count(*)::int n from dmanda_privado.convites_aparelho where usado_em is null and codigo_hash = encode(sha256(convert_to('LIMITE22', 'UTF8')), 'hex')"))[0].n === 1, 'convite: depois de 10 falhas seguidas até o código certo é barrado por alguns minutos (e continua guardado)');
+    await a.query('delete from dmanda_privado.falhas_pareamento');
+    ok((await serv('consumir_convite_aparelho', { p_codigo: 'LIMITE22' })).ok === true, 'convite: passada a janela da trava, o código certo volta a valer');
+    // registro dos aparelhos e exigência ligada
+    await serv('registrar_aparelho', { p_user: U, p_sessao: S1, p_nome: 'iPhone · Safari' }); await serv('registrar_aparelho', { p_user: U, p_sessao: S2, p_nome: 'iPad · Safari' });
+    ok((await serv('registrar_aparelho', { p_user: U, p_sessao: S1, p_nome: 'repetido' })) === (await sqlq('select id from dmanda_privado.aparelhos where sessao_id = $1', [S1]))[0].id && (await sqlq('select count(*)::int n from dmanda_privado.aparelhos'))[0].n === 2, 'aparelhos: registrar a mesma sessão duas vezes não duplica');
+    await serv('exigir_aparelhos', { p_exigir: true });
+    const d1 = await em(U, S1, 'criar_demanda', { p: { assunto: 'Do aparelho 1' } });
+    ok((await em(U, S1, 'listar_demandas', { p_arquivadas: false })).length === 3 && (await em(U, S2, 'listar_demandas', { p_arquivadas: false })).length === 3, 'aparelhos (exigência ligada): os dois aparelhos registrados leem e gravam');
+    // sessão não registrada, sem session_id e outra conta
+    ok((await em(U, S3, 'listar_demandas', { p_arquivadas: false })).length === 0 && /row-level security|violates|Este aparelho/i.test(await erroDe(em(U, S3, 'criar_demanda', { p: { assunto: 'Não pode' } }))), 'aparelhos: uma sessão não registrada, mesmo da conta certa, não lê nada e não grava');
+    ok((await em(U, undefined, 'listar_demandas', { p_arquivadas: false })).length === 0 && !!(await erroDe(em(U, undefined, 'criar_demanda', { p: { assunto: 'Sem sessão' } }))), 'aparelhos: um token sem session_id é negado quando a exigência está ligada');
+    ok((await em(O, S1, 'listar_demandas', { p_arquivadas: false })).length === 0, 'aparelhos: a sessão de um aparelho registrado não dá acesso a outra conta (nem a conta fora da lista)');
+    ok((await em(U, S3, 'estado_aparelho')).ativo === false && (await em(U, S1, 'estado_aparelho')).ativo === true && (await em(O, S1, 'estado_aparelho')).ativo === false, 'aparelhos: estado_aparelho separa o registrado do que não está e da conta errada');
+    for (const f of ['listar_entradas', 'listar_dias_indisponiveis', 'listar_eventos']) { const x = await em(U, S3, f, f === 'listar_entradas' ? { p_arquivadas: false } : {}); ok(Array.isArray(x) && x.length === 0, `aparelhos: ${f} também devolve vazio para a sessão não registrada`); }
+    ok(!!(await erroDe(em(U, S3, 'listar_aparelhos'))) && !!(await erroDe(em(U, S3, 'criar_convite_aparelho', { p_codigo: 'NAOPODE1' }))) && !!(await erroDe(em(U, S3, 'revogar_aparelho', { p_id: (await sqlq('select id from dmanda_privado.aparelhos limit 1'))[0].id }))), 'aparelhos: sessão não registrada não lista, não convida e não revoga');
+    // listar, convidar a partir de um aparelho autorizado, revogar um aparelho específico
+    const lista = await em(U, S1, 'listar_aparelhos');
+    ok(lista.length === 2 && lista.find((x) => x.nome === 'iPhone · Safari').atual === true && lista.find((x) => x.nome === 'iPad · Safari').atual === false, 'aparelhos: a lista mostra os dois, com o atual marcado');
+    ok((await em(U, S1, 'criar_convite_aparelho', { p_codigo: 'DEDOS123' })).expira_em && /inválido/.test(await erroDe(em(U, S1, 'criar_convite_aparelho', { p_codigo: '!!' }))), 'aparelhos: um aparelho autorizado cria o convite (formato conferido)');
+    ok((await serv('consumir_convite_aparelho', { p_codigo: 'DEDOS123' })).ok === true, 'aparelhos: o convite criado por um aparelho autorizado é consumido pelo servidor');
+    const id2 = lista.find((x) => x.nome === 'iPad · Safari').id;
+    ok(/não está autorizado|não encontrado/i.test(await erroDe(em(O, S1, 'revogar_aparelho', { p_id: id2 }))) && (await sqlq('select revogado_em from dmanda_privado.aparelhos where id = $1', [id2]))[0].revogado_em === null, 'aparelhos: outra conta não revoga aparelho do titular');
+    const rev = await em(U, S1, 'revogar_aparelho', { p_id: id2 });
+    ok(rev.atual === false && (await em(U, S2, 'listar_demandas', { p_arquivadas: false })).length === 0 && (await em(U, S2, 'estado_aparelho')).ativo === false && !!(await erroDe(em(U, S2, 'criar_demanda', { p: { assunto: 'Revogado' } }))) && (await em(U, S1, 'listar_demandas', { p_arquivadas: false })).length === 3, 'aparelhos (revogação individual): o iPad perde leitura e gravação imediatamente, com o token ainda válido, e o iPhone continua');
+    ok((await em(U, S1, 'listar_aparelhos')).find((x) => x.id === id2).revogado_em !== null && (await em(U, S1, 'revogar_aparelho', { p_id: id2 })).id === id2, 'aparelhos: a lista guarda a revogação e revogar de novo é inofensivo');
+    // validade: vence sem uso, renova no uso (no máximo uma vez por hora)
+    await a.query("update dmanda_privado.aparelhos set expira_em = now() + interval '1 day', ultimo_uso = now() - interval '2 hours' where sessao_id = $1", [S1]);
+    await em(U, S1, 'estado_aparelho');
+    const renovado = (await sqlq("select expira_em > now() + interval '89 days' ok1, ultimo_uso > now() - interval '1 minute' ok2 from dmanda_privado.aparelhos where sessao_id = $1", [S1]))[0];
+    ok(renovado.ok1 && renovado.ok2, 'aparelhos (validade): usar o aparelho depois de mais de uma hora renova a validade para 90 dias');
+    await a.query("update dmanda_privado.aparelhos set expira_em = now() + interval '5 days' where sessao_id = $1", [S1]); await em(U, S1, 'estado_aparelho');
+    ok((await sqlq("select expira_em < now() + interval '6 days' ok from dmanda_privado.aparelhos where sessao_id = $1", [S1]))[0].ok, 'aparelhos (validade): dentro da mesma hora não há nova gravação');
+    await a.query("update dmanda_privado.aparelhos set expira_em = now() - interval '1 second' where sessao_id = $1", [S1]);
+    ok((await em(U, S1, 'listar_demandas', { p_arquivadas: false })).length === 0 && (await em(U, S1, 'estado_aparelho')).ativo === false, 'aparelhos (validade): passados os 90 dias sem uso o aparelho perde o acesso');
+    await a.query("update dmanda_privado.aparelhos set expira_em = now() + interval '90 days' where sessao_id = $1", [S1]);
+    // a rotina diária e a chave de serviço não dependem de aparelho
+    ok(!(await erroDe(serv('rotina_diaria', {}))), 'aparelhos: a rotina diária (chave de serviço) segue funcionando com a exigência ligada');
+    // recuperação: revogar todos e autorizar de novo pelo terminal
+    ok((await serv('revogar_todos_aparelhos')) >= 1 && (await em(U, S1, 'listar_demandas', { p_arquivadas: false })).length === 0, 'aparelhos (recuperação): revogar todos corta o acesso de todos os aparelhos');
+    await serv('criar_convite_terminal', { p_codigo: 'VOLTAR22' }); const volta = await serv('consumir_convite_aparelho', { p_codigo: 'VOLTAR22' });
+    await serv('registrar_aparelho', { p_user: volta.user_id, p_sessao: 'cc040000-0000-4000-8000-000000000004', p_nome: 'Aparelho novo' });
+    ok((await em(U, 'cc040000-0000-4000-8000-000000000004', 'listar_demandas', { p_arquivadas: false })).length === 3 && (await em(U, S1, 'listar_demandas', { p_arquivadas: false })).length === 0, 'aparelhos (recuperação): um convite do terminal autoriza o primeiro aparelho de novo, e os revogados continuam fora');
+    // rollback: desligar a exigência devolve o comportamento anterior
+    await serv('exigir_aparelhos', { p_exigir: false });
+    ok((await em(U, S1, 'listar_demandas', { p_arquivadas: false })).length === 3 && (await em(U, S3, 'listar_demandas', { p_arquivadas: false })).length === 3, 'aparelhos (rollback): com a exigência desligada tudo volta ao que era, inclusive para sessões revogadas (o conta_autorizada de antes)');
+    ok((await em(O, S1, 'listar_demandas', { p_arquivadas: false })).length === 0, 'aparelhos: a lista protegida de e-mails continua valendo com a exigência desligada');
+    // reaplicar é inofensivo e não apaga registros
+    const antes = JSON.stringify([await sqlq('select * from dmanda_privado.aparelhos order by id'), await sqlq('select * from dmanda_privado.config_acesso')]);
+    await a.exec(texto.slice(texto.indexOf('-- ---------- a decisão de acesso')));
+    ok(JSON.stringify([await sqlq('select * from dmanda_privado.aparelhos order by id'), await sqlq('select * from dmanda_privado.config_acesso')]) === antes, 'aparelhos: reaplicar as funções não muda registros nem configuração');
+    void antiga; void d1;
     await a.close();
   } finally { rmSync(pasta, { recursive: true, force: true }); }
 }
