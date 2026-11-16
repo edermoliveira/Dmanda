@@ -1924,11 +1924,18 @@ ok(privSvc.map((x) => x.proname).join() === 'consumir_convite_aparelho,criar_con
     await serv('criar_convite_terminal', { p_codigo: 'LIMITE22' });
     for (let i = 0; i < 10; i++) await serv('consumir_convite_aparelho', { p_codigo: `ERRADO${String(i).padStart(2, '0')}` });
     ok((await serv('consumir_convite_aparelho', { p_codigo: 'LIMITE22' })).motivo === 'limite' && (await sqlq("select count(*)::int n from dmanda_privado.convites_aparelho where usado_em is null and codigo_hash = encode(sha256(convert_to('LIMITE22', 'UTF8')), 'hex')"))[0].n === 1, 'convite: depois de 10 falhas seguidas até o código certo é barrado por alguns minutos (e continua guardado)');
-    await a.query('delete from dmanda_privado.falhas_pareamento');
+    await serv('criar_convite_terminal', { p_codigo: 'LIBERA22' });
+    ok((await sqlq('select count(*)::int n from dmanda_privado.falhas_pareamento'))[0].n === 0 && (await serv('consumir_convite_aparelho', { p_codigo: 'LIBERA22' })).ok === true, 'convite: gerar o código no terminal (chave de serviço) limpa a trava de tentativas, então um visitante não impede a recuperação');
+    await serv('criar_convite_terminal', { p_codigo: 'LIMITE22' }); for (let i = 0; i < 10; i++) await serv('consumir_convite_aparelho', { p_codigo: `OUTRO${String(i).padStart(3, '0')}` }); await a.query('delete from dmanda_privado.falhas_pareamento');
     ok((await serv('consumir_convite_aparelho', { p_codigo: 'LIMITE22' })).ok === true, 'convite: passada a janela da trava, o código certo volta a valer');
     // registro dos aparelhos e exigência ligada
+    ok(/Autorize ao menos um aparelho/.test(await erroDe(serv('exigir_aparelhos', { p_exigir: true }))) && (await sqlq('select exigir_aparelho from dmanda_privado.config_acesso'))[0].exigir_aparelho === false, 'aparelhos: ligar a exigência sem nenhum aparelho autorizado é recusado (não tranca o titular para fora)');
     await serv('registrar_aparelho', { p_user: U, p_sessao: S1, p_nome: 'iPhone · Safari' }); await serv('registrar_aparelho', { p_user: U, p_sessao: S2, p_nome: 'iPad · Safari' });
     ok((await serv('registrar_aparelho', { p_user: U, p_sessao: S1, p_nome: 'repetido' })) === (await sqlq('select id from dmanda_privado.aparelhos where sessao_id = $1', [S1]))[0].id && (await sqlq('select count(*)::int n from dmanda_privado.aparelhos'))[0].n === 2, 'aparelhos: registrar a mesma sessão duas vezes não duplica');
+    await a.query("insert into dmanda_privado.aparelhos (user_id, sessao_id, nome, revogado_em, expira_em) values ($1, 'cc990000-0000-4000-8000-000000000099', 'Antigo', now() - interval '40 days', now() - interval '10 days')", [U]);
+    await serv('registrar_aparelho', { p_user: U, p_sessao: 'cc980000-0000-4000-8000-000000000098', p_nome: 'Temporário' });
+    ok((await sqlq("select count(*)::int n from dmanda_privado.aparelhos where nome = 'Antigo'"))[0].n === 0, 'aparelhos: registrar um aparelho apaga os revogados ou vencidos há mais de 30 dias (a lista não cresce para sempre)');
+    await a.query("delete from dmanda_privado.aparelhos where nome = 'Temporário'");
     await serv('exigir_aparelhos', { p_exigir: true });
     const d1 = await em(U, S1, 'criar_demanda', { p: { assunto: 'Do aparelho 1' } });
     ok((await em(U, S1, 'listar_demandas', { p_arquivadas: false })).length === 3 && (await em(U, S2, 'listar_demandas', { p_arquivadas: false })).length === 3, 'aparelhos (exigência ligada): os dois aparelhos registrados leem e gravam');

@@ -69,6 +69,10 @@ export async function iniciarSupabaseFalso({ db, porta, email, usuarioId }) {
       s.n += 1;
       return json(res, 200, sessaoJson(sid, s.n));
     }
+    if (/^\/auth\/v1\/admin\/users\/[\w-]+$/.test(u.pathname) && req.method === 'GET') {
+      if (!ehServico(req)) return json(res, 401, { code: 401, msg: 'chave de serviço necessária' });
+      return u.pathname.endsWith(usuarioId) ? json(res, 200, usuario()) : json(res, 404, { code: 404, error_code: 'user_not_found', msg: 'User not found' });
+    }
     if (u.pathname === '/auth/v1/user') {
       const carga = lerJwt(bearer(req));
       if (!carga) return json(res, 401, { code: 401, error_code: 'bad_jwt', msg: 'invalid JWT' });

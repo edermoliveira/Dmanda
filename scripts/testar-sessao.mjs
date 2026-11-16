@@ -399,6 +399,7 @@ ok(r.status === 200, 'os arquivos estáticos da marca (SVG, PNG, manifesto) cont
   ok(foiAoLogin, 'sessão revogada no meio do uso: gravar leva ao login com o aviso de sessão encerrada (sem sucesso de mentira)');
   const rascunho = await p1.evaluate(() => localStorage.getItem('dmanda:rascunhos'));
   ok(foiAoLogin && !!rascunho && rascunho.includes('Texto que não pode se perder'), 'sessão revogada: o texto digitado continua guardado como rascunho neste navegador');
+  await p1.waitForSelector('.login-info', { timeout: 15000 }).catch(() => {});
   ok(foiAoLogin && /sess[ãa]o deste aparelho terminou/i.test(await p1.textContent('.login-info').catch(() => '') ?? ''), 'a tela de acesso explica que a sessão terminou (aviso neutro, não de erro)');
   await nav1.close();
 }
@@ -436,6 +437,7 @@ const outroAparelho = cookieHeader({ sid: 'outro-aparelho' });
 ok((await pedir(outroAparelho)).status === 200, 'antes de sair, o outro aparelho (outra sessão) está logado');
 await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label="Conta"]');
 await Promise.all([pg.waitForURL(/\/acesso\?saiu=1/, { timeout: 30000 }), pg.click('.mv-menu [role=menuitem]:last-of-type')]);
+await pg.waitForSelector('.login-info', { timeout: 15000 }).catch(() => {});   // o aviso vem no streaming da página (Suspense)
 const aviso = await pg.textContent('.login-info').catch(() => '');
 const cks2 = await ctx.cookies();
 ok(/saiu do Dmanda/.test(aviso ?? ''), 'depois de sair: login com a mensagem "Você saiu do Dmanda neste navegador"');

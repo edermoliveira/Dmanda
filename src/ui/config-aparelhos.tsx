@@ -79,7 +79,7 @@ export function SecaoAparelhos() {
           ))}
         </ul>
       )}
-      {outros.length ? <p className="data" data-revogados>{outros.length === 1 ? '1 aparelho revogado ou vencido' : `${outros.length} aparelhos revogados ou vencidos`}: {outros.map((a) => `${a.nome} (${a.revogado_em ? 'revogado' : 'vencido'})`).join(', ')}.</p> : null}
+      {outros.length ? <p className="data" data-revogados>{outros.length === 1 ? '1 aparelho revogado ou vencido' : `${outros.length} aparelhos revogados ou vencidos`}: {outros.slice(0, 5).map((a) => `${a.nome} (${a.revogado_em ? 'revogado' : 'vencido'})`).join(', ')}{outros.length > 5 ? ' e outros' : ''}.</p> : null}
     </section>
   );
 }

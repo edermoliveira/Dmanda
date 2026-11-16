@@ -31,6 +31,9 @@ export async function autorizarComCodigo(codigoDigitado: string): Promise<Result
     const c = convite as { ok?: boolean; motivo?: string; user_id?: string } | null;
     if (!c?.ok || !c.user_id) return { ok: false, erro: c?.motivo === 'limite' ? MSG_LIMITE : MSG_CODIGO };
     // a sessão nasce no servidor, para a conta da lista protegida (generateLink só gera o token, nunca envia e-mail); o usuário precisa ser o dono do convite
+    // generateLink cria um usuário se o e-mail não existir: confere antes que o dono do convite é a conta autorizada e que ela existe
+    const { data: dono } = await svc.auth.admin.getUserById(c.user_id);
+    if (dono?.user?.email?.toLowerCase() !== email.toLowerCase()) return { ok: false, erro: MSG_GENERICA };
     const { data: link, error: erroLink } = await svc.auth.admin.generateLink({ type: 'magiclink', email });
     if (erroLink || !link?.properties?.hashed_token || link.user?.id !== c.user_id) return { ok: false, erro: MSG_GENERICA };
     const sb = await criarClienteServidor();

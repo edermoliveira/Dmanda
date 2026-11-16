@@ -104,17 +104,19 @@ export async function sairDaConta(): Promise<{ ok: true } | { ok: false; erro: s
   try {
     const sb = await criarClienteServidor();
     // Sair também tira a autorização deste aparelho (decisão 82): para voltar, um código novo. Melhor esforço: se não der, a sessão ainda é encerrada abaixo.
+    let revogou = false;
     try {
       const { data: lista } = await sb.rpc('listar_aparelhos');
       const atual = (lista as { id: string; atual: boolean; revogado_em: string | null }[] | null)?.find((a) => a.atual && !a.revogado_em);
-      if (atual) await sb.rpc('revogar_aparelho', { p_id: atual.id });
+      if (atual) revogou = !(await sb.rpc('revogar_aparelho', { p_id: atual.id })).error;
     } catch { /* sem o registro, vale só o encerramento da sessão */ }
     const { error } = await sb.auth.signOut({ scope: 'local' });
     if (!error) { (await cookies()).delete(COOKIE_LEGADO_ULTIMO_USO); return { ok: true }; }
     // O SDK apaga a sessão deste navegador mesmo quando o servidor de Auth não confirma o encerramento: se for o caso, a tela precisa ir ao login
     // (com aviso honesto) em vez de continuar parecendo autenticada. Se a sessão local continua, nada mudou e é só erro.
     const { data } = await sb.auth.getSession();
-    if (data.session) return { ok: false, erro: falha, sessaoLocalEncerrada: false };
+    // com o aparelho já revogado a sessão não abre mais nada: a tela vai ao acesso com o aviso honesto, em vez de dizer que ainda está dentro
+    if (data.session) return { ok: false, erro: falha, sessaoLocalEncerrada: revogou };
     (await cookies()).delete(COOKIE_LEGADO_ULTIMO_USO);
     return { ok: false, erro: falha, sessaoLocalEncerrada: true };
   } catch {

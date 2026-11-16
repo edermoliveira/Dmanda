@@ -147,6 +147,8 @@ end $$;
 create or replace function public.registrar_aparelho(p_user uuid, p_sessao uuid, p_nome text) returns uuid language plpgsql security definer set search_path = '' as $$
 declare v_id uuid;
 begin
+  -- a lista não cresce para sempre: some o que foi revogado ou venceu há mais de 30 dias
+  delete from dmanda_privado.aparelhos where user_id = p_user and (revogado_em < now() - interval '30 days' or expira_em < now() - interval '30 days');
   insert into dmanda_privado.aparelhos (user_id, sessao_id, nome) values (p_user, p_sessao, coalesce(nullif(btrim(left(p_nome, 80)), ''), 'Aparelho'))
     on conflict (sessao_id) do nothing returning id into v_id;
   if v_id is null then select id into v_id from dmanda_privado.aparelhos where sessao_id = p_sessao; end if;
@@ -161,12 +163,18 @@ begin
   select u.id into v_user from auth.users u join dmanda_privado.acesso_autorizado a on a.email = lower(btrim(u.email)) order by u.id limit 1;
   if v_user is null then perform public.erro_dmanda('Nenhum usuário da lista protegida foi encontrado.'); end if;
   delete from dmanda_privado.convites_aparelho where user_id = v_user and (usado_em is null or expira_em < now() - interval '1 day');
+  -- quem tem a chave de serviço é o titular: a trava de tentativas, aberta a qualquer visitante da tela de acesso, não pode impedir a recuperação
+  delete from dmanda_privado.falhas_pareamento;
   insert into dmanda_privado.convites_aparelho (user_id, codigo_hash, origem, expira_em) values (v_user, encode(sha256(convert_to(v_codigo, 'UTF8')), 'hex'), 'terminal', v_expira);
   return jsonb_build_object('expira_em', v_expira);
 end $$;
 
 create or replace function public.exigir_aparelhos(p_exigir boolean) returns boolean language plpgsql security definer set search_path = '' as $$
 begin
+  -- ligar a exigência sem nenhum aparelho autorizado trancaria o titular para fora: antes, autorize ao menos um aparelho (convite do terminal)
+  if coalesce(p_exigir, false) and not exists (select 1 from dmanda_privado.aparelhos where revogado_em is null and expira_em > now()) then
+    perform public.erro_dmanda('Autorize ao menos um aparelho antes de ligar a exigência.');
+  end if;
   update dmanda_privado.config_acesso set exigir_aparelho = coalesce(p_exigir, false);
   return coalesce(p_exigir, false);
 end $$;
