@@ -94,3 +94,24 @@
 .app[data-dir="d"] .ajuda-b:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 .app[data-dir="d"] .ajuda-b .ic { width: 16px; height: 16px; }
 .app[data-dir="d"] .ajuda-balao { position: absolute; top: calc(100% + 8px); left: 0; z-index: 60; box-sizing: border-box; width: max-content; max-width: min(300px, calc(100vw - 24px)); padding: 12px 14px; border-radius: 18px; background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--card-brd), 0 18px 44px rgba(10, 10, 10, .22); font-size: var(--t-leitura); font-weight: 400; line-height: 1.4; text-align: left; }
+
+/* Nova urgência (etapa 2): na web e no iPad os cards ficam lado a lado numa faixa com rolagem horizontal própria, do mais para o menos urgente (a ordem do ranking já aplicada em para-hoje.tsx).
+   Cada card tem a largura de uma célula do Para hoje (a mesma conta do auto-fill de 290 px com vão de 16 px, feita por container query sobre a área útil da caixa), então o tamanho é o mesmo nas duas seções. A caixa avança 12 px para os lados (a
+   margem negativa iguala o preenchimento) para que a área útil coincida com a do Para hoje. A faixa é focável (setas do teclado rolam) e não prende a rolagem vertical da página. */
+.app[data-dir="d"] .nova-urgencia { margin: 14px -12px 0; min-width: 0; flex: 1 1 100%; container: nova-urg / inline-size; }
+.app[data-dir="d"] .cards-urg { --n: 1; display: flex; gap: 16px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 2px 2px 10px; margin: -2px; scrollbar-width: thin; }
+.app[data-dir="d"] .cards-urg > .vaga { flex: 0 0 calc((100cqi - (var(--n) - 1) * 16px) / var(--n)); min-width: 0; scroll-snap-align: start; }
+.app[data-dir="d"] .cards-urg:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; border-radius: 12px; }
+@container nova-urg (min-width: 596px) { .app[data-dir="d"] .cards-urg { --n: 2; } }
+@container nova-urg (min-width: 902px) { .app[data-dir="d"] .cards-urg { --n: 3; } }
+@container nova-urg (min-width: 1208px) { .app[data-dir="d"] .cards-urg { --n: 4; } }
+@container nova-urg (min-width: 1514px) { .app[data-dir="d"] .cards-urg { --n: 5; } }
+/* setas da faixa da Nova urgência: só quando há mais cards do que cabem; área de toque de 44 px; nas pontas ficam esmaecidas e mantêm o foco (aria-disabled) */
+.app[data-dir="d"] .urg-caixa { position: relative; min-width: 0; }
+.app[data-dir="d"] .urg-seta { position: absolute; top: 50%; z-index: 5; display: grid; place-items: center; width: 36px; height: 36px; margin-top: -18px; padding: 0; border: 0; border-radius: 50%; background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--card-brd), 0 6px 18px rgba(10, 10, 10, .22); cursor: pointer; transition: opacity .15s ease-out; }
+.app[data-dir="d"] .urg-seta::after { content: ""; position: absolute; inset: -4px; }
+.app[data-dir="d"] .urg-ant { left: -10px; }
+.app[data-dir="d"] .urg-ant svg { transform: scaleX(-1); }
+.app[data-dir="d"] .urg-prox { right: -10px; }
+.app[data-dir="d"] .urg-seta[aria-disabled="true"] { opacity: .35; cursor: default; }
+.app[data-dir="d"] .urg-seta:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
