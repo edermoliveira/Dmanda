@@ -48,6 +48,7 @@ try {
   await novo(U, 'E1 finalizada, duração de outro dia', { chegou: '2026-09-01', original: '2026-09-21', dias: 10, base: '2026-09-11', etapa: 'Finalizado', expl: 'finalizada (histórico)' });
   await novo(U, 'F1 arquivada, duração de outro dia', { chegou: '2026-09-01', original: '2026-09-21', dias: 10, base: '2026-09-11', arquivar: true, expl: 'arquivada (histórico)' });
   await novo(U, 'G1 duração já contada da chegada', { chegou: '2026-11-03', original: '2026-11-13', dias: 10, base: '2026-11-03', expl: 'base igual à chegada (já contada pela chegada)' });
+  await novo(U, 'J1 duração gravada sem a base da contagem', { chegou: '2026-10-05', original: '2026-10-19', dias: 10, base: null, expl: 'sem base' });
   await novo(U, 'H1 sem prazo', { chegou: '2026-11-03', expl: 'sem prazo' });
   await novo(O, 'O1 outro usuário, duração contada de 05/10 (sem feriado cadastrado)', { chegou: '2026-10-03', original: '2026-11-04', dias: 30, base: '2026-10-05', expl: 'duração contada de outro dia' });
 
@@ -63,13 +64,14 @@ try {
   // ---------- 3) o que um backfill mudaria, pelas regras puras ----------
   const diasDe = (u) => (u === U ? dias.map((d, i) => ({ id: `d${i}`, ...d, criado_em: `2026-01-0${i + 1}` })) : []);
   const previsto = antes.map((r) => {
-    const candidato = r.etapa !== 'Finalizado' && !r.arquivada && r.prazo_dias !== null && !!r.chegou_em && r.prazo_base_em !== r.chegou_em;
+    const candidato = r.etapa !== 'Finalizado' && !r.arquivada && r.prazo_dias !== null && !!r.chegou_em && !!r.prazo_base_em && r.prazo_base_em !== r.chegou_em;
     let motivo;
     if (r.etapa === 'Finalizado') motivo = 'preservada: finalizada (histórico)';
     else if (r.arquivada) motivo = 'preservada: arquivada (histórico)';
     else if (r.prazo === null) motivo = 'preservada: sem prazo';
     else if (r.prazo_dias === null) motivo = r.chegou_em ? 'preservada: data escolhida à mão (sem duração gravada)' : 'preservada: sem chegada (falta a base de cálculo)';
     else if (!r.chegou_em) motivo = 'preservada: sem chegada (falta a base de cálculo)';
+    else if (!r.prazo_base_em) motivo = 'preservada: sem base de contagem gravada (não há evidência da duração)';
     else if (r.prazo_base_em === r.chegou_em) motivo = 'preservada: a duração já foi contada da chegada';
     else motivo = 'MUDARIA: duração contada de outro dia';
     if (!candidato) return { ...r, motivo, novo: null };

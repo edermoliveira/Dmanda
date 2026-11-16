@@ -6,7 +6,7 @@
 --  * Prazo por duração: prazo_original = chegou_em + prazo_dias. O dia da chegada não conta e o último dia conta. prazo_base_em passa a guardar a própria chegada.
 --  * Sem data de chegada, pedir um prazo por duração é recusado com o texto "Informe a data de chegada para calcular o prazo de N dias." (o cadastro sem prazo segue possível).
 --  * A duração fica "viva" quando prazo_base_em = chegou_em. Mudar a chegada de uma demanda com duração viva, sem informar prazo, recalcula o prazo original (e o vencimento,
---    pelo mesmo ajustar_prazo) a partir da nova chegada. Demanda finalizada nunca é recalculada sozinha (o histórico fica como está).
+--    pelo mesmo ajustar_prazo) a partir da nova chegada. Demanda finalizada ou arquivada nunca é recalculada sozinha (o histórico fica como está).
 --  * Data escolhida à mão, prazo gravado pela regra anterior (contado de outro dia) e prazo sem chegada NÃO são recalculados: o vencimento registrado e o seu significado ficam.
 --    Nenhuma duração é deduzida da diferença entre datas históricas.
 --  * A antecipação (sábado, domingo, feriado ou dia indisponível: último dia disponível anterior) e o recálculo ao cadastrar, mudar ou excluir um dia indisponível seguem
@@ -61,7 +61,7 @@ begin
     if nullif(p ->> 'prazo', '')::date is distinct from d.prazo then
       v_tem := true; v_orig := nullif(p ->> 'prazo', '')::date; v_dias := null; v_base := null;
     end if;
-  elsif v_cheg is distinct from d.chegou_em and v_cheg is not null and d.etapa <> 'Finalizado' and d.prazo_dias is not null and d.prazo_original is not null and d.prazo_base_em is not distinct from d.chegou_em then
+  elsif v_cheg is distinct from d.chegou_em and v_cheg is not null and d.etapa <> 'Finalizado' and d.arquivada_em is null and d.prazo_dias is not null and d.prazo_original is not null and d.prazo_base_em is not distinct from d.chegou_em then
     -- a chegada mudou numa demanda de duração viva e nenhum prazo veio junto: a duração é recontada a partir da nova chegada
     v_tem := true; v_base := v_cheg; v_orig := v_base + d.prazo_dias;
   end if;

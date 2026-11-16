@@ -2,7 +2,7 @@
 -- Só pode ser aplicada no Supabase real com autorização específica do Éder, depois de conferir a comparação de scripts/comparar-prazos-legados.mjs e de uma cópia dos dados.
 --
 -- O que faz: para as demandas ABERTAS (nem finalizadas, nem arquivadas) que têm uma duração registrada (prazo_dias) e uma data de chegada, mas cuja duração foi contada de outro dia
--- que não a chegada (prazo_base_em diferente de chegou_em, a regra anterior contava de "hoje"), recontar o prazo original como chegada + prazo_dias, guardar a chegada como nova base e
+-- que não a chegada (prazo_base_em gravado e diferente de chegou_em; a regra anterior contava de "hoje"). Base ausente não é evidência: a linha fica como está, recontar o prazo original como chegada + prazo_dias, guardar a chegada como nova base e
 -- reaplicar o ajuste do calendário do usuário (último dia disponível anterior, com o texto dos dias pulados).
 -- O que NUNCA toca: finalizadas e arquivadas (histórico), datas escolhidas à mão (sem prazo_dias), prazos sem chegada (falta a base) e demandas sem prazo. Nenhuma duração é deduzida de
 -- diferenças entre datas: só entra quem tem a duração gravada.
@@ -31,7 +31,7 @@ create table if not exists dmanda_privado.backfill_prazo_chegada (
 insert into dmanda_privado.backfill_prazo_chegada (id, user_id, prazo, prazo_original, prazo_dias, prazo_base_em, prazo_ajuste, prazo_legado, versao_antes)
 select id, user_id, prazo, prazo_original, prazo_dias, prazo_base_em, prazo_ajuste, prazo_legado, versao
 from public.demandas
-where etapa <> 'Finalizado' and arquivada_em is null and prazo_dias is not null and chegou_em is not null and prazo_base_em is distinct from chegou_em
+where etapa <> 'Finalizado' and arquivada_em is null and prazo_dias is not null and chegou_em is not null and prazo_base_em is not null and prazo_base_em <> chegou_em
 on conflict (id) do nothing;
 
 do $$

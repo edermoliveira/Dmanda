@@ -14,6 +14,7 @@
     "capturar:calendarios": "node scripts/capturar-calendarios.mjs",
     "dev:teste": "node scripts/dev-teste.mjs",
     "previa:cards-inicio": "node scripts/previa-cards-inicio.mjs",
+    "previa:prazo-chegada": "node scripts/previa-prazo-chegada.mjs",
     "previa:vagas-carrosseis": "node scripts/previa-vagas-carrosseis.mjs",
     "testar:banco": "node scripts/testar-banco.mjs",
     "testar:regras": "node scripts/testar-regras.mjs",

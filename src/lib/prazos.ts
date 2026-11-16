@@ -31,6 +31,8 @@ export const textoFaltaChegada = (dias: number) => `Informe a data de chegada pa
  * Duração gravada pela regra anterior (contada de outro dia) e data escolhida à mão não são recalculadas: o vencimento registrado e o seu significado ficam.
  */
 export const duracaoViva = (c: { chegou_em: string | null; prazo_dias: number | null; prazo_base_em: string | null }) => c.prazo_dias !== null && !!c.chegou_em && c.prazo_base_em === c.chegou_em;
+/** Rascunho guardado antes da etapa 4: tem os dias mas não a base da contagem, então a contagem não é viva (vale a data que a pessoa viu, sem recalcular nem enviar os dias). */
+export const sanearRascunho = <T extends { prazo_dias?: number | null; prazo_base_em?: string | null }>(dados: T | undefined): T | undefined => (dados && dados.prazo_dias != null && !('prazo_base_em' in dados) ? ({ ...dados, prazo_base_em: '' } as T) : dados);
 /** Nova data original e nova base quando a chegada muda numa demanda de duração viva; nulo quando não há o que recalcular (sem nova chegada ou sem duração viva). */
 export function recontarPelaChegada(c: { chegou_em: string | null; prazo_dias: number | null; prazo_base_em: string | null }, nova: string | null): { prazo_original: string; prazo_base_em: string } | null {
   return nova && duracaoViva(c) ? { prazo_original: prazoPorDias(c.prazo_dias!, nova), prazo_base_em: nova } : null;

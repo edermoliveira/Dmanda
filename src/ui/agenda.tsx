@@ -46,7 +46,7 @@ function EtiquetaMarco({ m, hoje }: { m: Marco; hoje: string }) {
 }
 
 /** Marcos com nota na lista do dia: acompanhamento e retorno, e o vencimento que foi antecipado (mostra o prazo original e os dias pulados, decisão 81). */
-const comNota = (m: Marco) => m.tipo !== 'vencimento' || m.detalhe.startsWith('Prazo original');
+const comNota = (m: Marco) => m.tipo !== 'vencimento' || (m.demanda.etapa !== 'Finalizado' && !!m.demanda.prazo_original && m.demanda.prazo_original !== m.demanda.prazo);
 
 /** Uma demanda no dia: os marcos dela que caem no dia (um item só, mesmo com dois marcos) e as tarefas pendentes, que se marcam aqui mesmo e atualizam a carga. */
 function ItemDemanda({ marcos, hoje, concluidas, compacto = false }: { marcos: Marco[]; hoje: string; concluidas: boolean; compacto?: boolean }) {

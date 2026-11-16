@@ -73,6 +73,7 @@ const salvarSecao = async (pg) => { await pg.click('[data-salvar="chegada"]'); a
 // 1) fluxo completo no computador (Claro): cadastro com chegada de outro dia até a gravação, a consulta, a Agenda e as filas
 // =============================================================================================================================================
 const NOME = 'Resposta ao TCE por chegada';
+const somaIso = (iso, n) => prazoPorDias(n, iso);
 {
   const { ctx, pg } = await novoCtx('desktop');
   await ir(pg, '/demandas', '.grupo-cards');
@@ -155,7 +156,7 @@ const NOME = 'Resposta ao TCE por chegada';
   // legado sem chegada: o vencimento fica e a falta da base é sinalizada
   await abrirDemanda(pg, 'Legado sem chegada');
   let ler = await texto(pg, '.modal');
-  ok(ler.includes(`Vencimento ${dataComSemana('2026-12-04')}`) && /Sem data de chegada: o vencimento registrado foi mantido e não há base para recalculá-lo pela chegada/.test(ler), 'legado sem chegada: o vencimento registrado aparece e a consulta sinaliza que falta a base para recalcular pela chegada');
+  ok(ler.includes(`Vencimento ${dataComSemana('2026-12-04')}`) && /Sem data de chegada: a data registrada foi mantida e não há base para recalculá-la pela chegada\. Os dias indisponíveis continuam ajustando o vencimento a partir dela/.test(ler), 'legado sem chegada: o vencimento registrado aparece e a consulta sinaliza que falta a base para recalcular pela chegada');
   await editarChegada(pg);
   ok(!!(await pg.$('[data-nota-sem-base]')), 'legado sem chegada: o formulário repete o aviso de que não há base');
   await pg.fill('#d-chegou', '2026-11-10');
@@ -164,7 +165,7 @@ const NOME = 'Resposta ao TCE por chegada';
   // legado da regra anterior: contagem mantida e identificada
   await abrirDemanda(pg, 'Legado da regra anterior');
   ler = await texto(pg, '.modal');
-  ok(ler.includes(`Vencimento ${dataComSemana('2026-11-13')}`) && /10 dias corridos a partir de 05\/11\/2026 \(regra anterior, mantida\)/.test(ler), 'legado da regra anterior: a consulta mostra a contagem a partir de 05/11 como regra anterior, mantida');
+  ok(ler.includes(`Vencimento ${dataComSemana('2026-11-13')}`) && /10 dias corridos a partir de 05\/11\/2026 \(não é a chegada atual; contagem mantida\)/.test(ler), 'legado da regra anterior: a consulta mostra a contagem a partir de 05/11 como não sendo a chegada atual, mantida');
   await editarChegada(pg);
   ok(!!(await pg.$('[data-nota-regra-anterior]')) && (await pg.getAttribute('.modal .dias-btns button:has-text("10 dias")', 'aria-pressed')) === 'false', 'legado da regra anterior: o formulário avisa e não marca o botão de 10 dias como escolhido');
   await pg.fill('#d-chegou', '2026-11-03');
@@ -174,6 +175,13 @@ const NOME = 'Resposta ao TCE por chegada';
   await pg.click('.modal .dias-btns button:has-text("10 dias")');
   ok((await pg.inputValue('#d-prazo')) === '2026-11-13' && (await texto(pg, '.modal .prev-prazo')).includes('a partir da chegada (03/11/2026)'), 'legado da regra anterior: escolher a duração de novo conta pela chegada (03/11 + 10 = 13/11)');
   await pg.click('[data-cancelar="chegada"]').catch(async () => { await pg.click('.modal .btn:has-text("Cancelar")'); }); await esperar(400);
+  // apagar a chegada e informá-la de novo antes de salvar refaz a contagem; um prazo escolhido à mão não é tocado
+  await abrirDemanda(pg, NOME); await editarChegada(pg);
+  await pg.click('.modal .add-t:has(#d-chegou) button:has-text("Sem data")');
+  ok(!!(await pg.$('.modal [data-nota-sem-chegada]')) && (await pg.inputValue('#d-prazo')) === '2026-11-05', 'chegada apagada no formulário: a data do prazo continua e a nota avisa que a contagem volta se a chegada voltar');
+  await pg.fill('#d-chegou', '2026-10-28');
+  ok((await pg.inputValue('#d-prazo')) === somaIso('2026-10-28', 10), 'chegada apagada e informada de novo (28/10) antes de salvar: a contagem de 10 dias é refeita a partir dela');
+  await pg.click('.modal .btn:has-text("Cancelar")'); await esperar(400);
   // finalizada: o prazo do histórico não é recalculado ao corrigir a chegada
   await abrirNoQuadro(pg, 'Finalizada com duração');
   await editarChegada(pg);

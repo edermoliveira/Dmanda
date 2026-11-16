@@ -1,7 +1,7 @@
 'use client';
 // Campos compartilhados do cadastro guiado e da consulta da demanda: identificação, chegada e prazo (com a prévia do vencimento ajustado) e o editor de tarefas.
 // Só o assunto é obrigatório. Número, origem, descrição, chegada e prazo são opcionais e nunca são preenchidos por conta própria.
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Icone } from './Icone';
 import { Opcoes } from './janela-base';
 import { SeletorOpcao } from './seletor';
@@ -138,10 +138,18 @@ export function PreviaPrazo({ c, dias, hoje }: { c: Campos; dias: readonly DiaIn
  */
 export function CamposChegadaPrazo({ c, mudar, prefixo, hoje, dias, legado, recontar = true }: { c: Campos; mudar: (p: Partial<Campos>) => void; prefixo: string; hoje: string; dias: readonly DiaIndisponivel[]; legado?: boolean; recontar?: boolean }) {
   const [falta, setFalta] = useState<number | null>(null);
+  const guardada = useRef<number | null>(null);   // duração viva guardada enquanto a chegada fica vazia neste formulário: se a chegada voltar antes de salvar, a contagem é refeita
   const perm = c.chegou_em ? permanencia({ chegou_em: c.chegou_em }, hoje) : null;
   const cheg = c.chegou_em || null, base = c.prazo_base_em || null;
-  const outraRegra = c.prazo_dias !== null && !!cheg && !!base && base !== cheg, semChegada = !cheg;
-  const mudarChegada = (v: string) => { setFalta(null); mudar({ chegou_em: v, ...((recontar && recontarPelaChegada({ chegou_em: cheg, prazo_dias: c.prazo_dias, prazo_base_em: base }, v || null)) || {}) }); };
+  const viva = duracaoViva({ chegou_em: cheg, prazo_dias: c.prazo_dias, prazo_base_em: base });
+  const outraBase = c.prazo_dias !== null && !!cheg && !!base && base !== cheg, semChegada = !cheg;
+  const mudarChegada = (v: string) => {
+    setFalta(null);
+    if (!v && viva && recontar) guardada.current = c.prazo_dias;
+    const refeita = !v || !recontar ? null : recontarPelaChegada({ chegou_em: cheg, prazo_dias: c.prazo_dias, prazo_base_em: base }, v) ?? (guardada.current !== null ? { prazo_original: prazoPorDias(guardada.current, v), prazo_base_em: v } : null);
+    if (v) guardada.current = null;
+    mudar({ chegou_em: v, ...(refeita ?? {}) });
+  };
   return (
     <>
       <div className="fld">
@@ -159,14 +167,14 @@ export function CamposChegadaPrazo({ c, mudar, prefixo, hoje, dias, legado, reco
           {c.prazo_original ? <button className="btn mini" type="button" onClick={() => { setFalta(null); mudar({ prazo_original: '', prazo_dias: null, prazo_base_em: '' }); }}>Sem prazo</button> : null}
         </div>
         <div className="dias-btns" role="group" aria-label="Prazo em dias corridos a partir da chegada">
-          {BOTOES_PRAZO.map((n) => <button key={n} type="button" className="btn mini" aria-pressed={c.prazo_dias === n && !outraRegra} onClick={() => { if (!c.chegou_em) { setFalta(n); return; } setFalta(null); mudar({ prazo_original: prazoPorDias(n, c.chegou_em), prazo_dias: n, prazo_base_em: c.chegou_em }); }}>{n} dias</button>)}
+          {BOTOES_PRAZO.map((n) => <button key={n} type="button" className="btn mini" aria-pressed={c.prazo_dias === n && viva} onClick={() => { if (!c.chegou_em) { setFalta(n); return; } setFalta(null); mudar({ prazo_original: prazoPorDias(n, c.chegou_em), prazo_dias: n, prazo_base_em: c.chegou_em }); }}>{n} dias</button>)}
         </div>
         {falta !== null && semChegada ? <p className="prev-prazo" role="alert" data-falta-chegada>{textoFaltaChegada(falta)}</p> : null}
         <span className="data">Os botões contam dias corridos a partir da data de chegada, sem contar o dia da chegada. Se a data cair em fim de semana, feriado ou dia indisponível cadastrado, o vencimento é antecipado para o último dia disponível anterior.</span>
         <PreviaPrazo c={c} dias={dias} hoje={hoje} />
-        {outraRegra ? <span className="data" data-nota-regra-anterior>Este prazo de {c.prazo_dias} dias foi contado a partir de {dataBR(base!)} pela regra anterior e foi mantido. Escolha a duração de novo para contar pela chegada.</span> : null}
-        {c.prazo_dias !== null && semChegada && base ? <span className="data" data-nota-sem-chegada>Sem a data de chegada, o prazo em dias não pode ser recalculado: a data acima fica como está.</span> : null}
-        {legado && c.prazo_original && semChegada ? <span className="data" data-nota-sem-base>Sem data de chegada: o vencimento registrado foi mantido e não há base para recalculá-lo pela chegada.</span> : null}
+        {outraBase ? <span className="data" data-nota-regra-anterior>Este prazo de {c.prazo_dias} dias foi contado a partir de {dataBR(base!)}, que não é a chegada atual, e foi mantido.{recontar ? ' Escolha a duração de novo para contar pela chegada.' : ''}</span> : null}
+        {c.prazo_dias !== null && semChegada && base ? <span className="data" data-nota-sem-chegada>Sem a data de chegada, o prazo em dias não pode ser recalculado: a data acima fica como está. Se a chegada voltar antes de salvar, a contagem é refeita.</span> : null}
+        {legado && c.prazo_original && semChegada ? <span className="data" data-nota-sem-base>Sem data de chegada: a data registrada foi mantida e não há base para recalculá-la pela chegada. Os dias indisponíveis continuam ajustando o vencimento a partir dela.</span> : null}
         {legado ? <span className="data">Este prazo existia antes do cálculo por prazo original e foi mantido como referência.</span> : null}
       </div>
     </>

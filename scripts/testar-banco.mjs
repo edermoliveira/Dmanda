@@ -703,6 +703,12 @@ ok(privSvc.map((x) => x.proname).join() === 'registrar_falha_rotina,rotina_diari
     ok(s.chegou_em === null && s.prazo_original === '2027-03-06' && s.prazo === '2027-03-04' && s.prazo_legado === true, 'legado sem chegada: o calendário segue ajustando a partir do original (sábado, sexta indisponível, quinta) e nada é inventado sobre a chegada');
     await cu('excluir_dia_indisponivel', { p_id: diaSem.dia.id });
 
+    // arquivada com duração viva: o histórico também não é recalculado ao corrigir a chegada
+    const arq = await nova({ prazo_dias: 10, chegou_em: '2027-03-01' });
+    await cu('arquivar_demanda', { p_id: arq.id });
+    q = await cu('atualizar_demanda', { p_id: arq.id, p: { chegou_em: '2027-03-03' } });
+    ok(q.prazo_original === '2027-03-11' && q.chegou_em === '2027-03-03', 'arquivada: a chegada pode ser corrigida, mas o prazo do histórico não é recalculado');
+
     // finalizadas: o histórico não é recalculado nem pela chegada nem pelo calendário
     const fin = await nova({ prazo_dias: 10, chegou_em: '2027-03-01' });
     await cu('concluir_demanda', { p_id: fin.id });

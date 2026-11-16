@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { emailAutorizado, contaAutorizada, situacaoDoErroAuth, ehCookieDeSessao, COOKIE_LEGADO_ULTIMO_USO } from '../src/lib/sessao.ts';
-import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO, duracaoViva, recontarPelaChegada, textoFaltaChegada } from '../src/lib/prazos.ts';
+import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO, duracaoViva, recontarPelaChegada, sanearRascunho, textoFaltaChegada } from '../src/lib/prazos.ts';
 import { modoTeste, medicaoLocalPermitida } from '../src/lib/supabase/config.ts';
 import { gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada, eObjeto } from '../src/lib/armazenamento.ts';
 import { googleLigado } from '../src/lib/login.ts';
@@ -119,6 +119,7 @@ ok(textoFaltaChegada(10) === 'Informe a data de chegada para calcular o prazo de
   ok(duracaoViva(viva) && !duracaoViva({ ...viva, prazo_base_em: '2026-10-20' }) && !duracaoViva({ ...viva, chegou_em: null }) && !duracaoViva({ ...viva, prazo_dias: null }) && !duracaoViva({ ...viva, prazo_base_em: null }), 'prazos: a duração só é "viva" quando a base é a chegada atual (regra anterior, data à mão e sem chegada não são recalculadas)');
   const novoV = recontarPelaChegada(viva, '2026-10-26');
   ok(novoV && novoV.prazo_original === '2026-11-05' && novoV.prazo_base_em === '2026-10-26' && ajustarPrazo(novoV.prazo_original, fin).prazo === '2026-11-05', 'prazos: mudar a chegada de 23/10 para 26/10 recalcula o original para 05/11 e a nova base');
+  ok(sanearRascunho({ prazo_dias: 10, prazo_original: '2026-11-09' }).prazo_base_em === '' && sanearRascunho({ prazo_dias: 10, prazo_base_em: '2026-10-23' }).prazo_base_em === '2026-10-23' && sanearRascunho({ prazo_dias: null }).prazo_base_em === undefined && sanearRascunho(undefined) === undefined, 'prazos: rascunho antigo com dias e sem base deixa de ser contagem viva; rascunho novo e rascunho sem dias ficam como estão');
   ok(recontarPelaChegada(viva, null) === null && recontarPelaChegada({ ...viva, prazo_base_em: '2026-10-20' }, '2026-10-26') === null && recontarPelaChegada({ ...viva, prazo_dias: null }, '2026-10-26') === null, 'prazos: sem nova chegada, com legado da regra anterior ou sem duração, nada é recalculado nem deduzido');
 }
 ok(prazoPorDias(5, '2027-03-01') === '2027-03-06' && ajustarPrazo('2027-03-06', nenhum).prazo === '2027-03-05' && ajustarPrazo('2027-03-06', nenhum).ajuste === '06/03 sábado', 'prazos: cadastro na segunda + 5 dias cai no sábado e o vencimento ajustado é a sexta');
