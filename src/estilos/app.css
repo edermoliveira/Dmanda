@@ -435,3 +435,14 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .dr .ind-v { flex-wrap: wrap; }
 .app .dr .painel + .painel, .app .dr .ind3 + .painel { margin-top: 0; }
 .app .dr .ind .data { margin: 0; }
+
+/* Configurações, Aparelhos (decisão 82): código de autorização de uso único e lista dos aparelhos */
+.cfg-apar-convite { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin: 8px 0 12px; }
+.cfg-codigo { margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.cfg-codigo .mono { font-size: calc(26px * var(--esc)); letter-spacing: .12em; font-weight: 600; }
+.cfg-apar-lista { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.cfg-apar-lista li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; min-height: 52px; padding: 8px 12px; border-radius: 14px; background: var(--grp-campo, rgba(127, 127, 127, .08)); }
+.cfg-apar-lista .cfg-apar-nome { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.cfg-apar-lista li > .data { grid-column: 1; }
+.cfg-apar-lista li > .btn, .cfg-apar-lista li > .cfg-acoes { grid-column: 2; grid-row: 1 / span 2; }
+.cfg-apar-lista li > .cfg-confirma { grid-column: 1 / -1; grid-row: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }

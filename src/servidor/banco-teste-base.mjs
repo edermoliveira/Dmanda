@@ -57,10 +57,10 @@ export async function abrirBancoTeste({ pasta, raizMigracoes = join(/*turbopackI
 }
 
 // Entra, dentro de uma transação, como um usuário autenticado: define as claims do JWT (sub, e-mail e provedor, como o Supabase Auth assina)
-// e troca para o papel authenticated. O e-mail vem de auth.users, a menos que seja informado.
-export async function entrarComo(tx, usuarioId, { email, provedor = 'google' } = {}) {
+// e troca para o papel authenticated. O e-mail vem de auth.users, a menos que seja informado. sessaoId acrescenta a claim session_id que todo token do Supabase traz (aparelhos autorizados).
+export async function entrarComo(tx, usuarioId, { email, provedor = 'google', sessaoId } = {}) {
   const e = email !== undefined ? email : ((await tx.query('select email from auth.users where id = $1', [usuarioId])).rows[0]?.email ?? null);
-  const claims = JSON.stringify({ sub: usuarioId, role: 'authenticated', email: e, app_metadata: { provider: provedor, providers: [provedor] } });
+  const claims = JSON.stringify({ sub: usuarioId, role: 'authenticated', email: e, app_metadata: { provider: provedor, providers: [provedor] }, ...(sessaoId ? { session_id: sessaoId } : {}) });
   await tx.query("select set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claims', $2, true)", [usuarioId, claims]);
   await tx.exec('set local role authenticated');
 }

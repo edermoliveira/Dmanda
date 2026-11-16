@@ -163,7 +163,7 @@ async function explicarFalha(offlineAntes: boolean): Promise<string> {
   try {
     // sonda leve da porta de entrada: se ela redireciona, a sessão terminou (saída, revogação ou sessão inválida) e o login assume; uma resposta 503 é só falha de conexão com o Auth
     const r = await fetch('/api/sessao', { redirect: 'manual', cache: 'no-store' });
-    if (r.type === 'opaqueredirect') { window.location.replace('/login?encerrada=1'); return 'Sua sessão terminou. Entre de novo.'; }
+    if (r.type === 'opaqueredirect') { window.location.replace('/acesso?encerrada=1'); return 'Sua sessão terminou. Abra de novo com um código.'; }
   } catch { return MSG_SEM_REDE; }
   return MSG_INCERTA;
 }

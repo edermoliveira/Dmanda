@@ -94,7 +94,7 @@ export async function estadoRotina() {
 }
 
 /**
- * Sair da conta neste navegador. Usa o signOut oficial do Supabase com escopo "local": encerra só esta sessão, sem desconectar outros
+ * Sair da conta neste navegador (e tirar a autorização deste aparelho). Usa o signOut oficial do Supabase com escopo "local": encerra só esta sessão, sem desconectar outros
  * aparelhos nem a conta Google. Só devolve sucesso quando o Supabase confirmou. Se o Auth não confirmar, a resposta diz se a sessão deste
  * navegador já foi apagada (o SDK apaga mesmo assim), para a tela ir ao login com aviso honesto, ou se nada mudou (só erro na tela).
  */
@@ -103,6 +103,12 @@ export async function sairDaConta(): Promise<{ ok: true } | { ok: false; erro: s
   if (modoTeste()) return { ok: false, erro: 'No banco de teste não há conta para sair.', sessaoLocalEncerrada: false };
   try {
     const sb = await criarClienteServidor();
+    // Sair também tira a autorização deste aparelho (decisão 82): para voltar, um código novo. Melhor esforço: se não der, a sessão ainda é encerrada abaixo.
+    try {
+      const { data: lista } = await sb.rpc('listar_aparelhos');
+      const atual = (lista as { id: string; atual: boolean; revogado_em: string | null }[] | null)?.find((a) => a.atual && !a.revogado_em);
+      if (atual) await sb.rpc('revogar_aparelho', { p_id: atual.id });
+    } catch { /* sem o registro, vale só o encerramento da sessão */ }
     const { error } = await sb.auth.signOut({ scope: 'local' });
     if (!error) { (await cookies()).delete(COOKIE_LEGADO_ULTIMO_USO); return { ok: true }; }
     // O SDK apaga a sessão deste navegador mesmo quando o servidor de Auth não confirma o encerramento: se for o caso, a tela precisa ir ao login

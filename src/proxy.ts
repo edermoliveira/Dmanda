@@ -1,5 +1,6 @@
-// Porta de entrada: só entra quem tem sessão válida do Supabase, na conta autorizada. Verificação otimista (a autorização de verdade está nas funções do
-// banco, com RLS, e em cada ação do servidor).
+// Porta de entrada: só entra quem tem sessão válida do Supabase, na conta autorizada, num aparelho autorizado (decisão 82). Verificação otimista (a autorização de verdade
+// está nas funções do banco, com RLS, que também conferem o aparelho pelo session_id do token, e em cada operação do servidor).
+// Não há mais tela de login com e-mail e senha: quem não tem aparelho autorizado vê /acesso (código de uso único). Aparelho revogado ou vencido perde o acesso aqui e no banco.
 //
 // A sessão persiste: o token de acesso é renovado aqui, pelo SDK oficial, e os cookies renovados precisam chegar a DOIS lugares: ao navegador (Set-Cookie na
 // resposta, inclusive nos redirecionamentos) e à renderização da mesma requisição (cookies do pedido). Se a renovação não chegasse à renderização, a página ou a
@@ -27,7 +28,9 @@ export async function proxy(request: NextRequest) {
     return new NextResponse('Dmanda: o Supabase ainda não está configurado neste ambiente (faltam as variáveis do .env.local, veja .env.example).', { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } });
   }
   const { pathname } = request.nextUrl;
-  const publico = pathname.startsWith('/login') || pathname.startsWith('/auth');
+  // a antiga rota de login (favoritos e instalações antigas) leva à tela de acesso por código
+  if (pathname.startsWith('/login')) return NextResponse.redirect(new URL('/acesso', request.url));
+  const publico = pathname === '/acesso' || pathname.startsWith('/acesso/');
   const tinhaCookieLegado = request.cookies.has(COOKIE_LEGADO_ULTIMO_USO);
   // lido antes de conferir a sessão: o SDK limpa os cookies de uma sessão que o Auth recusa, e depois disso não dá mais para saber se existia sessão
   const tinhaSessao = request.cookies.getAll().some((k) => ehCookieDeSessao(k.name) && k.value);
@@ -55,7 +58,7 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-  const redirecionar = (destino: string) => aplicar(NextResponse.redirect(new URL(destino, request.url)));
+  const redirecionar = (destino: string) => aplicar(NextResponse.redirect(new URL(destino, request.url), { headers: { 'cache-control': 'private, no-store' } }));
 
   const { data: { user }, error } = await sb.auth.getUser();
   const situacao = user ? 'ok' : situacaoDoErroAuth(error);
@@ -69,17 +72,29 @@ export async function proxy(request: NextRequest) {
     if (publico) return aplicar(resposta);
     // sem sessão alguma é a primeira visita; com cookies de sessão que o Auth recusou, a sessão foi encerrada ou revogada
     if (tinhaSessao && situacao === 'invalida') await sb.auth.signOut({ scope: 'local' }).catch(() => undefined); // limpa só os cookies deste navegador
-    return redirecionar(tinhaSessao || situacao === 'invalida' ? '/login?encerrada=1' : '/login');
+    return redirecionar(tinhaSessao || situacao === 'invalida' ? '/acesso?encerrada=1' : '/acesso');
   }
-  // as páginas públicas não barram a conta fora da lista: a ação de entrada do próprio /login confere a conta e responde "e-mail ou senha incorretos"
-  if (!publico && !contaAutorizada(user)) {
-    // escopo local: encerra só a sessão deste navegador
+  if (!contaAutorizada(user)) {
+    // conta fora da lista: encerra só a sessão deste navegador; a tela de acesso continua pública
     await sb.auth.signOut({ scope: 'local' });
-    return redirecionar('/login?negado=1');
+    return publico ? aplicar(resposta) : redirecionar('/acesso?negado=1');
   }
-  // com sessão válida o login não faz sentido. Só para quem navega até lá (GET): a ação que conclui a entrada é um POST para /login e precisa rodar
-  // (é ela que confere a conta e regrava a sessão pelo servidor); uma tela de login que ficou velha também a chama e termina no painel.
-  if (pathname.startsWith('/login') && request.method === 'GET' && contaAutorizada(user)) return redirecionar('/');
+  // o aparelho: o banco diz se esta sessão está registrada, não revogada e dentro da validade (e renova a validade no uso). Falha de rede ou do banco nunca libera nem apaga nada.
+  // Função ausente (migração ainda não aplicada) vale como transição: a RLS do banco segue protegendo os dados.
+  const { data: estado, error: erroEstado } = await sb.rpc('estado_aparelho');
+  const semFuncao = erroEstado?.code === 'PGRST202' || erroEstado?.code === '42883';
+  if (erroEstado && !semFuncao) {
+    if (publico) return aplicar(resposta);
+    return aplicar(new NextResponse(PAGINA_INDISPONIVEL, { status: 503, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'retry-after': '5' } }));
+  }
+  const ativo = semFuncao || (estado as { ativo?: boolean } | null)?.ativo === true;
+  if (!ativo) {
+    // aparelho revogado ou vencido: sai só este navegador (os rascunhos ficam no aparelho) e volta pela autorização
+    await sb.auth.signOut({ scope: 'local' }).catch(() => undefined);
+    return publico ? aplicar(resposta) : redirecionar('/acesso?revogado=1');
+  }
+  // com aparelho autorizado a tela de acesso não faz sentido (só para quem navega até ela: GET)
+  if (publico && request.method === 'GET') return redirecionar('/');
   return aplicar(resposta);
 }
 

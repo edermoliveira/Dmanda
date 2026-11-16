@@ -39,7 +39,7 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
     if (!r.ok && !r.sessaoLocalEncerrada) { setSaindo(false); fechar(); avisar(r.erro, true); return; }
     // navegação completa que troca a entrada do histórico: descarta o estado da interface (demandas na memória) e o proxy exige novo login.
     // Se o servidor de Auth não confirmou o encerramento (a sessão deste navegador já foi apagada), o login diz isso em vez de fingir sucesso.
-    window.location.replace(r.ok ? '/login?saiu=1' : '/login?saiu=parcial');
+    window.location.replace(r.ok ? '/acesso?saiu=1' : '/acesso?saiu=parcial');
   };
 
   // Cópia dos dados: baixa o JSON pela rota /api/exportar. Só avisa sucesso depois de receber o arquivo; sessão encerrada vai ao login.
@@ -48,7 +48,7 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
     setBaixando(true);
     try {
       const r = await fetch('/api/exportar', { cache: 'no-store', redirect: 'manual' });
-      if (r.type === 'opaqueredirect') { window.location.replace('/login?encerrada=1'); return; }
+      if (r.type === 'opaqueredirect') { window.location.replace('/acesso?encerrada=1'); return; }
       if (!r.ok) throw new Error('falha');
       const nome = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') ?? '')?.[1] ?? 'dmanda-copia.json';
       const url = URL.createObjectURL(await r.blob());
@@ -70,7 +70,7 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
         <span>{baixando ? 'Gerando...' : 'Baixar cópia dos dados'}</span><small>arquivo JSON</small>
       </button>
       <button type="button" role="menuitem" aria-disabled={saindo || teste || undefined} onClick={() => void sair()}>
-        <span>{saindo ? 'Saindo...' : 'Sair'}</span><small>{teste ? 'indisponível no teste' : 'só neste navegador'}</small>
+        <span>{saindo ? 'Saindo...' : 'Sair'}</span><small>{teste ? 'indisponível no teste' : 'só neste aparelho; volta com um código'}</small>
       </button>
     </div>
   );
