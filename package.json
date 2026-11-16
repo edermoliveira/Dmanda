@@ -27,6 +27,8 @@
     "testar:agenda": "node scripts/testar-agenda.mjs",
     "testar:baralho": "node scripts/testar-baralho.mjs",
     "testar:cards-inicio": "node scripts/testar-cards-inicio.mjs",
+    "comparar:prazos-legados": "node scripts/comparar-prazos-legados.mjs",
+    "testar:prazo-chegada": "node scripts/testar-prazo-chegada.mjs",
     "testar:vagas-carrosseis": "node scripts/testar-vagas-carrosseis.mjs",
     "testar:auditoria": "node scripts/testar-auditoria.mjs",
     "testar:fila-cards": "node scripts/testar-fila-cards.mjs",

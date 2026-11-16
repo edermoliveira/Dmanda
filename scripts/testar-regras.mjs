@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { emailAutorizado, contaAutorizada, situacaoDoErroAuth, ehCookieDeSessao, COOKIE_LEGADO_ULTIMO_USO } from '../src/lib/sessao.ts';
-import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO } from '../src/lib/prazos.ts';
+import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO, duracaoViva, recontarPelaChegada, textoFaltaChegada } from '../src/lib/prazos.ts';
 import { modoTeste, medicaoLocalPermitida } from '../src/lib/supabase/config.ts';
 import { gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada, eObjeto } from '../src/lib/armazenamento.ts';
 import { googleLigado } from '../src/lib/login.ts';
@@ -105,7 +105,22 @@ const dia = (data, descricao, categoria = 'Feriado', id = descricao) => ({ id, d
 ok(somarDias('2027-03-04', 5) === '2027-03-09' && somarDias('2027-02-26', 3) === '2027-03-01' && somarDias('2028-02-28', 2) === '2028-03-01' && somarDias('2027-12-30', 3) === '2028-01-02' && somarDias('2027-03-04', -4) === '2027-02-28', 'prazos: somar dias corridos atravessa mês, ano bissexto e virada de ano sem deslocar o dia');
 ok(diaDaSemana('2027-03-06') === 6 && diaDaSemana('2027-03-07') === 0 && diaDaSemana('2027-03-08') === 1 && nomeDoDia('2027-03-06') === 'sábado', 'prazos: dia da semana por data pura (sem fuso)');
 ok(BOTOES_PRAZO.join() === '5,10,20,30', 'prazos: os botões são de 5, 10, 20 e 30 dias');
-ok(prazoPorDias(5, '2027-03-04') === '2027-03-09' && prazoPorDias(30, '2027-03-04') === '2027-04-03', 'prazos: os botões somam 5, 10, 20 ou 30 dias corridos a partir de hoje (exclui o dia inicial, inclui o último), nunca a partir da chegada');
+ok(prazoPorDias(5, '2027-03-04') === '2027-03-09' && prazoPorDias(30, '2027-03-04') === '2027-04-03', 'prazos (decisão 81): os botões somam 5, 10, 20 ou 30 dias corridos à data de CHEGADA (exclui o dia da chegada, inclui o último); a data de hoje nunca entra na conta');
+ok(prazoPorDias(10, '2026-12-28') === '2027-01-07' && prazoPorDias(5, '2028-02-25') === '2028-03-01' && prazoPorDias(30, '2027-12-31') === '2028-01-30' && prazoPorDias(5, '2027-02-26') === '2027-03-03' && prazoPorDias(20, '2026-10-23') === '2026-11-12', 'prazos: a conta pela chegada atravessa virada de mês, de ano e ano bissexto');
+ok(textoFaltaChegada(10) === 'Informe a data de chegada para calcular o prazo de 10 dias.', 'prazos: sem chegada, o texto diz a informação que falta');
+{
+  // 02/11/2026 (segunda-feira) cadastrada como feriado e 30/10 (sexta-feira) disponível: o vencimento efetivo é 30/10, com os dias pulados
+  const fin = [dia('2026-11-02', 'Finados')];
+  const r = ajustarPrazo(prazoPorDias(10, '2026-10-23'), fin);
+  ok(prazoPorDias(10, '2026-10-23') === '2026-11-02' && r.prazo === '2026-10-30' && r.ajuste === '02/11 feriado: Finados; 01/11 domingo; 31/10 sábado', 'prazos: 23/10/2026 + 10 = 02/11 (feriado Finados): o vencimento efetivo é 30/10/2026 e o motivo lista segunda, domingo e sábado');
+  ok(ajustarPrazo('2026-11-02', [...fin, dia('2026-10-30', 'Ponte')]).prazo === '2026-10-29' && ajustarPrazo('2026-11-02', nenhum).prazo === '2026-11-02', 'prazos: mais um dia indisponível (30/10) recua para 29/10; sem o feriado volta ao dia original');
+  // duração viva: só quando a base é a chegada que a demanda tem agora
+  const viva = { chegou_em: '2026-10-23', prazo_dias: 10, prazo_base_em: '2026-10-23' };
+  ok(duracaoViva(viva) && !duracaoViva({ ...viva, prazo_base_em: '2026-10-20' }) && !duracaoViva({ ...viva, chegou_em: null }) && !duracaoViva({ ...viva, prazo_dias: null }) && !duracaoViva({ ...viva, prazo_base_em: null }), 'prazos: a duração só é "viva" quando a base é a chegada atual (regra anterior, data à mão e sem chegada não são recalculadas)');
+  const novoV = recontarPelaChegada(viva, '2026-10-26');
+  ok(novoV && novoV.prazo_original === '2026-11-05' && novoV.prazo_base_em === '2026-10-26' && ajustarPrazo(novoV.prazo_original, fin).prazo === '2026-11-05', 'prazos: mudar a chegada de 23/10 para 26/10 recalcula o original para 05/11 e a nova base');
+  ok(recontarPelaChegada(viva, null) === null && recontarPelaChegada({ ...viva, prazo_base_em: '2026-10-20' }, '2026-10-26') === null && recontarPelaChegada({ ...viva, prazo_dias: null }, '2026-10-26') === null, 'prazos: sem nova chegada, com legado da regra anterior ou sem duração, nada é recalculado nem deduzido');
+}
 ok(prazoPorDias(5, '2027-03-01') === '2027-03-06' && ajustarPrazo('2027-03-06', nenhum).prazo === '2027-03-05' && ajustarPrazo('2027-03-06', nenhum).ajuste === '06/03 sábado', 'prazos: cadastro na segunda + 5 dias cai no sábado e o vencimento ajustado é a sexta');
 ok(ajustarPrazo('2027-03-07', nenhum).prazo === '2027-03-05' && ajustarPrazo('2027-03-07', nenhum).ajuste === '07/03 domingo; 06/03 sábado' && ajustarPrazo('2027-03-08', nenhum).ajuste === null && ajustarPrazo('2027-03-08', nenhum).prazo === '2027-03-08', 'prazos: domingo volta até a sexta; segunda e dias úteis não mudam e não têm explicação');
 {

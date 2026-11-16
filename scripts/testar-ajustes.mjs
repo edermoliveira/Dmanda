@@ -63,7 +63,7 @@ const cadastrar = async (pg, c) => {
   await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#n-assunto');
   await pg.fill('#n-assunto', c.assunto); if (c.numero) await pg.fill('#n-num', c.numero); if (c.origem) await escolherOpcao(pg, 'n', 'origem', c.origem);
   await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou');
-  if (c.dias) await pg.click(`.modal .dias-btns button:has-text("${c.dias} dias")`);
+  if (c.dias) { await pg.fill('#n-chegou', new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })); await pg.click(`.modal .dias-btns button:has-text("${c.dias} dias")`); }   // decisão 81: o prazo em dias parte da chegada (aqui, hoje)
   await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt');
   await pg.click('.modal .btn:has-text("Pular tarefas")'); await janelaFechada(pg);
 };
@@ -123,11 +123,11 @@ const desk = await abrir(nav, { viewport: { width: 1360, height: 800 } });
   }
   await foto(pg, 'quadro-sem-selo');
   await pg.evaluate(() => localStorage.setItem('dmanda:ui', JSON.stringify({ visao: 'tabela' }))); await ir(pg, '/demandas'); await pg.waitForSelector('.tabela tbody tr');
-  ok(await pg.evaluate(() => document.querySelectorAll('.tabela .selo').length >= 3), 'Tabela: o selo do tipo de prazo continua aparecendo');
+  ok(await pg.evaluate(() => document.querySelectorAll('.tabela .selo').length === 0 && document.querySelectorAll('.tabela .pz').length >= 3), 'Tabela: o selo Legal/Próprio saiu (decisão 81) e o vencimento continua aparecendo');
   await pg.click('.tabela tbody tr:has-text("Compra de papel") td >> nth=1').catch(() => {}); 
   await pg.evaluate(() => localStorage.setItem('dmanda:ui', JSON.stringify({ visao: 'lista' }))); await ir(pg, '/demandas'); await pg.waitForSelector('.lista-dem .linha');
   await pg.click('.lista-dem .linha:has(.ld-ass:has-text("Compra de papel")) .ld-abrir'); await pg.waitForSelector('.modal .resumo-chips');
-  ok(await pg.evaluate(() => !!document.querySelector('.modal .resumo-chips .selo')) && /Prazo|Legal|Próprio/.test(await pg.textContent('.modal .resumo-chips')), 'consulta da demanda: o tipo do prazo continua nos detalhes');
+  ok(await pg.evaluate(() => !document.querySelector('.modal .resumo-chips .selo')) && !/Legal|Próprio/.test(await pg.textContent('.modal .resumo-chips')) && !/Tipo de prazo/.test(await pg.textContent('.modal')), 'consulta da demanda: o tipo do prazo (Legal/Próprio) saiu dos detalhes');
   await pg.keyboard.press('Escape'); await janelaFechada(pg);
   await ir(pg, '/');
   ok(await pg.evaluate(() => document.querySelectorAll('.main .dcard .selo, .main .mini-card .selo').length === 0), 'Início: os cards reaproveitados também estão sem o selo');

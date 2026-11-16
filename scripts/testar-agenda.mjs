@@ -8,7 +8,6 @@ import { rmSync, mkdirSync } from 'node:fs';
 import { semearAgenda } from './semear-agenda.mjs';
 import { contagemRetorno, gradeMes, anoMes, diasNoMes, colunaNaSemana } from '../src/lib/agenda.ts';
 import { somarDias } from '../src/lib/prazos.ts';
-import { minutosAgora } from '../src/lib/eventos.ts';
 
 const PORTA = process.env.PORTA_TESTE_AGENDA || '7108', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/agenda';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
@@ -700,23 +699,54 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   await ctx.close();
 }
 
-// ================= 5) avisos dentro do aplicativo =================
+// ================= 5) avisos dentro do aplicativo (relógio controlado) =================
+// O relógio do navegador fica fixo na data de referência e na hora escolhida, então o resultado não depende da hora real da execução (antes, o evento fictício das 12h30,
+// com aviso de 30 minutos, entrava na contagem de quem rodava o teste entre 12h00 e 12h30). 12h10 cai dentro da janela do Almoço (12h30, aviso de 30 min); 07h30 não cai
+// em nenhuma janela da massa de eventos (Reunião às 09h00 com aviso de 15 min só avisa a partir das 08h45).
+const comRelogio = async (hhmm) => {
+  const t = await novo({ viewport: { width: 1360, height: 900 }, semRelogio: true }, { prefs: { modo: 'mes' } });
+  await t.ctx.clock.install({ time: new Date(`${REFERENCIA}T${hhmm}:00-03:00`) });
+  await t.ctx.clock.setFixedTime(new Date(`${REFERENCIA}T${hhmm}:00-03:00`));
+  await ir(t.pg);
+  return t;
+};
+const criarEvento = async (pg, titulo, inicio, aviso) => {
+  await pg.click('.fab'); await pg.click('.menuplus [role="menuitem"]:has-text("Evento")'); await pg.waitForSelector('#ev-titulo');
+  await pg.fill('#ev-titulo', titulo); await pg.fill('#ev-inicio', inicio); await pg.selectOption('#ev-aviso', String(aviso));
+  await pg.click('[data-salvar-evento]'); await janelaFechada(pg); await pg.waitForTimeout(600);
+};
+const avisosTexto = async (pg) => (await pg.$$eval('.agd-aviso', (l) => l.map((e) => e.textContent.replace(/\s+/g, ' ').trim()))).join(' | ');
 {
-  const { pg } = t2;
-  const agora = minutosAgora(), alvo = agora + 10;
-  if (alvo < 24 * 60 - 1 && agora >= 0) {
-    const hh = String(Math.floor(alvo / 60)).padStart(2, '0'), mm = String(alvo % 60).padStart(2, '0');
-    await pg.click('.fab'); await pg.click('.menuplus [role="menuitem"]:has-text("Evento")'); await pg.waitForSelector('#ev-titulo');
-    await pg.fill('#ev-titulo', 'Reunião que vai começar'); await pg.fill('#ev-inicio', `${hh}:${mm}`); await pg.selectOption('#ev-aviso', '15');
-    await pg.click('[data-salvar-evento]'); await janelaFechada(pg); await pg.waitForTimeout(600);
-    ok(!!(await pg.$('.agd-aviso[data-evento]')) && /Reunião que vai começar/.test(await pg.textContent('.agd-avisos')) && /começa em \d+ min/.test(await pg.textContent('.agd-avisos')), 'um evento a 10 minutos do início, com aviso de 15, mostra o aviso dentro do aplicativo');
-    const rotSino = await pg.getAttribute('.sino', 'aria-label');
-    ok(/Avisos: 1 para hoje/.test(rotSino) && (await pg.textContent('.sino-n')) === '1', `o sino mostra a quantidade de avisos (${rotSino}; ${(await pg.$$eval('.agd-aviso', (l) => l.map((e) => e.textContent.trim().slice(0, 60)))).join(' | ')})`);
-    await pg.click('.agd-aviso .btn:has-text("Dispensar")'); await pg.waitForTimeout(300);
-    ok(!(await pg.$('.agd-aviso')) && /nenhum agora/.test(await pg.getAttribute('.sino', 'aria-label')), 'dispensar tira o aviso e o contador');
-    await pg.reload({ waitUntil: 'load' }); await ir(pg);
-    ok(!(await pg.$('.agd-aviso[data-evento]')) || !/Reunião que vai começar/.test((await pg.textContent('.agd-avisos').catch(() => '')) ?? ''), 'o aviso dispensado não volta ao recarregar');
-  } else ok(true, 'avisos: horário perto da meia-noite, verificação de aviso ignorada (sem mudar de dia)');
+  // 12h10: só o Almoço (12h30, aviso de 30 min) está na janela
+  const { ctx, pg } = await comRelogio('12:10');
+  ok((await pg.evaluate(() => new Date().toISOString())).startsWith(`${REFERENCIA}T15:10`), 'o relógio do navegador está fixo em 12h10 de São Paulo, na data de referência');
+  let rot = await pg.getAttribute('.sino', 'aria-label');
+  ok(/Avisos: 1 para hoje/.test(rot) && (await pg.textContent('.sino-n')) === '1' && /Almoço com a prefeita começa em 20 min \(12:30\)/.test(await avisosTexto(pg)) && !/Reunião de secretariado/.test(await avisosTexto(pg)), `12h10: o sino conta 1 aviso, o do Almoço das 12h30 ("começa em 20 min"); a reunião das 09h00 já passou (${rot})`);
+  // mais um evento dentro da janela: a contagem sobe para 2 e cada aviso diz o seu horário
+  await criarEvento(pg, 'Reunião que vai começar', '12:20', 15);
+  rot = await pg.getAttribute('.sino', 'aria-label');
+  const dois = await avisosTexto(pg);
+  ok(/Avisos: 2 para hoje/.test(rot) && (await pg.textContent('.sino-n')) === '2' && /Reunião que vai começar começa em 10 min \(12:20\)/.test(dois) && /Almoço com a prefeita começa em 20 min/.test(dois), `12h10: com um evento às 12h20 (aviso de 15 min) o sino conta 2 (${dois})`);
+  await pg.click('.agd-aviso:has-text("Reunião que vai começar") .btn:has-text("Dispensar")'); await pg.waitForTimeout(300);
+  rot = await pg.getAttribute('.sino', 'aria-label');
+  ok(/Avisos: 1 para hoje/.test(rot) && !/Reunião que vai começar/.test(await avisosTexto(pg)) && /Almoço com a prefeita/.test(await avisosTexto(pg)), 'dispensar o aviso da reunião tira só ele: o do Almoço e a contagem 1 continuam');
+  await pg.reload({ waitUntil: 'load' }); await ir(pg);
+  ok(!/Reunião que vai começar/.test(await avisosTexto(pg)) && /Almoço com a prefeita/.test(await avisosTexto(pg)), 'depois de recarregar, o aviso dispensado não volta e o do Almoço segue');
+  await ctx.close();
+}
+{
+  // 07h30: nenhuma janela aberta; um evento às 07h40 com aviso de 15 min vira o único aviso
+  const { ctx, pg } = await comRelogio('07:30');
+  let rot = await pg.getAttribute('.sino', 'aria-label');
+  ok(/nenhum agora/.test(rot) && !(await pg.$('.agd-aviso')), `07h30: nenhum aviso (${rot})`);
+  await criarEvento(pg, 'Reunião das 07h40', '07:40', 15);
+  rot = await pg.getAttribute('.sino', 'aria-label');
+  ok(!!(await pg.$('.agd-aviso[data-evento]')) && /Reunião das 07h40 começa em 10 min \(07:40\)/.test(await avisosTexto(pg)) && /Avisos: 1 para hoje/.test(rot) && (await pg.textContent('.sino-n')) === '1', `07h30: um evento a 10 minutos do início, com aviso de 15, mostra o aviso dentro do aplicativo e o sino conta 1 (${await avisosTexto(pg)})`);
+  await pg.click('.agd-aviso .btn:has-text("Dispensar")'); await pg.waitForTimeout(300);
+  ok(!(await pg.$('.agd-aviso')) && /nenhum agora/.test(await pg.getAttribute('.sino', 'aria-label')), 'dispensar tira o aviso e o contador');
+  await pg.reload({ waitUntil: 'load' }); await ir(pg);
+  ok(!(await pg.$('.agd-aviso[data-evento]')), 'o aviso dispensado não volta ao recarregar');
+  await ctx.close();
 }
 
 // ================= 6) iPhone, iPad, escuro, movimento reduzido =================

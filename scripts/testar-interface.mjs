@@ -56,7 +56,7 @@ const cadastrar = async (pg, c, { botao = '.toolbar .btn.escuro' } = {}) => {
   await pg.click(botao); await pg.waitForSelector('#n-assunto');
   await pg.fill('#n-assunto', c.assunto); if (c.numero) await pg.fill('#n-num', c.numero); if (c.origem) await escolherOpcao(pg, 'n', 'origem', c.origem); if (c.descricao) await pg.fill('#n-descricao', c.descricao);
   await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou');
-  if (c.dias) await pg.click(`.modal .dias-btns button:has-text("${c.dias} dias")`);
+  if (c.dias) { await pg.fill('#n-chegou', new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })); await pg.click(`.modal .dias-btns button:has-text("${c.dias} dias")`); }   // decisão 81: o prazo em dias parte da chegada (aqui, hoje)
   await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt');
   await pg.click('.modal .btn:has-text("Pular tarefas")'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 20000 });
 };

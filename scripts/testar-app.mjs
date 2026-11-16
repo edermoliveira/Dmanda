@@ -33,7 +33,6 @@ const aviso = async () => { await pg.waitForSelector('#toast.on', { timeout: 800
 const assuntos = (sel = '[data-secao="aguardando"] .dcard .assunto') => pg.$$eval(sel, (e) => e.map((x) => x.textContent.trim()));
 
 // 1) estado vazio e cadastro guiado em três passos
-const hojeSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const somaDias = (iso, n) => { const [a, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(a, m - 1, d + n)).toISOString().slice(0, 10); };
 const passoAtual = () => pg.$$eval('.modal .passos li', (e) => e.findIndex((x) => x.getAttribute('aria-current') === 'step') + 1);
 const primario = () => pg.textContent('.modal .m-f .btn.pri');
@@ -67,12 +66,22 @@ await pg.click('.modal [aria-label="Fechar"]'); await pg.waitForFunction(() => !
 ok((await pg.$$('[data-secao="aguardando"] .dcard')).length === 0, 'fechar pelo X antes de salvar não cria demanda');
 await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('.modal');
 ok(!!(await pg.$('.modal .rec')) && await passoAtual() === 2 && (await pg.inputValue('#n-chegou')) === '2020-01-02' && (await pg.click('.modal .btn:has-text("Voltar")'), await pg.waitForSelector('#n-assunto'), await pg.inputValue('#n-assunto')) === 'Resposta ao TCE sobre diárias' && (await pg.click('.modal .btn.pri'), await pg.waitForSelector('#n-chegou'), true), 'o rascunho do cadastro volta no mesmo passo, com tudo o que foi digitado');
-// chegada antiga, tipo de prazo e os botões de dias: contam a partir de hoje, nunca da chegada
-await pg.click('.modal .opcoes button:has-text("Legal")');
+// chegada antiga e os botões de dias (decisão 81): contam a partir da chegada, nunca de hoje; sem chegada dizem o que falta; a escolha Legal/Próprio saiu
+ok(!(await pg.$('.modal .opcoes button:has-text("Legal")')) && !/Tipo de prazo|Legal/.test((await pg.textContent('.modal')) ?? ''), 'o cadastro não tem mais a escolha nem o rótulo Legal/Próprio');
 const prazoDoBotao = {};
 for (const n of [5, 10, 20, 30]) { await pg.click(`.modal .dias-btns button:has-text("${n} dias")`); prazoDoBotao[n] = await pg.inputValue('#n-prazo'); }
-ok([5, 10, 20, 30].every((n) => prazoDoBotao[n] === somaDias(hojeSP, n)) && (await pg.inputValue('#n-chegou')) === '2020-01-02', 'os botões de 5, 10, 20 e 30 dias somam dias corridos a partir de hoje (a chegada, de 2020, não entra na conta)');
-ok(/prazo original/i.test(await pg.textContent('.modal .prev-prazo')) && (await pg.getAttribute('.modal .dias-btns button:has-text("30 dias")', 'aria-pressed')) === 'true', 'a prévia mostra o prazo original e o botão escolhido fica marcado');
+ok([5, 10, 20, 30].every((n) => prazoDoBotao[n] === somaDias('2020-01-02', n)) && (await pg.inputValue('#n-chegou')) === '2020-01-02', 'os botões de 5, 10, 20 e 30 dias somam dias corridos a partir da chegada (02/01/2020), não de hoje');
+ok(/prazo original/i.test(await pg.textContent('.modal .prev-prazo')) && /a partir da chegada \(02\/01\/2020\)/.test(await pg.textContent('.modal .prev-prazo')) && (await pg.getAttribute('.modal .dias-btns button:has-text("30 dias")', 'aria-pressed')) === 'true', 'a prévia diz que a contagem parte da chegada e o botão escolhido fica marcado');
+// mudar a chegada recalcula antes de salvar; apagar a chegada mantém a data e avisa; sem chegada, o botão diz o que falta
+await pg.fill('#n-chegou', '2020-01-10');
+ok((await pg.inputValue('#n-prazo')) === somaDias('2020-01-10', 30) && /a partir da chegada \(10\/01\/2020\)/.test(await pg.textContent('.modal .prev-prazo')), 'mudar a chegada para 10/01/2020 recalcula o prazo de 30 dias antes de salvar e mostra o novo resultado');
+await pg.click('.modal .add-t:has(#n-chegou) button:has-text("Sem data")');
+ok((await pg.inputValue('#n-prazo')) === somaDias('2020-01-10', 30) && !!(await pg.$('.modal [data-nota-sem-chegada]')), 'apagar a chegada mantém a data do prazo e avisa que a contagem em dias não pode ser recalculada');
+await pg.click('.modal .dias-btns button:has-text("10 dias")');
+ok((await pg.textContent('.modal [data-falta-chegada]')) === 'Informe a data de chegada para calcular o prazo de 10 dias.' && (await pg.inputValue('#n-prazo')) === somaDias('2020-01-10', 30), 'sem chegada, o botão de 10 dias diz a informação que falta e não altera o prazo');
+await pg.fill('#n-chegou', '2020-01-02');
+ok(!(await pg.$('.modal [data-falta-chegada]')), 'informar a chegada limpa o aviso do que faltava');
+await pg.click('.modal .dias-btns button:has-text("30 dias")');
 await pg.fill('#n-prazo', '2026-10-10'); // sábado, e já vencido
 ok((await pg.getAttribute('.modal .dias-btns button:has-text("30 dias")', 'aria-pressed')) === 'false' && /antecipado para sex, 09\/10\/2026/.test(await pg.textContent('.modal .prev-prazo')) && /10\/10 sábado/.test(await pg.textContent('.modal .prev-prazo')), 'data digitada num sábado: a prévia antecipa para a sexta e mostra o dia pulado; digitar desmarca o botão de dias');
 ok(await primario() === 'Salvar demanda e continuar', 'com chegada e prazo preenchidos o botão passa a "Salvar demanda e continuar"');
@@ -142,7 +151,7 @@ ok(amostras.some((x) => x) && !amostras.some((x) => /faltam \d{4,}|há -\d/.test
 // 2) consulta da demanda e edição pelo lápis, seção por seção
 await pg.click('[data-secao="aguardando"] .dcard:has-text("Resposta ao TCE") .assunto'); await pg.waitForSelector('.modal .ler');
 const ler = await pg.textContent('.modal');
-ok(/Chegou em.*02\/01\/2020/.test(ler.replace(/\s+/g, ' ')) && /Na Secretaria há\s*\d+ dias/.test(ler) && /Vencimento.*sex, 09\/10\/2026/.test(ler) && /Prazo original.*sáb, 10\/10\/2026/.test(ler) && /Dias pulados: 10\/10 sábado/.test(ler) && /Tipo de prazo.*Legal/.test(ler.replace(/\s+/g, ' ')), 'a consulta mostra a chegada, a permanência desde a chegada, o vencimento ajustado, o prazo original e o motivo do ajuste');
+ok(/Chegou em.*02\/01\/2020/.test(ler.replace(/\s+/g, ' ')) && /Na Secretaria há\s*\d+ dias/.test(ler) && /Vencimento.*sex, 09\/10\/2026/.test(ler) && /Prazo original.*sáb, 10\/10\/2026/.test(ler) && /Dias pulados: 10\/10 sábado/.test(ler) && !/Tipo de prazo|Legal/.test(ler), 'a consulta mostra a chegada, a permanência desde a chegada, o vencimento ajustado, o prazo original e o motivo do ajuste, e já não tem a linha Legal/Próprio');
 ok((await pg.$$eval('.modal .sec-h h4', (e) => e.map((x) => x.textContent))).join('|') === 'Identificação|Descrição|Chegada e prazo|Andamento|Tarefas' && (await pg.$$('.modal [data-lapis]')).length === 5, 'a consulta tem cinco seções, cada uma com seu lápis, numa única janela');
 ok(/Origem.*TCE-RS/.test(ler.replace(/\s+/g, ' ')) && /Texto da descrição da demanda de teste/.test(ler) && /1842\/26/.test(ler) && !(await pg.$('.modal input:not([type=checkbox])')), 'ao abrir, os dados aparecem para leitura (sem campos de edição) e nada reiniciou o questionário');
 await pg.click('[data-lapis="tarefas"]');
