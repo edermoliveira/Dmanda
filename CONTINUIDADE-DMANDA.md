@@ -815,9 +815,9 @@ Sem acesso a esta máquina nesta sessão. **Handoff, somente leitura:** `git fet
 
 **Depende do Éder:** o aceite no aparelho; as duas interpretações do decisão 81 (itens 2 e 3); decidir sobre o backfill; autorizar push e a aplicação das migrações no Supabase real.
 
-## AL. Etapa 5 de 6: abertura direta em aparelhos autorizados (16/11/2026, decisão 82; só local, avaliação no aparelho pendente)
+## AL. Etapa 5 de 6: abertura direta em aparelhos autorizados (16/11/2026, decisão 82; aceite no Safari físico em 17/11/2026)
 
-**Aceite:** o Éder aprovou a etapa 4 em `b205d75` (decisão 82, item 11 antes da decisão). Estado das seis etapas: 1 a 4 aprovadas localmente; 5 implementada e verificada localmente, aguardando o aceite no aparelho; 6 preparada (candidato e plano), aguardando a decisão do Éder sobre publicar.
+**Aceite:** o Éder aprovou a etapa 4 em `b205d75` (decisão 82, item 11 antes da decisão). **Em 17/11/2026 o Éder aprovou a etapa 5, inclusive o primeiro acesso no Safari físico do iPhone** (com a correção do gerador de código, decisão 82 item 8), e autorizou: registrar o aceite, os commits pertinentes, enviar o recorte aprovado ao GitHub e o patch pontual de segurança do Next.js em commit separado. Estado das seis etapas: 1 a 5 aprovadas; 6 em execução (decisão 83, item 7). Continua não comprovado: o Supabase Auth real, o modo PWA instalado e o domínio final.
 
 **Commits locais (sobre `b205d75`; nada enviado):** `2a782c1` (migração), `7502330` (aplicação), `46e6f12` (testes), `fd446ec` (revisão), `5f5532f` (prévia e campo do código) e `d32526b` (testes de decisão pendente e reversão). `origin/main` segue `ed1e63e`; stash do Clima preservado.
 
