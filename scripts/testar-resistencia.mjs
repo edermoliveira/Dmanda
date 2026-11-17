@@ -17,8 +17,12 @@ const parar = () => { try { if (servidor) spawnSync('taskkill', ['/pid', String(
 process.on('exit', parar);
 const subir = async (pasta) => {
   parar();
+  // o Next às vezes interrompe a partida para mostrar um aviso de atualização (e sai); repetir logo em seguida passa. Por isso a partida é repetida se o servidor sair antes de responder.
+  for (let tentativa = 0; tentativa < 4; tentativa++) {
   servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: pasta, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
-  for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/login'); if (r.status < 500) return; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+    for (let i = 0; i < 60; i++) { if (servidor.exitCode !== null) break; try { const r = await fetch(BASE + '/login'); if (r.status < 500) return; } catch { /* subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+    try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ }
+  }
   throw new Error('o servidor de teste não subiu');
 };
 let falhas = 0, total = 0;
