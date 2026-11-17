@@ -1,3 +1,5 @@
+-- ARQUIVO PENDENTE: fica em supabase/pendentes/, FORA de supabase/migrations/, de propósito. Um "db push" comum só enxerga a pasta de migrações e, assim, não aplica esta retirada antes de o código novo estar publicado e verificado.
+-- Para a fase 2 (docs/plano-retirada-aparelhos.md), com autorização: git mv supabase/pendentes/20261119000100_retirar_aparelhos.sql supabase/migrations/ , dry-run listando só ela, e então db push.
 -- Dmanda: retirada dos aparelhos autorizados e do acesso por código (decisão de 17/11/2026), PASSO 2 de 2. Aplicar SÓ depois do passo 1 (20261119000000_entrada_direta) e do código novo no ar.
 -- Migração aditiva sobre as 20261118000000 e 20261118000100 (que ficam como estão: foram aplicadas e são o histórico). Não toca em tabela de dados, em política de RLS nem em privilégio de dados.
 --

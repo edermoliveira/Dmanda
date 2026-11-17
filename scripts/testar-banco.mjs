@@ -1776,9 +1776,10 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
   const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
-  const mE = todas.find((f) => f.includes('entrada_direta')), mR = todas.find((f) => f.includes('retirar_aparelhos')), mH = todas.find((f) => f.includes('aparelhos_where_explicito')), m6 = todas.find((f) => f.includes('aparelhos_autorizados'));
-  ok(!!mE && !!mR && todas.indexOf(mE) === todas.indexOf(mH) + 1 && todas.indexOf(mR) === todas.indexOf(mE) + 1 && todas.indexOf(mH) === todas.indexOf(m6) + 1, 'retirada: são dois arquivos novos (entrada direta, depois a retirada), logo depois do hotfix, e as duas migrações dos aparelhos continuam como foram aplicadas (histórico preservado)');
-  const textoE = readFileSync(join('supabase/migrations', mE), 'utf8'), textoR = readFileSync(join('supabase/migrations', mR), 'utf8');
+  const mE = todas.find((f) => f.includes('entrada_direta')), pendentes = readdirSync('supabase/pendentes').filter((f) => f.endsWith('.sql')).sort(), mR = pendentes.find((f) => f.includes('retirar_aparelhos')), mH = todas.find((f) => f.includes('aparelhos_where_explicito')), m6 = todas.find((f) => f.includes('aparelhos_autorizados'));
+  ok(!!mE && !!mR && todas.indexOf(mE) === todas.indexOf(mH) + 1 && todas.indexOf(mH) === todas.indexOf(m6) + 1 && todas.at(-1) === mE && mR > mE, 'retirada: a entrada direta é a última migração, logo depois do hotfix, e as duas migrações dos aparelhos continuam como foram aplicadas (histórico preservado)');
+  ok(pendentes.length === 1 && !todas.includes(mR) && todas.every((f) => f < mR), 'duas fases: a retirada (passo 2) fica FORA de supabase/migrations (um "db push" comum aplicaria só a entrada direta), é a única pendente e vem depois de todas as migrações');
+  const textoE = readFileSync(join('supabase/migrations', mE), 'utf8'), textoR = readFileSync(join('supabase/pendentes', mR), 'utf8');
   const semComentarios = (t) => t.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
   const codigo = semComentarios(textoE) + '\n' + semComentarios(textoR);
   ok(!/\bdrop\s|\balter\s/i.test(semComentarios(textoE)), 'entrada direta (passo 1): a migração só cria funções (sem DROP nem ALTER): o código atual em produção segue funcionando depois dela');
@@ -1789,7 +1790,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   // ---- 1) caminho do banco real: esquema publicado, com aparelho, convite e exigência ligada, recebe só a migração da retirada ----
   const pasta = mkdtempSync(join(tmpdir(), 'dmanda-retirada-'));
   try {
-    for (const f of todas.filter((f) => f !== mR && f !== mE)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    for (const f of todas.filter((f) => f !== mE)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
     const a = await abrirBancoTeste({ raizMigracoes: pasta });
     await a.exec(`insert into auth.users (id, email) values ('${U}', 'titular@teste'), ('${O}', 'intruso@teste')`);
     await a.exec("insert into dmanda_privado.acesso_autorizado (email) values ('titular@teste')");
@@ -1871,11 +1872,89 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   ok((await b.transaction(async (tx) => { await tx.exec('set local role authenticated'); return (await tx.query('select count(*)::int n from public.demandas')).rows[0].n; })) === 0, 'RLS: o papel authenticated sem claims do titular não lê nenhuma demanda');
   ok((await chamarComoUsuario(b, O, 'listar_demandas', { p_arquivadas: false }, { provedor: 'email' })).length === 0, 'RLS: um usuário fora da lista protegida continua sem ler nada');
   ok(!!(await erroCod(b.transaction(async (tx) => { await tx.exec('set local role anon'); await tx.query('select count(*) from public.demandas'); }))), 'RLS: o papel anônimo não lê tabela alguma');
+  // ---- papéis EFETIVOS durante a execução, pelo caminho do PostgREST: conexão como authenticator (sessão sem poder próprio), SET LOCAL ROLE service_role (a chave de serviço),
+  // e só então a função, que troca para authenticated. O PGlite é um Postgres de verdade, mas esta prova NÃO substitui a do Supabase hospedado (ver o procedimento da etapa 3 do plano).
+  await b.exec(`do $$ begin
+      if not exists (select from pg_roles where rolname = 'authenticator') then create role authenticator login noinherit; end if;
+      if not exists (select from pg_roles where rolname = 'sem_vinculo') then create role sem_vinculo login noinherit; end if;
+    end $$;
+    grant anon, authenticated, service_role to authenticator;   -- como o Supabase configura o authenticator
+    grant service_role to sem_vinculo;                          -- um papel de sessão que NÃO pode virar authenticated`);
+  const defs = await sqlq(b, `select p.proname, p.prosecdef definer, pg_get_userbyid(p.proowner) dono, coalesce(p.proconfig @> array['search_path=""'], false) sp_vazio, coalesce(p.proacl, '{}')::text acl, pg_get_function_identity_arguments(p.oid) args
+      from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('assumir_titular','executar_como_titular') order by 1`);
+  const dAss = defs.find((x) => x.proname === 'assumir_titular'), dExe = defs.find((x) => x.proname === 'executar_como_titular');
+  ok(dAss.definer === true && dExe.definer === false, 'papéis: assumir_titular é SECURITY DEFINER (precisa ler auth.users e a lista protegida) e executar_como_titular é SECURITY INVOKER (um definer não pode trocar de papel)');
+  ok(dAss.dono === dExe.dono && dAss.dono !== 'service_role' && dAss.dono !== 'authenticated' && dAss.sp_vazio && dExe.sp_vazio, `papéis: as duas funções pertencem ao dono das migrações (${dAss.dono}) e têm search_path vazio`);
+  ok(/service_role=X/.test(dAss.acl) && /service_role=X/.test(dExe.acl) && !/anon=|authenticated=|^\{=|,=X/.test(dAss.acl + dExe.acl), 'papéis: o EXECUTE de ambas é só do dono e do service_role (nem PUBLIC, nem anon, nem authenticated)');
+  // a sonda observa quem executa de verdade: um gatilho SÓ do banco de teste, em public.opcoes, anota session_user, current_user, o sub e o papel das claims quando criar_opcao insere
+  await b.exec(`create schema sonda; create table sonda.log (su text, cu text, uid text, papel text, em text);
+    create function sonda.anotar() returns trigger language plpgsql as $f$ begin
+      insert into sonda.log values (session_user::text, current_user::text, auth.uid()::text, current_setting('request.jwt.claims', true)::jsonb ->> 'role', current_setting('request.jwt.claims', true)::jsonb ->> 'email'); return new; end $f$;
+    create trigger sonda before insert on public.opcoes for each row execute function sonda.anotar();
+    grant usage on schema sonda to authenticated; grant insert on sonda.log to authenticated;`);
+  // exatamente o que o PostgREST faz: a sessão é do authenticator e o papel da requisição é o do JWT (service_role para a chave de serviço)
+  const voltar = () => b.exec('set session authorization postgres; reset role');  // o PGlite não devolve a sessão sozinho ao fim da transação nem com RESET
+  const comoPostgrest = (sessao, f, x) => b.transaction(async (tx) => {
+    await tx.exec(`set local session authorization ${sessao}`); await tx.exec('set local role service_role');
+    const antes = (await tx.query('select session_user::text su, current_user::text cu')).rows[0];
+    const r = (await tx.query('select public.executar_como_titular($1, $2::jsonb) as r', [f, JSON.stringify(x)])).rows[0].r;
+    const depois = (await tx.query('select session_user::text su, current_user::text cu')).rows[0];
+    return { antes, r, depois };
+  }).finally(voltar);
+  const pg = await comoPostgrest('authenticator', 'criar_opcao', { p_campo: 'origem', p_nome: 'Sonda de papéis' });
+  const reg = (await sqlq(b, 'select * from sonda.log'))[0];
+  ok(pg.antes.su === 'authenticator' && pg.antes.cu === 'service_role', `papéis: ao entrar, session_user é authenticator e current_user é service_role (${pg.antes.su} / ${pg.antes.cu})`);
+  ok(reg && reg.su === 'authenticator' && reg.cu === 'authenticated', `papéis: durante a gravação, a operação roda como authenticated (current_user=${reg?.cu}, session_user=${reg?.su}), sem poder de superusuário nem BYPASSRLS`);
+  ok(reg.uid === U && reg.papel === 'authenticated' && reg.em === 'titular@teste', 'papéis: auth.uid() e as claims da operação são as do titular da lista protegida (sub, papel authenticated, e-mail), não as do pedido nem as da chave de serviço');
+  ok(pg.depois.cu === 'authenticated' && pg.r.nome === 'Sonda de papéis', 'papéis: o papel authenticated vale até o fim da transação (a operação devolve o resultado)');
+  const aposTx = (await sqlq(b, 'select current_user::text cu, session_user::text su, coalesce(current_setting(\'request.jwt.claims\', true), \'\') c'))[0];
+  ok(aposTx.cu !== 'authenticated' && aposTx.c === '', 'papéis: nada vaza para a próxima transação (papel e claims são locais da transação)');
+  const bypass = await sqlq(b, "select rolname, rolsuper, rolbypassrls from pg_roles where rolname in ('authenticated','authenticator')");
+  ok(bypass.every((x) => !x.rolsuper && !x.rolbypassrls), 'papéis: authenticated e authenticator não são superusuário nem têm BYPASSRLS (a RLS vale para a operação)');
+  // a RLS é aplicada de fato: dentro da própria execução, uma leitura direta como authenticated com claims de OUTRO usuário não vê a linha criada pelo titular
+  const cego = await b.transaction(async (tx) => {
+    await tx.exec('set local session authorization authenticator'); await tx.exec('set local role service_role');
+    await tx.exec(`select set_config('request.jwt.claims', '{"sub":"${O}","role":"authenticated","email":"intruso@teste","app_metadata":{"provider":"email"}}', true), set_config('request.jwt.claim.sub', '${O}', true)`);
+    await tx.exec('set local role authenticated');
+    return (await tx.query('select count(*)::int n from public.opcoes')).rows[0].n;
+  }).finally(voltar);
+  const visto = await sqlq(b, 'select count(*)::int n from public.opcoes');
+  ok(cego === 0 && visto[0].n >= 1, 'papéis: sob authenticated com as claims de outro usuário a linha do titular fica invisível (a RLS decide, não o papel de serviço)');
+  // a permissão exigida: o SET ROLE é checado contra a SESSÃO (session_user), não contra o papel corrente. Sem vínculo com authenticated, a troca é negada
+  const semVinculo = await erroCod(comoPostgrest('sem_vinculo', 'listar_opcoes', {}));
+  ok(semVinculo?.cod === '42501', `papéis: se o papel da sessão não for membro de authenticated, a troca é negada (${semVinculo?.cod}: ${semVinculo?.msg}); no Supabase, authenticator é membro de anon, authenticated e service_role`);
+  // por que INVOKER: um definer não pode executar SET ROLE (restrição do PostgreSQL)
+  await b.exec("create function public.teste_definer_troca() returns void language plpgsql security definer set search_path = '' as $f$ begin set local role authenticated; end $f$");
+  const defErr = await erroCod(b.transaction(async (tx) => { await tx.exec('select public.teste_definer_troca()'); }));
+  await b.exec('drop function public.teste_definer_troca()');
+  ok(/security-definer/i.test(defErr?.msg ?? ''), `papéis: SET ROLE dentro de SECURITY DEFINER é recusado pelo PostgreSQL (${defErr?.cod}), o motivo de o despachante ser SECURITY INVOKER`);
+  await b.exec('drop trigger sonda on public.opcoes; drop schema sonda cascade');
   // sem titular na lista protegida, a entrada direta não inventa um
   await b.exec('delete from dmanda_privado.acesso_autorizado');
   const sem = await erroCod(svc('listar_demandas', { p_arquivadas: false }));
   ok(sem?.cod === 'P0001' && /lista protegida/.test(sem.msg), 'entrada direta: sem usuário na lista protegida a função recusa (o titular nunca vem do pedido)');
   await b.close();
+  // ---- 3) recuperação: voltar ao modelo antigo DEPOIS da retirada (proposta, não migração) ----
+  {
+    const prop = readFileSync('supabase/propostas/restaurar_aparelhos_apos_retirada.sql', 'utf8').replace(/\r\n/g, '\n');
+    const o1 = readFileSync('supabase/migrations/20261118000000_aparelhos_autorizados.sql', 'utf8').replace(/\r\n/g, '\n'), o2 = readFileSync('supabase/migrations/20261118000100_aparelhos_where_explicito.sql', 'utf8').replace(/\r\n/g, '\n');
+    ok(prop.includes(o1) && prop.includes(o2) && prop.indexOf(o1) < prop.indexOf(o2) && /^begin;$/m.test(prop) && /^commit;$/m.test(prop), 'recuperação: a proposta de restauração é exatamente o texto das duas migrações dos aparelhos, em ordem, dentro de uma transação');
+    const r = await abrirBancoTeste({ raizMigracoes: undefined });
+    await r.exec(`insert into auth.users (id, email) values ('${U}', 'titular@teste')`);
+    await r.exec("insert into dmanda_privado.acesso_autorizado (email) values ('titular@teste')");
+    const rs = (f, x = {}) => r.transaction(async (tx) => { await tx.exec('set local role service_role'); return (await tx.query('select public.executar_como_titular($1, $2::jsonb) as r', [f, JSON.stringify(x)])).rows[0].r; });
+    const d = await rs('criar_demanda', { p: { assunto: 'Antes da restauração', prazo_original: '2026-12-10' } });
+    await rs('adicionar_tarefa', { p_demanda: d.id, p_texto: 'Tarefa' }); await rs('criar_entrada', { p: { titulo: 'Nota', texto: 'x' } });
+    const fotoR = async () => JSON.stringify([await sqlq(r, 'select id, assunto, user_id from public.demandas order by id'), await sqlq(r, 'select id, texto, user_id from public.tarefas order by id'), await sqlq(r, 'select id, titulo, user_id from public.entradas order by id')]);
+    const antesR = await fotoR();
+    ok((await sqlq(r, "select to_regclass('dmanda_privado.aparelhos') a, to_regprocedure('public.estado_aparelho()') f"))[0].a === null, 'recuperação: depois da retirada os aparelhos não existem (ponto de partida)');
+    await r.exec(prop);
+    ok(await fotoR() === antesR, 'recuperação: restaurar o modelo antigo não muda nenhuma demanda, tarefa nem anotação (mesmos ids e mesmo user_id)');
+    const cfg = await sqlq(r, 'select exigir_aparelho from dmanda_privado.config_acesso');
+    ok(cfg.length === 1 && cfg[0].exigir_aparelho === false && (await sqlq(r, 'select count(*)::int n from dmanda_privado.aparelhos'))[0].n === 0, 'recuperação: as tabelas voltam vazias e a exigência de aparelho volta DESLIGADA (o código antigo abre sem pareamento)');
+    ok((await chamarComoUsuario(r, U, 'listar_demandas', { p_arquivadas: false }, { provedor: 'email' })).length === 1 && (await chamarComoUsuario(r, U, 'estado_aparelho', {}, { provedor: 'email' })) != null, 'recuperação: com o modelo antigo de volta, o titular lê pela sessão e as funções dos aparelhos respondem');
+    ok((await rs('listar_demandas', { p_arquivadas: false })).length === 1, 'recuperação: com a exigência desligada a entrada direta continua lendo o mesmo (o código novo e o antigo convivem até a exigência ser ligada)');
+  }
 }
 
 // ---------- Para hoje com quatro vagas (decisão 80, etapa 3): migração aditiva sobre o esquema publicado (até a 20261110000000), com as três vagas já ocupadas ----------

@@ -2,7 +2,7 @@
 // fornece (papéis anon e authenticated, esquema auth com auth.uid()). Serve para testar as regras e a RLS sem um projeto Supabase.
 // NÃO é o banco de uso: não valida o Supabase real (plataforma, Auth, chaves, rede). Usado pelos testes e, sob DMANDA_BANCO=teste, pelo aplicativo em desenvolvimento.
 import { PGlite } from '@electric-sql/pglite';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PALCO = `
@@ -38,7 +38,12 @@ grant usage on schema public to service_role; grant usage on schema auth to serv
 // Bancos criados antes do registro existir já tinham as duas primeiras migrações.
 const JA_TINHAM = ['20261025000000_nucleo_demandas.sql', '20261025000100_salvar_demanda.sql'];
 
-export async function abrirBancoTeste({ pasta, raizMigracoes = join(/*turbopackIgnore: true*/ process.cwd(), 'supabase', 'migrations') } = {}) {
+// supabase/pendentes/ guarda a retirada dos aparelhos (passo 2), que fica FORA de supabase/migrations/ até a hora de aplicá-la no Supabase real (um "db push" comum só enxerga a pasta de migrações).
+// O banco de teste com a pasta padrão aplica as duas, em ordem de nome, e por isso reflete o estado final.
+const RAIZ_PADRAO = join(/*turbopackIgnore: true*/ process.cwd(), 'supabase', 'migrations');
+const RAIZ_PENDENTES = join(/*turbopackIgnore: true*/ process.cwd(), 'supabase', 'pendentes');
+
+export async function abrirBancoTeste({ pasta, raizMigracoes = RAIZ_PADRAO } = {}) {
   const db = pasta ? new PGlite(pasta) : new PGlite();
   await db.waitReady;
   const ja = await db.query("select to_regnamespace('auth') as a, to_regclass('public.demandas') as d, to_regclass('teste_infra.migracoes') as m");
@@ -48,9 +53,11 @@ export async function abrirBancoTeste({ pasta, raizMigracoes = join(/*turbopackI
   await db.exec('create schema if not exists teste_infra; create table if not exists teste_infra.migracoes (nome text primary key)');
   if (ja.rows[0].d && !ja.rows[0].m) for (const f of JA_TINHAM) await db.query('insert into teste_infra.migracoes (nome) values ($1) on conflict do nothing', [f]);
   const feitas = new Set((await db.query('select nome from teste_infra.migracoes')).rows.map((x) => x.nome));
-  for (const f of readdirSync(/*turbopackIgnore: true*/ raizMigracoes).filter((x) => x.endsWith('.sql')).sort()) {
+  const raizes = raizMigracoes === RAIZ_PADRAO && existsSync(/*turbopackIgnore: true*/ RAIZ_PENDENTES) ? [raizMigracoes, RAIZ_PENDENTES] : [raizMigracoes];
+  const arquivos = raizes.flatMap((r) => readdirSync(/*turbopackIgnore: true*/ r).filter((x) => x.endsWith('.sql')).map((f) => ({ r, f }))).sort((x, y) => (x.f < y.f ? -1 : x.f > y.f ? 1 : 0));
+  for (const { r, f } of arquivos) {
     if (feitas.has(f)) continue;
-    await db.exec(readFileSync(join(/*turbopackIgnore: true*/ raizMigracoes, f), 'utf8'));
+    await db.exec(readFileSync(join(/*turbopackIgnore: true*/ r, f), 'utf8'));
     await db.query('insert into teste_infra.migracoes (nome) values ($1)', [f]);
   }
   return db;

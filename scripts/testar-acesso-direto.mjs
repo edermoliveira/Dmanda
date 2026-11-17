@@ -166,6 +166,16 @@ const A = await novo(edge, { viewport: { width: 1440, height: 900 } });
   }
 }
 
+// ---------- (5) a verificação de leitura do plano de implantação funciona (a mesma que será usada, depois de autorização, no ambiente real) ----------
+{
+  // assíncrono: o Supabase falso roda neste mesmo processo e precisa responder enquanto o script consulta (spawnSync travaria os dois)
+  const rodar = (args) => new Promise((res) => { const f = spawn(process.execPath, ['scripts/verificar-entrada-direta-real.mjs', ...args], { env: { ...env, VERIFICAR_LOCAL: 'sim' } }); let stdout = ''; f.stdout.on('data', (d) => { stdout += d; }); f.stderr.on('data', (d) => { stdout += d; }); f.on('close', (status) => res({ status, stdout })); });
+  const r1 = await rodar(['rest']), r2 = await rodar(['dominio', BASE]);
+  ok(r1.status === 0 && /Tudo certo/.test(r1.stdout), 'verificação "rest" (leitura pela chave de serviço, função fora da lista e argumento inválido recusados, sem chave recusado)' + (r1.status ? ': ' + r1.stdout.split('\n').filter((l) => /FALHOU/.test(l)).join(' | ') : ''));
+  ok(r2.status === 0 && /Tudo certo/.test(r2.stdout), 'verificação "dominio" (rotas abertas sem cookie, /acesso e /login 307, exportação v4 igual à leitura do banco, cron 401, sem segredo no HTML)' + (r2.status ? ': ' + r2.stdout.split('\n').filter((l) => /FALHOU/.test(l)).join(' | ') : ''));
+  ok(!r1.stdout.includes(CHAVE_SERVICO) && !r2.stdout.includes(CHAVE_SERVICO) && !r1.stdout.includes(EMAIL) && !r2.stdout.includes(EMAIL) && !/Demanda fictícia|Nota fictícia/.test(r1.stdout + r2.stdout), 'as verificações não imprimem a chave, o e-mail nem o conteúdo dos registros');
+}
+
 await wk?.close(); await edge.close();
 ok(erros.length === 0, 'nenhum erro de página no navegador' + (erros.length ? ': ' + erros.slice(0, 3).join(' | ') : ''));
 console.log(`\nCapturas para abrir localmente: ${CAPTURAS}`);
