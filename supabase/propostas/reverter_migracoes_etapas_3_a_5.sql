@@ -1,22 +1,10 @@
 -- PROPOSTA DE REVERSÃO das migrações das etapas 3, 4 e 5 (decisões 80, 81 e 82). NÃO é migração e não foi aplicada em lugar nenhum além do banco de teste.
 -- Só com autorização específica do Éder, no SQL Editor do Supabase (ou `supabase db query --linked -f`), de cima para baixo e só as seções necessárias.
 -- Cada seção é independente e devolve as funções (e a restrição) ao que a migração 20261110000000 e as anteriores definiam. Nenhuma tabela é apagada; os dados criados depois ficam.
--- O primeiro passo da seção 1 (desligar a exigência) já basta, sozinho, para devolver o acesso de qualquer sessão da conta autorizada.
 
--- ===== 1) Aparelhos autorizados (migração 20261118000000) =====
-begin;
-select public.exigir_aparelhos(false);
-create or replace function dmanda_privado.conta_autorizada() returns boolean
-language sql stable security definer set search_path = '' as $$
-  select coalesce((select auth.jwt()) -> 'app_metadata' ->> 'provider', '') in ('google', 'email')
-    and exists (
-      select 1 from dmanda_privado.acesso_autorizado a
-      where a.email = lower(btrim(coalesce((select auth.jwt()) ->> 'email', '')))
-    )
-$$;
-revoke all on function dmanda_privado.conta_autorizada() from public, anon, authenticated;
-grant execute on function dmanda_privado.conta_autorizada() to authenticated;
-commit;
+-- ===== 1) Aparelhos autorizados (migração 20261118000000): NÃO HÁ MAIS O QUE REVERTER AQUI =====
+-- O recurso foi retirado por inteiro pela migração 20261119000000_retirar_aparelhos (decisão de 17/11/2026): as funções, as tabelas e a exigência deixaram de existir e conta_autorizada() voltou a ser só a regra do titular.
+-- A seção foi removida porque chamava exigir_aparelhos(), que não existe mais. As seções 2 em diante seguem valendo.
 
 -- ===== 2) Prazo pela chegada (migração 20261117000000): as duas funções voltam a contar a duração a partir de hoje =====
 begin;
