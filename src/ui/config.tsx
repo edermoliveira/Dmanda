@@ -7,7 +7,6 @@ import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { SecoesAparencia } from './config-aparencia';
 import { SecaoPerfilConfig } from './perfil';
-import { SecaoAparelhos } from './config-aparelhos';
 import { CamposDiaIndisponivel, DIA_VAZIO, useGravarDia, type CamposDia } from './dia-indisponivel';
 import { dataBR } from '@/lib/demandas';
 import { dataComSemana, ROTULO_CATEGORIA, type DiaIndisponivel } from '@/lib/prazos';
@@ -72,7 +71,6 @@ export function PaginaConfig() {
         )}
         </div>
       </section>
-      <SecaoAparelhos />
       </div>
     </>
   );

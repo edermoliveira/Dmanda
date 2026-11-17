@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// Cabeçalhos de segurança (painel autenticado): sem moldura em outros sites, sem adivinhar tipo de arquivo, referência mínima, sem sensores, só HTTPS.
+// Cabeçalhos de segurança do painel: sem moldura em outros sites, sem adivinhar tipo de arquivo, referência mínima, sem sensores, só HTTPS.
 const cabecalhosSeguranca = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: origensDevPrevia,
   async headers() {
     return [{ source: '/:path*', headers: cabecalhosSeguranca }];
+  },
+  // As antigas telas de entrada (/acesso, por código, e /login, por e-mail e senha) deixaram de existir: favoritos e atalhos instalados caem no painel.
+  async redirects() {
+    return [{ source: '/acesso/:path*', destination: '/', permanent: false }, { source: '/login/:path*', destination: '/', permanent: false }];
   },
   /* config options here */
   // Postgres local de teste (só em desenvolvimento) fica fora do pacote do servidor

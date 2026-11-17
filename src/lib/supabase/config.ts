@@ -1,12 +1,3 @@
-// Variáveis públicas do Supabase. A chave aqui é a pública (publishable/anon): ela só vale com a RLS e o login.
-// Nunca coloque a chave de serviço (service_role) em variável NEXT_PUBLIC.
-export function configSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const chave = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !chave) return null;
-  return { url, chave };
-}
-
 /** Variáveis que só existem numa implantação na nuvem (Vercel e as funções AWS Lambda em que ela roda). As da Vercel dependem da opção "System Environment Variables" do projeto,
  *  então as da Lambda entram também: basta UMA delas definida para a medição local ser recusada. */
 const SINAIS_DE_NUVEM = ['VERCEL', 'VERCEL_ENV', 'VERCEL_TARGET_ENV', 'VERCEL_URL', 'VERCEL_REGION', 'VERCEL_DEPLOYMENT_ID', 'AWS_LAMBDA_FUNCTION_NAME', 'AWS_EXECUTION_ENV', 'LAMBDA_TASK_ROOT'];
@@ -26,5 +17,3 @@ export function modoTeste(env: Record<string, string | undefined> = process.env,
   return true;
 }
 
-/** Cookies da sessão do Supabase: "secure" só sobre HTTPS (o padrão do SDK não marca). Os demais atributos continuam os do SDK. */
-export const opcoesCookiesSessao = (https: boolean) => ({ secure: https });

@@ -1,16 +1,13 @@
 'use client';
-// Menu do avatar do topo (computador e celular): Perfil, cópia dos dados e Sair. Mesmo desenho e teclado do menu "Mover para".
+// Menu do avatar do topo (computador e celular): Perfil e cópia dos dados. Mesmo desenho e teclado do menu "Mover para".
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useApp } from './contexto';
-import { sairDaConta } from '@/servidor/demandas';
 
 export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; fechar: () => void }) {
   const { ambiente, avisar, abrirPerfil } = useApp();
   const ref = useRef<HTMLDivElement>(null);
   const gatilho = useRef<Element | null>(null);
-  const [saindo, setSaindo] = useState(false);
   const [baixando, setBaixando] = useState(false);
-  const teste = !!ambiente?.teste;
 
   useLayoutEffect(() => {
     const m = ref.current; if (!m) return;
@@ -32,23 +29,12 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
     return () => { document.removeEventListener('click', fora, true); document.removeEventListener('keydown', tecla, true); };
   }, [fechar]);
 
-  const sair = async () => {
-    if (saindo || teste) return;
-    setSaindo(true);
-    const r = await sairDaConta().catch(() => ({ ok: false as const, erro: 'Não foi possível sair agora. Tente de novo.', sessaoLocalEncerrada: false }));
-    if (!r.ok && !r.sessaoLocalEncerrada) { setSaindo(false); fechar(); avisar(r.erro, true); return; }
-    // navegação completa que troca a entrada do histórico: descarta o estado da interface (demandas na memória) e o proxy exige novo login.
-    // Se o servidor de Auth não confirmou o encerramento (a sessão deste navegador já foi apagada), o login diz isso em vez de fingir sucesso.
-    window.location.replace(r.ok ? '/acesso?saiu=1' : '/acesso?saiu=parcial');
-  };
-
-  // Cópia dos dados: baixa o JSON pela rota /api/exportar. Só avisa sucesso depois de receber o arquivo; sessão encerrada vai ao login.
+  // Cópia dos dados: baixa o JSON pela rota /api/exportar. Só avisa sucesso depois de receber o arquivo.
   const baixar = async () => {
     if (baixando) return;
     setBaixando(true);
     try {
-      const r = await fetch('/api/exportar', { cache: 'no-store', redirect: 'manual' });
-      if (r.type === 'opaqueredirect') { window.location.replace('/acesso?encerrada=1'); return; }
+      const r = await fetch('/api/exportar', { cache: 'no-store' });
       if (!r.ok) throw new Error('falha');
       const nome = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') ?? '')?.[1] ?? 'dmanda-copia.json';
       const url = URL.createObjectURL(await r.blob());
@@ -68,9 +54,6 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
       </button>
       <button type="button" role="menuitem" aria-disabled={baixando || undefined} onClick={() => void baixar()}>
         <span>{baixando ? 'Gerando...' : 'Baixar cópia dos dados'}</span><small>arquivo JSON</small>
-      </button>
-      <button type="button" role="menuitem" aria-disabled={saindo || teste || undefined} onClick={() => void sair()}>
-        <span>{saindo ? 'Saindo...' : 'Sair'}</span><small>{teste ? 'indisponível no teste' : 'só neste aparelho; volta com um código'}</small>
       </button>
     </div>
   );

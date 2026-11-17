@@ -1,5 +1,5 @@
 // Cópia dos dados do usuário em um arquivo JSON para guardar em lugar privado (primeira peça do backup; ver supabase/LEIA-ME.md).
-// Exige a sessão da conta autorizada (a porta de entrada e a própria operação conferem) e lê só pelas funções de sempre, com a RLS do usuário.
+// Entrada direta (sem conta): lê só pelas mesmas funções de sempre, executadas como o titular pelo servidor (executar_como_titular), com a RLS do papel authenticated.
 // Nada é gravado, copiado para o Git nem para outro serviço: o arquivo vai só para quem pediu.
 import { connection } from 'next/server';
 import { chamar } from '@/servidor/banco';
@@ -7,7 +7,7 @@ import { criarOperacoes, ErroDmanda } from '@/nucleo/operacoes';
 import { hojeISO } from '@/lib/demandas';
 
 export async function GET() {
-  await connection(); // só existe por pedido de uma pessoa logada: nunca entra na pré-geração do build
+  await connection(); // só existe por pedido de uma pessoa: nunca entra na pré-geração do build
   const cabecalhos = { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' };
   try {
     const op = criarOperacoes(chamar);

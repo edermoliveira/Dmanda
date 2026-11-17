@@ -5,9 +5,6 @@ import { criarOperacoes, executar, type TarefaEdicao } from '@/nucleo/operacoes'
 import type { DadosDemanda, Etapa } from '@/lib/demandas';
 import type { CategoriaDia } from '@/lib/prazos';
 import { modoTeste } from '@/lib/supabase/config';
-import { criarClienteServidor } from '@/lib/supabase/servidor';
-import { COOKIE_LEGADO_ULTIMO_USO } from '@/lib/sessao';
-import { cookies } from 'next/headers';
 
 const op = () => criarOperacoes(chamar);
 
@@ -15,14 +12,8 @@ const op = () => criarOperacoes(chamar);
 const semLembretes = () => process.env.DMANDA_SEM_LEMBRETES === 'sim' && (modoTeste() || process.env.NODE_ENV !== 'production');
 
 export async function ambiente() {
-  if (modoTeste()) return { teste: true, nome: 'Teste', semLembretes: semLembretes() };
-  try {
-    const sb = await criarClienteServidor();
-    const { data: { user } } = await sb.auth.getUser();
-    return { teste: false, nome: String(user?.user_metadata?.full_name ?? user?.email ?? ''), semLembretes: semLembretes() };
-  } catch {
-    return { teste: false, nome: '', semLembretes: semLembretes() };
-  }
+  // sem entrada por conta, não há nome de usuário a mostrar (o menu da conta cai no rótulo "Conta")
+  return { teste: modoTeste(), nome: modoTeste() ? 'Teste' : '', semLembretes: semLembretes() };
 }
 export async function listarDemandas(arquivadas = false) {
   return executar(() => op().listar(arquivadas));
@@ -91,35 +82,4 @@ export async function excluirTarefa(tarefaId: string) {
 /** Estado da rotina diária para a tela (última execução bem-sucedida, última falha, data do resumo). Sem dado pessoal. */
 export async function estadoRotina() {
   return executar(() => chamar('estado_rotina', {}) as Promise<{ ultima_ok: string | null; ultima_falha: string | null; resumo_data: string | null; resumo_calculado_em: string | null }>);
-}
-
-/**
- * Sair da conta neste navegador (e tirar a autorização deste aparelho). Usa o signOut oficial do Supabase com escopo "local": encerra só esta sessão, sem desconectar outros
- * aparelhos nem a conta Google. Só devolve sucesso quando o Supabase confirmou. Se o Auth não confirmar, a resposta diz se a sessão deste
- * navegador já foi apagada (o SDK apaga mesmo assim), para a tela ir ao login com aviso honesto, ou se nada mudou (só erro na tela).
- */
-export async function sairDaConta(): Promise<{ ok: true } | { ok: false; erro: string; sessaoLocalEncerrada: boolean }> {
-  const falha = 'Não foi possível sair agora. Tente de novo.';
-  if (modoTeste()) return { ok: false, erro: 'No banco de teste não há conta para sair.', sessaoLocalEncerrada: false };
-  try {
-    const sb = await criarClienteServidor();
-    // Sair também tira a autorização deste aparelho (decisão 82): para voltar, um código novo. Melhor esforço: se não der, a sessão ainda é encerrada abaixo.
-    let revogou = false;
-    try {
-      const { data: lista } = await sb.rpc('listar_aparelhos');
-      const atual = (lista as { id: string; atual: boolean; revogado_em: string | null }[] | null)?.find((a) => a.atual && !a.revogado_em);
-      if (atual) revogou = !(await sb.rpc('revogar_aparelho', { p_id: atual.id })).error;
-    } catch { /* sem o registro, vale só o encerramento da sessão */ }
-    const { error } = await sb.auth.signOut({ scope: 'local' });
-    if (!error) { (await cookies()).delete(COOKIE_LEGADO_ULTIMO_USO); return { ok: true }; }
-    // O SDK apaga a sessão deste navegador mesmo quando o servidor de Auth não confirma o encerramento: se for o caso, a tela precisa ir ao login
-    // (com aviso honesto) em vez de continuar parecendo autenticada. Se a sessão local continua, nada mudou e é só erro.
-    const { data } = await sb.auth.getSession();
-    // com o aparelho já revogado a sessão não abre mais nada: a tela vai ao acesso com o aviso honesto, em vez de dizer que ainda está dentro
-    if (data.session) return { ok: false, erro: falha, sessaoLocalEncerrada: revogou };
-    (await cookies()).delete(COOKIE_LEGADO_ULTIMO_USO);
-    return { ok: false, erro: falha, sessaoLocalEncerrada: true };
-  } catch {
-    return { ok: false, erro: falha, sessaoLocalEncerrada: false };
-  }
 }

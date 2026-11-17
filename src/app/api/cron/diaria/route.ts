@@ -1,5 +1,5 @@
 // Rotina diária chamada pelo agendador (Vercel Cron: GET na produção, com "Authorization: Bearer CRON_SECRET").
-// Autenticação própria: não usa sessão Google, não renova o "último uso" e não devolve dado pessoal (só a data e uma contagem).
+// Autenticação própria (CRON_SECRET, em tempo constante): não depende de conta nem de sessão e não devolve dado pessoal (só a data e uma contagem).
 // A rotina só lê as demandas e grava o resumo do dia; nunca conclui, altera prazos nem cria dados.
 import { segredoConfere, executarRotinaDiaria } from '@/nucleo/rotina';
 import { chamarServico } from '@/servidor/banco';

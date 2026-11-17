@@ -13,21 +13,6 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .erro-carga { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; background: var(--cat-venc); color: var(--text); }
 .toast.erro { background: var(--z-venc-bg); color: var(--ag-sig-venc, #FCFCFC); border-radius: 18px; max-width: min(92%, 560px); text-align: center; }
 .app .icbtn[aria-disabled="true"], .app .perfil-b[aria-disabled="true"] { opacity: .6; }
-.login { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
-.login-caixa { width: min(420px, 100%); padding: 32px 28px; border-radius: 28px; background: var(--card, #FCFCFC); box-shadow: 0 0 0 1px var(--card-brd, rgba(10,10,10,.1)), 0 18px 44px rgba(10,10,10,.12); display: grid; gap: 14px; text-align: center; }
-.login-caixa h1 { margin: 0; font-size: calc(28px * var(--esc)); }
-.login-caixa p { margin: 0; color: var(--text2, #555); }
-.login-caixa .btn { justify-content: center; }
-.login-aviso { color: var(--perigo, #C4001A) !important; font-weight: 600; }
-.login-info { color: var(--text2) !important; font-weight: 500; }
-.app.app-login { position: fixed; inset: 0; display: block; overflow: auto; }
-.login-form { display: grid; gap: 4px; text-align: left; }
-.login-form .fld > label { font-size: calc(13px * var(--esc)); font-weight: 500; color: var(--text2); padding-left: 14px; }
-.login-form .fld input { background: var(--grp-campo); color: var(--text); border: 0; border-radius: 12px; min-height: 44px; padding: 0 14px; box-shadow: 0 0 0 1px var(--card-brd); transition: box-shadow .2s var(--rapido); }
-.login-form .fld input:focus { box-shadow: 0 0 0 2px var(--acc); outline: 0; }
-.login-form .fld { margin-bottom: 8px; }
-.login-form .btn { justify-content: center; margin-top: 6px; }
-.login-ou { font-size: calc(13px * var(--esc)); }
 .rotina-estado { margin: 20px 0 8px; font-size: calc(13px * var(--esc)); color: var(--text2); }
 
 /* PWA no iPhone: a barra inferior, o botão + , o menu + e os avisos sobem para não ficar sob o indicador de início do aparelho.
@@ -435,15 +420,3 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .app .dr .ind-v { flex-wrap: wrap; }
 .app .dr .painel + .painel, .app .dr .ind3 + .painel { margin-top: 0; }
 .app .dr .ind .data { margin: 0; }
-
-/* Configurações, Aparelhos (decisão 82): código de autorização de uso único e lista dos aparelhos */
-.cfg-apar-convite { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin: 8px 0 12px; }
-.cfg-codigo { margin: 0; display: flex; flex-direction: column; gap: 2px; }
-.cfg-codigo .mono { font-size: calc(26px * var(--esc)); letter-spacing: .12em; font-weight: 600; }
-.cfg-apar-lista { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
-.cfg-apar-lista li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; min-height: 52px; padding: 8px 12px; border-radius: 14px; background: var(--grp-campo, rgba(127, 127, 127, .08)); }
-.cfg-apar-lista .cfg-apar-nome { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
-.cfg-apar-lista li > .data { grid-column: 1; }
-.cfg-apar-lista li > .btn, .cfg-apar-lista li > .cfg-acoes { grid-column: 2; grid-row: 1 / span 2; }
-.cfg-apar-lista li > .cfg-confirma { grid-column: 1 / -1; grid-row: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.login-caixa h2.login-sub { margin: 4px 0 0; font-size: calc(17px * var(--esc)); font-weight: 600; }

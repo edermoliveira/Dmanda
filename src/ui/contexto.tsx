@@ -152,7 +152,7 @@ type Ctx = {
 
 const Contexto = createContext<Ctx | null>(null);
 
-// Falha ao falar com o servidor (sem internet, servidor fora do ar, sessão encerrada pelo proxy): a chamada lança em vez de devolver { ok: false }.
+// Falha ao falar com o servidor (sem internet, servidor fora do ar): a chamada lança em vez de devolver { ok: false }.
 // Nenhuma dessas falhas vira sucesso: a tela mostra o motivo, nada muda e o que foi digitado continua nos campos e nos rascunhos.
 const MSG_SEM_REDE = 'Sem conexão com o servidor. Nada foi gravado. Confira a internet e tente de novo; o que você digitou continua na tela.';
 // Só "Nada foi gravado" quando é certo: sem conexão ANTES de enviar (o pedido nem saiu) ou recusa do servidor. Se o pedido saiu e a resposta não voltou, o servidor pode ter gravado:
@@ -161,9 +161,8 @@ const MSG_INCERTA = 'Sem confirmação do servidor: não dá para saber se foi g
 async function explicarFalha(offlineAntes: boolean): Promise<string> {
   if (offlineAntes) return MSG_SEM_REDE;
   try {
-    // sonda leve da porta de entrada: se ela redireciona, a sessão terminou (saída, revogação ou sessão inválida) e o login assume; uma resposta 503 é só falha de conexão com o Auth
-    const r = await fetch('/api/sessao', { redirect: 'manual', cache: 'no-store' });
-    if (r.type === 'opaqueredirect') { window.location.replace('/acesso?encerrada=1'); return 'Sua sessão terminou. Abra de novo com um código.'; }
+    // sonda leve (204, sem corpo): se nem ela responde, o servidor está inalcançável e o pedido nem chegou; se responde, o pedido pode ter chegado e o resultado é incerto
+    await fetch('/api/sonda', { cache: 'no-store' });
   } catch { return MSG_SEM_REDE; }
   return MSG_INCERTA;
 }

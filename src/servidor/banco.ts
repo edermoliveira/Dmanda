@@ -1,10 +1,7 @@
 // Transporte das operações para o banco. Há dois: o Supabase real (padrão) e, só em desenvolvimento e sob DMANDA_BANCO=teste,
 // um Postgres local descartável com as mesmas migrações. Os dois executam exatamente as mesmas funções SQL.
-import { cache } from 'react';
-import { criarClienteServidor } from '@/lib/supabase/servidor';
 import { createClient } from '@supabase/supabase-js';
-import { configSupabase, modoTeste } from '@/lib/supabase/config';
-import { contaAutorizada, situacaoDoErroAuth } from '@/lib/sessao';
+import { modoTeste } from '@/lib/supabase/config';
 import { ErroConflito, ErroDmanda, type Chamar } from '@/nucleo/operacoes';
 
 const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
@@ -41,39 +38,21 @@ const chamarTeste: Chamar = async (funcao, args) => {
   }
 };
 
-/**
- * O aparelho desta sessão continua autorizado? (decisão 82). O banco decide: estado_aparelho lê o session_id do token e a lista de aparelhos revogáveis. Conferido uma vez por pedido
- * (cache do React) em toda leitura e gravação, porque a RLS sozinha devolveria listas vazias a um aparelho revogado, e uma cópia dos dados vazia pareceria uma cópia boa.
- * Falha de rede ou do banco nunca libera: vira "transitoria". Função ausente (banco ainda sem a migração) vale como transição, como no proxy.
- */
-export const situacaoDoAparelho = cache(async (): Promise<'ativo' | 'negado' | 'transitoria'> => {
-  const sb = await criarClienteServidor();
-  const { data, error } = await sb.rpc('estado_aparelho');
-  if (error) return error.code === 'PGRST202' || error.code === '42883' ? 'ativo' : 'transitoria';
-  return (data as { ativo?: boolean } | null)?.ativo === true ? 'ativo' : 'negado';
-});
-
-/** Cliente com a chave de serviço (só no servidor, nunca em NEXT_PUBLIC): uso da rotina diária e da autorização de aparelhos. */
+/** Cliente com a chave de serviço (só no servidor, nunca em NEXT_PUBLIC): uso da rotina diária e das operações do titular. */
 export function clienteServico() {
-  const c = configSupabase();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const chaveServico = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!c || !chaveServico) throw Object.assign(new Error('Supabase ou chave de serviço não configurados.'), { code: 'sem-config' });
-  return createClient(c.url, chaveServico, { auth: { persistSession: false, autoRefreshToken: false } });
+  if (!url || !chaveServico) throw Object.assign(new Error('Supabase ou chave de serviço não configurados.'), { code: 'sem-config' });
+  return createClient(url, chaveServico, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
+/**
+ * Entrada direta (sem sessão do usuário): o servidor chama UMA função do banco, executar_como_titular, com a chave de serviço. Ela só aceita as operações da lista fixa do banco, assume o
+ * titular único da lista protegida (nunca vem do pedido) e executa sob a RLS do papel authenticated, como a sessão do titular fazia. O navegador nunca recebe credencial nem escolhe usuário,
+ * tabela ou função: quem chega aqui são as ações do servidor, com nomes e argumentos fixados em src/nucleo/operacoes.ts.
+ */
 const chamarSupabase: Chamar = async (funcao, args) => {
-  const sb = await criarClienteServidor();
-  const { data: { user }, error: erroUser } = await sb.auth.getUser();
-  if (erroUser || !user) {
-    // falha de conexão com o Auth não é sessão encerrada: a sessão continua nos cookies e nada foi gravado (a tela explica pela sonda de sessão)
-    if (situacaoDoErroAuth(erroUser) === 'transitoria') throw Object.assign(new Error('Não foi possível confirmar a sessão agora.'), { code: 'auth-indisponivel' });
-    throw new ErroDmanda('Sua sessão terminou. Entre de novo.');
-  }
-  if (!contaAutorizada(user)) throw new ErroDmanda('Esta conta não tem acesso ao Dmanda.');
-  const aparelho = await situacaoDoAparelho();
-  if (aparelho === 'transitoria') throw Object.assign(new Error('Não foi possível confirmar o aparelho agora.'), { code: 'auth-indisponivel' });
-  if (aparelho === 'negado') throw new ErroDmanda('Este aparelho não está mais autorizado. Peça um novo código para abrir o Dmanda de novo.');
-  const { data, error } = await sb.rpc(funcao, args);
+  const { data, error } = await clienteServico().rpc('executar_como_titular', { p_funcao: funcao, p_args: args });
   if (error) throw traduzir(error);
   return data;
 };
