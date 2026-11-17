@@ -24,7 +24,7 @@ Variáveis: copiar `.env.example` para `.env.local` e preencher (nunca vai para 
 
 ## Testes
 
-`npm run testar:banco`, `npm run testar:regras`, `npm run testar:app`, `npm run testar:sessao` (veja o `CLAUDE.md` para o que cada um cobre e as limitações).
+`npm run testar:banco`, `npm run testar:regras`, `npm run testar:app`, `npm run testar:acesso-direto` (veja o `CLAUDE.md` para o que cada um cobre e as limitações).
 
 ## Documentos
 

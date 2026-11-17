@@ -43,9 +43,7 @@
     "medir:desempenho": "node scripts/medir-desempenho.mjs",
     "testar:medicao-local": "node scripts/testar-medicao-local.mjs",
     "verificar:ajuste-cards": "node scripts/verificar-ajuste-cards.mjs",
-    "conferir:env": "node scripts/conferir-env.mjs",
-    "testar:senha-terminal": "python -I scripts/terminal-senha/testar.py",
-    "definir:senha": "node --env-file=.env.local scripts/definir-senha.mjs"
+    "conferir:env": "node scripts/conferir-env.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

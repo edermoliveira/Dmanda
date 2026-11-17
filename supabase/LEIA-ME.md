@@ -1,6 +1,40 @@
 # Supabase, Vercel e rotina diária do Dmanda
 
-**Estado vigente (17/11/2026, entrada direta):** o Dmanda **não tem login, aparelho autorizado nem código** (a decisão 82 foi retirada, e as seções abaixo sobre entrada por senha, sessão persistente e aparelhos ficam como histórico). O servidor chama o banco com a chave de serviço (**só** nas variáveis do servidor: `SUPABASE_SERVICE_ROLE_KEY` e `NEXT_PUBLIC_SUPABASE_URL`) por **uma única função**, `public.executar_como_titular(função, argumentos)`, que só aceita as operações da lista fixa do banco, assume o usuário da lista protegida `dmanda_privado.acesso_autorizado` (nunca vem do pedido) e executa como o papel `authenticated`, com a RLS valendo. `dmanda_privado.conta_autorizada()` voltou a ser só `titular_autorizado()`. A rotina diária segue protegida por `CRON_SECRET`. **Quem abre o endereço publicado usa o Dmanda com os dados do titular**; a segurança será retomada perto da conclusão do projeto. Migração: `20261119000000_retirar_aparelhos` (ver o registro em `docs/auditoria-etapa-6.md`).
+## Instruções vigentes (17/11/2026, entrada direta)
+
+**Tudo o que está acima do marcador "HISTÓRICO" abaixo e nesta seção é instrução atual. As seções marcadas como HISTÓRICO descrevem o que existiu (entrada por senha, sessão, Google, aparelhos e códigos) e NÃO devem ser seguidas nem usadas para reinstalar o mecanismo retirado.**
+
+- **O Dmanda não tem login, aparelho autorizado nem código.** Quem abre o endereço publicado usa o Dmanda com os dados do titular. A segurança será retomada perto da conclusão do projeto (decisão do Éder).
+- **Como o servidor chega ao banco:** com a chave de serviço (só nas variáveis do servidor), por **uma única função**, `public.executar_como_titular(função, argumentos)`. Ela só aceita as 38 operações da lista fixa do banco, recusa argumento que não seja parâmetro da função, assume o usuário da lista protegida `dmanda_privado.acesso_autorizado` (nunca vem do pedido), troca para o papel `authenticated` e executa, então a RLS vale. `dmanda_privado.conta_autorizada()` é só `titular_autorizado()`. A rotina diária continua protegida por `CRON_SECRET`, de forma independente.
+- **Duas fases no banco real** (comandos, verificações e o que fazer se falhar: `docs/plano-retirada-aparelhos.md`): a fase 1 é a migração `20261119000000_entrada_direta` (aditiva), em `migrations/`; a fase 2 é a retirada dos aparelhos (`20261119000100_retirar_aparelhos`), que fica em `supabase/pendentes/`, **fora** de `migrations/`, justamente para que um `db push` comum não a aplique antes da hora. Nenhuma das duas está aplicada no Supabase real.
+- **Linha de comando:** na versão instalada da CLI (3.2.0), o destino é `--remote` (as seções antigas abaixo dizem `--linked`); confira com `npx supabase db push --help` antes de usar. Nunca `db reset`.
+- **Voltar ao modelo antigo** só por decisão expressa do Éder: `supabase/propostas/restaurar_aparelhos_apos_retirada.sql` (proposta, não migração).
+- **Chave de serviço:** quem a tiver lê e grava tudo. Fica só em `.env.local` e na Vercel, nunca em `NEXT_PUBLIC`, no Git, em chat ou em captura de tela.
+
+## Variáveis de ambiente (vigentes)
+
+| Variável | Onde fica | Observação |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `.env.local` e Vercel | endereço do projeto (não é segredo) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **só no servidor**: `.env.local` e Vercel | chave secreta (`sb_secret_...`). É a credencial que abre os dados. **Nunca** em `NEXT_PUBLIC` nem no Git |
+| `CRON_SECRET` | `.env.local` e Vercel (só no servidor) | texto aleatório de 16 caracteres ou mais. A Vercel o envia como `Authorization: Bearer` à rotina diária |
+| `DMANDA_BANCO=teste` | só em desenvolvimento (`npm run dev:teste`) | banco local descartável. **Recusado em produção** |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO` | `.env.local` (opcionais) | só para `npm run conferir:env` (consulta de leitura às configurações do Supabase). O aplicativo **não** as lê |
+
+Deixaram de ser lidas pelo aplicativo (podem ser removidas da Vercel por decisão do Éder, depois da fase 2): `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_EMAIL_AUTORIZADO` e `DMANDA_LOGIN_GOOGLE`. O modelo está no `.env.example` (versionado, sem valores). Copiar para `.env.local` e preencher sem colar valores no chat.
+
+**Conferir o `.env.local` sem revelar valores** (PowerShell, na pasta do projeto): `npm run conferir:env`. Mostra só `ok`, `VAZIA` ou `ATENÇÃO` com o motivo, nunca os valores; com o formato certo, consulta o Supabase só para leitura. `node scripts/conferir-env.mjs --sem-rede` pula a consulta. A URL tem de ser a do projeto Dmanda, a chave secreta tem de começar com `sb_secret_`, o `CRON_SECRET` precisa de 16 caracteres ou mais.
+
+**De onde vem cada valor:** URL e chaves em Supabase > Project Settings > API (aba **Secret keys** para a `sb_secret_`); `CRON_SECRET` é gerado por você (aleatório) e na Vercel é o valor de lá que vale em produção.
+
+**Verificação de leitura do ambiente real** (só com autorização, sem gravar nada e sem imprimir segredo): `scripts/verificar-entrada-direta-real.mjs` (modos `rest` e `dominio`), descrita no plano.
+
+---
+
+## Referência e histórico (o que existiu antes da entrada direta)
+
+As seções marcadas **[HISTÓRICO]** (e o texto antigo que ainda cita `--linked`, senha ou sessão) ficam como registro do que foi feito e aplicado no Supabase real: entrada por e-mail e senha, sessão persistente, Google, aparelhos e códigos. As demais (O projeto, Migrações, Rotina diária, Cópia dos dados, Publicação) seguem como referência, com as notas acima. Os comandos `npm run definir:senha`, `npm run aparelhos` e `npm run testar:senha-terminal` **foram removidos**; não há como nem por que reinstalá-los sem uma nova decisão do Éder.
+
 
 **Atualização de 02/11/2026:** **15 migrações aplicadas no banco real** (a 15, `20261102000100_alinha_regras_agenda`, em 02/11/2026 com dry-run: a rotina diária passa a seguir a data aplicável e ganha os contadores da espera pela Prefeita; só funções e gatilho, nenhum dado tocado; 11 a 13 em 30/10/2026; a 14, `20261102000000_agenda`, em 02/11/2026 com dry-run: etapa Aguardando Prefeita, colunas `encaminhada_em` e `reiterada_em` e a tabela `eventos`, aditiva, dados existentes intactos; detalhes em `CONTINUIDADE-DMANDA.md`, seção O). A cópia dos dados passou à versão 4 (inclui eventos).
 
@@ -21,7 +55,9 @@
 
 A CLI oficial (`npx supabase`, sem instalação global) está autenticada neste computador por login seu. O assistente a usa só neste projeto: `migration list`, `db push`, `db query --linked`, `db advisors`. Nunca `db reset`.
 
-## Quem faz o quê (entrada por senha, 26/10/2026)
+## [HISTÓRICO] Quem faz o quê (entrada por senha, 26/10/2026)
+
+> Histórico. O passo "definir a senha" (`npm run definir:senha`) e a entrada por senha não existem mais; o comando foi removido em 17/11/2026.
 
 Situação em 27/10/2026: as etapas 1 a 7 estão **concluídas**. Falta só a 8 (publicação).
 
@@ -36,39 +72,9 @@ Situação em 27/10/2026: as etapas 1 a 7 estão **concluídas**. Falta só a 8 
 | 7 | Desligar o Google no painel (feito em 27/10/2026). Não precisa de variável: o botão já fica oculto por padrão | **usuário** | painel do Supabase |
 | 8 | Projeto da Vercel, variáveis e agendamento | usuário e Claude | site da Vercel, depois (ver "Publicação") |
 
-## Variáveis de ambiente
+## [HISTÓRICO] Variáveis de ambiente da entrada por senha
 
-| Variável | Onde fica | Observação |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | `.env.local` e Vercel | endereço do projeto |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `.env.local` e Vercel | chave **pública** (publishable). Só vale com RLS e login |
-| `DMANDA_EMAIL_AUTORIZADO` | `.env.local` e Vercel | e-mail da conta Google do Secretário. O servidor recusa qualquer outra conta |
-| `SUPABASE_SERVICE_ROLE_KEY` | **só no servidor**: `.env.local` (teste local da rotina) e Vercel | chave privilegiada (a "secret key"). Usada apenas pela rotina diária. **Nunca** em `NEXT_PUBLIC` nem no Git |
-| `CRON_SECRET` | `.env.local` e Vercel (só no servidor) | texto aleatório de 16 caracteres ou mais. A Vercel o envia como `Authorization: Bearer` ao chamar a rotina |
-| `DMANDA_LOGIN_GOOGLE` | `.env.local` e Vercel (opcional) | deixe **vazia** (padrão): o botão do Google fica oculto e só e-mail e senha aparecem. `sim`: mostra o botão (só faz sentido com o provedor Google ligado no painel). Lida na montagem da página (vale no próximo build ou publicação) |
-| `DMANDA_BANCO=teste` | só em desenvolvimento (`npm run dev:teste`) | banco local descartável. **Recusado em produção** |
-
-O modelo está no `.env.example` (versionado, sem valores; atualizado em 26/10/2026, antes tinha nomes antigos). Copiar para `.env.local` e preencher.
-
-**Conferir o `.env.local` sem revelar valores** (no PowerShell, dentro da pasta do projeto):
-
-```
-npm run conferir:env
-```
-
-Mostra só `ok`, `VAZIA` ou `ATENÇÃO` com o motivo, nunca os valores. Confere o formato (a URL precisa ser a do projeto Dmanda, a chave pública não pode ser a secreta e vice-versa, o `CRON_SECRET` precisa de 16 caracteres ou mais, `DMANDA_BANCO` precisa estar vazia aqui). Com tudo no formato certo, também consulta o Supabase só para leitura: provedores ligados (Email, Google), cadastro público, confirmação automática de e-mail, quantos usuários existem e o início do identificador do usuário autorizado. Não altera nada. `node scripts/conferir-env.mjs --sem-rede` pula a consulta.
-
-**De onde vem cada valor** (valores só no `.env.local`; nada disso vai ao chat, a comandos visíveis ou ao Git):
-
-| Variável | Painel de origem |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | já vem preenchida (endereço do projeto Dmanda; não é segredo). Também em Project Settings > API |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase > Project Settings > API Keys > aba **Publishable key** (`sb_publishable_...`) |
-| `DMANDA_EMAIL_AUTORIZADO` | o e-mail da conta autorizada: o mesmo da conta Google com que você já entrou (ou Authentication > Users, coluna de e-mail) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase > Project Settings > API Keys > aba **Secret keys** (`sb_secret_...`). Nunca em `NEXT_PUBLIC` |
-| `CRON_SECRET` | já vem gerado (aleatório, só neste computador). Na Vercel pode ser o mesmo valor ou outro novo (16 caracteres ou mais): o da Vercel é o que vale em produção |
-| `DMANDA_LOGIN_GOOGLE` | vazio (botão do Google oculto). Só `sim` o mostra |
-| `DMANDA_BANCO` | vazio |
+> Superada pela seção "Variáveis de ambiente (vigentes)" no topo. Tinha também `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (login), `DMANDA_EMAIL_AUTORIZADO` (servidor) e `DMANDA_LOGIN_GOOGLE` (botão do Google), que o aplicativo não lê mais.
 
 ## Migrações (`migrations/`, aplicadas em ordem)
 
@@ -85,7 +91,9 @@ Mostra só `ok`, `VAZIA` ou `ATENÇÃO` com o motivo, nunca os valores. Confere 
 
 Regras: antes de aplicar, conferir o esquema remoto e `npx supabase db push --linked --dry-run`. As migrações não apagam dados. Nunca resetar o banco real. Dados do protótipo não entram. Migração já aplicada não se reescreve: correções vão em migração nova.
 
-## Acesso exclusivo à conta autorizada (três camadas)
+## Acesso exclusivo à conta autorizada (três camadas; revisado em 17/11/2026)
+
+> Vigente hoje: a camada 1 (hook de cadastro e lista protegida) e a camada 3 (RLS com `conta_autorizada()`, agora igual a `titular_autorizado()`). A camada 2 (proxy, sessão, e-mail por variável) **foi retirada**: o servidor usa a chave de serviço e `executar_como_titular`. O texto abaixo é o original.
 
 1. **Supabase Auth (cadastro):** o hook **Before User Created** (`public.hook_antes_criar_usuario`) só permite criar usuário com o e-mail da lista protegida **e** provedor `google`. Mesmo com a entrada por senha, ele **continua só Google de propósito**: aceitar `email` abriria cadastro por senha para o endereço autorizado sem exigir e-mail confirmado (se a conta fosse apagada ou a confirmação desligada). Decide só por dados que o servidor de Auth define, nunca por nome de exibição nem `user_metadata`. Qualquer outra conta recebe 403 e a mensagem "Este endereço não tem acesso ao Dmanda.".
 2. **Servidor da aplicação:** `src/proxy.ts`, o callback, a conclusão da entrada por senha (`src/servidor/entrar.ts`) e cada operação (`src/servidor/banco.ts`) exigem sessão válida, provedor aceito (Google ou e-mail e senha) e e-mail igual a `DMANDA_EMAIL_AUTORIZADO`, (a sessão persiste: ver "Sessão persistente").
@@ -99,7 +107,9 @@ npx supabase db query --linked "insert into dmanda_privado.acesso_autorizado (em
 
 O endereço vai em minúsculas. O esquema `dmanda_privado` **não** deve ser adicionado aos "Exposed schemas" da Data API.
 
-## Entrada por e-mail e senha (decisão de 26/10/2026)
+## [HISTÓRICO] Entrada por e-mail e senha (decisão de 26/10/2026)
+
+> Histórico, não seguir. Retirada em 17/11/2026 (nenhuma tela de senha existe; `definir-senha` e `terminal-senha` foram removidos). A senha da conta no Supabase Auth, se existir, não dá acesso a nada que a entrada direta já não dê.
 
 **Situação encontrada na auditoria:** não havia autenticação por senha no aplicativo. O formulário só tinha o botão do Google, e o código (`contaAutorizada`), o hook e a RLS exigiam `provider = google`. As credenciais de e-mail e senha que o usuário conhece são do **painel de administração** do Supabase, outra coisa. Habilitar "Email" no painel sozinho não bastava. Agora:
 
@@ -134,7 +144,9 @@ npm run definir:senha
 - O Supabase Auth, no plano gratuito, **não** tem expiração por inatividade nem tempo máximo de sessão (planos pagos têm). Desde 29/10/2026 o Dmanda também **não** impõe nenhuma (ver "Sessão persistente").
 - A senha trafega pelo HTTPS do Supabase e pela ação do servidor; o servidor só repassa. Se as redes do trabalho inspecionarem tráfego, use as mesmas cautelas de qualquer senha de trabalho.
 
-## Sessão persistente (decisão 27, 29/10/2026)
+## [HISTÓRICO] Sessão persistente (decisão 27, 29/10/2026)
+
+> Histórico. Não há mais sessão do usuário: o servidor entra pela chave de serviço.
 
 **Problema que isto resolve:** a PWA instalada no iPhone pedia login ao ser aberta depois de horas. A causa era a regra antiga das 6 horas: um cookie próprio (`dmanda-ultimo-uso`) renovado só em navegações, cuja ausência ou idade maior que 6 h encerrava a sessão do Supabase mesmo válida. Essa regra foi **removida**; o cookie só é apagado dos navegadores onde ficou.
 
@@ -146,7 +158,9 @@ npm run definir:senha
 - **O que o Supabase Free não oferece:** expiração por inatividade e tempo máximo de sessão são recursos pagos. Quem quiser uma sessão que acabe sozinha precisaria deles; não é a decisão do usuário (decisão 27).
 - **Testes:** `npm run testar:sessao` (Auth falso que rotaciona e recusa o token de renovação já usado, revoga sessões individualmente e simula queda e erro 500) e `npm run testar:regras`. **Não validado ainda:** a renovação no Supabase real em horas reais, no iPhone real e no Safari real.
 
-## Passo a passo do login Google (já feito em 25/10/2026; passa a ser transitório)
+## [HISTÓRICO] Passo a passo do login Google (feito em 25/10/2026)
+
+> Histórico. O Google está desativado no painel e não faz parte da entrada atual.
 
 O Google continua ligado enquanto a entrada por senha não é provada. Depois, ver o passo 5 de "Entrada por e-mail e senha". Este passo a passo fica como histórico e para religar o Google se for preciso.
 
@@ -372,12 +386,14 @@ select column_name, has_column_privilege('authenticated','public.registros_dia',
 
 `20261110000000_origem_documento_para_hoje` (decisão 60), aditiva e reaplicável: `demandas.tipo` passa a aceitar vazio e deixa de ter lista fixa; colunas `rapida` e `documento_ano` (só o ano confirmado à mão); tabelas `opcoes` (origem e tipo, criação idempotente por nome sem diferença de maiúsculas ou espaços) e `para_hoje` (até 3 vagas por usuário), ambas com RLS pela conta autorizada e privilégios mínimos (opções: SELECT e INSERT; vagas: SELECT, INSERT e DELETE); funções `listar_opcoes`, `criar_opcao`, `listar_para_hoje` e `atualizar_para_hoje`, todas SECURITY INVOKER; `criar_demanda` e `atualizar_demanda` recriadas com os campos novos. Nenhuma linha existente é alterada. **Não aplicada no Supabase real.**
 
-## Aparelhos autorizados e as migrações das etapas 3 a 5 (16 a 18/11/2026, decisões 80 a 82; só banco de teste)
+## Migrações das etapas 3 a 5 (16 a 18/11/2026); os aparelhos são HISTÓRICO
+
+> As migrações `20261116000000` (quatro vagas) e `20261117000000` (prazo pela chegada) seguem vigentes. A `20261118000000` e a `20261118000100` (aparelhos autorizados) estão **aplicadas** no Supabase real como histórico e serão retiradas pela fase 2 (`supabase/pendentes/`).
 
 - **`20261116000000_para_hoje_quatro_vagas`** (etapa 3): a posição de `para_hoje` aceita de 1 a 4 e `atualizar_para_hoje` preenche até a quarta. Aditiva, mesma assinatura, trava, unicidade, RLS e privilégios.
 - **`20261117000000_prazo_pela_chegada`** (etapa 4): só troca `criar_demanda` e `atualizar_demanda`. Duração de 5, 10, 20 ou 30 dias = chegada mais N (sem contar o dia da chegada); sem chegada o banco recusa com o texto do que falta; mudar a chegada de uma duração "viva" (base igual à chegada) recalcula; data à mão, duração da regra anterior, finalizadas e arquivadas ficam como estão. Sem backfill: a comparação dos legados e a proposta reversível estão em `scripts/comparar-prazos-legados.mjs` e `supabase/propostas/`.
 - **`20261118000000_aparelhos_autorizados`** (etapa 5): cadastro privado dos aparelhos (ligados ao `session_id` do token do Supabase Auth), convites de código de uso único (hash, 10 minutos), trava de tentativas e a chave `exigir_aparelho` (nasce **desligada**). Troca só `dmanda_privado.conta_autorizada()`, que todas as políticas de RLS já chamam: com a chave ligada exige também o aparelho registrado, não revogado e dentro de 90 dias sem uso.
-- **Como se entra (decisão 82):** não há mais tela de e-mail e senha. Em aparelho novo o aplicativo mostra `/acesso`, e o aparelho é autorizado por um código de 8 caracteres gerado por um aparelho já autorizado (Configurações, Aparelhos) ou no terminal do titular com a chave de serviço (`npm run aparelhos -- convite`, que também é a recuperação). O servidor troca o código por uma sessão do Auth (`admin.generateLink` do tipo magiclink e `verifyOtp`, sem e-mail) e registra o aparelho. O cadastro público segue fechado (hook e lista protegida inalterados). A senha continua existindo no Auth (o aplicativo não a usa), e `npm run definir:senha` segue valendo para o aplicativo antigo.
-- **Comandos do titular** (`.env.local` com a chave de serviço): `npm run aparelhos -- convite`, `npm run aparelhos -- exigir sim|nao` (recusa ligar sem nenhum aparelho autorizado) e `npm run aparelhos -- revogar-todos --sim`.
-- **Reversão e publicação:** `supabase/propostas/reverter_migracoes_etapas_3_a_5.sql` e `docs/plano-publicacao-etapa-6.md`. Passkeys do Supabase foram avaliadas e descartadas (ver a decisão 82).
-- **Nada disso está no Supabase real.** Antes de publicar: dry-run, aplicar as três migrações, só então o código, depois autorizar o primeiro aparelho e, por último, ligar a exigência.
+- **Como se entrava (decisão 82, RETIRADA em 17/11/2026):** um aparelho novo digitava um código de uso único em `/acesso` e era registrado pelo `session_id` do Auth. Isso não existe mais no aplicativo; o texto original está no histórico do Git.
+- **Comandos do titular (REMOVIDOS):** `npm run aparelhos` e seus subcomandos saíram do projeto.
+- **Reversão e publicação (superadas):** `supabase/propostas/reverter_migracoes_etapas_3_a_5.sql` e `docs/plano-publicacao-etapa-6.md` foram substituídos pelo plano de duas fases, `docs/plano-retirada-aparelhos.md`. Passkeys do Supabase foram avaliadas e descartadas (decisão 82).
+- **Estado no Supabase real (17/11/2026):** as migrações 20261116 a 20261118 estão aplicadas; a fase 1 (entrada direta) e a fase 2 (retirada) **ainda não**.
