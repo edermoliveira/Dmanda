@@ -185,7 +185,8 @@ for (const [largura, tema] of [[390, 'celular'], [1360, 'computador']]) for (con
   estado.modo = 'ok'; await botao.click(); await pg.waitForFunction(() => !document.querySelector('.agd-aux[data-indisponivel]'), null, { timeout: 20000 }); await esperar(300);
   const r = await textosPaineis(pg);
   const vazios = r.aux.map((p) => p.texto ?? '');
-  ok(r.aux.length >= (modo === 'hoje' ? 1 : 2) && vazios.some((t) => t === OK_VAZIO_SEM) && (modo === 'hoje' || vazios.some((t) => t.startsWith(OK_VAZIO_CARGA))) && !r.tudo.includes(INDISP), `${R}, recuperação: depois de Tentar de novo os painéis voltam a mostrar o resultado vazio de verdade (${vazios.join(' | ')})`);
+  ok(r.aux.length >= (modo === 'hoje' ? 1 : 2) && vazios.some((t) => t === OK_VAZIO_SEM) && (modo === 'hoje' || vazios.some((t) => t.startsWith(OK_VAZIO_CARGA)) || r.aux.some((p) => /aperta/.test(p.titulo ?? '') && p.selo)) && !r.tudo.includes(INDISP), `${R}, recuperação: depois de Tentar de novo os painéis voltam a mostrar o resultado de verdade, vazio ou com os dias de carga (${vazios.join(' | ')})`);
+  // no Mês o painel lista também os dias PASSADOS de carga média ou alta (commit 7e709b5), e a semente é relativa ao dia real: o resultado de verdade pode ser a lista, com o selo da quantidade, e não o texto de vazio
   await ctx.close();
 }
 {
