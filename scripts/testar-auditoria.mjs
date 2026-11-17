@@ -18,6 +18,7 @@ const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- dados: quatro vagas (Alfa em Cadastro, Charlie com pendências, Eco aguardando a Prefeita, Quarta em Fazendo) e duas urgências fora delas; nenhuma demanda sem data e nenhum dia cheio ----------
 const ID = {};
+let MES_APERTA = false; // o painel "Onde o mês aperta" tem dias a listar? Calculado dos dados fictícios com as funções do produto (a data do banco e a semente decidem)
 {
   const db = await abrirBancoTeste({ pasta: PASTA });
   await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
@@ -35,6 +36,15 @@ const ID = {};
   await mk('F', 'Foxtrot aguardando retorno do setor', { etapa: 'Aguardando retorno', setor: 'Obras', acompanhar_em: somarDias(HOJE, -1) }, ['f1']);
   for (const [i, k] of ['A', 'C', 'E', 'Q'].entries()) await db.query('insert into public.para_hoje (user_id, posicao, demanda_id) values ($1, $2, $3)', [USUARIO, i + 1, ID[k]]);
   await c('criar_evento', { p: { titulo: 'Reunião de teste', tipo: 'Reunião', data: HOJE, inicio: '09:00', fim: '10:00', aviso_min: null } });
+  // O Mês lista também os dias PASSADOS de carga média ou alta (7e709b5), e prazos que caem em sábado, domingo ou feriado se juntam no último dia útil anterior: se a semente cria um dia cheio depende do dia
+  // da semana de public.hoje(). O esperado vem das mesmas demandas do banco e de panorama/cargaPorDia (as regras em si são cobertas por testar:agenda-regras, 89 verificações e a varredura de 1.096 datas).
+  {
+    const { cargaPorDia, panorama } = await import('../src/lib/agenda.ts');
+    const lista = await c('listar_demandas', { p_arquivadas: false });
+    const [ano, mes] = HOJE.split('-').map(Number), de = `${HOJE.slice(0, 7)}-01`, ate = new Date(Date.UTC(ano, mes, 0)).toISOString().slice(0, 10);
+    MES_APERTA = panorama(cargaPorDia(lista, [], HOJE), [], [], HOJE, de, ate).cheios.length > 0;
+    console.log(`Mês da auditoria: HOJE=${HOJE}, dias cheios esperados no painel: ${MES_APERTA ? 'sim' : 'não'}`);
+  }
   await db.close();
 }
 
@@ -185,8 +195,8 @@ for (const [largura, tema] of [[390, 'celular'], [1360, 'computador']]) for (con
   estado.modo = 'ok'; await botao.click(); await pg.waitForFunction(() => !document.querySelector('.agd-aux[data-indisponivel]'), null, { timeout: 20000 }); await esperar(300);
   const r = await textosPaineis(pg);
   const vazios = r.aux.map((p) => p.texto ?? '');
-  ok(r.aux.length >= (modo === 'hoje' ? 1 : 2) && vazios.some((t) => t === OK_VAZIO_SEM) && (modo === 'hoje' || (r.aux.some((p) => /aperta/.test(p.titulo ?? '') && (p.texto ?? '').startsWith(OK_VAZIO_CARGA)) !== r.aux.some((p) => /aperta/.test(p.titulo ?? '') && !p.texto && p.selo))) && !r.tudo.includes(INDISP), `${R}, recuperação: depois de Tentar de novo os painéis voltam a mostrar o resultado de verdade, vazio ou com os dias de carga (${vazios.join(' | ')})`);
-  // no Mês o painel lista também os dias PASSADOS de carga média ou alta (commit 7e709b5), e a semente é relativa ao dia real: o resultado de verdade é UM destes dois, nunca os dois nem nenhum: o texto de vazio ou a lista com o selo da quantidade (a data do servidor não é controlável aqui)
+  ok(r.aux.length >= (modo === 'hoje' ? 1 : 2) && vazios.some((t) => t === OK_VAZIO_SEM) && (modo === 'hoje' || (modo === 'mes' && MES_APERTA ? r.aux.some((p) => /aperta/.test(p.titulo ?? '') && !p.texto && p.selo) && !vazios.some((t) => t.startsWith(OK_VAZIO_CARGA)) : vazios.some((t) => t.startsWith(OK_VAZIO_CARGA)))) && !r.tudo.includes(INDISP), `${R}, recuperação: depois de Tentar de novo os painéis voltam a mostrar o resultado de verdade, vazio ou com os dias de carga (${vazios.join(' | ')})`);
+  // no Mês o painel lista também os dias PASSADOS de carga média ou alta (commit 7e709b5), e a semente é relativa ao dia real: o resultado esperado (MES_APERTA) vem dos mesmos dados do banco: lista com o selo da quantidade quando há dia cheio, texto de vazio quando não há
   await ctx.close();
 }
 {
