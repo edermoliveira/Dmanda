@@ -26,10 +26,11 @@ export default function Acesso({ searchParams }: { searchParams: Promise<Record<
     <main className="login">
       <div className="login-caixa">
         <h1>Dmanda</h1>
-        <p>Demandas do Secretário de Administração. Acesso restrito: este aparelho ainda não está autorizado.</p>
+        <p>Demandas do Secretário de Administração. Acesso restrito.</p>
+        <h2 className="login-sub">Autorize este aparelho</h2>
         <Suspense fallback={null}><Aviso searchParams={searchParams} /></Suspense>
         <FormularioCodigo />
-        <p className="login-info" data-como-obter>Para receber um código: em um aparelho já autorizado, abra Configurações, Aparelhos, e toque em Autorizar outro aparelho. Sem nenhum aparelho autorizado, o titular gera o código no computador (npm run aparelhos -- convite).</p>
+        <p className="login-info" data-como-obter>O código é gerado pelo titular: em um aparelho já autorizado, em Configurações, Aparelhos; no primeiro acesso, pelo gerador do titular.</p>
       </div>
     </main>
     </PainelLogin>

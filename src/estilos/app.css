@@ -446,3 +446,4 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .cfg-apar-lista li > .data { grid-column: 1; }
 .cfg-apar-lista li > .btn, .cfg-apar-lista li > .cfg-acoes { grid-column: 2; grid-row: 1 / span 2; }
 .cfg-apar-lista li > .cfg-confirma { grid-column: 1 / -1; grid-row: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.login-caixa h2.login-sub { margin: 4px 0 0; font-size: calc(17px * var(--esc)); font-weight: 600; }

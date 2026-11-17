@@ -10,6 +10,7 @@ import { promisify } from 'node:util';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { iniciarSupabaseFalso, CHAVE_PUBLICA, CHAVE_SERVICO } from './supabase-falso.mjs';
+import { iniciarGerador } from './gerador-codigo.mjs';
 
 const exec = promisify(execFile);
 const PORTA = process.env.PORTA_TESTE_APARELHOS || '7129', PORTA_FALSO = 7130, BASE = `http://localhost:${PORTA}`, RAIZ = '.dados-teste/aparelhos', CAPTURAS = '.dados-teste/aparelhos-capturas';
@@ -25,6 +26,8 @@ await db.query('insert into auth.users (id, email) values ($1, $2)', [USUARIO, E
 await db.query('insert into dmanda_privado.acesso_autorizado (email) values ($1)', [EMAIL]);
 await chamarComoUsuario(db, USUARIO, 'criar_demanda', { p: { assunto: NOME } }, { provedor: 'email' });
 const falso = await iniciarSupabaseFalso({ db, porta: PORTA_FALSO, email: EMAIL, usuarioId: USUARIO });
+const GERADOR = 'http://127.0.0.1:7133';
+await iniciarGerador({ db, porta: 7133 });
 const env = { ...process.env, NEXT_PUBLIC_SUPABASE_URL: falso.url, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: CHAVE_PUBLICA, SUPABASE_SERVICE_ROLE_KEY: CHAVE_SERVICO, DMANDA_EMAIL_AUTORIZADO: EMAIL, CRON_SECRET: 'segredo-de-teste', DMANDA_SEM_LEMBRETES: 'sim' };
 delete env.DMANDA_BANCO;
 const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env, stdio: 'ignore' });
@@ -36,6 +39,10 @@ const terminal = async (...args) => {
   const { stdout } = await exec(process.execPath, ['scripts/aparelhos.mjs', ...args], { env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: falso.url, SUPABASE_SERVICE_ROLE_KEY: CHAVE_SERVICO } }).catch((e) => ({ stdout: `${e.stdout ?? ''}${e.stderr ?? ''}` }));
   return stdout;
 };
+// o gerador da prévia: só o POST do botão "Gerar primeiro código" cria código; ler a página mostra o vigente
+const lerGerador = async () => /data-codigo>([A-Z2-9]{4}-[A-Z2-9]{4})</.exec(await (await fetch(GERADOR + '/')).text())?.[1] ?? null;
+const codigoDoGerador = async () => { await fetch(GERADOR + '/gerar', { method: 'POST', redirect: 'manual' }); return lerGerador(); };
+const nConvites = async () => (await sqlq('select count(*)::int n from dmanda_privado.convites_aparelho'))[0].n;
 const novoCodigo = async () => /([A-Z2-9]{4}-[A-Z2-9]{4})/.exec(await terminal('convite'))?.[1] ?? null;
 const sqlq = async (q, p = []) => (await db.query(q, p)).rows;
 
@@ -59,7 +66,7 @@ const nCookiesSessao = async (ctx) => (await ctx.cookies()).filter((c) => /^sb-.
 const pedir = (rota, cookie, extra = {}) => fetch(BASE + rota, { redirect: 'manual', headers: cookie ? { cookie } : {}, ...extra });
 const hidratou = (pg) => pg.waitForFunction(() => { const f = document.querySelector('.login-form'); return !!f && Object.keys(f).some((k) => k.startsWith('__reactProps')); }, null, { timeout: 120000 });
 const autorizar = async (pg, codigo) => { await ir(pg, '/acesso'); await pg.waitForSelector('#acesso-codigo', { timeout: 120000 }); await hidratou(pg); await pg.fill('#acesso-codigo', codigo); await pg.click('.login-form button[type=submit]'); };
-const entrarComCodigo = async (perfil, opcoes) => { const c = await novo(perfil, opcoes), codigo = await novoCodigo(); await autorizar(c.pg, codigo); await c.pg.waitForURL((u) => new URL(u).pathname === '/', { timeout: 120000 }); await painel(c.pg); return { ...c, codigo }; };
+const entrarComCodigo = async (perfil, opcoes) => { const c = await novo(perfil, opcoes), codigo = opcoes?.via === 'gerador' ? await codigoDoGerador() : await novoCodigo(); await autorizar(c.pg, codigo); await c.pg.waitForURL((u) => new URL(u).pathname === '/', { timeout: 120000 }); await painel(c.pg); return { ...c, codigo }; };
 const tokenDoContexto = async (ctx) => { const c = (await ctx.cookies()).find((x) => /^sb-.+-auth-token$/.test(x.name)); try { return JSON.parse(Buffer.from(decodeURIComponent(c.value).replace(/^base64-/, ''), 'base64url').toString()).access_token; } catch { return ''; } };
 const aparelhosNoBanco = () => sqlq('select nome, revogado_em is not null as revogado, sessao_id::text from dmanda_privado.aparelhos order by criado_em');
 
@@ -81,6 +88,17 @@ const aparelhosNoBanco = () => sqlq('select nome, revogado_em is not null as rev
     await sj.close();
   }
   ok(/Acesso restrito/.test(html) && /acesso-codigo/.test(html) && !/type="password"|type="email"|login-senha|login-email/.test(html), 'a tela /acesso é um estado de acesso restrito com campo de código, sem e-mail nem senha');
+  ok(/Autorize este aparelho/.test(html) && /Código de autorização/.test(html) && />Entrar</.test(html) && !/npm run|aparelhos --/.test(html) && /data-como-obter/.test(html), 'a tela /acesso diz "Autorize este aparelho", tem o campo "Código de autorização" e o botão "Entrar", com uma ajuda curta e sem o comando npm');
+  {
+    // o gerador da prévia: abrir a página, recarregar e o pedido de /favicon.ico nunca geram nem trocam o código
+    const antes = await nConvites();
+    const pagina = await (await fetch(GERADOR + '/')).text(); const fav = await fetch(GERADOR + '/favicon.ico'); await fetch(GERADOR + '/'); const outra = await fetch(GERADOR + '/qualquer');
+    ok(/Gerar primeiro código/.test(pagina) && !/data-codigo/.test(pagina) && fav.status === 204 && outra.status === 404 && (await nConvites()) === antes, 'gerador: a página mostra o botão "Gerar primeiro código" e abrir, recarregar e pedir /favicon.ico não criam código nenhum');
+    const g1 = await codigoDoGerador(), g1b = await lerGerador(), n1 = await nConvites();
+    ok(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(g1 ?? '') && g1b === g1 && n1 === antes + 1 && /id="copiar"/.test(await (await fetch(GERADOR + '/')).text()), `gerador: o botão cria um único código (${g1}), recarregar mostra o mesmo, e há o botão "Copiar código"`);
+    await fetch(GERADOR + '/favicon.ico'); await fetch(GERADOR + '/');
+    ok((await lerGerador()) === g1 && (await nConvites()) === n1, 'gerador: o código mostrado continua valendo depois do favicon e de nova abertura (era aqui que o primeiro código era trocado e recusado)');
+  }
   ok((await pedir('/api/cron/diaria')).status === 401 && (await pedir('/api/cron/diaria', null, { headers: { authorization: 'Bearer segredo-de-teste' } })).status === 200, 'a rotina diária mantém a autenticação própria: sem o segredo 401, com o segredo 200, sem sessão nem aparelho');
   const rpcSemToken = await fetch(`${falso.url}/rest/v1/rpc/listar_demandas`, { method: 'POST', headers: { apikey: CHAVE_PUBLICA, 'content-type': 'application/json' }, body: '{"p_arquivadas":false}' });
   ok(rpcSemToken.status === 401, 'a API de funções recusa quem não tem token (nenhum dado sem sessão)');
@@ -106,6 +124,21 @@ const A = await (async () => {
   const linhas = await aparelhosNoBanco();
   ok(linhas.length === 1 && /Edge/.test(linhas[0].nome) && !linhas[0].revogado, `o aparelho foi registrado no banco com nome legível (${linhas[0]?.nome})`);
   ok(falso.estado.chamadas.includes('POST /auth/v1/admin/generate_link') && falso.estado.chamadas.includes('POST /auth/v1/verify'), 'a sessão nasceu no servidor (generate_link + verify), sem e-mail nem senha');
+  // o código copiado do gerador pode chegar com espaços (colar, hífen diferente): ainda vale, e o mesmo código não vale duas vezes
+  {
+    const g = await codigoDoGerador(), sujo = `  ${g.slice(0, 4).toLowerCase()} \u2013 ${g.slice(5)} \u00a0 `;
+    const e = await novo('desktop'); await autorizar(e.pg, sujo); await e.pg.waitForURL((u) => new URL(u).pathname === '/', { timeout: 120000 }); await painel(e.pg);
+    ok(caminho(e.pg) === '/' && (await nCookiesSessao(e.ctx)) >= 1, `espaços ao redor do hífen, minúsculas, travessão e espaço sem quebra (${JSON.stringify(sujo)}) entram: o código é normalizado`);
+    const e2 = await novo('desktop'); await autorizar(e2.pg, g); await e2.pg.waitForSelector('.login-form [role=alert]', { timeout: 30000 });
+    ok(/inválido ou vencido/.test(await e2.pg.textContent('.login-form [role=alert]')) && (await nCookiesSessao(e2.ctx)) === 0, 'o código já usado é recusado');
+    await codigoDoGerador(); await db.query("update dmanda_privado.convites_aparelho set expira_em = now() - interval '1 second' where usado_em is null");
+    await autorizar(e2.pg, await lerGerador() ?? 'ZZZZ-9999'); await e2.pg.waitForSelector('.login-form [role=alert]', { timeout: 30000 });
+    ok(/inválido ou vencido/.test(await e2.pg.textContent('.login-form [role=alert]')) && (await nCookiesSessao(e2.ctx)) === 0, 'o código vencido (10 minutos) é recusado');
+    await e2.pg.fill('#acesso-codigo', 'ABCD-23456789'); await e2.pg.click('.login-form button[type=submit]'); await e2.pg.waitForSelector('.login-form [role=alert]:has-text("Confira o código")', { timeout: 30000 });
+    ok(true, 'código com tamanho errado: a tela pede para conferir');
+    await e.ctx.close(); await e2.ctx.close();
+    await db.query('delete from dmanda_privado.aparelhos where id not in (select id from dmanda_privado.aparelhos order by criado_em limit 1)');   // só o primeiro aparelho segue nos próximos cenários
+  }
   // o mesmo código não vale duas vezes
   const outro = await novo('desktop'); await autorizar(outro.pg, codigo); await outro.pg.waitForSelector('.login-form [role=alert]', { timeout: 30000 });
   ok(/inválido ou vencido/.test(await outro.pg.textContent('.login-form [role=alert]')) && (await nCookiesSessao(outro.ctx)) === 0, 'o código é de uso único: usado de novo é recusado');
@@ -219,7 +252,12 @@ let D;
   const antes = await aparelhosNoBanco();
   ok(antes.length >= 3 && antes.every((x) => x.revogado), 'depois de revogar todos, nenhum aparelho está autorizado');
   ok((await pedir('/demandas', await cookieDe(A.ctx))).status === 307, 'o primeiro aparelho também perdeu o acesso');
-  D = await entrarComCodigo('celular', { motor: wk ?? edge, tema: 'escuro', texto: 125 });
+  const estadoAntes = (await sqlq("select (select exigir_aparelho from dmanda_privado.config_acesso) exigir, (select count(*)::int from dmanda_privado.aparelhos where revogado_em is null and expira_em > now()) ativos"))[0];
+  ok(estadoAntes.exigir === true && estadoAntes.ativos === 0, 'primeiro acesso: a exigência está ligada e a lista de aparelhos autorizados está vazia');
+  D = await entrarComCodigo('celular', { motor: wk ?? edge, tema: 'escuro', texto: 125, via: 'gerador' });
+  ok(caminho(D.pg) === '/' && /Início/.test(await D.pg.textContent('.main')), 'primeiro acesso: o código do gerador abre a página inicial com a exigência ligada e a lista vazia');
+  await D.pg.reload({ waitUntil: 'load' }); await painel(D.pg);
+  ok(caminho(D.pg) === '/' && (await sqlq("select count(*)::int n from dmanda_privado.aparelhos where revogado_em is null and expira_em > now()"))[0].n === 1, 'primeiro acesso: depois de recarregar a sessão continua autorizada (um aparelho na lista)');
   await ir(D.pg, '/demandas'); await painel(D.pg);
   ok(/Demanda fictícia do titular/.test((await D.pg.textContent('#vista')) ?? ''), 'recuperação: o convite do terminal autoriza o aparelho novo e os dados do titular estão intactos');
   ok((await pedir('/demandas', await cookieDe(A.ctx))).status === 307, 'e os aparelhos revogados continuam fora');
