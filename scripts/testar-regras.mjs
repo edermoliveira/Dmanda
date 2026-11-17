@@ -1,11 +1,9 @@
 // Regras puras de datas e grupos do Início (src/lib/demandas.ts) e de Entradas (src/lib/entradas.ts), sem navegador nem banco. Uso: node scripts/testar-regras.mjs
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { emailAutorizado, contaAutorizada, situacaoDoErroAuth, ehCookieDeSessao, COOKIE_LEGADO_ULTIMO_USO } from '../src/lib/sessao.ts';
 import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO, duracaoViva, recontarPelaChegada, sanearRascunho, textoFaltaChegada } from '../src/lib/prazos.ts';
 import { modoTeste, medicaoLocalPermitida } from '../src/lib/supabase/config.ts';
 import { gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada, eObjeto } from '../src/lib/armazenamento.ts';
-import { ALFABETO_CODIGO, codigoValido, formatarCodigo, gerarCodigo, haQuanto, nomeDoAparelho, normalizarCodigo, sessaoDoToken } from '../src/lib/aparelho.ts';
 import { aparenciaGuardada, APARENCIA_PADRAO, ePadrao, modoGuardado, temaDoModo, variaveisAparencia, CONJUNTOS, FONTES_TITULO, FONTES_TEXTO, FONTES_MONO, PALETAS, TEXTO, ICONE, CARD } from '../src/lib/aparencia.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
 import { esperaPrefeita, dataFiltro, grupoFiltro, porGrupo, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
@@ -59,32 +57,7 @@ ok(['atrasadas', 'hoje', 'sete'].every((g) => mesmos(lista, g)), 'contadores do 
   ok(porGrupo(f, 'sete', hoje).map((x) => x.id).join() === 'amanha,d7' && porGrupo(f, 'hoje', hoje).map((x) => x.id).join() === 'h' && porGrupo(f, 'atrasadas', hoje).map((x) => x.id).join() === 'ontem', 'recorte do Início: amanhã e o sétimo dia entram em Próximos 7 dias; hoje só em Vencem hoje; o oitavo dia fica fora; finalizada nunca conta');
   ok(['atrasadas', 'hoje', 'sete'].every((g) => mesmos(f, g)) && filtrar(f, { ...FILTRO_VAZIO, prazo: 'sete' }, hoje).map((x) => x.id).join() === 'amanha,d7', 'o filtro de prazo abre o mesmo conjunto que cada contador, sem repetir hoje, sem o oitavo dia e sem finalizadas');
 }
-// sessão (decisão 27): a sessão persiste; nada de encerramento por inatividade. A regra só classifica o resultado da conferência no Auth.
-ok(situacaoDoErroAuth(null) === 'ok' && situacaoDoErroAuth(undefined) === 'ok', 'sessão: sem erro, a conferência está ok');
-ok(situacaoDoErroAuth({ name: 'AuthSessionMissingError' }) === 'sem-sessao', 'sessão: a falta de sessão é reconhecida (primeira visita ou sessão removida)');
-ok(situacaoDoErroAuth({ name: 'AuthRetryableFetchError', status: 0 }) === 'transitoria' && situacaoDoErroAuth({ status: 500 }) === 'transitoria' && situacaoDoErroAuth({ status: 503 }) === 'transitoria' && situacaoDoErroAuth({ status: 429, code: 'over_request_rate_limit' }) === 'transitoria' && situacaoDoErroAuth({ status: 0 }) === 'transitoria', 'sessão: falha de rede, erro 5xx e limite de requisições são transitórios (nunca apagam nem liberam a sessão)');
-ok(situacaoDoErroAuth({ name: 'AuthApiError', status: 400, code: 'refresh_token_not_found' }) === 'invalida' && situacaoDoErroAuth({ name: 'AuthApiError', status: 400, code: 'refresh_token_already_used' }) === 'invalida' && situacaoDoErroAuth({ name: 'AuthApiError', status: 403, code: 'session_not_found' }) === 'invalida' && situacaoDoErroAuth({ status: 401, code: 'bad_jwt' }) === 'invalida', 'sessão: token de renovação inexistente ou já usado, sessão revogada e token inválido são sessão inválida (pede novo login)');
-ok(ehCookieDeSessao('sb-gmxoosvgfcydccyeudej-auth-token') && ehCookieDeSessao('sb-abc-auth-token.0') && ehCookieDeSessao('sb-abc-auth-token.12') && !ehCookieDeSessao('sb-abc-auth-token-code-verifier') && !ehCookieDeSessao(COOKIE_LEGADO_ULTIMO_USO) && !ehCookieDeSessao('outro'), 'sessão: reconhece os cookies de sessão do Supabase (inteiro e em pedaços) e não confunde com o carimbo antigo');
-ok(emailAutorizado('Secretario@Exemplo.com', 'secretario@exemplo.com') && !emailAutorizado('outro@exemplo.com', 'secretario@exemplo.com') && !emailAutorizado('a@b.c', undefined) && !emailAutorizado(null, 'a@b.c'), 'e-mail autorizado: confere sem diferenciar maiúsculas; sem configuração ninguém entra');
 ok(grupoFiltro(lista[0], hoje) === 'atrasadas' && grupoFiltro(lista[1], hoje) === 'hoje' && grupoFiltro(lista[2], hoje) === 'sete' && grupoFiltro(lista[3], hoje) === null && grupoFiltro(lista[4], hoje) === null, 'grupoFiltro: atrasadas, hoje, próximos 7 dias; depois disso e sem prazo ficam fora');
-ok(contaAutorizada({ email: 'Eu@Exemplo.com', app_metadata: { provider: 'google' } }, 'eu@exemplo.com'), 'conta autorizada: e-mail certo entrando pelo Google');
-ok(contaAutorizada({ email: 'Eu@Exemplo.com', app_metadata: { provider: 'email' } }, 'eu@exemplo.com'), 'conta autorizada: e-mail certo entrando por e-mail e senha');
-ok(!contaAutorizada({ email: 'eu@exemplo.com', app_metadata: { provider: 'github' } }, 'eu@exemplo.com') && !contaAutorizada({ email: 'eu@exemplo.com', app_metadata: { provider: 'anonymous' } }, 'eu@exemplo.com') && !contaAutorizada({ email: 'eu@exemplo.com' }, 'eu@exemplo.com') && !contaAutorizada({ email: 'outro@exemplo.com', app_metadata: { provider: 'google' } }, 'eu@exemplo.com') && !contaAutorizada(null, 'eu@exemplo.com') && !contaAutorizada({ email: 'eu@exemplo.com', app_metadata: { provider: 'google' } }, undefined), 'conta autorizada: provedor fora de Google e e-mail e senha, sem provedor, outro e-mail, sem usuário ou sem configuração são recusados');
-// ---------- aparelhos autorizados (decisão 82): regras puras ----------
-{
-  const cod = gerarCodigo((n) => (n * 7) % n === 0 ? n - 1 : 0);
-  ok(cod.length === 8 && [...cod].every((c) => ALFABETO_CODIGO.includes(c)) && codigoValido(cod), 'aparelhos: o código tem 8 símbolos do alfabeto sem confusão');
-  ok(!/[ILO01]/.test(ALFABETO_CODIGO) && ALFABETO_CODIGO.length === 31 && new Set(ALFABETO_CODIGO).size === 31, 'aparelhos: o alfabeto não tem I, L, O, 0 nem 1 e não repete símbolos');
-  let seq = 0; const pseudo = gerarCodigo((n) => (seq++ * 5 + 3) % n);
-  ok(codigoValido(pseudo) && pseudo !== cod, 'aparelhos: o sorteio fornecido decide cada posição');
-  ok(normalizarCodigo(' abcd-2345 ') === 'ABCD2345' && formatarCodigo('ABCD2345') === 'ABCD-2345' && codigoValido(normalizarCodigo('abcd 2345')), 'aparelhos: o que a pessoa digita (minúsculas, espaço ou hífen) vira o código');
-  ok(!codigoValido('ABCD234') && !codigoValido('ABCD23456') && !codigoValido('ABCD0O1I') && !codigoValido(''), 'aparelhos: código curto, longo ou com símbolo fora do alfabeto é recusado');
-  ok(nomeDoAparelho('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1') === 'iPhone · Safari' && nomeDoAparelho('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36 Edg/120') === 'Windows · Edge' && nomeDoAparelho('') === 'Aparelho' && nomeDoAparelho(null) === 'Aparelho', 'aparelhos: o nome do aparelho vem do navegador, sem guardar o texto bruto');
-  const carga = Buffer.from(JSON.stringify({ session_id: '123e4567-e89b-12d3-a456-426614174000', sub: 'x' })).toString('base64url');
-  ok(sessaoDoToken(`a.${carga}.c`) === '123e4567-e89b-12d3-a456-426614174000' && sessaoDoToken('lixo') === null && sessaoDoToken(`a.${Buffer.from('{"session_id":"nao-uuid"}').toString('base64url')}.c`) === null && sessaoDoToken(undefined) === null, 'aparelhos: o session_id é lido do token e qualquer outra coisa vira nulo');
-  const agora = new Date('2026-11-16T12:00:00Z');
-  ok(haQuanto('2026-11-16T11:59:30Z', agora) === 'agora há pouco' && haQuanto('2026-11-16T11:30:00Z', agora) === 'há 30 min' && haQuanto('2026-11-16T09:00:00Z', agora) === 'há 3 h' && haQuanto('2026-11-15T10:00:00Z', agora) === 'ontem' && haQuanto('2026-11-10T12:00:00Z', agora) === 'há 6 dias', 'aparelhos: "último uso" em palavras curtas');
-}
 
 // Pré-carregar páginas com <Link> ou router.prefetch faria o servidor conferir e renovar a sessão sem ninguém estar usando o painel.
 // O aplicativo em uso não faz isso: o teste garante que continue assim. As páginas do design antigo (src/app/(antigo)) e src/components ficam fora (só referência, atrás do login).

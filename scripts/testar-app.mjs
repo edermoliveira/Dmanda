@@ -16,7 +16,7 @@ process.on('exit', parar);
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 
-async function esperarServidor() { for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/login'); if (r.status < 500) return; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); } throw new Error('servidor não subiu'); }
+async function esperarServidor() { for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) return; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); } throw new Error('servidor não subiu'); }
 await esperarServidor();
 
 const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
@@ -463,19 +463,18 @@ await pg.setViewportSize({ width: 1360, height: 780 });
   ok(!!baixado && /^dmanda-copia-\d{4}-\d{2}-\d{2}\.json$/.test(baixado.suggestedFilename()) && /Cópia baixada/.test(textoAviso ?? ''), 'cópia dos dados: o item do menu da conta baixa o arquivo e só então avisa que baixou');
 }
 
-// 11b) menu da conta (avatar do topo, computador e celular): abre, cabe na tela, "Sair" indisponível no banco de teste, fecha com Esc e ao clicar fora
+// 11b) menu da conta (avatar do topo, computador e celular): abre, cabe na tela, tem só Perfil e a cópia dos dados (sem Sair: não há conta para sair), fecha com Esc e ao clicar fora
 for (const [w, h, rotulo] of [[1360, 780, 'computador'], [390, 800, 'celular']]) {
   await pg.setViewportSize({ width: w, height: h });
   await ir('/demandas');
   await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label="Conta"]');
-  const m = await pg.evaluate(() => { const r = document.querySelector('.mv-menu[aria-label="Conta"]').getBoundingClientRect(), b = document.querySelector('.top .perfil-b'); return { cabe: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight, expandido: b.getAttribute('aria-expanded'), sair: document.querySelector('.mv-menu [role=menuitem]:last-of-type')?.textContent, bloqueado: document.querySelector('.mv-menu [role=menuitem]:last-of-type')?.getAttribute('aria-disabled') }; });
-  await pg.click('.mv-menu [role=menuitem]:last-of-type', { force: true }); await pg.waitForTimeout(300);
+  const m = await pg.evaluate(() => { const r = document.querySelector('.mv-menu[aria-label="Conta"]').getBoundingClientRect(), b = document.querySelector('.top .perfil-b'); return { cabe: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight, expandido: b.getAttribute('aria-expanded'), itens: [...document.querySelectorAll('.mv-menu [role=menuitem]')].map((e) => e.textContent.trim()) }; });
   const ficou = pg.url().endsWith('/demandas') && !!(await pg.$('.mv-menu[aria-label="Conta"]'));
   await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.mv-menu[aria-label="Conta"]'), null, { timeout: 3000 }).catch(() => {});
   const fechouEsc = !(await pg.$('.mv-menu[aria-label="Conta"]'));
   await pg.click('.top .perfil-b'); await pg.waitForSelector('.mv-menu[aria-label="Conta"]'); await pg.click('.main h1, .main'); await pg.waitForTimeout(250);
   const fechouFora = !(await pg.$('.mv-menu[aria-label="Conta"]'));
-  ok(m.cabe && m.expandido === 'true' && /^Sair/.test(m.sair ?? '') && m.bloqueado === 'true' && ficou && fechouEsc && fechouFora, `${rotulo}: menu da conta abre dentro da tela, "Sair" fica indisponível no banco de teste (sem navegar), fecha com Esc e ao clicar fora`);
+  ok(m.cabe && m.expandido === 'true' && m.itens.length === 2 && /^Perfil/.test(m.itens[0]) && /^Baixar cópia/.test(m.itens[1]) && !m.itens.some((t) => /Sair|código|aparelho/i.test(t)) && ficou && fechouEsc && fechouFora, `${rotulo}: menu da conta abre dentro da tela, só Perfil e a cópia dos dados (sem Sair, sem código), fecha com Esc e ao clicar fora`);
 }
 await pg.setViewportSize({ width: 1360, height: 780 });
 

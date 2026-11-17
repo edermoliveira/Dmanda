@@ -52,7 +52,7 @@ for (const vol of VOLS) {
   const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', PORTA], { env: { ...process.env, NODE_ENV: 'production', DMANDA_BANCO: 'teste', DMANDA_MEDICAO_LOCAL: 'sim', DMANDA_PASTA_TESTE: pasta, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
   const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
   process.on('exit', parar);
-  for (let i = 0; i < 60; i++) { try { const r = await fetch(BASE + '/login'); if (r.status < 500) break; } catch { /* subindo */ } await new Promise((r) => setTimeout(r, 1000)); }
+  for (let i = 0; i < 60; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* subindo */ } await new Promise((r) => setTimeout(r, 1000)); }
   const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions'] });
   resultado[vol] = { semente: sem, perfis: {} };
 

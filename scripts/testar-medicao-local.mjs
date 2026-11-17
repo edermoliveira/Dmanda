@@ -17,7 +17,7 @@ const LIMPAS = { VERCEL: '', VERCEL_ENV: '', VERCEL_TARGET_ENV: '', VERCEL_URL: 
 async function comServidor(extra, f) {
   const filho = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', PORTA], { env: { ...process.env, ...LIMPAS, NODE_ENV: 'production', DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste-1234567890', ...extra }, stdio: 'ignore' });
   try {
-    for (let i = 0; i < 60; i++) { try { await fetch(BASE + '/login', { redirect: 'manual' }); break; } catch { await new Promise((r) => setTimeout(r, 1000)); } }
+    for (let i = 0; i < 60; i++) { try { await fetch(BASE + '/', { redirect: 'manual' }); break; } catch { await new Promise((r) => setTimeout(r, 1000)); } }
     return await f();
   } finally { try { spawnSync('taskkill', ['/pid', String(filho.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } await new Promise((r) => setTimeout(r, 1500)); }
 }
