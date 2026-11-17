@@ -1898,6 +1898,76 @@ ok(privSvc.map((x) => x.proname).join() === 'consumir_convite_aparelho,criar_con
   } finally { rmSync(pasta, { recursive: true, force: true }); }
 }
 
+// ---------- Hotfix da etapa 6: UPDATE e DELETE sem WHERE em duas funções dos aparelhos (o Supabase hospedado usa pg_safeupdate nas chamadas da API) ----------
+// O PGlite NÃO tem a extensão pg_safeupdate: este bloco prova o comportamento das funções e varre o corpo das funções do banco atrás de UPDATE ou DELETE sem WHERE no
+// nível de cima do comando. O que só o Supabase real prova (a recusa de fato pela API) fica para a conferência em produção depois de aplicar a migração.
+{
+  const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
+  const m6 = todas.find((f) => f.includes('aparelhos_autorizados')), mh = todas.find((f) => f.includes('aparelhos_where_explicito')), m5 = todas.find((f) => f.includes('prazo_pela_chegada')), m4 = todas.find((f) => f.includes('para_hoje_quatro_vagas')), m20 = todas.find((f) => f.includes('origem_documento_para_hoje'));
+  ok(!!mh && todas.indexOf(mh) === todas.indexOf(m6) + 1, 'hotfix: a migração é um arquivo novo, logo depois da dos aparelhos, que não foi reescrita');
+  const textoH = readFileSync(join('supabase/migrations', mh), 'utf8'), codigoH = textoH.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
+  const criados = [...codigoH.matchAll(/create or replace function ([\w.]+)\(/gi)].map((m) => m[1]).sort().join();
+  ok(criados === 'public.criar_convite_terminal,public.exigir_aparelhos' && !/create\s+(table|policy|schema|extension)|alter\s+table|drop\s+|insert\s+into\s+dmanda_privado\.config/i.test(codigoH), 'hotfix: só substitui as duas funções (nada de tabela, coluna, política, remoção nem dado)');
+  // varredura: comando UPDATE ou DELETE sem WHERE no nível de cima (parênteses e textos entre aspas ignorados), como o pg_safeupdate recusa
+  const semWhere = (src) => {
+    const limpo = src.replace(/--[^\n]*/g, '').replace(/'(?:[^']|'')*'/g, "''");
+    const achados = [];
+    for (const parte of limpo.split(';')) {
+      for (const m of parte.matchAll(/\b(delete\s+from\s+[\w."]+|update\s+[\w."]+\s+set\b)/gi)) {
+        if (/\bdo\s+$/i.test(parte.slice(0, m.index))) continue; // on conflict do update set não passa pelo pg_safeupdate
+        let prof = 0, tem = false; const resto = parte.slice(m.index);
+        for (let i = 0; i < resto.length; i++) { const c = resto[i]; if (c === '(') prof++; else if (c === ')') prof--; else if (prof === 0 && /^where\b/i.test(resto.slice(i)) && (i === 0 || /\W/.test(resto[i - 1]))) { tem = true; break; } }
+        if (!tem) achados.push(m[0].replace(/\s+/g, ' '));
+      }
+    }
+    return achados;
+  };
+  ok(semWhere('begin delete from t; update t set a = 1; delete from t where x = 1; update t set a = (select 1 where true); delete from t where true; insert into t values (1) on conflict (id) do update set a = 2; end').length === 3, 'hotfix (varredura): reconhece UPDATE e DELETE sem WHERE no nível de cima e aceita WHERE explícito e ON CONFLICT');
+  const varrer = async (db) => {
+    const fns = (await db.query("select n.nspname || '.' || p.proname as nome, p.prosrc from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public', 'dmanda_privado') and p.prolang = (select oid from pg_language where lanname = 'plpgsql') order by 1")).rows;
+    return fns.filter((f) => semWhere(f.prosrc).length).map((f) => f.nome);
+  };
+  const pasta = mkdtempSync(join(tmpdir(), 'dmanda-hotfix-'));
+  try {
+    for (const f of todas.filter((f) => f <= m20 || f === m4 || f === m5 || f === m6)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    const a = await abrirBancoTeste({ raizMigracoes: pasta });
+    const antes = await varrer(a);
+    ok(antes.join() === 'public.criar_convite_terminal,public.exigir_aparelhos', `hotfix (varredura): sobre o esquema publicado hoje só as duas funções têm comando sem WHERE (${antes.join()})`);
+    const assin = async () => JSON.stringify((await a.query("select p.proname, pg_get_function_identity_arguments(p.oid) args, pg_get_function_result(p.oid) res, p.prosecdef, p.proconfig, pg_get_userbyid(p.proowner) dono, p.proacl::text acl from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('criar_convite_terminal', 'exigir_aparelhos') order by 1")).rows);
+    const assinAntes = await assin();
+    await a.exec(textoH);
+    ok(await assin() === assinAntes, 'hotfix: assinatura, retorno, security definer, search_path, dono e privilégios das duas funções ficam idênticos');
+    ok((await varrer(a)).length === 0, 'hotfix (varredura): depois da migração nenhuma função do banco tem UPDATE ou DELETE sem WHERE');
+    const fns = (await a.query("select p.proname, has_function_privilege('anon', p.oid, 'execute') an, has_function_privilege('authenticated', p.oid, 'execute') au, has_function_privilege('service_role', p.oid, 'execute') sv from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('criar_convite_terminal', 'exigir_aparelhos') order by 1")).rows;
+    ok(fns.length === 2 && fns.every((f) => !f.an && !f.au && f.sv), 'hotfix: as duas funções seguem executáveis só pelo papel de serviço');
+    const U = 'ab110000-0000-4000-8000-000000000001', S1 = 'cc110000-0000-4000-8000-000000000001';
+    await a.exec(`insert into auth.users (id, email) values ('${U}', 'titular-hotfix@teste')`);
+    await a.exec("insert into dmanda_privado.acesso_autorizado (email) values ('titular-hotfix@teste')");
+    const serv = (f, x = {}) => chamarComoServico(a, f, x);
+    const erroDe = async (p) => { try { await p; return null; } catch (e) { return e.message || String(e); } };
+    const cfg = async () => (await a.query('select exigir_aparelho from dmanda_privado.config_acesso')).rows[0].exigir_aparelho;
+    // convite do terminal: a limpeza das falhas segue global (de propósito), o código entra e o convite antigo ainda não usado é trocado
+    await a.exec("insert into dmanda_privado.falhas_pareamento default values; insert into dmanda_privado.falhas_pareamento default values; insert into dmanda_privado.falhas_pareamento (em) values (now() - interval '3 days')");
+    const r1 = await serv('criar_convite_terminal', { p_codigo: 'hota2345' });
+    ok(!!r1.expira_em && (await a.query('select count(*)::int n from dmanda_privado.falhas_pareamento')).rows[0].n === 0, 'hotfix: criar_convite_terminal limpa TODAS as falhas de pareamento (global, como desenhado) e devolve a validade');
+    ok((await serv('consumir_convite_aparelho', { p_codigo: 'HOTA2345' })).ok === true, 'hotfix: o código gerado pelo terminal entra (uso único)');
+    await serv('criar_convite_terminal', { p_codigo: 'HOTB2345' }); await serv('criar_convite_terminal', { p_codigo: 'HOTC2345' });
+    ok((await a.query('select count(*)::int n from dmanda_privado.convites_aparelho where usado_em is null')).rows[0].n === 1, 'hotfix: um convite novo substitui o anterior ainda não usado');
+    // exigência: recusa sem aparelho, liga e desliga a única linha, e recusa se a linha de configuração sumiu
+    ok(/Autorize ao menos um aparelho/.test(await erroDe(serv('exigir_aparelhos', { p_exigir: true }))) && await cfg() === false, 'hotfix: ligar a exigência sem aparelho autorizado segue recusado');
+    ok(await serv('exigir_aparelhos', { p_exigir: false }) === false && await cfg() === false, 'hotfix: exigir nao (com a exigência já desligada) responde e mantém desligada');
+    await a.query('select public.registrar_aparelho($1, $2, $3)', [U, S1, 'Aparelho do hotfix']);
+    ok(await serv('exigir_aparelhos', { p_exigir: true }) === true && await cfg() === true && (await a.query('select count(*)::int n from dmanda_privado.config_acesso')).rows[0].n === 1, 'hotfix: exigir sim grava na única linha de configuração');
+    ok(await serv('exigir_aparelhos', { p_exigir: false }) === false && await cfg() === false, 'hotfix: exigir nao grava na única linha e volta ao comportamento anterior');
+    await a.exec('delete from dmanda_privado.config_acesso');
+    ok(/não foi encontrada/.test(await erroDe(serv('exigir_aparelhos', { p_exigir: false }))), 'hotfix: sem a linha de configuração a função recusa em vez de responder que gravou');
+    await a.close();
+  } finally { rmSync(pasta, { recursive: true, force: true }); }
+}
+
 // ---------- Para hoje com quatro vagas (decisão 80, etapa 3): migração aditiva sobre o esquema publicado (até a 20261110000000), com as três vagas já ocupadas ----------
 {
   const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
