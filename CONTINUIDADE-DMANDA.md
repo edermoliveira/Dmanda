@@ -798,3 +798,43 @@ Sem acesso a esta máquina nesta sessão. **Handoff, somente leitura:** `git fet
 **Fechamento (16/11/2026, pedido do Éder):** "Próximos 7 dias" conta de amanhã ao sétimo dia e o filtro de Demandas passou a usar a mesma função dos contadores (decisão 80, item 10). Os três contadores foram comparados, por ids únicos, com o que abrem em Demandas (Cards e Quadro), cobrindo hoje, amanhã, 7º e 8º dias, finalizada e arquivada. `testar:agenda` foi adaptada ao Início sem listas. A diferença entre o contador e o filtro está resolvida. Seguem como estão, por instrução do Éder: as demandas que vencem hoje (qualquer tipo) ficam na Urgência, e as finalizadas saem dos carrosséis ativos e voltam pelo Quadro.
 
 **Depende do Éder:** o aceite no aparelho; a confirmação de que as demandas que vencem hoje (qualquer tipo) seguem na Urgência; a autorização para publicar (push) e, depois, para aplicar as migrações no Supabase real.
+
+## AK. Etapa 4 de 6: prazos pela data de chegada (16/11/2026, decisão 81; só local, avaliação no Safari do iPhone pendente)
+
+**Aceite:** o Éder aprovou a etapa 3 no ambiente local em `3b5de68` (decisão 80, item 11); a conferência no Safari real segue pendente. Estado das seis etapas: 1, 2 e 3 aprovadas localmente; 4 implementada e verificada localmente, aguardando o aceite no aparelho; 5 (remover o login do aplicativo) e 6 (release, deploy e limpeza) a fazer.
+
+**Commits locais (sobre `3b5de68`; nada enviado, `origin/main` segue `ed1e63e`):** migração e testes do banco; regras e interface; testes e comparação; correções do review; documentação (ver `git log`). Stash do Clima preservado.
+
+**O que mudou:** ver a decisão 81 (`DECISOES.md`). Resumo: duração (5, 10, 20, 30 dias) conta da chegada; sem chegada o botão diz o que falta; mudar a chegada recalcula e mostra antes de salvar; Legal/Próprio saiu da interface; o item da Agenda mostra o original e os dias pulados; a migração `20261117000000_prazo_pela_chegada` (**não aplicada no Supabase real**; aplicar depois da de Pagamentos e da das quatro vagas, com dry-run) só troca duas funções.
+
+**Comparação dos legados e backfill:** `npm run comparar:prazos-legados` (dados fictícios, banco de teste) grava a tabela em `.dados-teste/comparacao-prazos-legados.md`. Proposta reversível em `supabase/propostas/` (não é migração, não foi aplicada). Nada acontece sem autorização.
+
+**Prévia:** `npm run previa:prazo-chegada` (banco de teste descartável, dados fictícios; para o aparelho na rede, `DMANDA_ORIGENS_DEV=<IPv4 exato do computador>`; só um `next dev` por vez).
+
+**Roteiro de aceite no Safari do iPhone (três checagens):** 1. Cadastrar uma demanda com a chegada em um dia diferente do cadastro (ex.: uma semana atrás) e tocar em "10 dias": o prazo parte da chegada, a prévia diz "a partir da chegada (data)"; sem chegada, o botão diz "Informe a data de chegada para calcular o prazo de 10 dias." e não cria prazo. 2. Com o feriado cadastrado na prévia (Finados, 02/11/2026) e a chegada em 23/10/2026, "10 dias" cai em 02/11 e o vencimento vai para 30/10, com "Dias pulados: 02/11 feriado: Finados; 01/11 domingo; 31/10 sábado" visível na prévia, na consulta e na Agenda. 3. Editar a chegada de uma demanda com prazo em dias: o novo prazo aparece antes de salvar; salvar, recarregar e conferir que a consulta mostra a nova chegada e o novo vencimento; um registro legado sem chegada mostra o aviso de que falta a base e mantém o vencimento. Claro e Escuro, texto a 125%. **Não comprovado ainda:** o seletor de data e o teclado do Safari real, o toque e o WebKit real (só o emulado foi usado).
+
+**Depende do Éder:** o aceite no aparelho; as duas interpretações do decisão 81 (itens 2 e 3); decidir sobre o backfill; autorizar push e a aplicação das migrações no Supabase real.
+
+## AL. Etapa 5 de 6: abertura direta em aparelhos autorizados (16/11/2026, decisão 82; só local, avaliação no aparelho pendente)
+
+**Aceite:** o Éder aprovou a etapa 4 em `b205d75` (decisão 82, item 11 antes da decisão). Estado das seis etapas: 1 a 4 aprovadas localmente; 5 implementada e verificada localmente, aguardando o aceite no aparelho; 6 preparada (candidato e plano), aguardando a decisão do Éder sobre publicar.
+
+**Commits locais (sobre `b205d75`; nada enviado):** `2a782c1` (migração), `7502330` (aplicação), `46e6f12` (testes), `fd446ec` (revisão), `5f5532f` (prévia e campo do código) e `d32526b` (testes de decisão pendente e reversão). `origin/main` segue `ed1e63e`; stash do Clima preservado.
+
+**O que mudou:** ver a decisão 82. Tela `/acesso` com código de uso único; Configurações, Aparelhos (lista, código, revogação); `npm run aparelhos` (convite, exigir, revogar-todos); migração `20261118000000_aparelhos_autorizados` (**não aplicada no Supabase real**); entrada por senha e Google retiradas do aplicativo.
+
+**Prévia:** `npm run previa:aparelhos` (aplicativo real contra um Supabase falso e banco de teste, dados fictícios, porta 7100; a "terminal do titular" simulada fica só em `http://localhost:7132/` neste computador e mostra um código novo a cada abertura, liga ou desliga a exigência e revoga todos). Para o aparelho na rede: `DMANDA_ORIGENS_DEV=<IPv4 exato do computador>`. Só um `next dev` por vez.
+
+**Roteiro de aceite no Safari (três checagens):** 1. **Acesso:** no iPhone, abrir o endereço da prévia: aparece "acesso restrito", sem e-mail nem senha; abrir `http://localhost:7132/` no computador, digitar o código no iPhone e entrar; recarregar, fechar o Safari e abrir de novo: abre direto. 2. **Revogação:** em Configurações, Aparelhos, gerar um código e autorizar o iPad (ou um segundo navegador); revogar o segundo aparelho: na próxima navegação ele volta ao acesso, e o iPhone continua abrindo. Ligar a exigência pelo terminal simulado e conferir que uma sessão antiga sem registro perde o acesso. 3. **Recuperação:** pelo terminal simulado, "Revogar todos os aparelhos": o iPhone cai no acesso; gerar um código novo e entrar de novo; as demandas continuam lá. Claro e Escuro e texto a 125%. **Não comprovado ainda:** o Supabase real, o Safari físico, o modo PWA instalado (que é um aparelho à parte) e o domínio final.
+
+**Depende do Éder:** o aceite no aparelho; as decisões do plano da seção AM; a autorização de cada passo de publicação.
+
+## AM. Etapa 6 de 6: candidato de release e plano de publicação (16/11/2026, decisão 83; só local)
+
+**Candidato:** branch `release/etapas-2-5` no worktree `C:\Users\Éder\Desktop\Dmanda-release`, SHA `c6c0ae2`, sobre `origin/main` `ed1e63e`. Conteúdo, exclusões, resultado dos testes, ordem de publicação, recuperação, rollback e limpeza: `docs/plano-publicacao-etapa-6.md` e a decisão 83.
+
+**Resultado no recorte:** No recorte (todas rodadas em 16/11/2026, com repetição automática quando o Next interrompe a partida): `testar:banco` 545, `regras` 241, `prazo-chegada` 40, `vagas-carrosseis` 131, `cards-inicio` 133, `app` 137, `interface` 148, `ajustes` 604, `detalhe` 60, `agenda` 395, `agenda-regras` 90, `fuso` 9, `baralho` 91, `fila-cards` 45, `origem` 51, `campos` 451, `sessao` 86, `aparelhos` 69, `config` 175, `perfil` 117, `busca` 96, `resistencia` 90, `entradas` **179 de 179** (a exportação do recorte é a v4: conteúdo e número da versão conferidos), `auditoria` 108 de 110 (as 2 falhas conhecidas da Agenda no Mês, "recuperação... vazio de verdade", celular e computador, mesmo resultado observado de antes), `tsc` e `build` sem erro. **Lint:** 10 avisos no recorte contra 11 em `origin/main`: saiu o `e3` sem uso de `testar-fila-cards` e nenhum aviso novo. Na `main` local: `entradas` 178 de 179, porque a verificação "a cópia dos dados é a versão 3" espera a v4 e a `main` local grava a v5 (Pagamentos); é anterior à etapa 4 e não existe no recorte. A migração de aparelhos e as demais passam por `testar:banco` desde o esquema publicado sem depender de Pagamentos.
+
+**Para decidir:** (1) publicar o candidato, quando e por qual caminho (push direto ou PR); (2) o que fazer com as arquivadas e com a indisponibilidade prolongada (decisão 83, item 4); (3) se haverá backfill dos prazos legados (fora desta publicação).
+
+**Depois da confirmação do deploy:** sincronizar os checkouts e limpar as referências já inventariadas (seção AH), preservando o que só existe localmente. Primeiro bloco seguinte: **Início e Demandas > Cards**.
