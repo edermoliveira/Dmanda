@@ -37,5 +37,10 @@ const helper = http.createServer(async (req, res) => {
 });
 await new Promise((r) => helper.listen(7132, '127.0.0.1', r));
 console.log(`Prévia dos aparelhos autorizados: aplicativo em http://localhost:${porta}/ (aparelho novo vê a tela de acesso).\nTerminal do titular simulado, só neste computador: http://localhost:7132/ (código novo a cada abertura). Dados fictícios, nada real.`);
-const filho = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', porta], { stdio: 'ignore', env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: falso.url, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: CHAVE_PUBLICA, SUPABASE_SERVICE_ROLE_KEY: CHAVE_SERVICO, DMANDA_EMAIL_AUTORIZADO: EMAIL, CRON_SECRET: 'segredo-de-previa', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_BANCO: '', DMANDA_PREVIA_LOCAL: 'sim' } });
-filho.on('exit', (c2) => process.exit(c2 ?? 0));
+// o Next às vezes interrompe a partida para mostrar um aviso de atualização e sai; repetir logo em seguida passa (até 4 tentativas, só se sair cedo)
+const iniciar = (tentativa) => {
+  const t0 = Date.now();
+  const filho = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', porta], { stdio: 'ignore', env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: falso.url, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: CHAVE_PUBLICA, SUPABASE_SERVICE_ROLE_KEY: CHAVE_SERVICO, DMANDA_EMAIL_AUTORIZADO: EMAIL, CRON_SECRET: 'segredo-de-previa', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_BANCO: '', DMANDA_PREVIA_LOCAL: 'sim' } });
+  filho.on('exit', (c2) => { if (Date.now() - t0 < 120_000 && tentativa < 4) iniciar(tentativa + 1); else process.exit(c2 ?? 0); });
+};
+iniciar(1);
