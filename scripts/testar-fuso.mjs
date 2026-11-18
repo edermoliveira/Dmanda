@@ -3,7 +3,8 @@
 // Instantes (timestamptz) viram dia e hora de São Paulo; datas de calendário (AAAA-MM-DD) nunca se deslocam; horários de compromissos são horários de parede de São Paulo.
 // Uso: node scripts/testar-fuso.mjs   (sem banco e sem navegador)
 import { spawnSync } from 'node:child_process';
-import { hojeISO, diasDesdeInstante, diasAte, contagemRetorno } from '../src/lib/demandas.ts';
+import { hojeISO, diasDesdeInstante, diasAte } from '../src/lib/demandas.ts';
+import { retornoReferencia } from './auxiliar-retorno.mjs';   // a regra do retorno é do servidor (provada em testar:banco, com o fuso da sessão); aqui só a conversão de instante para dia de São Paulo, em vários fusos do sistema
 import { minutosAgora, avisosDeHoje } from '../src/lib/eventos.ts';
 import { carimbo } from '../src/lib/entradas.ts';
 import { ajustarPrazo, somarDias, diaDaSemana } from '../src/lib/prazos.ts';
@@ -23,7 +24,7 @@ function resultado() {
   for (const [k, v] of Object.entries(inst)) r[k] = [hojeISO(new Date(v)), minutosAgora(new Date(v)), carimbo(v)];
   r.desdeInstante = [diasDesdeInstante(inst.viradaUTC, '2026-11-03'), diasDesdeInstante(inst.meiaNoiteSP, '2026-11-03'), diasDesdeInstante(inst.antes, '2026-11-02')];
   const base = { etapa: 'Aguardando retorno', encaminhada_em: null, reiterada_em: null, arquivada_em: null };
-  r.retorno = [contagemRetorno({ ...base, etapa_desde: inst.viradaUTC }, []).base, contagemRetorno({ ...base, etapa_desde: inst.viradaUTC }, []).data, contagemRetorno({ ...base, etapa_desde: inst.meiaNoiteSP }, []).base];
+  r.retorno = [retornoReferencia({ ...base, etapa_desde: inst.viradaUTC }, []).base, retornoReferencia({ ...base, etapa_desde: inst.viradaUTC }, []).data, retornoReferencia({ ...base, etapa_desde: inst.meiaNoiteSP }, []).base];
   // aviso de compromisso: 23h50 de 02/11 com aviso de 15 min, visto às 23h40 de São Paulo
   const ev = { id: 'e', titulo: 'x', data: '2026-11-02', dia_inteiro: false, inicio: '23:50', fim: null, aviso_min: 15 };
   const dez40 = '2026-11-03T02:40:00Z';

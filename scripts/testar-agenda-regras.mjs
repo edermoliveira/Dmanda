@@ -11,9 +11,10 @@ import { validarEvento } from '../src/nucleo/validacao.ts';
 
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
+import { comRetorno } from './auxiliar-retorno.mjs';   // só monta as demandas fictícias no contrato do servidor
 const lanca = (f) => { try { f(); return ''; } catch (e) { return e.message; } };
 
-const dem = (id, o = {}) => ({
+const dem = (id, o = {}) => comRetorno({
   id, tipo: 'Memorando', area: 'Geral', numero: '', assunto: id, descricao: '', origem: '', etapa: 'Fazendo', etapa_desde: '2026-10-01T15:00:00Z', chegou_em: '2026-10-01', prazo: null, prazo_original: null, prazo_dias: null,
   prazo_base_em: null, prazo_ajuste: null, prazo_legado: false, prazo_tipo: 'Próprio', setor: null, acompanhar_em: null, encaminhada_em: null, reiterada_em: null, concluida_em: null, arquivada_em: null,
   criado_em: `2026-10-01T10:00:0${id.length % 10}Z`, atualizado_em: '2026-10-01T10:00:00Z', entrada_id: null, versao: 1, tarefas: [], ...o,
@@ -67,21 +68,16 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
 
 // ---------- retorno de outro setor (10 dias) ----------
 {
-  const base = { etapa: 'Aguardando retorno', etapa_desde: '2026-11-03T15:00:00Z', encaminhada_em: null, reiterada_em: null, arquivada_em: null };
-  const r1 = contagemRetorno(base, []);
-  ok(r1.base === '2026-11-03' && r1.origemBase === 'entrada na etapa' && r1.data === '2026-11-13' && r1.ajuste === null, 'sem data de encaminhamento a contagem parte do dia em que entrou na etapa: 10 dias corridos, exclui o primeiro e inclui o último');
-  const noite = contagemRetorno({ ...base, etapa_desde: '2026-11-04T01:30:00Z' }, []);
-  ok(noite.base === '2026-11-03' && noite.data === '2026-11-13', 'entrada às 22h30 de Brasília (01h30 UTC do dia seguinte) conta como o dia local, sem deslocamento por UTC');
-  const enc = contagemRetorno({ ...base, encaminhada_em: '2026-11-05' }, []);
-  ok(enc.base === '2026-11-05' && enc.origemBase === 'encaminhamento' && enc.original === '2026-11-15' && enc.data === '2026-11-13' && /15\/11 domingo; 14\/11 sábado/.test(enc.ajuste), 'o efetivo encaminhamento vale mais que a entrada na etapa; limite no domingo antecipa para sexta, explicando os dias pulados');
-  const feriado = contagemRetorno({ ...base, encaminhada_em: '2026-11-05' }, [{ id: 'f', data: '2026-11-13', descricao: 'Ponto facultativo', categoria: 'Feriado' }]);
-  ok(feriado.data === '2026-11-12' && /13\/11 feriado: Ponto facultativo/.test(feriado.ajuste), 'dia indisponível cadastrado no limite antecipa para o anterior disponível, pela mesma regra dos prazos');
-  const reit = contagemRetorno({ ...base, encaminhada_em: '2026-11-05', reiterada_em: '2026-11-10' }, []);
-  ok(reit.base === '2026-11-10' && reit.origemBase === 'reiteração' && reit.data === '2026-11-20', 'reiteração registrada inicia nova contagem de 10 dias a partir dela');
-  ok(contagemRetorno({ ...base, encaminhada_em: '2026-11-08', reiterada_em: '2026-11-02' }, []).origemBase === 'encaminhamento', 'reiteração mais antiga que o encaminhamento não reinicia nada');
-  ok(contagemRetorno({ ...base, etapa: 'Fazendo' }, []) === null && contagemRetorno({ ...base, arquivada_em: '2026-11-04T00:00:00Z' }, []) === null && contagemRetorno({ ...base, etapa: 'Aguardando Prefeita' }, []) === null, 'fora de Aguardando retorno (ou arquivada) não há contagem; Aguardando Prefeita não usa os 10 dias do setor');
+  // A regra (10 dias corridos, reiteração, fuso de Brasília, fins de semana e dias indisponíveis) é do SERVIDOR e está provada em testar:banco (retorno_setor_info e retorno_setor_data, direto e por calendários
+  // sorteados). Aqui o contrato: o navegador só lê o valor que o servidor mandou, com a explicação, e não calcula nada.
+  const base = { etapa: 'Aguardando retorno', arquivada_em: null };
+  const srv = { data: '2026-11-13', original: '2026-11-15', base: '2026-11-05', origem: 'encaminhamento', ajuste: '15/11 domingo; 14/11 sábado' };
+  const r1 = contagemRetorno({ ...base, retorno: srv });
+  ok(r1.data === '2026-11-13' && r1.original === '2026-11-15' && r1.base === '2026-11-05' && r1.origemBase === 'encaminhamento' && r1.ajuste === '15/11 domingo; 14/11 sábado', 'o retorno lido é exatamente o que o servidor mandou (data, original, base, origem e explicação do ajuste)');
+  ok(contagemRetorno({ ...base, retorno: null }) === null && contagemRetorno({ ...base, etapa: 'Fazendo', retorno: srv }) === null && contagemRetorno({ ...base, arquivada_em: '2026-11-04T00:00:00Z', retorno: srv }) === null && contagemRetorno({ ...base, etapa: 'Aguardando Prefeita', retorno: srv }) === null, 'sem retorno do servidor, fora de Aguardando retorno ou arquivada não há contagem; Aguardando Prefeita não usa os 10 dias do setor');
+  ok(contagemRetorno(base) === null, 'um objeto sem o campo retorno (fora do contrato do servidor) não gera data: o navegador não recalcula com o calendário que tem na tela');
   const d = dem('x', { etapa: 'Aguardando retorno', etapa_desde: '2026-11-03T15:00:00Z', prazo: '2026-11-30', prazo_original: '2026-11-30', acompanhar_em: '2026-11-09' });
-  const m = marcosDaDemanda(d, [], '2026-11-04');
+  const m = marcosDaDemanda(d, '2026-11-04');
   ok(m.length === 3 && m.map((x) => x.tipo).join() === 'acompanhamento,retorno,vencimento' && d.prazo === '2026-11-30' && d.acompanhar_em === '2026-11-09', 'Aguardando retorno tem três marcos distintos (acompanhar digitado, retorno calculado e vencimento) e nenhum apaga o outro nem altera o vencimento gravado');
 }
 
@@ -89,14 +85,14 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
 {
   const hoje = '2026-11-11';
   const a = dem('a', { prazo: '2026-11-10', prazo_original: '2026-11-10', acompanhar_em: '2026-11-12' });
-  const m = marcosDaDemanda(a, [], hoje);
+  const m = marcosDaDemanda(a, hoje);
   ok(m.length === 2 && m[0].tipo === 'vencimento' && m[0].atrasado === true && m[1].tipo === 'acompanhamento' && m[1].atrasado === false, 'vencido permanece no dia em que venceu, marcado como atrasado; o acompanhamento futuro não é atraso');
   ok(dataAplicavel(m) === '2026-11-10' && dataAplicavel([]) === null, 'data aplicável é a primeira data programada; sem marcos, nenhuma data é inventada');
   const fin = dem('f', { etapa: 'Finalizado', prazo: '2026-11-05', prazo_original: '2026-11-05', concluida_em: '2026-11-04' });
-  ok(marcosDaDemanda(fin, [], hoje).length === 0 && marcosDaDemanda(fin, [], hoje, true).length === 1 && marcosDaDemanda(fin, [], hoje, true)[0].atrasado === false, 'finalizada só aparece quando o filtro pede, no vencimento e nunca como atrasada');
-  ok(marcosDaDemanda(dem('arq', { prazo: '2026-11-12', arquivada_em: '2026-11-01T00:00:00Z' }), [], hoje, true).length === 0, 'arquivada fica fora da Agenda');
+  ok(marcosDaDemanda(fin, hoje).length === 0 && marcosDaDemanda(fin, hoje, true).length === 1 && marcosDaDemanda(fin, hoje, true)[0].atrasado === false, 'finalizada só aparece quando o filtro pede, no vencimento e nunca como atrasada');
+  ok(marcosDaDemanda(dem('arq', { prazo: '2026-11-12', arquivada_em: '2026-11-01T00:00:00Z' }), hoje, true).length === 0, 'arquivada fica fora da Agenda');
   const pref = dem('p', { etapa: 'Aguardando Prefeita', prazo: '2026-11-14', prazo_original: '2026-11-14' });
-  ok(marcosDaDemanda(pref, [], hoje).map((x) => x.tipo).join() === 'vencimento', 'Aguardando Prefeita mantém só o vencimento (a espera é texto, não data)');
+  ok(marcosDaDemanda(pref, hoje).map((x) => x.tipo).join() === 'vencimento', 'Aguardando Prefeita mantém só o vencimento (a espera é texto, não data)');
 
   ok(cargaDaDemanda(dem('s')) === 1 && cargaDaDemanda(dem('t', { tarefas: tf(3, 1) })) === 2 && cargaDaDemanda(dem('u', { tarefas: tf(2, 2) })) === 1 && cargaDaDemanda(fin) === 0 && cargaDaDemanda(dem('v', { arquivada_em: 'x', tarefas: tf(4) })) === 0, 'carga: tarefas não concluídas; sem tarefas (ou todas feitas com a demanda aberta) vale uma unidade; finalizada e arquivada valem zero');
   ok([0, 1, 3, 4, 7, 8, 30].map(nivelDaCarga).join() === 'zero,baixa,baixa,media,media,alta,alta' && LIMIARES_CARGA.media === 4 && LIMIARES_CARGA.alta === 8, 'limiares: 0 zero, 1 a 3 baixa, 4 a 7 média, 8 ou mais alta');
@@ -109,10 +105,10 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
     dem('E'),
     dem('F', { etapa: 'Aguardando retorno', etapa_desde: '2026-11-03T15:00:00Z' }),
   ];
-  const c = cargaPorDia(l, [], hoje);
+  const c = cargaPorDia(l, hoje);
   ok(c.get('2026-11-15').carga === 3 && c.get('2026-11-15').demandas === 2 && !c.get('2026-11-20') && c.get('2026-11-02').atrasada === true && c.get('2026-11-13').carga === 1, 'a carga entra uma só vez, no dia da data aplicável (A no acompanhamento de 15, não duplicada no vencimento de 20); finalizada não soma; atrasada marca o dia; retorno do setor posiciona a carga');
   ok(!c.has('2026-11-14') && [...c.values()].reduce((s, x) => s + x.carga, 0) === 2 + 1 + 1 + 1, 'o total da carga é a soma das demandas abertas com data, sem a sem prazo e sem a finalizada');
-  ok(pendenciasSemPrazo(l, [], hoje).map((x) => x.id).join() === 'E', 'demanda sem nenhuma data aplicável vai para Pendências sem prazo, sem vencimento inventado (Aguardando retorno sempre tem o marco do retorno)');
+  ok(pendenciasSemPrazo(l, hoje).map((x) => x.id).join() === 'E', 'demanda sem nenhuma data aplicável vai para Pendências sem prazo, sem vencimento inventado (Aguardando retorno sempre tem o marco do retorno)');
   const itens = itensDoDia('2026-11-15', { demandas: l, eventos: [ev('e1', { data: '2026-11-15', inicio: '14:00', fim: null }), ev('e2', { data: '2026-11-15', inicio: '08:00' }), ev('e3', { data: '2026-11-15', dia_inteiro: true, inicio: null, fim: null })], indisponiveis: [{ id: 'i', data: '2026-11-15', descricao: 'República', categoria: 'Feriado' }], hoje });
   ok(itens.eventos.map((x) => x.id).join() === 'e3,e2,e1' && itens.indisponiveis.length === 1 && itens.marcos.map((x) => x.demanda.id).sort().join() === 'A,B', 'o dia lista eventos em ordem cronológica (dia inteiro primeiro), dias indisponíveis e os marcos que caem nele');
   ok(marcosPorDia({ demandas: l, eventos: [], indisponiveis: [], hoje }, '2026-11-01', '2026-11-30').get('2026-11-20').length === 1, 'o marco de vencimento de A continua visível no dia 20 mesmo sem somar carga lá');
@@ -237,7 +233,7 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
       for (let x = somarDias(d.prazo, 1); x <= d.prazo_original; x = somarDias(x, 1)) if (!indisp(x)) erros.push(`${R} ${d.id}: antecipou por um dia disponível (${x})`);
     }
     // 2) cada demanda soma uma vez, no dia da primeira data; o total do mês bate com a conta direta
-    const carga = cargaPorDia(L, dias, R);
+    const carga = cargaPorDia(L, R);
     const soma = [...carga.values()].reduce((t, c) => t + c.carga, 0), esperadoTotal = L.reduce((t, d) => t + (d.tarefas.filter((x) => !x.concluida).length || 1), 0);
     if (soma !== esperadoTotal) erros.push(`${R}: carga total ${soma} diferente de ${esperadoTotal}`);
     const h = L.find((x) => x.id === 'h'), mes = h.prazo.slice(0, 7), de = `${mes}-01`, ate = `${mes}-${String(diasNoMes(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)))).padStart(2, '0')}`;

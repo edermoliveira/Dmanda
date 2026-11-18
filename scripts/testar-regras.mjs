@@ -1,13 +1,15 @@
 // Regras puras de datas e grupos do Início (src/lib/demandas.ts) e de Entradas (src/lib/entradas.ts), sem navegador nem banco. Uso: node scripts/testar-regras.mjs
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO, duracaoViva, recontarPelaChegada, sanearRascunho, textoFaltaChegada } from '../src/lib/prazos.ts';
+import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO, duracaoViva, recontarPelaChegada, sanearRascunho, textoFaltaChegada, erroDoPeriodo, diasNoPeriodo, agruparDias, MAX_DIAS_PERIODO } from '../src/lib/prazos.ts';
+import { avisosDoSistema, comLeitura, MSG_SEM_REDE, MSG_INCERTA } from '../src/lib/avisos-sistema.ts';
 import { modoTeste, medicaoLocalPermitida } from '../src/lib/supabase/config.ts';
 import { gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada, eObjeto } from '../src/lib/armazenamento.ts';
 import { aparenciaGuardada, APARENCIA_PADRAO, ePadrao, modoGuardado, temaDoModo, variaveisAparencia, CONJUNTOS, FONTES_TITULO, FONTES_TEXTO, FONTES_MONO, PALETAS, TEXTO, ICONE, CARD } from '../src/lib/aparencia.ts';
 import { segredoConfere, executarRotinaDiaria } from '../src/nucleo/rotina.ts';
-import { esperaPrefeita, dataFiltro, grupoFiltro, porGrupo, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
-import { validarDados, validarDia, validarEntrada, validarRegistros } from '../src/nucleo/validacao.ts';
+import { comRetorno } from './auxiliar-retorno.mjs';
+import { contagemRetorno as contagemRetornoT, esperaPrefeita, dataFiltro, grupoFiltro, porGrupo, atrasada, diasAte, permanencia, numeroDe, origemDe, titulo, filtrar, FILTRO_VAZIO } from '../src/lib/demandas.ts';
+import { validarDados, validarDia, validarEntrada, validarPeriodo, validarRegistros } from '../src/nucleo/validacao.ts';
 import { estadoDe, tagsDe, semTags, resumoDe, temTitulo, contarTags, filtrarEntradas, ordenarEntradas, paraDemanda, diferencas, vazia, camposEmConflito, carimbo, QTD_CORES } from '../src/lib/entradas.ts';
 import { buscar, palavrasDa, simplificar as simplificarBusca, LIMITE_RESULTADOS } from '../src/lib/busca.ts';
 import { diasPendentes, diaDeTrabalho, emJanelaDeCorrecao, serieDoPeriodo, textoDoDia, fraseDoDia, registrosValidos, substituirRegistros, textoConcluidas, AVISO_PERFIL } from '../src/lib/registros.ts';
@@ -16,7 +18,7 @@ import { estadoInicial, lerEstado, tique, resolver, INTERVALO_S, PASSO_MAX, OCIO
 let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const hoje = '2026-10-25';
-const d = (id, o) => ({ id, etapa: 'Fazendo', etapa_desde: '2026-10-24T15:00:00Z', encaminhada_em: null, reiterada_em: null, arquivada_em: null, prazo: null, acompanhar_em: null, chegou_em: '2026-10-01', tipo: 'Memorando', prazo_tipo: 'Próprio', ...o });
+const d = (id, o) => comRetorno({ id, etapa: 'Fazendo', etapa_desde: '2026-10-24T15:00:00Z', encaminhada_em: null, reiterada_em: null, arquivada_em: null, prazo: null, acompanhar_em: null, chegou_em: '2026-10-01', tipo: 'Memorando', prazo_tipo: 'Próprio', ...o });   // comRetorno: o contrato do servidor (campo retorno)
 const lista = [
   d('venc', { prazo: '2026-10-20' }), d('hoje', { prazo: hoje }), d('em3', { prazo: '2026-10-28' }), d('em8', { prazo: '2026-11-02' }),
   d('semprazo', {}), d('fin', { prazo: '2026-10-01', etapa: 'Finalizado' }),
@@ -35,8 +37,8 @@ ok(dataFiltro(lista[4], hoje) === null && dataFiltro(lista[5], hoje) === null, '
 ok(dataFiltro(lista[6], hoje) === '2026-10-26' && dataFiltro(lista[8], hoje) === '2026-10-26', 'aguardando retorno: vale o vencimento quando ele é o mais próximo (acompanhamento e retorno mais longe não o escondem)');
 ok(dataFiltro(lista[7], hoje) === '2026-10-27' && dataFiltro(lista[9], hoje) === '2026-10-22', 'aguardando retorno: vale o "Acompanhar em" quando é o mais próximo, vencido ou não, sem corte de 3 dias');
 ok(dataFiltro(lista[10], hoje) === '2026-10-26' && grupoFiltro(lista[10], hoje) === 'sete', 'aguardando retorno sem prazo nem acompanhamento: vale o retorno do setor, 10 dias depois de 16/10');
-ok(dataFiltro({ ...lista[10], etapa_desde: '2026-10-24T15:00:00Z' }, hoje) === '2026-11-03' && grupoFiltro({ ...lista[10], etapa_desde: '2026-10-24T15:00:00Z' }, hoje) === null, 'retorno ainda longe (9 dias) não entra nos grupos do Início');
-ok(dataFiltro({ ...lista[10], encaminhada_em: '2026-10-20' }, hoje) === '2026-10-30' && dataFiltro({ ...lista[10], encaminhada_em: '2026-10-20', reiterada_em: '2026-10-25' }, hoje) === '2026-11-04', 'retorno do setor: conta do encaminhamento e recomeça na reiteração');
+ok(dataFiltro(d('x', { ...lista[10], etapa_desde: '2026-10-24T15:00:00Z' }), hoje) === '2026-11-03' && grupoFiltro(d('x', { ...lista[10], etapa_desde: '2026-10-24T15:00:00Z' }), hoje) === null, 'retorno ainda longe (9 dias) não entra nos grupos do Início');
+ok(dataFiltro(d('x', { ...lista[10], encaminhada_em: '2026-10-20' }), hoje) === '2026-10-30' && dataFiltro(d('x', { ...lista[10], encaminhada_em: '2026-10-20', reiterada_em: '2026-10-25' }), hoje) === '2026-11-04', 'retorno do setor: conta do encaminhamento e recomeça na reiteração');
 ok(lista[6].prazo === '2026-10-26' && lista[6].acompanhar_em === '2026-11-10', 'os valores originais (prazo e Acompanhar em) seguem separados e preservados');
 // espera pela Prefeita: alerta de dias, nunca vencimento
 ok(dataFiltro(lista[11], hoje) === null && grupoFiltro(lista[11], hoje) === null && !atrasada(lista[11], hoje), 'Aguardando Prefeita há 11 dias, sem prazo: nenhuma data, fora de atrasadas e sem prazo vencido');
@@ -118,9 +120,63 @@ ok(ajustarPrazo('2027-03-07', nenhum).prazo === '2027-03-05' && ajustarPrazo('20
   ok(ajustarPrazo('2027-03-04', cal).prazo === '2027-03-02' && ajustarPrazo('2027-03-02', cal).ajuste === null, 'prazos: data manual na quinta também é antecipada; terça disponível não muda');
   ok(ajustarPrazo('2027-03-05', [dia('2027-03-05', 'X'), dia('2027-03-05', 'Y', 'Evento externo')]).ajuste === '05/03 feriado: X, evento externo: Y', 'prazos: feriado e evento no mesmo dia aparecem juntos na explicação');
   ok(ajustarPrazo('2027-03-04', cal.slice(0, 1)).prazo === '2027-03-04', 'prazos: removida a restrição, o vencimento volta à data original');
-  let estourou = false;
-  try { ajustarPrazo('2027-03-08', Array.from({ length: 420 }, (_, i) => dia(somarDias('2027-03-08', -419 + i), 'x' + i))); } catch { estourou = true; }
-  ok(estourou, 'prazos: se não houver nenhum dia disponível em 400 dias, recusa em vez de entrar em laço infinito');
+  // sem limite fixo: 420 dias seguidos cadastrados (de 2026-01-12 a 2027-03-08) não recusam nem param num dia indisponível; a busca termina no primeiro dia disponível antes da sequência
+  const longa = Array.from({ length: 420 }, (_, i) => dia(somarDias('2027-03-08', -419 + i), 'x' + i));
+  const rl = ajustarPrazo('2027-03-08', longa), inicioLonga = somarDias('2027-03-08', -419);
+  const antesDa = (iso) => { let x = somarDias(iso, -1); while (diaDaSemana(x) === 0 || diaDaSemana(x) === 6) x = somarDias(x, -1); return x; };   // o dia útil anterior a uma data
+  ok(rl.prazo === antesDa(inicioLonga) && rl.prazo < inicioLonga && !longa.some((x) => x.data === rl.prazo) && rl.ajuste.split('; ').length >= 420, `prazos: 420 dias seguidos cadastrados (mais que o limite antigo de 400) não recusam: o vencimento recua até o primeiro dia disponível (${rl.prazo}), explicando os 420 dias`);
+  const colada = antesDa(somarDias(inicioLonga, -400));
+  ok(ajustarPrazo('2027-03-08', [...longa, ...Array.from({ length: 400 }, (_, i) => dia(somarDias(inicioLonga, -(i + 1)), 'y' + i))]).prazo === colada, 'prazos: duas sequências coladas somando 820 dias também terminam no primeiro dia disponível (' + colada + ')');
+  // o exemplo obrigatório e as variações: chegada em 14/12/2026 mais 15 dias corridos, indisponibilidade de 24/12 a 29/12 sem outra em 23/12
+  const recesso = Array.from({ length: 6 }, (_, i) => dia(somarDias('2026-12-24', i), 'Recesso', 'Feriado', 'r' + i));
+  const orig = prazoPorDias(15, '2026-12-14'), ex = ajustarPrazo(orig, recesso);
+  ok(orig === '2026-12-29' && ex.prazo === '2026-12-23' && ex.ajuste.startsWith('29/12 feriado: Recesso; 28/12 feriado: Recesso; 27/12 domingo, feriado: Recesso; 26/12 sábado, feriado: Recesso') && ex.ajuste.endsWith('24/12 feriado: Recesso'), 'períodos: 14/12 mais 15 dias = 29/12; com 24/12 a 29/12 indisponíveis o vencimento efetivo é 23/12 e o motivo lista cada dia (o original não muda)');
+  ok(ajustarPrazo('2026-12-29', recesso.slice(0, 5)).prazo === '2026-12-29' && ajustarPrazo('2026-12-29', [...recesso, dia('2026-12-23', 'Curso', 'Evento externo')]).prazo === '2026-12-22', 'períodos: sem o dia 29/12 no período o vencimento fica; com outra indisponibilidade em 23/12 o vencimento recua para 22/12');
+  const virada = Array.from({ length: 18 }, (_, i) => dia(somarDias('2027-12-20', i), 'Recesso', 'Feriado', 'v' + i));
+  ok(ajustarPrazo('2028-01-03', virada).prazo === '2027-12-17' && ajustarPrazo('2027-12-31', virada).prazo === '2027-12-17' && ajustarPrazo('2028-01-07', virada).prazo === '2028-01-07', 'períodos: recesso de 20/12/2027 a 06/01/2028 (virada do ano): quem cai no recesso recua até 17/12; 07/01 (livre) não muda');
+  ok(erroDoPeriodo('2027-06-10', '2027-06-10') === null && diasNoPeriodo('2027-06-10', '2027-06-10') === 1 && diasNoPeriodo('2027-12-20', '2028-01-06') === 18 && diasNoPeriodo('2028-02-28', '2028-03-01') === 3, 'períodos: data inicial e final são inclusivas (um dia vale 1; 20/12 a 06/01 vale 18; fevereiro bissexto conta o dia 29)');
+  ok(erroDoPeriodo('', '2027-06-10') === 'Informe a data inicial.' && erroDoPeriodo('2027-06-10', '') === 'Informe a data final.' && erroDoPeriodo('2027-06-10', '2027-06-09') === 'A data final não pode ser anterior à data inicial.' && /passa de 366 dias/.test(erroDoPeriodo('2027-01-01', '2028-01-02')) && erroDoPeriodo('2027-01-01', '2028-01-01') === null && MAX_DIAS_PERIODO === 366, 'períodos: validação do intervalo (inicial, final, ordem e o máximo de 366 dias) com as mesmas mensagens do banco');
+  const ag = agruparDias([{ ...dia('2027-12-21', 'Recesso', 'Feriado', 'b'), periodo_id: 'p1' }, { ...dia('2027-12-20', 'Recesso', 'Feriado', 'a'), periodo_id: 'p1' }, { ...dia('2027-12-22', 'Recesso', 'Feriado', 'c'), periodo_id: 'p1' }, dia('2027-12-25', 'Natal', 'Feriado', 'n'), dia('2027-11-02', 'Finados', 'Feriado', 'f')]);
+  ok(ag.length === 3 && ag[0].descricao === 'Finados' && ag[1].periodo_id === 'p1' && ag[1].inicio === '2027-12-20' && ag[1].fim === '2027-12-22' && ag[1].dias === 3 && ag[2].descricao === 'Natal' && ag[2].periodo_id === null, 'períodos: a lista agrupa os dias do mesmo período em um item (início, fim e quantidade) e mantém o dia avulso como item de um dia, em ordem de data');
+  {
+    const OP = 'ab0d00aa-0000-4000-8000-000000000001';
+    const v = validarPeriodo({ operacao_id: OP, data_inicio: '2027-12-20', data_fim: '2028-01-06', descricao: '  Recesso  ', categoria: 'Feriado' });
+    const erros = [];
+    for (const [e, re] of [[{ operacao_id: OP, data_inicio: '2027-12-20', data_fim: '2027-12-19', descricao: 'X', categoria: 'Feriado' }, /anterior/], [{ operacao_id: OP, data_inicio: '2027-02-30', data_fim: '2027-03-02', descricao: 'X', categoria: 'Feriado' }, /Data inicial inválida/], [{ operacao_id: OP, data_inicio: '2027-12-20', data_fim: '2028-01-06', descricao: ' ', categoria: 'Feriado' }, /Descreva o período/], [{ operacao_id: OP, data_inicio: '2027-12-20', data_fim: '2028-01-06', descricao: 'X', categoria: 'Outro' }, /Categoria inválido/], [{ operacao_id: OP, data_inicio: '2027-12-20', data_fim: '2028-01-06', descricao: 'X', categoria: 'Feriado', periodo_id: 'nao-e-uuid' }, /Período inválido/], [null, /Dados do período inválidos/], [{ data_inicio: '2027-12-20', data_fim: '2028-01-06', descricao: 'X', categoria: 'Feriado' }, /Operação inválido/]]) { try { validarPeriodo(e); erros.push('aceitou'); } catch (x) { erros.push(re.test(x.message) ? 'ok' : x.message); } }
+    ok(v.descricao === 'Recesso' && v.data_inicio === '2027-12-20' && !('periodo_id' in v) && erros.every((x) => x === 'ok'), `períodos: a validação do servidor limpa a descrição, recusa intervalo invertido, data que não existe, descrição vazia, tipo desconhecido e identidade inválida (${erros.join(',')})`);
+  }
+  // o retorno do setor é o que o SERVIDOR calculou (campo retorno); o navegador não o recalcula com a lista de dias da tela
+  {
+    const base = { etapa: 'Aguardando retorno', etapa_desde: '2026-12-19T15:00:00Z', encaminhada_em: '2026-12-19', reiterada_em: null, arquivada_em: null };
+    const servidor = { data: '2026-12-23', original: '2026-12-29', base: '2026-12-19', origem: 'encaminhamento', ajuste: '29/12 feriado: Recesso' };
+    const confirmado = contagemRetornoT({ ...base, retorno: servidor });
+    ok(confirmado.data === '2026-12-23' && confirmado.original === '2026-12-29' && confirmado.origemBase === 'encaminhamento' && confirmado.ajuste === '29/12 feriado: Recesso', 'retorno: a data, a base e a explicação são as que o servidor mandou, sem recálculo local');
+    ok(contagemRetornoT({ ...base, retorno: null }) === null && contagemRetornoT({ ...base, etapa: 'Fazendo', retorno: servidor }) === null && contagemRetornoT({ ...base, arquivada_em: '2026-12-20T00:00:00Z', retorno: servidor }) === null, 'retorno: nulo do servidor, fora de Aguardando retorno e na arquivada não há retorno, mesmo que haja valor no objeto');
+    ok(contagemRetornoT({ ...base }) === null && contagemRetornoT({ ...base, retorno: undefined }) === null, 'retorno: objeto sem o campo (fora do contrato) não vira data nenhuma: não há cálculo local, nem com calendário completo nem com incompleto');
+    ok(dataFiltro({ ...base, prazo: null, acompanhar_em: null, retorno: servidor }, '2026-12-17') === '2026-12-23' && grupoFiltro({ ...base, prazo: null, acompanhar_em: null, retorno: servidor }, '2026-12-17') === 'sete' && dataFiltro({ ...base, prazo: '2026-12-22', acompanhar_em: null, retorno: servidor }, '2026-12-17') === '2026-12-22', 'retorno: a data do servidor alimenta a classificação (vence em 7 dias) e a data aplicável (a mais próxima entre vencimento e retorno)');
+  }
+  // o mesmo motivo cadastrado duas vezes na mesma data (um dia avulso e um período) aparece uma vez só na explicação
+  {
+    const dupl = [dia('2026-12-24', 'Recesso', 'Feriado', 'a1'), dia('2026-12-24', 'Recesso', 'Feriado', 'a2'), dia('2026-12-24', 'Curso', 'Evento externo', 'a3')];
+    ok(ajustarPrazo('2026-12-24', dupl).ajuste === '24/12 feriado: Recesso, evento externo: Curso' && ajustarPrazo('2026-12-24', dupl).prazo === '2026-12-23', 'prazos: dois registros do mesmo tipo e descrição na mesma data valem como um motivo só (a união dos dias), e o outro motivo continua listado');
+  }
+  // avisos do sistema: um problema por causa, global ou da tela, sem repetir; "lido" não resolve
+  {
+    const sem = avisosDoSistema({});
+    const um = avisosDoSistema({ dias: 'erro do servidor' }), tela = avisosDoSistema({ eventos: 'erro do servidor' }), rede = avisosDoSistema({ demandas: MSG_SEM_REDE, dias: MSG_SEM_REDE, eventos: MSG_SEM_REDE, entradas: MSG_SEM_REDE });
+    const mistos = avisosDoSistema({ demandas: MSG_SEM_REDE, dias: MSG_SEM_REDE, entradas: 'erro do servidor' });
+    ok(sem.length === 0 && um.length === 1 && um[0].id === 'dias' && um[0].escopo === 'global' && tela.length === 1 && tela[0].escopo === 'tela' && tela[0].tela === 'agenda', 'avisos: sem falha não há aviso; os dias indisponíveis são problema global e os eventos, da tela da Agenda');
+    ok(rede.length === 1 && rede[0].id === 'conexao' && rede[0].escopo === 'global' && rede[0].acao.recarregar === 'todas' && /as demandas, os dias indisponíveis, os eventos da Agenda, as entradas/.test(rede[0].orientacao), 'avisos: falta de conexão em várias leituras é UM problema só (conexão), com uma ação que recarrega tudo, e não quatro avisos repetidos');
+    ok(mistos.length === 2 && mistos[0].id === 'conexao' && mistos[1].id === 'entradas' && mistos[1].escopo === 'tela', 'avisos: a conexão e um erro de servidor de outra leitura convivem (os globais vêm primeiro)');
+    ok(um[0].titulo.length > 10 && /Carregue de novo|carregue de novo/.test(um[0].orientacao) && /registro do servidor/.test(um[0].orientacao) && um[0].acao.rotulo === 'Carregar os dias de novo' && !/Tente de novo|Tentar de novo/.test(JSON.stringify([...um, ...rede])), 'avisos: a mensagem diz o que está errado, o que fazer e onde, a ação é específica (não "Tentar de novo") e o erro técnico fica no registro do servidor, sem virar tarefa');
+    const lidos = comLeitura(rede, ['conexao']), naoLidos = comLeitura(rede, []);
+    const inc = avisosDoSistema({}, { incertos: [{ operacao_id: 'ab0d00aa-0000-4000-8000-0000000000a1', resumo: 'Recesso (24/12/2026 a 29/12/2026)', assinatura: 'x' }], vencimentosDesatualizados: true });
+    ok(inc.length === 2 && inc.every((a) => a.escopo === 'global') && inc[0].id === 'periodo-ab0d00aa-0000-4000-8000-0000000000a1' && inc[0].acao.conferir === 'ab0d00aa-0000-4000-8000-0000000000a1' && inc[0].acao.rotulo === 'Conferir se foi gravado' && /Recesso \(24\/12\/2026 a 29\/12\/2026\)/.test(inc[0].titulo) && inc[1].id === 'vencimentos' && inc[1].acao.recarregar === 'demandas', 'avisos: a gravação de período de resultado incerto e os vencimentos que a tela não conseguiu reler são problemas globais com ação direta (conferir pela operação; carregar as demandas)');
+    ok(/^Não foi possível confirmar se o dia ou período/.test(inc[0].titulo) &&/não cadastre o mesmo período de novo/.test(inc[0].orientacao) && MSG_INCERTA !== MSG_SEM_REDE, 'avisos: o resultado incerto nunca é anunciado como gravado e a orientação diz o que fazer (conferir) e o que evitar (cadastrar de novo)');
+    ok(!/a confirmar.*retorno do setor aparecem|retorno do setor \(Início/.test(um[0].orientacao) && /continuam os que o servidor calculou/.test(um[0].orientacao) && /a prévia do vencimento no cadastro aparece como "a confirmar"/.test(um[0].orientacao), 'avisos: o aviso dos dias diz exatamente o que acontece (os vencimentos e retornos vêm do servidor; a Agenda pode estar sem os feriados marcados; a prévia do cadastro aparece "a confirmar")');
+    ok(lidos.length === 1 && lidos[0].lido === true && naoLidos[0].lido === false && avisosDoSistema({ demandas: MSG_SEM_REDE, dias: MSG_SEM_REDE }).length === 1, 'avisos: marcar como lido só muda a marca (o problema continua na lista enquanto a causa existir)');
+    ok(avisosDoSistema({ dias: null, demandas: null }).length === 0 && comLeitura(avisosDoSistema({}), ['conexao', 'dias']).length === 0, 'avisos: resolvida a causa, o problema sai da lista (e a marca de lido não sobra para valer no próximo)');
+  }
 }
 ok(permanencia({ chegou_em: '2027-03-01' }, '2027-03-04') === 3 && permanencia({ chegou_em: '2027-03-04' }, '2027-03-04') === 0 && permanencia({ chegou_em: null }, '2027-03-04') === null, 'permanência: dias corridos desde a chegada; sem chegada não há contagem inventada');
 ok(numeroDe({ numero: '' }) === '' && numeroDe({ numero: 's/n' }) === '' && numeroDe({ numero: '12/2026' }) === '12/2026' && origemDe({ origem: 'Não informada' }) === '' && origemDe({ origem: '' }) === '' && origemDe({ origem: 'TCE' }) === 'TCE', 'campos opcionais: vazio e os marcadores antigos ("s/n", "Não informada") significam "não informado"');
@@ -296,7 +352,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(diasPendentes(H, [reg('2026-10-20')], []).length === 4 && diasPendentes('2026-11-02', [], []).join() === '2026-10-28,2026-10-29,2026-10-30', 'perfil: um registro antigo não altera os pendentes e a janela cruza o fim do mês');
 
   // produtividade: demandas finalizadas no dia, independentemente do prazo; zero é valor
-  const dem = (id, o) => ({ id, etapa: 'Fazendo', concluida_em: null, arquivada_em: null, tipo: 'Processo', numero: '', assunto: id, tarefas: [], ...o });
+  const dem = (id, o) => comRetorno({ id, etapa: 'Fazendo', concluida_em: null, arquivada_em: null, tipo: 'Processo', numero: '', assunto: id, tarefas: [], ...o });
   const fin = (id, dia, o = {}) => dem(id, { etapa: 'Finalizado', concluida_em: dia, prazo: '2026-12-31', ...o });
   const serie = serieDoPeriodo([fin('a', H), fin('b', H, { prazo: '2020-01-01' }), fin('c', '2026-11-05'), dem('d', { etapa: 'Fazendo' }), fin('e', '2026-10-01', {})], [reg(H, 4, 2)], H, 7);
   ok(serie.length === 7 && serie[6].dia === H && serie[0].dia === '2026-10-31' && serie[6].concluidas === 2 && serie[5].concluidas === 1 && serie[4].concluidas === 0, 'perfil: produtividade conta as finalizadas por data de conclusão (prazo vencido ou não é indiferente), em 7 dias que terminam em hoje');
@@ -375,7 +431,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(anoDoDocumento({ numero: '32/2026', documento_ano: 2025 }) === 2025 && anoDoDocumento({ numero: '32/2026', documento_ano: null }) === 2026 && anoDoDocumento({ numero: '', documento_ano: 2023 }) === 2023, 'ano do documento: o ano confirmado à mão vale mais que o reconhecido');
   ok(chaveOpcao('  Secretaria   de OBRAS ') === 'secretaria de obras' && chaveOpcao(null) === '', 'opções: a chave de comparação ignora maiúsculas e espaços repetidos');
   const base = { tipo: null, area: 'Geral', numero: '', assunto: 'x', descricao: '', origem: '', etapa: 'Fazendo', etapa_desde: '2026-11-01T12:00:00Z', chegou_em: null, prazo: null, prazo_original: null, prazo_dias: null, prazo_base_em: null, prazo_ajuste: null, prazo_legado: false, prazo_tipo: 'Próprio', rapida: false, documento_ano: null, setor: null, acompanhar_em: null, encaminhada_em: null, reiterada_em: null, concluida_em: null, arquivada_em: null, criado_em: '2026-11-01T12:00:00Z', atualizado_em: '2026-11-01T12:00:00Z', entrada_id: null, versao: 1, tarefas: [] };
-  const D = (id, o = {}) => ({ ...base, id, criado_em: `2026-11-01T12:00:${String(id.length).padStart(2, '0')}Z`, ...o });
+  const D = (id, o = {}) => comRetorno({ ...base, id, criado_em: `2026-11-01T12:00:${String(id.length).padStart(2, '0')}Z`, ...o });
   const H = '2026-11-10';
   const lista2 = [
     D('lenta', { prazo: '2026-11-05' }), D('rapida', { prazo: '2026-11-08', rapida: true }), D('hoje', { prazo: H }), D('hojeR', { prazo: H, rapida: true }), D('prox', { prazo: '2026-11-13' }), D('longe', { prazo: '2026-12-30' }),
@@ -385,7 +441,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
     D('cobr', { etapa: 'Aguardando retorno', etapa_desde: '2026-11-09T12:00:00Z', acompanhar_em: '2026-11-09' }),
     D('pref', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-11-09T12:00:00Z' }), D('prefLonga', { etapa: 'Aguardando Prefeita', etapa_desde: '2026-10-20T12:00:00Z' }),
   ];
-  const e = elegiveisParaHoje(lista2, H, []);
+  const e = elegiveisParaHoje(lista2, H);
   const ids = e.map((x) => x.demanda.id);
   ok(ids.join() === 'rapida,esperaVenc,lenta,cobr,hojeR,hoje,prefLonga,prox,semR,sem', 'Para hoje: ordem completa (atrasadas com a Rápida à frente, depois as que vencem hoje, até 7 dias e sem prazo)');
   const classe = (id) => e.find((x) => x.demanda.id === id)?.classe;
@@ -394,20 +450,20 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(ids.includes('cobr') && ids.includes('esperaVenc') && ids.includes('prefLonga') && e.find((x) => x.demanda.id === 'cobr').cobranca && ehUrgente(classe('cobr')), 'Para hoje: cobranças devidas a terceiros (acompanhar vencido, retorno de 10 dias vencido, espera da Prefeita acima do limite) contam como urgência');
   const ordem = (a, b) => ids.indexOf(a) < ids.indexOf(b);
   ok(ordem('rapida', 'lenta') && ordem('hojeR', 'hoje') && ordem('lenta', 'hojeR') && ordem('semR', 'sem') && ordem('prox', 'semR'), 'Para hoje: a marca Rápida desempata dentro do mesmo grupo (atrasadas antes de hoje, hoje antes de 7 dias, e sem prazo por último)');
-  const comPrazoUsuario = elegiveisParaHoje([D('a', { prazo: '2026-11-09' })], H, []);
+  const comPrazoUsuario = elegiveisParaHoje([D('a', { prazo: '2026-11-09' })], H);
   ok(comPrazoUsuario.length === 1 && comPrazoUsuario[0].cobranca === false, 'Para hoje: demanda dependente do usuário não é marcada como cobrança');
   // vagas
   const vg = [{ posicao: 1, demanda_id: 'rapida' }, { posicao: 2, demanda_id: 'fin' }, { posicao: 3, demanda_id: 'sumiu' }];
   ok(vagasAbertas(vg, lista2).map((v) => `${v.posicao}:${v.demanda.id}`).join() === '1:rapida', 'vagas: as de demanda finalizada, arquivada ou inexistente ficam livres e as outras continuam nas suas posições');
   ok(precisaCompletar(vg, lista2, e) === true && precisaCompletar([1, 2, 3].map((p, i) => ({ posicao: p, demanda_id: ['rapida', 'lenta', 'hojeR'][i] })), lista2, e) === true && precisaCompletar([1, 2, 3, 4].map((p, i) => ({ posicao: p, demanda_id: ['rapida', 'lenta', 'hojeR', 'hoje'][i] })), lista2, e) === false && precisaCompletar(vg, lista2, []) === false, 'vagas: só chama o banco quando há vaga livre e candidata');
   const vagas3 = [{ posicao: 1, demanda_id: 'rapida' }, { posicao: 2, demanda_id: 'lenta' }, { posicao: 3, demanda_id: 'hojeR' }];
-  const nu = urgenciasDoInicio(vagas3, lista2, H, []);
+  const nu = urgenciasDoInicio(vagas3, lista2, H);
   const nuIds = nu.demandas.map((x) => x.id);
   ok(!nu.proximos && nuIds.join() === 'esperaVenc,cobr,hoje,prefLonga' && !nuIds.includes('rapida') && !nuIds.includes('prox') && !nuIds.includes('sem'), `urgência: fora das vagas, as atrasadas e as que vencem hoje (com as cobranças de espera), do maior atraso ao mais próximo (${nuIds.join()})`);
   ok(new Set(nuIds).size === nuIds.length && !nuIds.some((id) => vagas3.some((v) => v.demanda_id === id)), 'urgência: nenhuma demanda repetida e nenhuma que ocupe vaga');
   // filtros
   const fl = [D('a', { tipo: 'Ofício', numero: '32/2026', origem: 'Prefeita' }), D('b', { tipo: 'Memorando', numero: '2024/1250', origem: ' prefeita ' }), D('c', { tipo: null, numero: '2024/2025', origem: 'Reunião' }), D('d', { tipo: 'ofício', numero: 'sem', documento_ano: 2023 }), D('e2')];
-  const f = (o) => filtrar(fl, { ...FILTRO_VAZIO, ...o }, H, []).map((x) => x.id).join();
+  const f = (o) => filtrar(fl, { ...FILTRO_VAZIO, ...o }, H).map((x) => x.id).join();
   ok(f({}) === 'a,b,c,d,e2' && f({ origem: 'Prefeita' }) === 'a,b' && f({ tipo: 'Ofício' }) === 'a,d' && f({ ano: '2024' }) === 'b' && f({ ano: '2026' }) === 'a' && f({ ano: '2023' }) === 'd', 'filtros: origem, tipo e ano (reconhecido ou confirmado), ignorando maiúsculas e espaços; ambíguos e vazios só em Todos');
   ok(f({ origem: 'Prefeita', tipo: 'Memorando', ano: '2024' }) === 'b' && f({ origem: 'Prefeita', ano: '2023' }) === '' && f({ origem: 'Reunião', tipo: 'Ofício' }) === '', 'filtros: combinam origem, tipo e ano (E lógico)');
   ok(titulo({ tipo: null, numero: '' }) === 'Sem documento' && titulo({ tipo: null, numero: '45/2026' }) === '45/2026' && titulo({ tipo: 'Ofício', numero: '' }) === 'Ofício', 'título: sem tipo mostra só o número e, sem nada, "Sem documento" (nunca um título vazio)');
@@ -436,7 +492,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   const { urgenciasDoInicio, candidatasParaVagas, elegiveisParaHoje, ehOficio } = await import('../src/lib/para-hoje.ts');
   const { montarSecoes } = await import('../src/lib/secoes-cards.ts');
   const base = { tipo: null, area: 'Geral', numero: '', assunto: 'x', descricao: '', origem: '', etapa: 'Fazendo', etapa_desde: '2026-11-09T12:00:00Z', chegou_em: null, prazo: null, prazo_original: null, prazo_dias: null, prazo_base_em: null, prazo_ajuste: null, prazo_legado: false, prazo_tipo: 'Próprio', rapida: false, documento_ano: null, setor: null, acompanhar_em: null, encaminhada_em: null, reiterada_em: null, concluida_em: null, arquivada_em: null, atualizado_em: '2026-11-01T12:00:00Z', entrada_id: null, versao: 1, tarefas: [] };
-  const D = (id, o = {}) => ({ ...base, id, criado_em: `2026-11-01T12:00:${String(id.length).padStart(2, '0')}Z`, ...o });
+  const D = (id, o = {}) => comRetorno({ ...base, id, criado_em: `2026-11-01T12:00:${String(id.length).padStart(2, '0')}Z`, ...o });
   const H = '2026-11-10';
   ok(ehOficio({ tipo: 'Ofício' }) && ehOficio({ tipo: ' oficio ' }) && ehOficio({ tipo: 'OFÍCIO' }) && !ehOficio({ tipo: 'Ofício circular' }) && !ehOficio({ tipo: null }) && !ehOficio({ tipo: 'Memorando' }), 'Ofício: o tipo é reconhecido sem diferença de maiúsculas, espaços nem acento, e só ele');
   // ---- Urgência
@@ -448,21 +504,21 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
     D('vaga1', { prazo: '2026-10-01' }), D('semPrazo'),
   ];
   const vg = [{ posicao: 1, demanda_id: 'vaga1' }];
-  const u = urgenciasDoInicio(vg, U, H, []);
+  const u = urgenciasDoInicio(vg, U, H);
   const ids = u.demandas.map((d) => d.id);
   ok(!u.proximos && ids.join() === 'gab,pref,prefSem,atr10,atr3,hoje,hojeOf,of7', `urgência: Prefeita e Gabinete primeiro (com ou sem prazo), depois o maior atraso, os que vencem hoje e o Ofício até 7 dias (${ids.join()})`);
   ok(ids.includes('of7') && !ids.includes('of8') && !ids.includes('mem7'), 'urgência: o Ofício a sete dias entra, a oito dias não, e outro tipo a sete dias não entra');
   ok(!ids.includes('gabVice') && !ids.includes('prefEspera') && !ids.includes('prefFin') && !ids.includes('vaga1') && !ids.includes('semPrazo') && new Set(ids).size === ids.length, 'urgência: origem parecida, espera sem cobrança, finalizada, quem ocupa vaga, sem prazo e repetição ficam de fora');
-  ok(urgenciasDoInicio([], U, H, []).demandas.map((d) => d.id).includes('vaga1') && !urgenciasDoInicio([{ posicao: 1, demanda_id: 'vaga1' }, { posicao: 2, demanda_id: 'pref' }], U, H, []).demandas.some((d) => d.id === 'pref'), 'urgência: a demanda que ocupa uma vaga sai da Urgência e, livre a vaga, volta');
-  ok(urgenciasDoInicio([{ posicao: 1, demanda_id: 'vaga1' }], U.map((d) => (d.id === 'vaga1' ? { ...d, etapa: 'Finalizado', concluida_em: '2026-11-09' } : d)), H, []).demandas.every((d) => d.id !== 'vaga1'), 'urgência: a vaga de uma demanda finalizada não reaparece como urgência');
-  const rap = urgenciasDoInicio([], [D('lenta', { prazo: '2026-11-07' }), D('rap', { prazo: '2026-11-07', rapida: true }), D('antes', { prazo: '2026-11-06' })], H, []).demandas.map((d) => d.id).join();
+  ok(urgenciasDoInicio([], U, H).demandas.map((d) => d.id).includes('vaga1') && !urgenciasDoInicio([{ posicao: 1, demanda_id: 'vaga1' }, { posicao: 2, demanda_id: 'pref' }], U, H).demandas.some((d) => d.id === 'pref'), 'urgência: a demanda que ocupa uma vaga sai da Urgência e, livre a vaga, volta');
+  ok(urgenciasDoInicio([{ posicao: 1, demanda_id: 'vaga1' }], U.map((d) => (d.id === 'vaga1' ? { ...d, etapa: 'Finalizado', concluida_em: '2026-11-09' } : d)), H).demandas.every((d) => d.id !== 'vaga1'), 'urgência: a vaga de uma demanda finalizada não reaparece como urgência');
+  const rap = urgenciasDoInicio([], [D('lenta', { prazo: '2026-11-07' }), D('rap', { prazo: '2026-11-07', rapida: true }), D('antes', { prazo: '2026-11-06' })], H).demandas.map((d) => d.id).join();
   ok(rap === 'antes,rap,lenta', `urgência: o maior atraso vem primeiro e a marca Rápida desempata a mesma data (${rap})`);
   const emDia = [D('p3', { prazo: '2026-11-13' }), D('p1', { prazo: '2026-11-11' }), D('sem'), D('longe', { prazo: '2026-12-30' }), D('p2', { prazo: '2026-11-12', rapida: true }), D('vagaP', { prazo: '2026-11-11' }), D('ofLonge', { tipo: 'Ofício', prazo: '2026-11-18' })];
-  const f = urgenciasDoInicio([{ posicao: 1, demanda_id: 'vagaP' }], emDia, H, []);
+  const f = urgenciasDoInicio([{ posicao: 1, demanda_id: 'vagaP' }], emDia, H);
   ok(f.proximos && f.demandas.map((d) => d.id).join() === 'p1,p2,p3', `urgência: sem nenhuma urgência, vêm as elegíveis com vencimento mais próximo, sem as das vagas, sem prazo nem as além de 7 dias (${f.demandas.map((d) => d.id).join()})`);
-  ok(urgenciasDoInicio([], [D('so-sem'), D('so-longe', { prazo: '2026-12-30' })], H, []).demandas.length === 0, 'urgência: sem urgência e sem vencimento próximo, a lista fica vazia (nenhum vencimento inventado)');
+  ok(urgenciasDoInicio([], [D('so-sem'), D('so-longe', { prazo: '2026-12-30' })], H).demandas.length === 0, 'urgência: sem urgência e sem vencimento próximo, a lista fica vazia (nenhum vencimento inventado)');
   // ---- candidatas das vagas livres
-  const el = elegiveisParaHoje([D('atrasa', { prazo: '2026-11-01' }), D('pf', { origem: 'Prefeita', prazo: '2026-11-13' }), D('hoje2', { prazo: H }), D('ocup', { prazo: '2026-10-01' })], H, []);
+  const el = elegiveisParaHoje([D('atrasa', { prazo: '2026-11-01' }), D('pf', { origem: 'Prefeita', prazo: '2026-11-13' }), D('hoje2', { prazo: H }), D('ocup', { prazo: '2026-10-01' })], H);
   ok(candidatasParaVagas(el, new Set(['ocup'])).map((e) => e.demanda.id).join() === 'pf,atrasa,hoje2', 'vagas livres: Prefeita e Gabinete passam à frente, depois a ordem das elegíveis, sem quem já ocupa vaga');
   // ---- nove seções
   const S = [
@@ -475,7 +531,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
     D('F', { tipo: 'Processo', area: 'Geral', chegou_em: '2026-10-15' }),
     D('G', { tipo: 'Ofício', prazo: '2026-10-20', chegou_em: '2026-10-05', etapa: 'Finalizado', concluida_em: '2026-11-01' }), D('H2', { prazo: '2026-10-20', arquivada_em: '2026-11-01T00:00:00Z' }),
   ];
-  const sec = montarSecoes(S, H, []), por = Object.fromEntries(sec.map((x) => [x.chave, x.demandas.map((d) => d.id).join()]));
+  const sec = montarSecoes(S, H), por = Object.fromEntries(sec.map((x) => [x.chave, x.demandas.map((d) => d.id).join()]));
   ok(sec.map((x) => x.chave).join() === 'urgentes,gabinete,prazos,oficios,aguardando,pessoal,compras,protocolo,sem-prazo', 'cards: as nove seções, na ordem pedida');
   ok(por.urgentes === 'E,A,B2,B', `cards, Urgentes: Prefeita e Gabinete primeiro, depois as atrasadas, com o maior atraso e a chegada mais antiga no desempate (${por.urgentes})`);
   ok(por.gabinete === 'E,A', `cards, Gabinete: origem Prefeita ou Gabinete (${por.gabinete})`);
@@ -486,7 +542,7 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(sec[5].cor === 'verde' && sec[6].cor === 'amar' && sec[7].cor === 'azul', 'cards: o tratamento visual das classificações (verde, amarelo e azul)');
   ok(por['sem-prazo'] === 'F,C', `cards, Sem prazo: só as sem vencimento calculado (${por['sem-prazo']})`);
   ok(sec.every((x) => new Set(x.demandas.map((d) => d.id)).size === x.demandas.length) && !sec.some((x) => x.demandas.some((d) => d.id === 'G' || d.id === 'H2')) && sec.filter((x) => x.demandas.some((d) => d.id === 'A')).length === 4, 'cards: nenhuma repetição dentro da fila, finalizada e arquivada fora, e o mesmo id em várias filas');
-  const mesmo = montarSecoes([...S].reverse(), H, []).map((x) => x.demandas.map((d) => d.id).join()).join('|');
+  const mesmo = montarSecoes([...S].reverse(), H).map((x) => x.demandas.map((d) => d.id).join()).join('|');
   ok(mesmo === sec.map((x) => x.demandas.map((d) => d.id).join()).join('|'), 'cards: a mesma coleção em outra ordem de entrada dá exatamente as mesmas filas (desempate estável)');
 }
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

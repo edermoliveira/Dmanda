@@ -6,7 +6,8 @@ import { chromium } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
 import { semearAgenda } from './semear-agenda.mjs';
-import { contagemRetorno, gradeMes, anoMes, diasNoMes, colunaNaSemana } from '../src/lib/agenda.ts';
+import { gradeMes, anoMes, diasNoMes, colunaNaSemana } from '../src/lib/agenda.ts';
+import { retornoReferencia } from './auxiliar-retorno.mjs';   // a regra do retorno é do servidor; aqui só dá o valor esperado para comparar com o que a tela mostra
 import { somarDias } from '../src/lib/prazos.ts';
 
 const PORTA = process.env.PORTA_TESTE_AGENDA || '7108', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/agenda';
@@ -150,7 +151,7 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok(conf, 'o heatmap põe cada demanda uma vez, no dia da data aplicável mais próxima, com nível e contagem corretos' + detalhe);
   const vazio = botoes.find((d) => !esperado.has(d) && d !== HOJE);
   ok((await celula(pg, vazio).getAttribute('data-nivel')) === 'zero' && /sem pendências/.test(await celula(pg, vazio).getAttribute('aria-label')), 'dia sem pendências fica no nível zero e a descrição acessível diz "sem pendências"');
-  const dRetorno = contagemRetorno({ etapa: 'Aguardando retorno', etapa_desde: S.d.etapa_desde, encaminhada_em: S.d.encaminhada_em, reiterada_em: S.d.reiterada_em, arquivada_em: null }, [S.dia]).data;
+  const dRetorno = retornoReferencia({ etapa: 'Aguardando retorno', etapa_desde: S.d.etapa_desde, encaminhada_em: S.d.encaminhada_em, reiterada_em: S.d.reiterada_em, arquivada_em: null }, [S.dia]).data;
   if (!esperado.has(dRetorno)) ok((await celula(pg, dRetorno).getAttribute('data-nivel')) === 'zero', 'o retorno do setor é um marco separado: a carga de D não é contada de novo no dia do retorno (o dia fica sem carga)'); else ok(true, 'o dia do retorno coincide com outro marco nesta data: verificação de carga zero dispensada');
   // --- hoje, seleção e foco são marcas diferentes ---
   const hoje = celula(pg, HOJE);
@@ -316,7 +317,7 @@ const t5 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   if (mesDoAtraso) { await pg.click('.agd-nav .btn.mini:has-text("Hoje")'); await pg.waitForTimeout(350); }
   const acomp = await itens(S.d.acompanhar_em, '[data-marco="acompanhamento"]');
   ok(acomp.length === 1 && /^Acomp\. Aguarda a Contabilidade$/.test(acomp[0]), 'o acompanhamento aparece na própria data com o rótulo "Acomp.", diferente do vencimento');
-  const dRet = contagemRetorno({ etapa: 'Aguardando retorno', etapa_desde: S.d.etapa_desde, encaminhada_em: S.d.encaminhada_em, reiterada_em: S.d.reiterada_em, arquivada_em: null }, [S.dia]).data;
+  const dRet = retornoReferencia({ etapa: 'Aguardando retorno', etapa_desde: S.d.etapa_desde, encaminhada_em: S.d.encaminhada_em, reiterada_em: S.d.reiterada_em, arquivada_em: null }, [S.dia]).data;
   if (mesDe(dRet) === mesDe(HOJE)) { const ret = await itens(dRet, '[data-marco="retorno"]'); ok(ret.length === 1 && /^Retorno Aguarda a Contabilidade$/.test(ret[0]), 'o retorno do setor aparece na própria data com o rótulo "Retorno"'); } else ok(true, 'o retorno do setor cai em outro mês nesta data de referência: verificação dispensada');
   const formas = await pg.$$eval('.agd-it', (l) => { const m = {}; for (const e of l) { const k = e.getAttribute('data-k') + (e.getAttribute('data-marco') ? ':' + e.getAttribute('data-marco') : ''); m[k] = getComputedStyle(e).borderInlineStartStyle; } return m; });
   ok(formas['demanda:vencimento'] === 'solid' && formas['demanda:acompanhamento'] === 'dashed' && (formas['demanda:retorno'] === undefined || formas['demanda:retorno'] === 'dotted'), 'cada marco tem a sua forma: vencimento com barra cheia, acompanhar tracejada e retorno pontilhada (' + JSON.stringify(formas) + ')');
@@ -507,8 +508,8 @@ const t5 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   const encAntes = await pg.inputValue('#d-enc');
   ok(encAntes === S.d.encaminhada_em && (await pg.inputValue('#d-ac')) === S.d.acompanhar_em, 'em Aguardando retorno o Andamento mostra o encaminhamento, a reiteração e o Acompanhar em manual (preservado)');
   await pg.click('button:has-text("Reiterei hoje")'); await pg.click('[data-salvar="andamento"]'); await pg.waitForTimeout(900);
-  const novaData = contagemRetorno({ etapa: 'Aguardando retorno', etapa_desde: S.d.etapa_desde, encaminhada_em: S.d.encaminhada_em, reiterada_em: HOJE, arquivada_em: null }, [S.dia]);
-  ok(novaData.origemBase === 'reiteração' && novaData.base === HOJE && /Retorno reiterado em/.test(await pg.textContent('.modal')), 'reiteração registrada vale como nova base e aparece na consulta');
+  const novaData = retornoReferencia({ etapa: 'Aguardando retorno', etapa_desde: S.d.etapa_desde, encaminhada_em: S.d.encaminhada_em, reiterada_em: HOJE, arquivada_em: null }, [S.dia]);
+  ok(novaData.origem === 'reiteração' && novaData.base === HOJE && /Retorno reiterado em/.test(await pg.textContent('.modal')), 'reiteração registrada vale como nova base e aparece na consulta');
   await pg.click('.modal .btn:has-text("Fechar")'); await janelaFechada(pg);
   await ir(pg, '/agenda'); await modo(pg, 'Mês'); await verDia(pg, novaData.data);
   ok(/Retorno do setor/.test(await pg.textContent('.agd-detalhe')) && /\(reiteração\)/.test(await pg.textContent('.agd-detalhe')), 'a Agenda passa a marcar o retorno do setor 10 dias depois da reiteração, sem tocar no acompanhamento manual nem no vencimento');
@@ -649,12 +650,12 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   // ---- cadastro pela Agenda: Dia (com falha, validação, clique duplo, rascunho e foco), Semana (outra data) e gaveta do Mês ----
   await modo(pg, 'Dia'); await paraData(pg, '2027-03-05');
   await pg.click('.agd-dia-info [data-acao="dia-indisponivel"]'); await pg.waitForSelector('#di-data');
-  ok((await pg.inputValue('#di-data')) === '2027-03-05' && (await pg.inputValue('#di-cat')) === 'Feriado' && /Cadastrar dia indisponível/.test(await pg.textContent('.modal #m-tit')), 'Dia: "Cadastrar dia indisponível" abre o formulário de Data, Tipo e Descrição com a data do dia, editável');
+  ok((await pg.inputValue('#di-data')) === '2027-03-05' && (await pg.inputValue('#di-cat')) === 'Feriado' && /Cadastrar dia ou período indisponível/.test(await pg.textContent('.modal #m-tit')), 'Dia: "Cadastrar dia ou período indisponível" abre o formulário de Data inicial, Data final (opcional), Tipo e Descrição com a data do dia, editável');
   await pg.click('[data-salvar-dia]'); await pg.waitForTimeout(250);
   ok(/Descreva o dia/.test(await pg.textContent('.modal')) && (await pg.evaluate(() => document.activeElement?.id)) === 'di-desc', 'sem descrição: a mensagem de sempre e o foco no campo');
   await pg.fill('#di-desc', 'Ponto facultativo de teste');
   bloquear = true; await pg.click('[data-salvar-dia]'); await pg.waitForTimeout(1500);
-  ok(!!(await pg.$('.modal')) && (await pg.inputValue('#di-desc')) === 'Ponto facultativo de teste' && /Não foi possível salvar agora/.test(await pg.textContent('.modal')), 'falha de gravação: a janela continua aberta com o que foi digitado e diz que não salvou');
+  ok(!!(await pg.$('.modal')) && (await pg.inputValue('#di-desc')) === 'Ponto facultativo de teste' && /(Nada foi gravado|Não foi possível confirmar se foi gravado|Sem confirmação do servidor)[^]*O que você digitou continua aqui/.test(await pg.textContent('.modal')), 'falha de gravação: a janela continua aberta com o que foi digitado e diz o motivo (o do contexto: sem conexão ou sem confirmação)');
   bloquear = false; await pg.waitForTimeout(300);
   await pg.dblclick('[data-salvar-dia]'); await janelaFechada(pg); await pg.waitForTimeout(800);
   ok((await pg.evaluate(() => document.activeElement?.dataset?.acao)) === 'dia-indisponivel', 'ao fechar, o foco volta ao botão que abriu a janela');
@@ -690,7 +691,7 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   const lista = await pg.$$eval('.cfg-lista li', (l) => l.map((e) => e.querySelector('.cfg-desc').textContent));
   const i1 = lista.indexOf('Ponto facultativo de teste'), i2 = lista.indexOf('Congresso de teste'), i3 = lista.indexOf('Recesso de teste');
   ok(i1 >= 0 && i1 < i2 && i2 < i3 && lista.filter((x) => x === 'Ponto facultativo de teste').length === 1, 'Configurações: os dias cadastrados pela Agenda aparecem uma vez cada, em ordem de data (o clique duplo gravou uma vez só)');
-  ok(/Cadastrar dia indisponível/.test(await pg.textContent('#cfg-novo-t')) && (await pg.$$eval('.cfg-dias-form .cfg-form label', (l) => l.map((x) => x.textContent).join())) === 'Data,Tipo,Descrição', 'Configurações: o mesmo formulário de Data, Tipo e Descrição, com o título "Cadastrar dia indisponível"');
+  ok(/Cadastrar dia ou período indisponível/.test(await pg.textContent('#cfg-novo-t')) && (await pg.$$eval('.cfg-dias-form .cfg-form label', (l) => l.map((x) => x.textContent).join())) === 'Data inicial,Data final (opcional),Tipo,Descrição', 'Configurações: o mesmo formulário (Data inicial, Data final opcional, Tipo e Descrição), com o título "Cadastrar dia ou período indisponível"');
   await pg.click('[aria-label="Editar Ponto facultativo de teste"]'); await pg.fill('#cfg-desc', 'Ponto facultativo editado'); await pg.click('.cfg-form .btn.pri');
   await pg.waitForFunction(() => document.querySelector('.cfg-lista')?.textContent.includes('Ponto facultativo editado'), null, { timeout: 15000 });
   ok(true, 'Configurações: editar o dia cadastrado pela Agenda funciona');

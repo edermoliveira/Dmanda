@@ -42,7 +42,7 @@ let MES_APERTA = false; // o painel "Onde o mês aperta" tem dias a listar? Calc
     const { cargaPorDia, panorama } = await import('../src/lib/agenda.ts');
     const lista = await c('listar_demandas', { p_arquivadas: false });
     const [ano, mes] = HOJE.split('-').map(Number), de = `${HOJE.slice(0, 7)}-01`, ate = new Date(Date.UTC(ano, mes, 0)).toISOString().slice(0, 10);
-    MES_APERTA = panorama(cargaPorDia(lista, [], HOJE), [], [], HOJE, de, ate).cheios.length > 0;
+    MES_APERTA = panorama(cargaPorDia(lista, HOJE), [], [], HOJE, de, ate).cheios.length > 0;
     console.log(`Mês da auditoria: HOJE=${HOJE}, dias cheios esperados no painel: ${MES_APERTA ? 'sim' : 'não'}`);
   }
   await db.close();
@@ -189,7 +189,7 @@ for (const [largura, tema] of [[390, 'celular'], [1360, 'computador']]) for (con
   ok(painelDemandas === INDISP, `${R}, falha: ${modo === 'hoje' ? 'o painel de demandas do Dia também não diz "Nada vence"' : 'sem painel de demandas separado'} (${painelDemandas})`);
   ok(!/Toda demanda aberta|Nenhum dia com carga|Nada vence hoje|Nada vence neste dia/.test(f.tudo), `${R}, falha: nenhuma frase afirma que não há pendência nem dia cheio`);
   const botao = pg.locator('.erro-carga button, .agd-aviso-carga button').first();
-  ok((await botao.count()) >= 1 && /Tentar de novo/.test(await botao.innerText()), `${R}, falha: o botão Tentar de novo continua à mão`);
+  ok((await botao.count()) >= 1 && /de novo/.test(await botao.innerText()), `${R}, falha: o botão para carregar as demandas de novo continua à mão`);
   ok(f.compromissos >= 1 || /Reunião de teste/.test(f.tudo) || modo === 'mes', `${R}, falha: o compromisso que carregou continua aparecendo${modo === 'mes' ? ' (no Mês ele está na grade)' : ''}`);
   // recuperação: a falha acaba, o botão recarrega e os painéis mostram o vazio de verdade
   estado.modo = 'ok'; await botao.click(); await pg.waitForFunction(() => !document.querySelector('.agd-aux[data-indisponivel]'), null, { timeout: 20000 }); await esperar(300);

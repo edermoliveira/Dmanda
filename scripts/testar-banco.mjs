@@ -211,6 +211,17 @@ const eFalha = await errServ('rotina_diaria', {});
 await db.exec('alter table public.demandas_x rename to demandas');
 ok(!!eFalha && (await sql('select count(*)::int as n from public.execucoes_rotina'))[0].n === nExAntes, 'rotina: com o banco em falha a execução termina com erro e não registra sucesso falso');
 
+// retenção: a rotina só apaga o que passou do limite (execuções com mais de 90 dias; resumos com data de referência mais de 60 dias atrás) e mantém o que está no limite
+await db.exec("insert into public.execucoes_rotina (data_ref, iniciou_em, terminou_em, ok, usuarios) values (public.hoje() - 100, now() - interval '100 days', now() - interval '100 days', true, 1), (public.hoje() - 89, now() - interval '89 days', now() - interval '89 days', true, 1)");
+await db.exec(`insert into public.resumos_operacionais (user_id, data_ref, origem, dados) values ('${R}', public.hoje() - 61, 'rotina', '{}'), ('${R}', public.hoje() - 60, 'rotina', '{}')`);
+const antesRet = await instantaneo();
+await serv('rotina_diaria', {});
+const velhas = await sql("select count(*) filter (where iniciou_em < now() - interval '90 days')::int as exec_velhas, count(*) filter (where iniciou_em < now() - interval '88 days' and iniciou_em >= now() - interval '90 days')::int as exec_limite from public.execucoes_rotina");
+const resVelhos = await sql('select count(*) filter (where data_ref = public.hoje() - 61)::int as r61, count(*) filter (where data_ref = public.hoje() - 60)::int as r60 from public.resumos_operacionais where user_id = $1', [R]);
+ok(velhas[0].exec_velhas === 0 && velhas[0].exec_limite === 1, 'rotina: a execução de 100 dias é apagada e a de 89 dias fica');
+ok(resVelhos[0].r61 === 0 && resVelhos[0].r60 === 1, 'rotina: o resumo de 61 dias é apagado e o de 60 dias (o limite) fica');
+ok(await instantaneo() === antesRet, 'rotina: a limpeza não toca em demanda nenhuma');
+
 // ---------- acesso exclusivo à conta autorizada (hook de cadastro, RLS por e-mail do JWT, privilégios explícitos) ----------
 const X = '55555555-5555-4555-8555-555555555555', Z = '6e6e6e6e-6666-4666-8666-6e6e6e6e6e6e';
 await db.exec(`insert into auth.users (id, email) values ('${X}', 'intruso@teste'), ('${Z}', null)`);   // usuários que NÃO estão na lista (e um sem e-mail)
@@ -1084,8 +1095,10 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const nova10 = todas.find((f) => f.endsWith('_entradas.sql')), nova11 = todas.find((f) => f.includes('entradas_cinco_cores')), nova12 = todas.find((f) => f.includes('rls_conta_autorizada_entradas_dias')), nova15 = todas.find((f) => f.includes('alinha_regras_agenda')), nova14 = todas.find((f) => f.endsWith('_agenda.sql'));
   const nova20 = todas.find((f) => f.includes('origem_documento_para_hoje'));   // depende da migração 8: entra depois dela, não no banco antigo
   const novaQ = todas.find((f) => f.includes('para_hoje_quatro_vagas'));   // depende da 20 (tabela para_hoje): entra depois dela
+  const novaP = todas.find((f) => f.includes('periodos_indisponiveis'));
+  const novaR = todas.find((f) => f.includes('retorno_do_servidor'));   // depende da demanda_json atual (entradas) e de ajustar_prazo: também não entra no banco antigo   // depende da 8 (tabela dias_indisponiveis): não entra no banco antigo
   const novaC = todas.find((f) => f.includes('prazo_pela_chegada'));   // depende da 8 (ajustar_prazo): entra depois dela, não no banco antigo
-  for (const f of todas.filter((f) => f !== nova20 && f !== novaQ && f !== novaC && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  for (const f of todas.filter((f) => f !== nova20 && f !== novaQ && f !== novaC && f !== novaP && f !== novaR && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -1777,7 +1790,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const { join } = await import('node:path');
   const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
   const mE = todas.find((f) => f.includes('entrada_direta')), mR = todas.find((f) => f.includes('retirar_aparelhos')), mH = todas.find((f) => f.includes('aparelhos_where_explicito')), m6 = todas.find((f) => f.includes('aparelhos_autorizados'));
-  ok(!!mE && !!mR && todas.indexOf(mE) === todas.indexOf(mH) + 1 && todas.indexOf(mH) === todas.indexOf(m6) + 1 && todas.at(-1) === mR && todas.indexOf(mR) === todas.indexOf(mE) + 1, 'retirada: a entrada direta e, logo depois, a retirada são as duas últimas migrações, depois do hotfix, e as duas migrações dos aparelhos continuam como foram aplicadas (histórico preservado)');
+  ok(!!mE && !!mR && todas.indexOf(mE) === todas.indexOf(mH) + 1 && todas.indexOf(mH) === todas.indexOf(m6) + 1 && todas.indexOf(mR) === todas.indexOf(mE) + 1, 'retirada: a entrada direta e, logo depois, a retirada vêm em seguida ao hotfix (as migrações posteriores, como a dos períodos, só entram depois delas), e as duas migrações dos aparelhos continuam como foram aplicadas (histórico preservado)');
   ok(!existsSync('supabase/pendentes') || readdirSync('supabase/pendentes').filter((f) => f.endsWith('.sql')).length === 0, 'duas fases (concluídas): não resta nenhuma migração pendente fora de supabase/migrations');
   const textoE = readFileSync(join('supabase/migrations', mE), 'utf8'), textoR = readFileSync(join('supabase/migrations', mR), 'utf8');
   const semComentarios = (t) => t.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
@@ -1790,7 +1803,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   // ---- 1) caminho do banco real: esquema publicado, com aparelho, convite e exigência ligada, recebe só a migração da retirada ----
   const pasta = mkdtempSync(join(tmpdir(), 'dmanda-retirada-'));
   try {
-    for (const f of todas.filter((f) => f !== mE && f !== mR)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    for (const f of todas.filter((f) => todas.indexOf(f) < todas.indexOf(mE))) copyFileSync(join('supabase/migrations', f), join(pasta, f));
     const a = await abrirBancoTeste({ raizMigracoes: pasta });
     await a.exec(`insert into auth.users (id, email) values ('${U}', 'titular@teste'), ('${O}', 'intruso@teste')`);
     await a.exec("insert into dmanda_privado.acesso_autorizado (email) values ('titular@teste')");
@@ -1834,7 +1847,9 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   await b.exec("insert into dmanda_privado.acesso_autorizado (email) values ('titular@teste')");
   const svc = (f, x = {}) => b.transaction(async (tx) => { await tx.exec('set local role service_role'); return (await tx.query('select public.executar_como_titular($1, $2::jsonb) as r', [f, JSON.stringify(x)])).rows[0].r; });
   const erroCod = async (p) => { try { await p; return null; } catch (e) { return { cod: e.code, msg: e.message }; } };
-  const lista = (textoE.match(/v_permitidas constant text\[\] := array\[([^\]]+)\]/)?.[1] ?? '').match(/'([a-z_]+)'/g)?.map((x) => x.slice(1, -1)) ?? [];
+  // a lista vigente é a da última migração que a redefine (a da entrada direta tinha 38 operações; as migrações seguintes só acrescentam)
+  const textoLista = readFileSync(join('supabase/migrations', [...todas].reverse().find((m) => readFileSync(join('supabase/migrations', m), 'utf8').includes('v_permitidas constant'))), 'utf8');
+  const lista = (textoLista.match(/v_permitidas constant text\[\] := array\[([^\]]+)\]/)?.[1] ?? '').match(/'([a-z_]+)'/g)?.map((x) => x.slice(1, -1)) ?? [];
   const usadas = new Set([...readFileSync('src/nucleo/operacoes.ts', 'utf8').matchAll(/\b(?:demanda|entrada|evento|chamar)\(\s*'([a-z_]+)'/g)].map((m) => m[1]).concat([...readFileSync('src/servidor/demandas.ts', 'utf8').matchAll(/chamar\(\s*'([a-z_]+)'/g)].map((m) => m[1])));
   ok(lista.length > 30 && [...usadas].every((f) => lista.includes(f)) && lista.every((f) => usadas.has(f)), `entrada direta: a lista de operações do banco (${lista.length}) é exatamente o conjunto que o aplicativo chama (${usadas.size})`);
   const nomes = await sqlq(b, "select p.proname, count(*)::int n from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = any($1) group by 1", [lista]);
@@ -2036,6 +2051,382 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const ids = []; for (let i = 0; i < 5; i++) ids.push((await chamarComoUsuario(c, V, 'criar_demanda', { p: { assunto: `C${i}` } })).id);
   ok((await chamarComoUsuario(c, V, 'atualizar_para_hoje', { p_candidatas: ids })).length === 4, 'quatro vagas: o banco completo (todas as migrações) preenche quatro vagas');
   await c.close();
+}
+
+// ---------- Calendário e prazos (subbloco 1.4): invariantes sobre sequências aleatórias (semente fixa), no esquema final ----------
+// Cobre o que as contas de data fixa não alcançam: depois de QUALQUER sequência de cadastros, mudanças e exclusões de dias indisponíveis e de demandas que entram e saem de Finalizado,
+// todo vencimento de demanda aberta é exatamente o que o ajuste dá hoje (o recálculo não deixa nenhum para trás), e o retorno do setor calculado pelo banco e a regra de referência dos testes (escrita à parte) coincidem.
+{
+  const { ajustarPrazo, somarDias } = await import('../src/lib/prazos.ts');
+  const { retornoReferencia } = await import('./auxiliar-retorno.mjs');   // a regra do retorno escrita à parte, só para conferir o SQL
+  let semente = 20261117;
+  const rnd = (n) => { semente = (semente * 1664525 + 1013904223) % 4294967296; return Math.floor((semente / 4294967296) * n); };
+  const K = 'ab0c0000-0000-4000-8000-0000000000c1';
+  const k = await abrirBancoTeste();
+  await k.exec(`insert into auth.users (id, email) values ('${K}', 'cal@teste')`); await k.exec("insert into dmanda_privado.acesso_autorizado (email) values ('cal@teste')");
+  const kc = (f, a) => chamarComoUsuario(k, K, f, a, { provedor: 'email' });
+  const dt = () => somarDias('2026-10-01', rnd(120));
+  const cat = () => (rnd(2) ? 'Feriado' : 'Evento externo');
+  const ids = [];
+  for (let i = 0; i < 20; i++) ids.push((await kc('salvar_dia_indisponivel', { p: { data: dt(), descricao: 'D' + i, categoria: cat() } })).dia.id);
+  const dem = [];
+  for (let i = 0; i < 30; i++) dem.push((await kc('criar_demanda', { p: { assunto: 'Dem ' + i, ...(rnd(2) ? { prazo_original: dt() } : { chegou_em: dt(), prazo_dias: [5, 10, 20, 30][rnd(4)] }) } })).id);
+  let ajustados = 0, conferidas = 0, difInv = 0, difRet = 0, retAjustados = 0;
+  const conferir = async () => {
+    const dias = await kc('listar_dias_indisponiveis', {});
+    for (const d of await kc('listar_demandas', { p_arquivadas: false })) {
+      if (d.etapa === 'Finalizado' || !d.prazo_original) continue;
+      const t = ajustarPrazo(d.prazo_original, dias); conferidas++; if (t.ajuste) ajustados++;
+      if (d.prazo !== t.prazo || (d.prazo_ajuste ?? null) !== (t.ajuste ?? null)) difInv++;
+    }
+    return dias;
+  };
+  await conferir();
+  for (let i = 0; i < 80; i++) {
+    const op = rnd(5);
+    if (op === 0) ids.push((await kc('salvar_dia_indisponivel', { p: { data: dt(), descricao: 'N' + i, categoria: cat() } })).dia.id);
+    else if (op === 1) await kc('salvar_dia_indisponivel', { p: { id: ids[rnd(ids.length)], data: dt(), descricao: 'M' + i, categoria: cat() } });
+    else if (op === 2 && ids.length > 5) { const j = rnd(ids.length); await kc('excluir_dia_indisponivel', { p_id: ids[j] }); ids.splice(j, 1); }
+    else if (op === 3) await kc('mover_etapa', { p_id: dem[rnd(dem.length)], p_etapa: rnd(2) ? 'Finalizado' : 'Fazendo' });
+    else await kc('atualizar_demanda', { p_id: dem[rnd(dem.length)], p: { prazo_original: dt() } });
+    if (i % 8 === 7) await conferir();
+  }
+  const diasFim = await conferir();
+  ok(difInv === 0 && conferidas > 300 && ajustados > 60, `calendário: depois de 80 mudanças aleatórias nos dias indisponíveis e nas demandas, todo vencimento aberto é o que o ajuste dá hoje (${conferidas} conferências, ${ajustados} com ajuste, ${difInv} divergências)`);
+  // retorno do setor: banco x regra de referência, com encaminhamento, reiteração e entrada na etapa em horários de virada do dia em Brasília
+  for (let i = 0; i < 150; i++) {
+    const enc = rnd(3) ? dt() : null, rei = rnd(3) ? null : dt(), desde = `${dt()}T${['00:30:00', '02:59:00', '03:00:00', '12:00:00', '23:30:00'][rnd(5)]}Z`;
+    const sql = (await k.query('select public.retorno_setor_data($1, $2, $3, $4::timestamptz)::text as d', [K, enc, rei, desde])).rows[0].d;
+    const ts = retornoReferencia({ etapa: 'Aguardando retorno', etapa_desde: desde, encaminhada_em: enc, reiterada_em: rei, arquivada_em: null }, diasFim);
+    if (ts.ajuste) retAjustados++; if (sql !== ts.data) difRet++;
+  }
+  ok(difRet === 0 && retAjustados > 30, `calendário: o retorno do setor do banco e a regra de referência dos testes coincidem em 150 combinações (${retAjustados} antecipadas, ${difRet} divergências, entrada na etapa perto da meia-noite de Brasília incluída)`);
+  await k.close();
+}
+
+// ---------- Períodos de indisponibilidade (subbloco 1.4): o cálculo passa por TODOS os dias do período, sem limite fixo, e o recálculo cobre inclusão, edição e exclusão ----------
+// Um período é gravado como uma linha por dia (ligadas por periodo_id), por inteiro: se outro registro já cobre a data, as linhas convivem e o cálculo usa a UNIÃO dos dias. O exemplo obrigatório: chegada em
+// 14/12/2026 + 15 dias corridos = 29/12; com a indisponibilidade de 24/12 a 29/12 e 23/12 livre, o vencimento efetivo é 23/12 e o original (29/12) é preservado. Nada aqui é exceção codificada para dezembro:
+// cursos, semana, recesso na virada do ano, 731 dias seguidos, sobreposições, a identidade da operação e uma sequência aleatória.
+{
+  const { ajustarPrazo, diasNoPeriodo } = await import('../src/lib/prazos.ts');
+  const { retornoReferencia } = await import('./auxiliar-retorno.mjs');   // a regra do retorno escrita à parte, só para conferir o SQL
+  const P = 'ab0d0000-0000-4000-8000-0000000000d1', X = 'ab0d0000-0000-4000-8000-0000000000d2';
+  const p = await abrirBancoTeste();
+  await p.exec(`insert into auth.users (id, email) values ('${P}', 'per@teste'), ('${X}', 'fora@teste')`);
+  await p.exec("insert into dmanda_privado.acesso_autorizado (email) values ('per@teste')");
+  const pc = (f, a, u = P) => chamarComoUsuario(p, u, f, a, { provedor: 'email' });
+  const erro = async (pr) => { try { await pr; return null; } catch (e) { return e.message || String(e); } };
+  const ler = (id) => pc('buscar_demanda', { p_id: id });
+  const dias = () => pc('listar_dias_indisponiveis', {});
+  const linhas = async () => Number((await p.query('select count(*)::int n from public.dias_indisponiveis')).rows[0].n);
+  let nOp = 0; const novoOp = () => `ab0d00aa-0000-4000-8000-${String(++nOp).padStart(12, '0')}`;
+  // a operação (identidade da tentativa) é obrigatória e vem sempre à parte do periodo_id (só para alterar um período que existe)
+  const per = (data_inicio, data_fim, descricao = 'Recesso', categoria = 'Feriado', periodo_id, operacao_id = novoOp()) => ({ p: { operacao_id, ...(periodo_id ? { periodo_id } : {}), data_inicio, data_fim, descricao, categoria } });
+  const novaDem = async (prazo_original, extra = {}) => pc('criar_demanda', { p: { assunto: 'Dem ' + prazo_original, prazo_original, ...extra } });
+  // o vencimento gravado tem de ser exatamente o do TypeScript (a prévia do cadastro) sobre a lista de dias que o servidor devolve
+  const igualTs = async (id) => { const d = await ler(id), t = ajustarPrazo(d.prazo_original, await dias()); return d.prazo === t.prazo && (d.prazo_ajuste ?? null) === (t.ajuste ?? null); };
+  const intervalo = async (pid) => { const l = (await dias()).filter((x) => x.periodo_id === pid).map((x) => x.data).sort(); return l.length ? `${l[0]}..${l.at(-1)}:${l.length}` : 'vazio'; };
+
+  // 1) o critério obrigatório
+  const d1 = await pc('criar_demanda', { p: { assunto: 'Chegou em 14/12', chegou_em: '2026-12-14', prazo_dias: 15 } });
+  ok(d1.prazo_original === '2026-12-29' && d1.prazo === '2026-12-29', 'períodos: chegada em 14/12/2026 mais 15 dias corridos dá o vencimento original de 29/12/2026 (sem indisponibilidade, igual ao original)');
+  const op1 = novoOp();
+  const r1 = await pc('salvar_periodo_indisponivel', per('2026-12-24', '2026-12-29', 'Recesso', 'Feriado', undefined, op1));
+  const d1b = await ler(d1.id);
+  ok(r1.dias.length === 6 && r1.recalculadas === 1 && r1.repetida === false && d1b.prazo_original === '2026-12-29' && d1b.prazo === '2026-12-23', `períodos: indisponibilidade de 24/12 a 29/12 sem outra em 23/12: o vencimento efetivo recua para 23/12 e o original (29/12) é preservado (${d1b.prazo_original} -> ${d1b.prazo})`);
+  ok(/^29\/12 feriado: Recesso; 28\/12 feriado: Recesso; 27\/12 domingo, feriado: Recesso; 26\/12 sábado, feriado: Recesso; 25\/12 feriado: Recesso; 24\/12 feriado: Recesso$/.test(d1b.prazo_ajuste) && (await igualTs(d1.id)), 'períodos: o motivo do ajuste lista cada dia pulado (inclusive domingo e sábado dentro do período) e o TypeScript da prévia dá o mesmo vencimento e o mesmo texto');
+  ok(r1.dias.every((x) => x.periodo_id === r1.periodo_id) && new Set((await dias()).map((x) => x.periodo_id)).size === 1, 'períodos: os seis dias saem ligados pelo mesmo periodo_id (escolhido pelo banco, não pela tela)');
+  const natal = await pc('salvar_dia_indisponivel', { p: { data: '2027-12-25', descricao: 'Natal', categoria: 'Feriado' } });
+  ok(Object.keys(natal.dia).sort().join() === 'categoria,criado_em,data,descricao,id' && !('periodo_id' in natal.dia), 'períodos: um dia avulso continua sendo uma linha com as mesmas cinco chaves de antes (sem periodo_id): compatível com a cópia versão 4');
+  await pc('excluir_dia_indisponivel', { p_id: natal.dia.id });
+
+  // 2) cursos, semana e recesso na virada do ano (cada caso com o seu vencimento esperado e o TypeScript conferindo)
+  const casos = [
+    ['curso de um dia', '2027-03-10', '2027-03-10', '2027-03-10', '2027-03-09'],
+    ['curso de três dias seguidos', '2027-04-14', '2027-04-16', '2027-04-16', '2027-04-13'],
+    ['uma semana inteira (segunda a domingo)', '2027-05-10', '2027-05-16', '2027-05-14', '2027-05-07'],
+    ['recesso que atravessa dezembro e janeiro', '2027-12-20', '2028-01-06', '2028-01-03', '2027-12-17'],
+  ];
+  for (const [nome, ini, fim, orig, esperado] of casos) {
+    const d = await novaDem(orig);
+    const r = await pc('salvar_periodo_indisponivel', per(ini, fim, nome));
+    const depois = await ler(d.id);
+    ok(r.dias.length === diasNoPeriodo(ini, fim) && depois.prazo_original === orig && depois.prazo === esperado && (await igualTs(d.id)), `períodos: ${nome} (${ini} a ${fim}, ${r.dias.length} dia(s)): o vencimento de ${orig} recua para ${esperado} e coincide com o TypeScript (${depois.prazo})`);
+  }
+  const antes = await novaDem('2027-05-06'), depois = await novaDem('2027-05-17');
+  ok((await ler(antes.id)).prazo === '2027-05-06' && (await ler(depois.id)).prazo === '2027-05-17', 'períodos: vencimento antes ou depois do período não é tocado');
+
+  // 3) intervalo inválido: recusado com a mensagem certa, sem gravar nada (a tela mantém o que foi digitado)
+  const total0 = await linhas(), snap0 = JSON.stringify(await pc('listar_demandas', { p_arquivadas: false })), ops0 = Number((await p.query('select count(*)::int n from public.periodos_operacoes')).rows[0].n);
+  const invalidos = [
+    [per('2027-06-10', '2027-06-09'), /A data final não pode ser anterior à data inicial\./],
+    [per('2027-06-10', '2028-06-10'), /O período passa de 366 dias\. Cadastre em mais de um período\./],
+    [{ p: { operacao_id: novoOp(), data_inicio: '2027-06-10', descricao: 'X', categoria: 'Feriado' } }, /Informe a data final\./],
+    [{ p: { operacao_id: novoOp(), data_fim: '2027-06-10', descricao: 'X', categoria: 'Feriado' } }, /Informe a data inicial\./],
+    [per('2027-06-10', '2027-06-11', '   '), /Descreva o período/],
+    [per('2027-06-10', '2027-06-11', 'X', 'Outro'), /Escolha Feriado ou Evento externo/],
+    [{ p: { data_inicio: '2027-06-10', data_fim: '2027-06-11', descricao: 'X', categoria: 'Feriado' } }, /Identificador da operação não informado/],
+    [per('2027-06-10', '2027-06-11', 'X', 'Feriado', 'ab0d00bb-0000-4000-8000-000000000999'), /Período não encontrado/],
+  ];
+  const msgs = [];
+  for (const [arg, re] of invalidos) msgs.push(re.test((await erro(pc('salvar_periodo_indisponivel', arg))) ?? ''));
+  ok(msgs.every(Boolean) && (await linhas()) === total0 && JSON.stringify(await pc('listar_demandas', { p_arquivadas: false })) === snap0 && Number((await p.query('select count(*)::int n from public.periodos_operacoes')).rows[0].n) === ops0, `períodos: intervalo invertido, acima de 366 dias, sem data inicial ou final, sem descrição, com tipo inválido, sem identidade da operação e para alterar período que não existe são recusados com a mensagem certa, sem gravar, recalcular nem registrar a operação (${msgs.map((m) => (m ? 'ok' : 'falhou')).join(',')})`);
+  const corrigido = await pc('salvar_periodo_indisponivel', per('2027-06-10', '2027-06-11'));
+  ok(corrigido.dias.length === 2 && (await linhas()) === total0 + 2, 'períodos: depois da correção, o mesmo cadastro grava (os dois dias, uma vez)');
+  await pc('excluir_periodo_indisponivel', { p_periodo: corrigido.periodo_id });
+
+  // 4) a identidade da OPERAÇÃO é uma e a do PERÍODO é outra
+  const antesRep = await linhas();
+  const rep = await pc('salvar_periodo_indisponivel', per('2026-12-24', '2026-12-29', 'Recesso', 'Feriado', undefined, op1));
+  ok(rep.repetida === true && rep.periodo_id === r1.periodo_id && rep.dias.length === 6 && rep.recalculadas === 0 && (await linhas()) === antesRep && (await ler(d1.id)).prazo === '2026-12-23', 'operação: repetir a MESMA operação (resposta perdida, clique duplo) devolve o período já criado, sem duplicar, sem recalcular e sem mudar o vencimento');
+  const opB = novoOp();
+  const rB = await pc('salvar_periodo_indisponivel', per('2027-09-06', '2027-09-08', 'Curso B', 'Evento externo', undefined, opB));
+  ok(rB.periodo_id !== r1.periodo_id && rB.dias.length === 3 && (await intervalo(r1.periodo_id)) === '2026-12-24..2026-12-29:6' && (await intervalo(rB.periodo_id)) === '2027-09-06..2027-09-08:3', 'operação: uma operação NOVA com outro conteúdo cria outro período e não toca no anterior (o período A segue 24/12 a 29/12; o B é 06/09 a 08/09)');
+  const conf = await pc('conferir_periodo_por_operacao', { p_operacao: op1 }), confB = await pc('conferir_periodo_por_operacao', { p_operacao: opB }), nada = await pc('conferir_periodo_por_operacao', { p_operacao: 'ab0d00cc-0000-4000-8000-000000000001' });
+  ok(conf.encontrada === true && conf.cancelada === false && conf.periodo_id === r1.periodo_id && conf.dias.length === 6 && confB.encontrada && confB.periodo_id === rB.periodo_id && nada.encontrada === false && nada.cancelada === true && nada.dias.length === 0, 'operação: a conferência depois de uma resposta perdida diz, pela identidade, se foi aplicada (e qual período); uma operação desconhecida não foi aplicada e fica CANCELADA');
+  // alterar o período: com o periodo_id e uma operação nova; a repetição de uma alteração antiga não desfaz a alteração mais recente
+  const opE1 = novoOp(), opE2 = novoOp();
+  const enc = await pc('salvar_periodo_indisponivel', per('2026-12-24', '2026-12-26', 'Recesso', 'Feriado', r1.periodo_id, opE1));
+  const dEnc = await ler(d1.id);
+  ok(enc.periodo_id === r1.periodo_id && enc.dias.length === 3 && enc.recalculadas === 1 && dEnc.prazo === '2026-12-29' && dEnc.prazo_ajuste === null && (await igualTs(d1.id)), 'períodos: encurtar o período (editar com o periodo_id) recalcula na mesma operação: o dia 29/12 volta a ficar disponível e o vencimento volta ao original');
+  const amp = await pc('salvar_periodo_indisponivel', per('2026-12-24', '2026-12-30', 'Recesso', 'Feriado', r1.periodo_id, opE2));
+  ok(amp.dias.length === 7 && (await ler(d1.id)).prazo === '2026-12-23' && (await igualTs(d1.id)), 'períodos: ampliar o período além do vencimento original também recalcula (24/12 a 30/12: o vencimento volta a 23/12)');
+  const velha = await pc('salvar_periodo_indisponivel', per('2026-12-24', '2026-12-26', 'Recesso', 'Feriado', r1.periodo_id, opE1));
+  ok(velha.repetida === true && velha.dias.length === 7 && (await intervalo(r1.periodo_id)) === '2026-12-24..2026-12-30:7' && (await ler(d1.id)).prazo === '2026-12-23', 'operação: a repetição tardia de uma alteração antiga devolve o estado de agora e NÃO desfaz a alteração mais recente');
+  const exc = await pc('excluir_periodo_indisponivel', { p_periodo: r1.periodo_id });
+  ok(exc.excluido === true && exc.dias === 7 && exc.recalculadas === 1 && (await ler(d1.id)).prazo === '2026-12-29', 'períodos: excluir o período inteiro remove os dias e devolve o vencimento ao original');
+  ok(/Período não encontrado/.test((await erro(pc('excluir_periodo_indisponivel', { p_periodo: r1.periodo_id }))) ?? ''), 'períodos: excluir um período que não existe (ou já foi excluído) é recusado com mensagem clara');
+  const aposExcluir = await pc('conferir_periodo_por_operacao', { p_operacao: op1 });
+  ok(aposExcluir.encontrada === true && aposExcluir.cancelada === false && aposExcluir.dias.length === 0, 'operação: depois de o período ser excluído, a conferência diz que a operação foi aplicada e que o período já não existe');
+  ok(/Período não encontrado/.test((await erro(pc('salvar_periodo_indisponivel', per('2026-12-24', '2026-12-26', 'Recesso', 'Feriado', r1.periodo_id)))) ?? ''), 'períodos: alterar um período que foi excluído (em outro aparelho) é recusado em vez de recriá-lo em silêncio');
+
+  // 4b) GRAVAÇÃO TARDIA: a conferência que não encontra a operação a cancela; o pedido atrasado é recusado e corrigir o preenchimento não duplica
+  {
+    const atrasada = novoOp(), antesT = await linhas();
+    const c1 = await pc('conferir_periodo_por_operacao', { p_operacao: atrasada });   // a resposta se perdeu; o pedido A ainda não chegou ao banco
+    ok(c1.encontrada === false && c1.cancelada === true && (await linhas()) === antesT, 'tardia: a conferência que não encontra a operação diz que não foi gravada e a CANCELA (uma consulta sem resultado não deixa a operação aberta)');
+    const tardio = await erro(pc('salvar_periodo_indisponivel', per('2027-10-04', '2027-10-06', 'Curso atrasado', 'Feriado', undefined, atrasada)));
+    ok(/foi cancelada depois de uma conferência/.test(tardio ?? '') && (await linhas()) === antesT, 'tardia (d): o pedido ORIGINAL chega depois da consulta sem resultado e é RECUSADO: nada é gravado, nada é recalculado');
+    const corrigida = await pc('salvar_periodo_indisponivel', per('2027-10-04', '2027-10-07', 'Curso atrasado', 'Feriado'));   // a correção do preenchimento, com identidade nova
+    const tardio2 = await erro(pc('salvar_periodo_indisponivel', per('2027-10-04', '2027-10-06', 'Curso atrasado', 'Feriado', undefined, atrasada)));
+    const cC = await pc('conferir_periodo_por_operacao', { p_operacao: atrasada });
+    ok(corrigida.dias.length === 4 && !!tardio2 && cC.cancelada === true && cC.encontrada === false && (await linhas()) === antesT + 4 && (await intervalo(corrigida.periodo_id)) === '2027-10-04..2027-10-07:4', 'tardia (b): corrigir o preenchimento depois de "não foi gravado" grava UMA vez (04/10 a 07/10); o pedido antigo, mesmo reenviado de novo, segue recusado e a conferência repetida continua dizendo cancelada');
+    // o contrário: a gravação termina antes da conferência: a conferência a encontra e o reenvio idêntico é só repetição
+    const normal = novoOp(), gravada = await pc('salvar_periodo_indisponivel', per('2027-10-11', '2027-10-13', 'Curso normal', 'Feriado', undefined, normal));
+    const cN = await pc('conferir_periodo_por_operacao', { p_operacao: normal }), reenvio = await pc('salvar_periodo_indisponivel', per('2027-10-11', '2027-10-13', 'Curso normal', 'Feriado', undefined, normal));
+    ok(cN.encontrada === true && cN.cancelada === false && reenvio.repetida === true && reenvio.periodo_id === gravada.periodo_id && (await intervalo(gravada.periodo_id)) === '2027-10-11..2027-10-13:3', 'tardia (a): se a gravação terminou antes da conferência, a conferência a encontra (não cancela) e o reenvio idêntico apenas repete, sem duplicar');
+    // outro período depois de uma tentativa incerta cancelada: identidade nova, nada herdado, nada sobrescrito
+    const incertaA = novoOp(); await pc('conferir_periodo_por_operacao', { p_operacao: incertaA });
+    const outro = await pc('salvar_periodo_indisponivel', per('2027-10-18', '2027-10-20', 'Outro curso'));
+    ok(outro.periodo_id !== gravada.periodo_id && (await intervalo(gravada.periodo_id)) === '2027-10-11..2027-10-13:3' && (await intervalo(outro.periodo_id)) === '2027-10-18..2027-10-20:3', 'tardia (c): um período DIFERENTE depois de uma tentativa incerta cancelada é um período novo e não toca no anterior');
+    for (const pid of [corrigida.periodo_id, gravada.periodo_id, outro.periodo_id]) await pc('excluir_periodo_indisponivel', { p_periodo: pid });
+  }
+
+  // 4c) DIA AVULSO: cadastrar um dia é um período de UM dia, pela mesma identidade da operação (nenhum segundo protocolo). Resposta perdida, falha antes da gravação, conferência contra pedido
+  // atrasado e registros legítimos que coincidem em data e descrição.
+  {
+    const { ajustarPrazo } = await import('../src/lib/prazos.ts');
+    const um = (data, descricao, operacao_id = novoOp(), categoria = 'Feriado') => per(data, data, descricao, categoria, undefined, operacao_id);
+    const base = await linhas();
+    // (1) gravada com a resposta perdida, seguida de reenvio da MESMA operação: um dia só
+    const op1d = novoOp(), g1 = await pc('salvar_periodo_indisponivel', um('2027-11-03', 'Dia do Servidor', op1d));   // a resposta se perdeu depois de gravar
+    const re1 = await pc('salvar_periodo_indisponivel', um('2027-11-03', 'Dia do Servidor', op1d));
+    ok(g1.dias.length === 1 && re1.repetida === true && re1.periodo_id === g1.periodo_id && (await linhas()) === base + 1 && (await intervalo(g1.periodo_id)) === '2027-11-03..2027-11-03:1', 'dia avulso (1): gravado com a resposta perdida, o reenvio da mesma operação só repete (um dia, uma linha, sem duplicar)');
+    const c1d = await pc('conferir_periodo_por_operacao', { p_operacao: op1d });
+    ok(c1d.encontrada === true && c1d.cancelada === false && c1d.dias.length === 1 && (await linhas()) === base + 1, 'dia avulso (1): a conferência depois da gravação a encontra (não cancela) e devolve o dia');
+    // (2) falha ANTES da gravação (o pedido nunca chegou), seguida de reenvio da mesma operação: grava uma vez
+    const op2d = novoOp(), g2 = await pc('salvar_periodo_indisponivel', um('2027-11-10', 'Dia do Servidor B', op2d));
+    ok(g2.repetida === false && g2.dias.length === 1 && (await linhas()) === base + 2, 'dia avulso (2): falha antes da gravação e reenvio da mesma operação, sem conferência no meio: grava exatamente uma vez');
+    // (3) conferência concorrendo com pedido atrasado: a conferência vence, cancela, e o pedido original é recusado; um cadastro novo grava uma só vez
+    const op3d = novoOp(), c3 = await pc('conferir_periodo_por_operacao', { p_operacao: op3d });
+    const tardio1 = await erro(pc('salvar_periodo_indisponivel', um('2027-11-17', 'Dia atrasado', op3d)));
+    ok(c3.encontrada === false && c3.cancelada === true && /foi cancelada depois de uma conferência/.test(tardio1 ?? '') && (await linhas()) === base + 2, 'dia avulso (3): a conferência que não encontra cancela a operação e o pedido ORIGINAL que chega depois é recusado (nada gravado, nada recalculado)');
+    const novo3 = await pc('salvar_periodo_indisponivel', um('2027-11-17', 'Dia atrasado'));
+    const tardio2 = await erro(pc('salvar_periodo_indisponivel', um('2027-11-17', 'Dia atrasado', op3d)));
+    ok(novo3.dias.length === 1 && !!tardio2 && (await linhas()) === base + 3, 'dia avulso (3): o cadastro novo (identidade nova) grava um dia, e o pedido antigo reenviado segue recusado: nunca dois');
+    // (4) registros LEGÍTIMOS com a mesma data e descrição não são fundidos por coincidência: um dia avulso de antes (sem identidade), a mesma data de um dia novo e uma segunda operação deliberada
+    const d3 = await novaDem('2027-11-03');
+    const legado = await pc('salvar_dia_indisponivel', { p: { data: '2027-11-03', descricao: 'Dia do Servidor', categoria: 'Feriado' } });   // o dia avulso antigo (sem operação)
+    const deliberado = await pc('salvar_periodo_indisponivel', um('2027-11-03', 'Dia do Servidor'));                                       // outra operação, de propósito
+    const n03 = Number((await p.query("select count(*)::int n from public.dias_indisponiveis where data = '2027-11-03'")).rows[0].n);
+    ok(n03 === 3 && !!legado.dia.id && deliberado.periodo_id !== g1.periodo_id, 'dia avulso (4): três registros com a MESMA data e a MESMA descrição (o período de um dia, o dia avulso antigo e uma segunda operação deliberada) coexistem: nada é fundido por coincidência');
+    const ajustado = await ler(d3.id), esperado = ajustarPrazo('2027-11-03', await dias());
+    ok(ajustado.prazo === esperado.prazo && ajustado.prazo !== '2027-11-03' && esperado.ajuste.split('Dia do Servidor').length === 2, 'dia avulso (4): o cálculo usa a união (a data conta uma vez) e a explicação lista o mesmo motivo uma só vez');
+    await pc('excluir_periodo_indisponivel', { p_periodo: g1.periodo_id });
+    await pc('excluir_periodo_indisponivel', { p_periodo: deliberado.periodo_id });
+    ok((await ler(d3.id)).prazo === ajustado.prazo, 'dia avulso (4): excluir os dois períodos de um dia não tira a indisponibilidade que o dia avulso antigo ainda sustenta');
+    await pc('excluir_dia_indisponivel', { p_id: legado.dia.id });
+    ok((await ler(d3.id)).prazo === '2027-11-03', 'dia avulso (4): excluído o último registro da data, o vencimento volta ao original');
+    for (const pid of [g2.periodo_id, novo3.periodo_id]) await pc('excluir_periodo_indisponivel', { p_periodo: pid });
+    ok((await linhas()) === base, 'dia avulso: nenhuma linha sobrou dos cenários (o banco volta ao estado de antes)');
+  }
+
+  // 5) SOBREPOSIÇÕES: cada registro é dono das suas linhas, o intervalo fica íntegro e o cálculo usa a união
+  const natal2 = await pc('salvar_dia_indisponivel', { p: { data: '2026-12-24', descricao: 'Véspera de Natal', categoria: 'Feriado' } });
+  const dSob = await novaDem('2026-12-29');
+  const sob = await pc('salvar_periodo_indisponivel', per('2026-12-24', '2026-12-29', 'Recesso'));
+  const n24 = Number((await p.query("select count(*)::int n from public.dias_indisponiveis where data = '2026-12-24'")).rows[0].n);
+  ok(sob.dias.length === 6 && n24 === 2 && (await intervalo(sob.periodo_id)) === '2026-12-24..2026-12-29:6', `sobreposição: o período de 24/12 a 29/12 sobre um dia avulso já cadastrado em 24/12 continua 24/12 a 29/12 (6 dias, a linha de 24/12 é dele; o dia avulso segue independente: ${n24} linhas em 24/12)`);
+  const dSobDepois = await ler(dSob.id);
+  ok(/24\/12 feriado: Véspera de Natal, feriado: Recesso$/.test(dSobDepois.prazo_ajuste) && dSobDepois.prazo === '2026-12-23' && (await igualTs(dSob.id)), 'sobreposição: no dia coberto pelos dois registros o motivo lista cada um uma vez e o TypeScript coincide');
+  await pc('excluir_dia_indisponivel', { p_id: natal2.dia.id });
+  ok((await ler(dSob.id)).prazo === '2026-12-23' && (await intervalo(sob.periodo_id)) === '2026-12-24..2026-12-29:6', 'sobreposição: excluir o dia avulso NÃO tira a indisponibilidade de 24/12, que o período ainda sustenta (o vencimento segue 23/12 e o período segue inteiro)');
+  const sob2 = await pc('salvar_periodo_indisponivel', per('2026-12-27', '2026-12-31', 'Fechamento'));
+  await pc('excluir_periodo_indisponivel', { p_periodo: sob.periodo_id });
+  const dSob3 = await ler(dSob.id);
+  ok(dSob3.prazo === '2026-12-25' && (await igualTs(dSob.id)) && (await intervalo(sob2.periodo_id)) === '2026-12-27..2026-12-31:5', 'sobreposição: excluir o período A (24 a 29) mantém indisponíveis os dias 27 a 31 que o período B sustenta, e só 24 e 25 voltam a ficar livres (o vencimento de 29/12 recua para 25/12)');
+  const edSob = await pc('salvar_periodo_indisponivel', per('2026-12-28', '2027-01-02', 'Fechamento', 'Feriado', sob2.periodo_id));
+  ok((await intervalo(sob2.periodo_id)) === '2026-12-28..2027-01-02:6' && (await igualTs(dSob.id)) && edSob.dias.length === 6, 'sobreposição: editar o período carrega e grava o intervalo inteiro (28/12 a 02/01), com o recálculo pela união');
+  await pc('excluir_periodo_indisponivel', { p_periodo: sob2.periodo_id });
+  ok((await ler(dSob.id)).prazo === '2026-12-29', 'sobreposição: sem nenhum registro sustentando, o vencimento volta ao original');
+  // repetir a mesma operação sobre sobreposição não duplica
+  const opS = novoOp(), s1 = await pc('salvar_periodo_indisponivel', per('2027-02-01', '2027-02-03', 'Curso S', 'Feriado', undefined, opS)), totS = await linhas();
+  const s2 = await pc('salvar_periodo_indisponivel', per('2027-02-01', '2027-02-03', 'Curso S', 'Feriado', undefined, opS));
+  ok(s2.repetida && s2.periodo_id === s1.periodo_id && (await linhas()) === totS, 'sobreposição: repetir a mesma operação não duplica o período');
+  await pc('excluir_periodo_indisponivel', { p_periodo: s1.periodo_id });
+
+  // 6) o retorno do setor vem do servidor, com o calendário completo
+  const rp = await pc('salvar_periodo_indisponivel', per('2026-12-24', '2026-12-29'));
+  const dr = await pc('criar_demanda', { p: { assunto: 'Aguarda o setor', etapa: 'Aguardando retorno', setor: 'PGM' } });
+  await pc('atualizar_demanda', { p_id: dr.id, p: { encaminhada_em: '2026-12-19' } });
+  const lista = await pc('listar_demandas', { p_arquivadas: false }), drl = lista.find((x) => x.id === dr.id), semRet = lista.find((x) => x.id === d1.id);
+  const sqlRet = (await p.query("select public.retorno_setor_data($1, '2026-12-19', null, now())::text as d", [P])).rows[0].d;
+  const semCampo = { ...drl }; delete semCampo.retorno;
+  const tsRet = retornoReferencia(semCampo, await dias());
+  ok(drl.retorno.data === '2026-12-23' && drl.retorno.original === '2026-12-29' && drl.retorno.base === '2026-12-19' && drl.retorno.origem === 'encaminhamento' && sqlRet === '2026-12-23' && tsRet.data === '2026-12-23' && tsRet.ajuste === drl.retorno.ajuste && semRet.retorno === null, `retorno: o servidor entrega o retorno do setor (10 dias de 19/12 = 29/12, antecipado para 23/12 pelo período), igual à função da rotina e ao cálculo em TypeScript; a demanda fora de Aguardando retorno tem retorno nulo (${drl.retorno.data})`);
+  await pc('excluir_periodo_indisponivel', { p_periodo: rp.periodo_id });
+  const drDepois = (await pc('buscar_demanda', { p_id: dr.id }));
+  ok(drDepois.retorno.data === '2026-12-29' && drDepois.retorno.ajuste === null, 'retorno: sem gravar nada, o valor acompanha o calendário (excluído o período, o retorno volta a 29/12)');
+  await pc('arquivar_demanda', { p_id: dr.id });
+  ok((await pc('buscar_demanda', { p_id: dr.id })).retorno === null, 'retorno: demanda arquivada não tem retorno (nulo)');
+  await pc('desarquivar_demanda', { p_id: dr.id });
+  // todas as combinações de base: encaminhamento, reiteração (mais recente ou igual) e entrada na etapa, com o calendário do período
+  const rq = await pc('salvar_periodo_indisponivel', per('2026-12-20', '2027-01-08', 'Recesso longo'));
+  const casosRet = [['2026-12-14', null], [null, '2026-12-16'], ['2026-12-10', '2026-12-18'], ['2026-12-18', '2026-12-10'], ['2026-12-18', '2026-12-18'], [null, null]];
+  let difRet = 0, anteRet = 0;
+  for (const [enc, rei] of casosRet) {
+    const x = await pc('criar_demanda', { p: { assunto: 'R ' + enc + rei, etapa: 'Aguardando retorno', setor: 'S' } });
+    await pc('atualizar_demanda', { p_id: x.id, p: { encaminhada_em: enc, reiterada_em: rei } });
+    const s = await ler(x.id), { retorno: srv, ...sem } = s, loc = retornoReferencia(sem, await dias());
+    if (loc.ajuste) anteRet++;
+    if (!srv || srv.data !== loc.data || srv.original !== loc.original || srv.base !== loc.base || srv.origem !== loc.origem || (srv.ajuste ?? null) !== (loc.ajuste ?? null)) difRet++;
+  }
+  ok(difRet === 0 && anteRet >= 3, `retorno: nas seis combinações de encaminhamento, reiteração e entrada na etapa, o valor do servidor coincide em tudo (data, original, base, origem e explicação) com a regra de referência dos testes (${anteRet} antecipadas, ${difRet} divergências)`);
+  await pc('excluir_periodo_indisponivel', { p_periodo: rq.periodo_id });
+  // as REGRAS do retorno, direto no servidor e com valores escritos à mão (não dependem de nenhuma segunda implementação): são a referência de todas as telas, que só leem o campo `retorno`
+  {
+    const Q = 'ab0d0000-0000-4000-8000-0000000000d3';
+    await p.exec(`insert into auth.users (id, email) values ('${Q}', 'ret@teste')`); await p.exec("insert into dmanda_privado.acesso_autorizado (email) values ('ret@teste')");
+    const qc = (f, a) => chamarComoUsuario(p, Q, f, a, { provedor: 'email' });
+    const ret = async (o, desde = '2026-11-03T15:00:00Z', etapa = 'Aguardando retorno') => {
+      const x = await qc('criar_demanda', { p: { assunto: 'Retorno', etapa } });
+      await p.query('update public.demandas set etapa_desde = $2 where id = $1', [x.id, desde]);
+      if (o) await qc('atualizar_demanda', { p_id: x.id, p: o });
+      return (await qc('buscar_demanda', { p_id: x.id })).retorno;
+    };
+    const r1 = await ret(null), noite = await ret(null, '2026-11-04T01:30:00Z'), enc = await ret({ encaminhada_em: '2026-11-05' }), reit = await ret({ encaminhada_em: '2026-11-05', reiterada_em: '2026-11-10' });
+    ok(r1.base === '2026-11-03' && r1.origem === 'entrada na etapa' && r1.data === '2026-11-13' && r1.original === '2026-11-13' && r1.ajuste === null, 'retorno (regra): sem encaminhamento a contagem parte do dia em que entrou na etapa: 10 dias corridos, exclui o primeiro e inclui o último');
+    ok(noite.base === '2026-11-03' && noite.data === '2026-11-13', 'retorno (regra): entrada às 22h30 de Brasília (01h30 UTC do dia seguinte) conta como o dia local');
+    ok(enc.base === '2026-11-05' && enc.origem === 'encaminhamento' && enc.original === '2026-11-15' && enc.data === '2026-11-13' && /15\/11 domingo; 14\/11 sábado/.test(enc.ajuste), 'retorno (regra): o encaminhamento vale mais que a entrada na etapa; limite no domingo antecipa para sexta e explica os dias pulados');
+    ok(reit.base === '2026-11-10' && reit.origem === 'reiteração' && reit.data === '2026-11-20', 'retorno (regra): a reiteração mais recente inicia nova contagem de 10 dias');
+    ok((await ret({ encaminhada_em: '2026-11-08', reiterada_em: '2026-11-02' })).origem === 'encaminhamento' && (await ret(null, '2026-11-03T15:00:00Z', 'Fazendo')) === null && (await ret(null, '2026-11-03T15:00:00Z', 'Aguardando Prefeita')) === null, 'retorno (regra): reiteração mais antiga que o encaminhamento não reinicia nada; fora de Aguardando retorno (e em Aguardando Prefeita) o retorno é nulo');
+    await qc('salvar_periodo_indisponivel', per('2026-11-13', '2026-11-13', 'Ponto facultativo', 'Feriado', undefined));
+    const fer = await ret({ encaminhada_em: '2026-11-05' });
+    ok(fer.data === '2026-11-12' && /13\/11 feriado: Ponto facultativo/.test(fer.ajuste), 'retorno (regra): dia indisponível cadastrado no limite antecipa para o anterior disponível, pela mesma regra dos prazos');
+  }
+
+  // 7) demanda finalizada não muda pelo período
+  const fin = await novaDem('2026-12-29'); await pc('concluir_demanda', { p_id: fin.id });
+  const rf = await pc('salvar_periodo_indisponivel', per('2026-12-24', '2026-12-29'));
+  ok((await ler(fin.id)).prazo === '2026-12-29', 'períodos: demanda finalizada não é recalculada pelo período (vale o calendário do momento em que for reaberta)');
+  await pc('excluir_periodo_indisponivel', { p_periodo: rf.periodo_id });
+
+  // 8) entrada direta, isolamento e privilégios
+  const svc = (f, x = {}) => p.transaction(async (tx) => { await tx.exec('set local role service_role'); return (await tx.query('select public.executar_como_titular($1, $2::jsonb) as r', [f, JSON.stringify(x)])).rows[0].r; });
+  const opSv = novoOp();
+  const viaSvc = await svc('salvar_periodo_indisponivel', per('2027-07-05', '2027-07-09', 'Semana de curso', 'Evento externo', undefined, opSv));
+  const confSvc = await svc('conferir_periodo_por_operacao', { p_operacao: opSv });
+  ok(viaSvc.dias.length === 5 && confSvc.encontrada === true && (await erro(svc('excluir_periodo_indisponivel', { p_id: viaSvc.periodo_id }))) !== null && (await svc('excluir_periodo_indisponivel', { p_periodo: viaSvc.periodo_id })).dias === 5, 'períodos: a entrada direta (executar_como_titular) grava, confere pela operação e exclui o período; argumento que não é parâmetro da função é recusado');
+  ok(!!(await erro(pc('salvar_periodo_indisponivel', per('2027-08-02', '2027-08-03'), X))) && !!(await erro(pc('excluir_periodo_indisponivel', { p_periodo: rB.periodo_id }, X))), 'períodos: quem não está na lista protegida não grava nem exclui período');
+  const confX = await pc('conferir_periodo_por_operacao', { p_operacao: op1 }, X).catch(() => null);
+  ok(!confX || confX.encontrada === false, 'períodos: quem não está na lista protegida também não enxerga as operações (RLS)');
+  const priv = (await p.query("select p.proname, has_function_privilege('anon', p.oid, 'execute') an, has_function_privilege('authenticated', p.oid, 'execute') au, has_function_privilege('service_role', p.oid, 'execute') sv from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('salvar_periodo_indisponivel','excluir_periodo_indisponivel','conferir_periodo_por_operacao','dias_do_periodo','retorno_setor_info') order by 1")).rows;
+  ok(priv.length === 5 && priv.every((x) => !x.an && x.au && !x.sv), 'períodos: as funções novas são executáveis só pelo usuário autenticado (e, por ele, pela entrada direta); anon e o papel de serviço direto, não');
+  const tab = (await p.query("select has_table_privilege('anon', 'public.periodos_operacoes', 'select') an, has_table_privilege('authenticated', 'public.periodos_operacoes', 'select') au, has_table_privilege('authenticated', 'public.periodos_operacoes', 'update') up, (select relrowsecurity from pg_class where oid = 'public.periodos_operacoes'::regclass) rls")).rows[0];
+  ok(!tab.an && tab.au && !tab.up && tab.rls === true, 'períodos: a tabela de operações tem RLS, anon não lê e o usuário só lê e insere');
+  await p.close();
+}
+
+// Sequência de 731 dias seguidos: o limite antigo de 400 dias recusava o vencimento (ajustar_prazo) ou devolvia, em silêncio, um dia ainda indisponível (retorno do setor).
+{
+  const { ajustarPrazo } = await import('../src/lib/prazos.ts');
+  const { retornoReferencia } = await import('./auxiliar-retorno.mjs');   // a regra do retorno escrita à parte, só para conferir o SQL
+  const L = 'ab0e0000-0000-4000-8000-0000000000e1';
+  const l = await abrirBancoTeste();
+  await l.exec(`insert into auth.users (id, email) values ('${L}', 'longo@teste')`); await l.exec("insert into dmanda_privado.acesso_autorizado (email) values ('longo@teste')");
+  const lc = (f, a) => chamarComoUsuario(l, L, f, a, { provedor: 'email' });
+  let n = 0; const op = () => `ab0e00aa-0000-4000-8000-${String(++n).padStart(12, '0')}`;
+  const dem = await lc('criar_demanda', { p: { assunto: 'Dentro do recesso longo', prazo_original: '2028-06-15' } });
+  const a = await lc('salvar_periodo_indisponivel', { p: { operacao_id: op(), data_inicio: '2027-01-01', data_fim: '2028-01-01', descricao: 'Fechamento 1', categoria: 'Evento externo' } });
+  const b = await lc('salvar_periodo_indisponivel', { p: { operacao_id: op(), data_inicio: '2028-01-02', data_fim: '2028-12-31', descricao: 'Fechamento 2', categoria: 'Evento externo' } });
+  const todos = await lc('listar_dias_indisponiveis', {});
+  const d = await lc('buscar_demanda', { p_id: dem.id }), t = ajustarPrazo('2028-06-15', todos);
+  ok(a.dias.length === 366 && b.dias.length === 365 && todos.length === 731 && d.prazo === '2026-12-31' && t.prazo === '2026-12-31' && d.prazo_ajuste === t.ajuste, `períodos: 731 dias seguidos (mais de 400): o vencimento de 15/06/2028 recua até 31/12/2026, o primeiro dia disponível, no banco e no TypeScript (${d.prazo})`);
+  const x = await lc('criar_demanda', { p: { assunto: 'Aguarda no ano longo', etapa: 'Aguardando retorno', setor: 'S' } });
+  await lc('atualizar_demanda', { p_id: x.id, p: { encaminhada_em: '2028-06-05' } });
+  const sx = await lc('buscar_demanda', { p_id: x.id });
+  const sql = (await l.query("select public.retorno_setor_data($1, '2028-06-05', null, now())::text as d", [L])).rows[0].d;
+  const ts = retornoReferencia({ etapa: 'Aguardando retorno', etapa_desde: new Date().toISOString(), encaminhada_em: '2028-06-05', reiterada_em: null, arquivada_em: null }, todos);
+  ok(sql === '2026-12-31' && ts.data === '2026-12-31' && sx.retorno.data === '2026-12-31', `períodos: o retorno do setor também passa de 400 dias seguidos e termina no primeiro dia disponível, não num dia indisponível (banco ${sql}, servidor ${sx.retorno.data}, TypeScript ${ts.data})`);
+  ok(/passa de 366/.test((await (async () => { try { await lc('salvar_periodo_indisponivel', { p: { operacao_id: op(), data_inicio: '2027-01-01', data_fim: '2028-01-02', descricao: 'X', categoria: 'Feriado' } }); return ''; } catch (e) { return e.message; } })())), 'períodos: 367 dias é recusado e 366 foi aceito (limite de um período)');
+  await l.close();
+}
+
+// Sequência aleatória com períodos SOBREPOSTOS: depois de QUALQUER mistura de períodos novos, editados e excluídos, dias avulsos e demandas que entram e saem de Finalizado, todo vencimento aberto é o que o ajuste
+// dá hoje sobre a união dos dias, e o retorno do setor do servidor é o da regra de referência dos testes.
+{
+  const { ajustarPrazo, somarDias } = await import('../src/lib/prazos.ts');
+  const { retornoReferencia } = await import('./auxiliar-retorno.mjs');   // a regra do retorno escrita à parte, só para conferir o SQL
+  let semente = 20261118;
+  const rnd = (n) => { semente = (semente * 1664525 + 1013904223) % 4294967296; return Math.floor((semente / 4294967296) * n); };
+  const R = 'ab0f0000-0000-4000-8000-0000000000f1';
+  const r = await abrirBancoTeste();
+  await r.exec(`insert into auth.users (id, email) values ('${R}', 'alea@teste')`); await r.exec("insert into dmanda_privado.acesso_autorizado (email) values ('alea@teste')");
+  const rc = (f, a) => chamarComoUsuario(r, R, f, a, { provedor: 'email' });
+  let nOp = 0; const op = () => `ab0f00aa-0000-4000-8000-${String(++nOp).padStart(12, '0')}`;
+  const dt = () => somarDias('2026-12-01', rnd(100)), cat = () => (rnd(2) ? 'Feriado' : 'Evento externo');
+  const periodos = [], avulsos = [], dem = [];
+  for (let i = 0; i < 18; i++) dem.push((await rc('criar_demanda', { p: { assunto: 'D' + i, prazo_original: dt() } })).id);
+  for (let i = 0; i < 8; i++) { const x = await rc('criar_demanda', { p: { assunto: 'R' + i, etapa: 'Aguardando retorno', setor: 'S' } }); await rc('atualizar_demanda', { p_id: x.id, p: { encaminhada_em: dt(), ...(rnd(2) ? { reiterada_em: dt() } : {}) } }); dem.push(x.id); }
+  let conferidas = 0, ajustadas = 0, diferentes = 0, retornos = 0, difRet = 0;
+  const conferir = async () => {
+    const dias = await rc('listar_dias_indisponiveis', {});
+    for (const d of await rc('listar_demandas', { p_arquivadas: false })) {
+      if (d.retorno) {
+        const { retorno: srv, ...sem } = d, loc = retornoReferencia(sem, dias); retornos++;
+        if (srv.data !== loc.data || srv.original !== loc.original || srv.base !== loc.base || srv.origem !== loc.origem || (srv.ajuste ?? null) !== (loc.ajuste ?? null)) difRet++;
+      }
+      if (d.etapa === 'Finalizado' || !d.prazo_original) continue;
+      const t = ajustarPrazo(d.prazo_original, dias); conferidas++; if (t.ajuste) ajustadas++;
+      if (d.prazo !== t.prazo || (d.prazo_ajuste ?? null) !== (t.ajuste ?? null)) diferentes++;
+    }
+  };
+  const faixa = () => { const ini = dt(); return [ini, somarDias(ini, rnd(12))]; };
+  for (let i = 0; i < 70; i++) {
+    const o = rnd(7);
+    if (o <= 1) { const [a, b] = faixa(); periodos.push((await rc('salvar_periodo_indisponivel', { p: { operacao_id: op(), data_inicio: a, data_fim: b, descricao: 'P' + (rnd(3)), categoria: cat() } })).periodo_id); }
+    else if (o === 2 && periodos.length) { const [a, b] = faixa(); await rc('salvar_periodo_indisponivel', { p: { operacao_id: op(), periodo_id: periodos[rnd(periodos.length)], data_inicio: a, data_fim: b, descricao: 'E' + (rnd(3)), categoria: cat() } }); }
+    else if (o === 3 && periodos.length) { const j = rnd(periodos.length); await rc('excluir_periodo_indisponivel', { p_periodo: periodos[j] }); periodos.splice(j, 1); }
+    else if (o === 4) avulsos.push((await rc('salvar_dia_indisponivel', { p: { data: dt(), descricao: 'P' + (rnd(3)), categoria: cat() } })).dia.id);
+    else if (o === 5 && avulsos.length) { const j = rnd(avulsos.length); await rc('excluir_dia_indisponivel', { p_id: avulsos[j] }); avulsos.splice(j, 1); }
+    else await rc('mover_etapa', { p_id: dem[rnd(18)], p_etapa: rnd(2) ? 'Finalizado' : 'Fazendo' });
+    if (i % 5 === 4) await conferir();
+  }
+  await conferir();
+  ok(diferentes === 0 && conferidas > 150 && ajustadas > 40, `períodos: depois de 70 mudanças aleatórias (períodos sobrepostos novos, editados e excluídos, dias avulsos com descrições repetidas, demandas entrando e saindo de Finalizado), todo vencimento aberto é o que o ajuste dá hoje sobre a união dos dias (${conferidas} conferências, ${ajustadas} antecipadas, ${diferentes} divergências)`);
+  ok(difRet === 0 && retornos > 100, `retorno: nessa mesma sequência, o retorno do setor entregue pelo servidor coincide em tudo com a regra de referência dos testes (${retornos} conferências, ${difRet} divergências)`);
+  await r.close();
 }
 
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));

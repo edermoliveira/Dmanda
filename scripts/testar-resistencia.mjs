@@ -386,8 +386,10 @@ await subir(PASTA_A);
     const antes = erros.length;
     await ir(pg, parte === 'eventos' ? '/agenda' : parte === 'entradas' ? '/entradas' : '/demandas');
     ok(f.vezes() >= 1, `falha parcial (${parte}): a resposta da carga conjunta foi alterada só na parte "${parte}"`);
-    const alerta = (await pg.$$eval('.erro-carga[role="alert"]', (e) => e.map((x) => x.textContent))).join(' | ');
-    ok(new RegExp(`Falha simulada em ${parte}`).test(alerta) && alerta.split('Falha simulada').length === 2, `falha parcial (${parte}): aparece o erro correspondente, uma só vez e só dessa parte (${alerta.slice(0, 80)})`);
+    // o aviso do sistema (uma origem só para a barra global e o aviso da tela): um problema por leitura que falhou, com o título da parte afetada e a ação "Carregar ... de novo"
+    const TITULO = { eventos: 'Os eventos da Agenda não carregaram', entradas: 'As entradas não carregaram', demandas: 'As demandas não carregaram' };
+    const avisos = await pg.$$eval('.erro-carga[data-aviso]', (e) => e.filter((x) => x.getClientRects().length > 0).map((x) => ({ id: x.getAttribute('data-aviso'), t: x.textContent })));
+    ok(avisos.length === 1 && avisos[0].id === parte && avisos[0].t.includes(TITULO[parte]) && /de novo/.test(avisos[0].t), `falha parcial (${parte}): aparece o aviso correspondente, uma só vez e só dessa parte (${avisos.map((a) => a.id).join(',')})`);
     const c = await contagens(pg);
     // as partes que não falharam chegaram certas
     if (parte !== 'entradas') ok(c.entradas === esperado.entradas && esperado.entradas > 0, `falha parcial (${parte}): as entradas chegaram certas (${c.entradas} de ${esperado.entradas})`);
@@ -402,7 +404,8 @@ await subir(PASTA_A);
     // tentar de novo recupera só a parte afetada
     f.parar();
     await irPara(pg, parte === 'eventos' ? 'agenda' : parte === 'entradas' ? 'entradas' : 'demandas');
-    await pg.click('.erro-carga[role="alert"] .btn:has-text("Tentar de novo")');
+    await pg.mouse.move(900, 700); await pg.evaluate(() => document.activeElement?.blur());   // o menu lateral expande com o mouse ou o foco dentro e cobriria o botão (que agora quebra de linha para a esquerda)
+    await pg.click('.erro-carga[data-aviso]:visible .btn:has-text("de novo")');
     await pg.waitForFunction(() => !document.querySelector('.erro-carga[role="alert"]'), null, { timeout: 20000 });
     await pg.waitForTimeout(500);
     const d = await contagens(pg);

@@ -110,24 +110,24 @@ for (const [nome, nav] of motores) for (const esquema of ['light', 'dark']) {
   const R = rotulo(nome, 390, esquema);
   ok((await pg.evaluate(() => document.querySelector('.app').dataset.tema)) === (esquema === 'dark' ? 'escuro' : 'claro'), `${R}: o tema do aplicativo é o pedido`);
   // rótulos associados: cada rótulo leva ao seu controle
-  const campos = { Data: '#cfg-data', Tipo: '#cfg-cat', Descrição: '#cfg-desc' };
+  const campos = { 'Data inicial': '#cfg-data', 'Data final (opcional)': '#cfg-fim', Tipo: '#cfg-cat', Descrição: '#cfg-desc' };
   for (const [r, sel] of Object.entries(campos)) {
     const id = await pg.getByLabel(r, { exact: true }).first().evaluate((e) => '#' + e.id).catch(() => null);
     ok(id === sel, `${R}: o rótulo "${r}" está associado ao controle ${sel}`);
   }
   // cada controle tem limite visível NA IMAGEM (borda com 3:1 sobre o fundo do quadro) e a altura de toque
   for (const [r, sel] of Object.entries(campos)) {
-    const alvo = r === 'Data' ? '.cfg-dias-form .campo-data' : sel;
+    const alvo = r === 'Data inicial' ? '.cfg-dias-form .campo-data:has(#cfg-data)' : r === 'Data final (opcional)' ? '.cfg-dias-form .campo-data:has(#cfg-fim)' : sel;
     const m = await foto(pg, alvo);
     const caixa = await pg.locator(alvo).first().boundingBox();
     ok(m.borda >= 3 && caixa.height >= 44 && caixa.width >= 200, `${R}: ${r} tem limite visível (${m.borda.toFixed(1)}:1 contra o quadro) e ${Math.round(caixa.width)}x${Math.round(caixa.height)} px`);
   }
   // data vazia: a dica "Escolher a data" aparece (tinta no campo) e o campo nativo, transparente, cobre a superfície inteira
-  const vazio = await foto(pg, '.cfg-dias-form .campo-data');
-  const dica = await pg.locator('.cfg-dias-form .campo-data-dica').boundingBox(), campo = await pg.locator('#cfg-data').boundingBox();
-  ok(await pg.locator('.cfg-dias-form .campo-data-dica').isVisible() && (await pg.locator('.cfg-dias-form .campo-data-dica').innerText()).includes('Escolher a data') && vazio.tinta > 40, `${R}: o campo Data vazio mostra "Escolher a data" (${vazio.tinta} pontos de tinta na imagem)`);
+  const vazio = await foto(pg, '.cfg-dias-form .campo-data:has(#cfg-data)');
+  const dica = await pg.locator('.cfg-dias-form .campo-data:has(#cfg-data) .campo-data-dica').first().boundingBox(), campo = await pg.locator('#cfg-data').boundingBox();
+  ok(await pg.locator('.cfg-dias-form .campo-data:has(#cfg-data) .campo-data-dica').isVisible() && (await pg.locator('.cfg-dias-form .campo-data:has(#cfg-data) .campo-data-dica').innerText()).includes('Escolher a data') && vazio.tinta > 40, `${R}: o campo Data vazio mostra "Escolher a data" (${vazio.tinta} pontos de tinta na imagem)`);
   ok(Math.abs(vazio.folgaTopo - vazio.folgaBase) <= 8 && vazio.folgaTopo >= 8, `${R}: a indicação do campo vazio fica centralizada na altura (folga de ${vazio.folgaTopo} px em cima e ${vazio.folgaBase} px embaixo, na imagem)`);
-  ok((await contrasteCss(pg, '.cfg-dias-form .campo-data-dica', 'color', '.cfg-form')) >= 4.5, `${R}: a dica do campo vazio tem contraste de texto (4,5:1)`);
+  ok((await contrasteCss(pg, '.cfg-dias-form .campo-data:has(#cfg-data) .campo-data-dica', 'color', '.cfg-form')) >= 4.5, `${R}: a dica do campo vazio tem contraste de texto (4,5:1)`);
   const alvo = await pg.evaluate(() => { const c = document.querySelector('#cfg-data').getBoundingClientRect(); return document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2)?.id; });
   ok(alvo === 'cfg-data' && dica.width > 80 && campo.width >= dica.width, `${R}: o toque no meio do campo cai no próprio campo de data (um só controle; o seletor nativo abre no aparelho)`);
   // foco por teclado: o anel aparece (a imagem muda e o contorno ganha contraste)
@@ -135,22 +135,22 @@ for (const [nome, nav] of motores) for (const esquema of ['light', 'dark']) {
   const comFoco = await foto(pg, '#cfg-desc'), semFoco = await foto(pg, '#cfg-cat');
   const foco = await pg.evaluate(() => { const e = document.querySelector('#cfg-desc'), c = getComputedStyle(e); return { ativo: document.activeElement === e, sombra: c.boxShadow, borda: c.borderTopColor }; });
   ok(foco.ativo && /\dpx/.test(foco.sombra) && comFoco.anel >= 3 && semFoco.anel < 1.3, `${R}: o foco do teclado mostra um anel de contorno (${comFoco.anel.toFixed(1)}:1 contra o quadro; sem foco ${semFoco.anel.toFixed(1)}:1)`);
-  await pg.focus('#cfg-cat'); await pg.keyboard.press('Shift+Tab'); await pg.waitForTimeout(150);
+  await pg.focus('#cfg-fim'); await pg.keyboard.press('Shift+Tab'); await pg.waitForTimeout(150);   // da data final, o Shift+Tab volta à data inicial
   const focoEm = await pg.evaluate(() => ({ id: document.activeElement?.id, vis: document.activeElement?.matches(':focus-visible'), sombra: getComputedStyle(document.activeElement).boxShadow }));
-  const focoData = await foto(pg, '.cfg-dias-form .campo-data');
+  const focoData = await foto(pg, '.cfg-dias-form .campo-data:has(#cfg-data)');
   ok(focoData.anel >= 3, `${R}: o foco no campo Data também mostra o anel (${focoData.anel.toFixed(1)}:1; foco em ${focoEm.id}, focus-visible ${focoEm.vis}, ${focoEm.sombra.slice(0, 50)})`);
   // erro: sem data, o aviso aparece em texto de alerta com contraste e o foco volta à data
   await pg.fill('#cfg-desc', 'Natal de prova'); await pg.click('.cfg-dias-form .btn.pri'); await pg.waitForSelector('.cfg-dias-form [role="alert"]');
   ok(/Informe a data/.test(await pg.textContent('.cfg-dias-form [role="alert"]')) && (await pg.evaluate(() => document.activeElement?.id)) === 'cfg-data' && (await contrasteCss(pg, '.cfg-dias-form [role="alert"]', 'color', '.cfg-form')) >= 4.5, `${R}: sem data o erro "Informe a data." aparece em alerta legível (4,5:1) e o foco volta ao campo`);
   // preenchido: seleção, exibição, gravação e o recálculo do vencimento
   await pg.selectOption('#cfg-cat', 'Feriado'); await pg.fill('#cfg-data', '2026-12-24');
-  ok((await pg.inputValue('#cfg-data')) === '2026-12-24' && (await pg.locator('.cfg-dias-form .campo-data-dica').innerText()).trim() === '24/12/2026' && (await pg.getAttribute('.cfg-dias-form .campo-data', 'data-vazio')) === null, `${R}: com a data escolhida a dica some e a data aparece no campo (24/12/2026)`);
-  const cheio = await foto(pg, '.cfg-dias-form .campo-data');
+  ok((await pg.inputValue('#cfg-data')) === '2026-12-24' && (await pg.locator('.cfg-dias-form .campo-data:has(#cfg-data) .campo-data-dica').innerText()).trim() === '24/12/2026' && (await pg.getAttribute('.cfg-dias-form .campo-data:has(#cfg-data)', 'data-vazio')) === null, `${R}: com a data escolhida a dica some e a data aparece no campo (24/12/2026)`);
+  const cheio = await foto(pg, '.cfg-dias-form .campo-data:has(#cfg-data)');
   ok(Math.abs(cheio.folgaTopo - cheio.folgaBase) <= 8 && cheio.folgaTopo >= 8, `${R}: a data preenchida fica centralizada na altura do campo (folga de ${cheio.folgaTopo} px em cima e ${cheio.folgaBase} px embaixo, na imagem)`);
   ok(cheio.tinta > 40 && cheio.borda >= 3, `${R}: o campo preenchido mostra a data na imagem (${cheio.tinta} pontos de tinta) e mantém a borda`);
   await pg.click('.cfg-dias-form .btn.pri'); await pg.waitForSelector('.cfg-lista li', { timeout: 20000 });
-  await pg.waitForFunction(() => document.querySelector('#cfg-desc').value === '' && document.querySelector('.cfg-dias-form .campo-data')?.dataset.vazio === 'sim', null, { timeout: 15000 }); // o formulário volta ao vazio depois da gravação
-  ok((await pg.textContent('.cfg-lista li')).includes('Natal de prova') && (await pg.inputValue('#cfg-desc')) === '' && (await pg.getAttribute('.cfg-dias-form .campo-data', 'data-vazio')) === 'sim', `${R}: o dia aparece na lista e o formulário volta ao vazio com a dica`);
+  await pg.waitForFunction(() => document.querySelector('#cfg-desc').value === '' && document.querySelector('.cfg-dias-form .campo-data:has(#cfg-data)')?.dataset.vazio === 'sim', null, { timeout: 15000 }); // o formulário volta ao vazio depois da gravação
+  ok((await pg.textContent('.cfg-lista li')).includes('Natal de prova') && (await pg.inputValue('#cfg-desc')) === '' && (await pg.getAttribute('.cfg-dias-form .campo-data:has(#cfg-data)', 'data-vazio')) === 'sim', `${R}: o dia aparece na lista e o formulário volta ao vazio com a dica`);
   if (esquema === 'light' && nome === motores[0][0]) {
     let j = await api(pg), d = j.demandas.find((x) => x.assunto === 'Vencimento de prova');
     ok(d.prazo === '2026-12-23' && /Natal de prova|feriado/i.test(d.prazo_ajuste || ''), `o Feriado cadastrado pelo novo campo antecipa o vencimento de 24/12 para 23/12 (${d.prazo}, ${d.prazo_ajuste})`);
@@ -162,7 +162,7 @@ for (const [nome, nav] of motores) for (const esquema of ['light', 'dark']) {
   await pg.waitForFunction(() => document.querySelector('.cfg-lista')?.textContent.includes('Natal editado'), null, { timeout: 15000 });
   ok(true, `${R}: a edição é gravada (Enter na descrição envia)`);
   // Tipo e Descrição: o seletor muda e a digitação chega ao campo
-  await pg.waitForFunction(() => document.querySelector('#cfg-desc').value === '' && document.querySelector('.cfg-dias-form .campo-data')?.dataset.vazio === 'sim', null, { timeout: 15000 }); // o formulário volta ao vazio depois da gravação
+  await pg.waitForFunction(() => document.querySelector('#cfg-desc').value === '' && document.querySelector('.cfg-dias-form .campo-data:has(#cfg-data)')?.dataset.vazio === 'sim', null, { timeout: 15000 }); // o formulário volta ao vazio depois da gravação
   await pg.selectOption('#cfg-cat', 'Evento externo').catch(() => {}); await pg.fill('#cfg-desc', 'Congresso de prova'); await pg.fill('#cfg-data', '2026-12-10');
   ok((await pg.inputValue('#cfg-cat')) === 'Evento externo' && (await pg.inputValue('#cfg-desc')) === 'Congresso de prova', `${R}: o seletor Tipo troca o valor e a descrição aceita a digitação`);
   await pg.click('.cfg-dias-form .btn.pri'); await pg.waitForFunction(() => document.querySelector('.cfg-lista')?.textContent.includes('Congresso de prova'), null, { timeout: 15000 });
@@ -192,7 +192,7 @@ for (const [nome, nav] of motores) for (const largura of [390, 820, 1360]) for (
     if (toque) ok(/rgba\(0, 0, 0, 0\)|transparent/.test(semDobra), `${R}, ${onde}: o valor nativo fica transparente em toque (não aparece duas vezes: ${semDobra})`);
     ok(a.ali === 'left' && a.alto >= 44 && a.util, `${R}, ${onde}: alinhado à esquerda (recuo ${a.padE}), 44 px de altura e o campo inteiro recebe o toque`);
   };
-  await ir(pg, '/config', '#cfg-data'); await medir('.cfg-dias-form .campo-data', 'Configurações');
+  await ir(pg, '/config', '#cfg-data'); await medir('.cfg-dias-form .campo-data:has(#cfg-data)', 'Configurações');
   await ir(pg, '/agenda', '.agd');
   await pg.locator('.agd-barra .opcoes button', { hasText: /^Dia$/ }).click(); await pg.waitForSelector('.agd[data-modo="hoje"]');
   await pg.click('button[aria-label="Cadastrar dia indisponível"]'); await pg.waitForSelector('.di-form .campo-data');
@@ -276,11 +276,11 @@ for (const [nome, nav] of motores) {
   const R = `${nome}, fora do iOS`;
   const { ctx, pg } = await novo(nav, { largura: 390, esquema: 'light', toque: true, ios: false });
   await ir(pg, '/config', '#cfg-data');
-  const base = await pg.evaluate(() => { const i = document.querySelector('#cfg-data'); return { dica: getComputedStyle(document.querySelector('.cfg-dias-form .campo-data-dica')).display, cor: getComputedStyle(i).color, coarse: matchMedia('(pointer: coarse)').matches, alt: i.getBoundingClientRect().height }; });
+  const base = await pg.evaluate(() => { const i = document.querySelector('#cfg-data'); return { dica: getComputedStyle(document.querySelector('.cfg-dias-form .campo-data:has(#cfg-data) .campo-data-dica')).display, cor: getComputedStyle(i).color, coarse: matchMedia('(pointer: coarse)').matches, alt: i.getBoundingClientRect().height }; });
   ok(base.dica === 'none' && !/rgba\(0, 0, 0, 0\)|transparent/.test(base.cor) && base.alt >= 44, `${R}: com toque (pointer: coarse = ${base.coarse}) mas sem iOS, a dica não é desenhada, o valor nativo tem cor própria (${base.cor}) e o campo mede ${base.alt} px`);
   if (nome === 'Edge') {
     await pg.focus('#cfg-data'); await pg.keyboard.type('25'); await pg.waitForTimeout(200);
-    const parcial = await foto(pg, '.cfg-dias-form .campo-data');
+    const parcial = await foto(pg, '.cfg-dias-form .campo-data:has(#cfg-data)');
     ok(parcial.tinta > 40, `${R}: digitar só o dia deixa a digitação visível no campo (tinta ${parcial.tinta})`);
     await pg.keyboard.type('122026'); await pg.waitForTimeout(150);
     ok((await pg.inputValue('#cfg-data')) === '2026-12-25', `${R}: digitar a data pelo teclado completa o campo (${await pg.inputValue('#cfg-data')})`);
@@ -300,9 +300,9 @@ for (const [nome, nav] of motores) {
   // cores forçadas com a camada do iOS simulada: a dica some e o valor nativo (cor imposta pelo navegador) é o único texto
   const { ctx, pg } = await novo(motores[0][1], { largura: 390, toque: true, ios: true });
   await ir(pg, '/config', '#cfg-data');
-  const sem = await pg.evaluate(() => getComputedStyle(document.querySelector('.cfg-dias-form .campo-data-dica')).display);
+  const sem = await pg.evaluate(() => getComputedStyle(document.querySelector('.cfg-dias-form .campo-data:has(#cfg-data) .campo-data-dica')).display);
   await pg.emulateMedia({ forcedColors: 'active' }); await pg.fill('#cfg-data', '2026-12-25'); await pg.waitForTimeout(200);
-  const f = await pg.evaluate(() => ({ dica: getComputedStyle(document.querySelector('.cfg-dias-form .campo-data-dica')).display, forcado: matchMedia('(forced-colors: active)').matches, cor: getComputedStyle(document.querySelector('#cfg-data')).color }));
+  const f = await pg.evaluate(() => ({ dica: getComputedStyle(document.querySelector('.cfg-dias-form .campo-data:has(#cfg-data) .campo-data-dica')).display, forcado: matchMedia('(forced-colors: active)').matches, cor: getComputedStyle(document.querySelector('#cfg-data')).color }));
   ok(sem === 'flex' && f.forcado && f.dica === 'none' && !/rgba\(0, 0, 0, 0\)/.test(f.cor), `cores forçadas: com a camada ativa a dica fica ${sem}; em alto contraste vira ${f.dica} e o valor nativo (${f.cor}) é o único texto`);
   await ctx.close();
 }
