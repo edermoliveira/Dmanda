@@ -1772,14 +1772,14 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
 
 // ---------- Retirada dos aparelhos e entrada direta (decisão de 17/11/2026): sobre o esquema publicado (até o hotfix 20261118000100) ----------
 {
-  const { mkdtempSync, copyFileSync, readdirSync, rmSync } = await import('node:fs');
+  const { mkdtempSync, copyFileSync, readdirSync, rmSync, existsSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
   const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
-  const mE = todas.find((f) => f.includes('entrada_direta')), pendentes = readdirSync('supabase/pendentes').filter((f) => f.endsWith('.sql')).sort(), mR = pendentes.find((f) => f.includes('retirar_aparelhos')), mH = todas.find((f) => f.includes('aparelhos_where_explicito')), m6 = todas.find((f) => f.includes('aparelhos_autorizados'));
-  ok(!!mE && !!mR && todas.indexOf(mE) === todas.indexOf(mH) + 1 && todas.indexOf(mH) === todas.indexOf(m6) + 1 && todas.at(-1) === mE && mR > mE, 'retirada: a entrada direta é a última migração, logo depois do hotfix, e as duas migrações dos aparelhos continuam como foram aplicadas (histórico preservado)');
-  ok(pendentes.length === 1 && !todas.includes(mR) && todas.every((f) => f < mR), 'duas fases: a retirada (passo 2) fica FORA de supabase/migrations (um "db push" comum aplicaria só a entrada direta), é a única pendente e vem depois de todas as migrações');
-  const textoE = readFileSync(join('supabase/migrations', mE), 'utf8'), textoR = readFileSync(join('supabase/pendentes', mR), 'utf8');
+  const mE = todas.find((f) => f.includes('entrada_direta')), mR = todas.find((f) => f.includes('retirar_aparelhos')), mH = todas.find((f) => f.includes('aparelhos_where_explicito')), m6 = todas.find((f) => f.includes('aparelhos_autorizados'));
+  ok(!!mE && !!mR && todas.indexOf(mE) === todas.indexOf(mH) + 1 && todas.indexOf(mH) === todas.indexOf(m6) + 1 && todas.at(-1) === mR && todas.indexOf(mR) === todas.indexOf(mE) + 1, 'retirada: a entrada direta e, logo depois, a retirada são as duas últimas migrações, depois do hotfix, e as duas migrações dos aparelhos continuam como foram aplicadas (histórico preservado)');
+  ok(!existsSync('supabase/pendentes') || readdirSync('supabase/pendentes').filter((f) => f.endsWith('.sql')).length === 0, 'duas fases (concluídas): não resta nenhuma migração pendente fora de supabase/migrations');
+  const textoE = readFileSync(join('supabase/migrations', mE), 'utf8'), textoR = readFileSync(join('supabase/migrations', mR), 'utf8');
   const semComentarios = (t) => t.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
   const codigo = semComentarios(textoE) + '\n' + semComentarios(textoR);
   ok(!/\bdrop\s|\balter\s/i.test(semComentarios(textoE)), 'entrada direta (passo 1): a migração só cria funções (sem DROP nem ALTER): o código atual em produção segue funcionando depois dela');
@@ -1790,7 +1790,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   // ---- 1) caminho do banco real: esquema publicado, com aparelho, convite e exigência ligada, recebe só a migração da retirada ----
   const pasta = mkdtempSync(join(tmpdir(), 'dmanda-retirada-'));
   try {
-    for (const f of todas.filter((f) => f !== mE)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+    for (const f of todas.filter((f) => f !== mE && f !== mR)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
     const a = await abrirBancoTeste({ raizMigracoes: pasta });
     await a.exec(`insert into auth.users (id, email) values ('${U}', 'titular@teste'), ('${O}', 'intruso@teste')`);
     await a.exec("insert into dmanda_privado.acesso_autorizado (email) values ('titular@teste')");

@@ -3,7 +3,7 @@
 -- Cada seção é independente e devolve as funções (e a restrição) ao que a migração 20261110000000 e as anteriores definiam. Nenhuma tabela é apagada; os dados criados depois ficam.
 
 -- ===== 1) Aparelhos autorizados (migração 20261118000000): NÃO HÁ MAIS O QUE REVERTER AQUI =====
--- O recurso foi retirado por inteiro pela migração 20261119000100_retirar_aparelhos, que fica em supabase/pendentes/ até a fase 2 do plano (decisão de 17/11/2026): as funções, as tabelas e a exigência deixaram de existir e conta_autorizada() voltou a ser só a regra do titular.
+-- O recurso foi retirado por inteiro pela migração 20261119000100_retirar_aparelhos, aplicada na fase 2 do plano (decisão de 17/11/2026, aplicada no Supabase real no mesmo dia): as funções, as tabelas e a exigência deixaram de existir e conta_autorizada() voltou a ser só a regra do titular.
 -- A seção foi removida porque chamava exigir_aparelhos(), que não existe mais. As seções 2 em diante seguem valendo.
 
 -- ===== 2) Prazo pela chegada (migração 20261117000000): as duas funções voltam a contar a duração a partir de hoje =====

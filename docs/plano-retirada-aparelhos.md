@@ -1,6 +1,6 @@
 # Plano de implantação em duas fases: entrada direta e retirada dos aparelhos
 
-Estado: **preparado, nada executado** (17/11/2026). Substitui `docs/plano-publicacao-etapa-6.md` no que toca aos aparelhos. Cada passo marcado com **[autorização]** só roda depois de o Éder autorizar aquele passo de forma específica. O assistente nunca lê nem imprime `.env*`, chaves ou o conteúdo de dados reais.
+Estado: **EXECUTADO em 17/11/2026** (fase 1, publicação, validação do domínio e fase 2; ver "Registro da execução" no fim). O texto abaixo é o roteiro como foi preparado e é mantido como história. Substitui `docs/plano-publicacao-etapa-6.md` no que toca aos aparelhos. Cada passo marcado com **[autorização]** só roda depois de o Éder autorizar aquele passo de forma específica. O assistente nunca lê nem imprime `.env*`, chaves ou o conteúdo de dados reais.
 
 Base: `origin/main` = `b2adb39cad10c290fddf31530653c65f55a8a56f`. Candidato: branch `retirada/aparelhos` (o SHA final aprovado é o que o Éder indicar; abaixo, `$SHA`).
 
@@ -39,7 +39,7 @@ Critério de parada: `authenticator -> authenticated` com `membro=true set=true`
 
 ## Fase 1: banco (entrada direta) [autorização]
 
-1. Dry-run: `npx supabase db push --remote --dry-run`. **Tem de listar exatamente uma migração: `20261119000100`... não: `20261119000000_entrada_direta.sql`.** Se listar qualquer outra (inclusive a retirada), parar e não aplicar.
+1. Dry-run: `npx supabase db push --remote --dry-run`. **Tem de listar exatamente uma migração: `20261119000000_entrada_direta.sql`.** Se listar qualquer outra (inclusive a retirada), parar e não aplicar.
 2. Aplicar: `npx supabase db push --remote` (confirmar apenas a mesma lista).
 3. Conferir: `npx supabase migration list --remote` (a última é `20261119000000`) e de novo `verificar_papeis_hospedado.sql`: `executar_como_titular` com `definer=false`, `assumir_titular` com `definer=true`, dono `postgres`, `search_path` vazio, `acl` só do dono e do `service_role`.
 4. Conferir a exigência (só leitura): `npx supabase db query --remote --read-only "select exigir_aparelho from dmanda_privado.config_acesso"`. **Tem de ser `false`.**
@@ -84,3 +84,17 @@ Depois da fase 2 o código **antigo** não funciona (ele chama funções que dei
 - O hospedado só é provado pelas fases acima (o PGlite não é o Supabase). O papel efetivo na execução hospedada é inferido, não observado.
 - O Safari físico e o domínio final só o Éder confere (passo 5 da publicação).
 - Acesso aberto: depois da publicação, quem souber o endereço lê, grava, apaga e exporta tudo; o cron segue protegido por `CRON_SECRET`; a chave de serviço e o endereço público passam a ser os únicos limites. Decisão do Éder, a ser refeita perto da conclusão do projeto.
+
+## Registro da execução (17/11/2026)
+
+Executado a partir da branch `retirada/aparelhos`, com autorização expressa do Éder para cada fase. Nenhum segredo nem conteúdo de dado real foi impresso ou guardado no Git.
+
+- **Conferências:** HEAD = `9bfff59e637ba3c3fa0ec780442fe509c34c26a6` (branch `retirada/aparelhos`, árvore limpa, `b2adb39cad10c290fddf31530653c65f55a8a56f` ancestral, `origin/main` ainda em `b2adb39`, avanço por fast-forward). CLI Supabase 3.2.0; destino `--remote` (a ajuda da CLI mostra `--remote`, não `--linked`); projeto vinculado: Dmanda (`gmxoosvgfcydccyeudej`, produção); histórico remoto terminava em `20261118000100`; `exigir_aparelho = false`. Nenhum dos arquivos de migração tem `begin`/`commit` de topo (os `begin` encontrados são corpos de função).
+- **Cópia privada antes de mexer:** cópia funcional gerada por leitura (`db query --remote --read-only`) e guardada em `Dmanda-backups/` (fora do Git), com as contagens conferidas contra o banco. Linha de base: 23 demandas, 29 tarefas, 3 entradas, 2 eventos, 1 dia indisponível, 23 opções, 4 vagas do Para hoje, 7 registros do dia, 24 resumos, 23 execuções da rotina, 1 conta autorizada; aparelhos 3, convites 3, falhas 0, configuração 1.
+- **Fase 0 (somente leitura):** `authenticator` é membro de `anon`, `authenticated` e `service_role` com a opção SET; `authenticated` e `authenticator` sem superusuário e sem BYPASSRLS; `service_role` com BYPASSRLS; servidor PostgreSQL 17.11.
+- **Fase 1:** `db push --remote --dry-run` listou só `20261119000000_entrada_direta.sql`; aplicada (saída 0, histórico sem divergência). Definições efetivas: `assumir_titular` DEFINER e `executar_como_titular` INVOKER, dono `postgres`, `search_path` vazio, EXECUTE só do dono e de `service_role`. `scripts/verificar-entrada-direta-real.mjs rest`: leituras 200 (23 opções, 19 + 4 demandas, 2 entradas, 2 eventos, 1 dia), função fora da lista e argumento inexistente recusados (400), sem chave 401.
+- **Publicação:** `git push origin 9bfff59e637ba3c3fa0ec780442fe509c34c26a6:refs/heads/main` (b2adb39..9bfff59, fast-forward). Deploy da Vercel `55pATqRVG4a4aY5N1c3khgaium8S` concluído para esse commit (o deploy anterior, `41YzsmGnaj6hNVjeKyDMJkFYd8uv`, era do `b2adb39` e é a opção de recuperação enquanto os aparelhos existiam). Domínio: roteiro `dominio` todo ok, mais carga real no Edge em contexto novo (computador e iPhone emulado, cinco rotas, nenhum cookie, nenhuma requisição a aparelho, pareamento, convite, `/acesso` ou `/login`, nenhuma resposta 4xx/5xx). Exportação v4 do domínio com ids de demandas iguais aos do banco, guardada em `Dmanda-backups/` (fora do Git).
+- **Fase 2:** `git mv` de `supabase/pendentes/20261119000100_retirar_aparelhos.sql` para `supabase/migrations/` (SHA-256 igual antes e depois); `db push --remote --dry-run` listou só essa migração; aplicada (saída 0). `migration list --remote` sem divergência. Ausentes: as tabelas `aparelhos`, `convites_aparelho`, `falhas_pareamento` e `config_acesso` e todas as funções do recurso; `conta_autorizada()` agora só chama `titular_autorizado()`. Contagens funcionais e a conta proprietária idênticas antes e depois. `rest`, `dominio`, carga no Edge e a exportação v4 repetidos: tudo ok, exportação idêntica à da fase 1.
+- **Teste ajustado ao estado final:** `scripts/testar-banco.mjs` lia a retirada em `supabase/pendentes/`; passou a lê-la de `supabase/migrations/` (as verificações de conteúdo são as mesmas; 546 verificações ok).
+- **Recuperação depois da fase 2:** como descrita acima (só para a frente; o SQL de restauração do pareamento continua sendo decisão expressa do Éder).
+- **Limites desta execução:** a Vercel não pôde ser consultada diretamente (sem credencial neste computador): o deploy foi identificado pelo status do GitHub e as três variáveis obrigatórias foram inferidas pela rotina diária de hoje (09:34 UTC, ok); o escopo exato das variáveis, o agendamento do cron no painel, o Safari do iPhone e o uso real no computador seguem para o Éder conferir. O papel efetivo durante a execução no hospedado continua inferido (as leituras devolveram os dados do titular, o que só ocorre com a troca de papel funcionando).

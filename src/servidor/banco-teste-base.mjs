@@ -38,8 +38,8 @@ grant usage on schema public to service_role; grant usage on schema auth to serv
 // Bancos criados antes do registro existir já tinham as duas primeiras migrações.
 const JA_TINHAM = ['20261025000000_nucleo_demandas.sql', '20261025000100_salvar_demanda.sql'];
 
-// supabase/pendentes/ guarda a retirada dos aparelhos (passo 2), que fica FORA de supabase/migrations/ até a hora de aplicá-la no Supabase real (um "db push" comum só enxerga a pasta de migrações).
-// O banco de teste com a pasta padrão aplica as duas, em ordem de nome, e por isso reflete o estado final.
+// supabase/pendentes/ guardou a retirada dos aparelhos (passo 2) fora de supabase/migrations/ até a hora de aplicá-la no Supabase real; desde 17/11/2026 ela está em migrations/ e a pasta pendentes/ não existe mais.
+// A leitura da pasta opcional fica para qualquer migração futura que precise de duas fases. O banco de teste com a pasta padrão aplica as duas pastas, em ordem de nome.
 const RAIZ_PADRAO = join(/*turbopackIgnore: true*/ process.cwd(), 'supabase', 'migrations');
 const RAIZ_PENDENTES = join(/*turbopackIgnore: true*/ process.cwd(), 'supabase', 'pendentes');
 
