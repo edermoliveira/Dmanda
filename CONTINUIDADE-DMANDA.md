@@ -838,3 +838,13 @@ Sem acesso a esta máquina nesta sessão. **Handoff, somente leitura:** `git fet
 **Para decidir:** (1) publicar o candidato, quando e por qual caminho (push direto ou PR); (2) o que fazer com as arquivadas e com a indisponibilidade prolongada (decisão 83, item 4); (3) se haverá backfill dos prazos legados (fora desta publicação).
 
 **Depois da confirmação do deploy:** sincronizar os checkouts e limpar as referências já inventariadas (seção AH), preservando o que só existe localmente. Primeiro bloco seguinte: **Início e Demandas > Cards**.
+
+## AN. Subbloco 1.4: períodos, retorno do servidor, operações incertas e avisos (18/11/2026; só local, aguarda avaliação)
+
+**Onde:** branch `bloco/1-4-lacunas` no worktree `C:\Users\Éder\Desktop\Dmanda-release`, base `1b3b9db` (= `origin/main`). Nada foi enviado, publicado nem aplicado no Supabase real; as migrações `20261120000000_periodos_indisponiveis` e `20261120000100_retorno_do_servidor` só rodaram em bancos de teste.
+
+**O que mudou:** (1) um dia ou um período indisponível é gravado com a identidade da operação (`operacao_id`); um dia avulso novo é um período de um dia, sem segundo protocolo; (2) a conferência de uma gravação incerta, quando não encontra a operação, a cancela no servidor, e o pedido atrasado é recusado (era a gravação tardia que duplicava); (3) o retorno do setor vem do servidor (`demanda.retorno`) e nenhuma tela recalcula com um calendário que pode estar incompleto; (4) sobreposições preservam o intervalo e o cálculo usa a união das datas; (5) avisos (barra global, aviso da tela e sininho) com ação concreta, que sobrevivem a recarregar a página. Exemplo obrigatório: chegada 14/12/2026 + 15 dias, original 29/12, efetivo 23/12 com indisponibilidade a partir de 24/12.
+
+**Detalhe, evidência, limites e verificações finais:** `docs/auditoria-etapa-6.md` (seção do subbloco 1.4) e `supabase/LEIA-ME.md`. Retenção de `periodos_operacoes`: **não implementada e sem prazo decidido**; antes de qualquer retenção é preciso provar que um pedido antigo não volta a ter efeito depois da exclusão da linha.
+
+**Pendente (decisão do Éder):** avaliar o subbloco; só depois, se autorizado, dry-run das duas migrações no Supabase real e publicação. Não iniciados: untangle-codebase e outros subblocos. Decisões em aberto, não tocadas: "antecipação anterior à chegada" e "recálculo de arquivadas".
