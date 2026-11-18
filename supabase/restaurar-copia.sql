@@ -73,11 +73,19 @@ begin
   get diagnostics n_tar = row_count;
   alter table public.tarefas enable trigger tarefas_versao;
 
-  -- dias indisponíveis (cópias da versão 2): o que já existe com o mesmo identificador não é tocado; o vencimento das demandas vem como estava na cópia, sem recalcular
-  insert into public.dias_indisponiveis (id, user_id, data, descricao, categoria, criado_em, atualizado_em)
-  select (x ->> 'id')::uuid, dono, (x ->> 'data')::date, x ->> 'descricao', x ->> 'categoria', coalesce((x ->> 'criado_em')::timestamptz, now()), now()
-  from jsonb_array_elements(coalesce(j -> 'dias_indisponiveis', '[]'::jsonb)) x
-  on conflict (id) do nothing;
+  -- dias indisponíveis (cópias da versão 2): o que já existe com o mesmo identificador não é tocado; o vencimento das demandas vem como estava na cópia, sem recalcular.
+  -- periodo_id (cópias feitas depois da migração dos períodos) liga os dias do mesmo período; cópias sem ele restauram cada dia como avulso, com o mesmo efeito no cálculo
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'dias_indisponiveis' and column_name = 'periodo_id') then
+    insert into public.dias_indisponiveis (id, user_id, data, descricao, categoria, criado_em, atualizado_em, periodo_id)
+    select (x ->> 'id')::uuid, dono, (x ->> 'data')::date, x ->> 'descricao', x ->> 'categoria', coalesce((x ->> 'criado_em')::timestamptz, now()), now(), nullif(x ->> 'periodo_id', '')::uuid
+    from jsonb_array_elements(coalesce(j -> 'dias_indisponiveis', '[]'::jsonb)) x
+    on conflict (id) do nothing;
+  else   -- projeto ainda sem a migração dos períodos: cada dia volta como avulso, com o mesmo efeito no cálculo
+    insert into public.dias_indisponiveis (id, user_id, data, descricao, categoria, criado_em, atualizado_em)
+    select (x ->> 'id')::uuid, dono, (x ->> 'data')::date, x ->> 'descricao', x ->> 'categoria', coalesce((x ->> 'criado_em')::timestamptz, now()), now()
+    from jsonb_array_elements(coalesce(j -> 'dias_indisponiveis', '[]'::jsonb)) x
+    on conflict (id) do nothing;
+  end if;
   get diagnostics n_dias = row_count;
 
   -- entradas (cópias da versão 3), depois das demandas porque uma entrada convertida aponta para a sua demanda: o vínculo só é refeito se a demanda existe neste projeto
