@@ -60,11 +60,20 @@ export async function atualizarParaHoje(candidatas: string[]) {
 export async function listarDias() {
   return executar(() => op().listarDias());
 }
-export async function salvarDia(dia: { id?: string; data: string; descricao: string; categoria: CategoriaDia }) {
+export async function salvarDia(dia: { id: string; data: string; descricao: string; categoria: CategoriaDia }) {
   return executar(() => op().salvarDia(dia));
 }
 export async function excluirDia(diaId: string) {
   return executar(() => op().excluirDia(diaId));
+}
+export async function conferirPeriodoPorOperacao(operacaoId: string) {
+  return executar(() => op().conferirPeriodoPorOperacao(operacaoId));
+}
+export async function salvarPeriodo(periodo: { operacao_id: string; periodo_id?: string; data_inicio: string; data_fim: string; descricao: string; categoria: CategoriaDia }) {
+  return executar(() => op().salvarPeriodo(periodo));
+}
+export async function excluirPeriodo(periodoId: string) {
+  return executar(() => op().excluirPeriodo(periodoId));
 }
 export async function adicionarTarefa(demandaId: string, texto: string, tarefaId?: string) {
   return executar(() => op().adicionarTarefa(demandaId, texto, tarefaId));

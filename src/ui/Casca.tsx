@@ -12,6 +12,7 @@ import { MenuConta } from './MenuConta';
 import { Busca } from './busca';
 import { Lembretes } from './lembretes';
 import { PerfilGaveta } from './perfil';
+import { AvisosGlobais, PainelAvisos, textoAvisoEvento } from './avisos';
 
 const NAV: [string, string, string, string][] = [
   ['/', 'Início', 'nav-inicio', 'inicio'], ['/entradas', 'Entradas', 'nav-entradas', 'entradas'], ['/demandas', 'Demandas', 'nav-demandas', 'demandas'],
@@ -27,7 +28,7 @@ function useToque() {
 }
 
 function Interior({ children }: { children: ReactNode }) {
-  const { tema, aparencia, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, erroCarga, recarregar, fecharMenuMover, avisosEventos, dispensarAviso, perfilAberto } = useApp();
+  const { tema, aparencia, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, fecharMenuMover, avisosEventos, avisosSistema, dispensarAviso, perfilAberto } = useApp();
   const caminho = usePathname();
   const router = useRouter();
   const toque = useToque();
@@ -36,6 +37,8 @@ function Interior({ children }: { children: ReactNode }) {
   const [buscando, setBuscando] = useState(false);
   const [conta, setConta] = useState<{ x: number; y: number } | null>(null);
   const fecharConta = useCallback(() => setConta(null), []);
+  const [avisosPonto, setAvisosPonto] = useState<{ x: number; y: number } | null>(null);
+  const fecharAvisos = useCallback(() => setAvisosPonto(null), []);
   const appRef = useRef<HTMLDivElement>(null);
   const nome = ambiente?.nome || 'Secretário';
 
@@ -85,6 +88,10 @@ function Interior({ children }: { children: ReactNode }) {
     ['Nova tarefa', 'check', true, () => { setPlus(false); abrirJanela({ t: 'tarefa' }); }], ['Documento', 'file-text', false, breve('Documento')], ['Chat com a IA', 'message-circle', false, breve('Chat com a IA')],
   ];
   const label = menuAberto ? 'Recolher menu' : 'Mostrar menu';
+  // o sininho conta o que pede atenção: os avisos de hoje da Agenda e os problemas ainda não lidos (um problema lido continua listado e na barra, só sai da contagem)
+  const problemasNovos = avisosSistema.filter((a) => !a.lido).length, totalAvisos = avisosEventos.length + problemasNovos;
+  const partesSino = [avisosEventos.length ? `${avisosEventos.length} para hoje` : '', problemasNovos ? (problemasNovos === 1 ? '1 problema novo' : `${problemasNovos} problemas novos`) : '', !problemasNovos && avisosSistema.length ? (avisosSistema.length === 1 ? '1 problema em aberto' : `${avisosSistema.length} problemas em aberto`) : ''].filter(Boolean);
+  const rotuloSino = partesSino.length ? `Avisos: ${partesSino.join(', ')}. Abrir a lista` : 'Avisos: nenhum agora. Abrir a lista';
   const tbtn = (n: [string, string, string, string]) => (
     <button key={n[0]} className="navi" data-nav={n[3]} aria-current={ativo(caminho, n[0]) ? 'page' : undefined} title={n[1]} aria-label={n[1]} onClick={ir(n[0])}><span className="ico"><Icone nome={n[2]} extra="duo" /></span><span className="tx">{n[1]}</span></button>
   );
@@ -104,9 +111,10 @@ function Interior({ children }: { children: ReactNode }) {
         <header className="top">
           <div className="top-logo">{LOGO}<span>Dmanda</span></div>
           <button className="icbtn buscabtn" aria-label="Buscar em tudo" aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K" title="Buscar em tudo (Ctrl K)" onClick={() => { setPlus(false); setConta(null); fecharMenuMover(); setBuscando(true); }}><Icone nome="busca" /><span className="tx">Buscar demanda, tarefa, entrada ou evento</span><kbd>Ctrl K</kbd></button>
-          <button className="icbtn sino" aria-label={avisosEventos.length ? `Avisos: ${avisosEventos.length} para hoje. Abrir a Agenda` : 'Avisos: nenhum agora. Abrir a Agenda'} title={avisosEventos.length ? 'Há avisos de hoje' : 'Nenhum aviso agora'} data-avisos={avisosEventos.length || undefined} onClick={ir('/agenda')}><Icone nome="bell" />{avisosEventos.length ? <i className="sino-n" aria-hidden="true">{avisosEventos.length}</i> : null}</button>
+          <button className="icbtn sino" aria-label={rotuloSino} title={totalAvisos ? 'Há avisos' : 'Nenhum aviso agora'} aria-haspopup="dialog" aria-expanded={!!avisosPonto} data-avisos={totalAvisos || undefined} data-problemas={avisosSistema.length || undefined}
+            onClick={(e) => { if (avisosPonto) { setAvisosPonto(null); return; } fecharMenuMover(); setPlus(false); setConta(null); const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setAvisosPonto({ x: b.right - a.left, y: b.bottom - a.top }); }}><Icone nome="bell" />{totalAvisos ? <i className="sino-n" aria-hidden="true">{totalAvisos}</i> : null}</button>
           <button className="icbtn" aria-label="Alternar tema claro e escuro" onClick={alternarTema}><Icone nome={tema === 'claro' ? 'moon' : 'sun'} /></button>
-          <button className="perfil-b" aria-label="Menu da conta" aria-haspopup="menu" aria-expanded={!!conta} title="Conta" onClick={(e) => { if (conta) { setConta(null); return; } fecharMenuMover(); setPlus(false); const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setConta({ x: b.right - a.left, y: b.bottom - a.top }); }}><span className="avatar">{nome.charAt(0).toUpperCase()}</span><span className="tx">{nome}</span></button>
+          <button className="perfil-b" aria-label="Menu da conta" aria-haspopup="menu" aria-expanded={!!conta} title="Conta" onClick={(e) => { if (conta) { setConta(null); return; } fecharMenuMover(); setPlus(false); setAvisosPonto(null); const a = document.querySelector('.app')!.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); setConta({ x: b.right - a.left, y: b.bottom - a.top }); }}><span className="avatar">{nome.charAt(0).toUpperCase()}</span><span className="tx">{nome}</span></button>
         </header>
         <main className="main" id="main">
           {ambiente?.teste ? <p className="faixa-teste" role="note">Banco local de teste (dados descartáveis, não é o Supabase). Só em desenvolvimento.</p> : null}
@@ -116,14 +124,14 @@ function Interior({ children }: { children: ReactNode }) {
               {avisosEventos.slice(0, 3).map((a) => (
                 <p key={a.evento.id} className="agd-aviso" data-evento={a.evento.id}>
                   <Icone nome="bell" />
-                  <span><b>{a.evento.titulo}</b> {a.tipo === 'no-dia' ? 'é hoje' : a.minutos === 0 ? 'começa agora' : `começa em ${a.minutos} min`}{a.tipo === 'em-breve' ? ` (${a.evento.inicio})` : ''}</span>
+                  <span><b>{a.evento.titulo}</b> {textoAvisoEvento(a)}</span>
                   <button type="button" className="btn mini" onClick={() => abrirJanela({ t: 'evento', id: a.evento.id })}>Abrir</button>
                   <button type="button" className="btn mini" onClick={() => dispensarAviso(a.evento)}>Dispensar</button>
                 </p>
               ))}
             </div>
           ) : null}
-          {erroCarga ? <div className="erro-carga" role="alert"><b>Não foi possível carregar as demandas.</b><span>{erroCarga}</span><button className="btn mini" onClick={() => void recarregar()}>Tentar de novo</button></div> : null}
+          <AvisosGlobais />
           {children}
         </main>
         <nav className="bar glass" aria-label="Navegação">
@@ -148,6 +156,7 @@ function Interior({ children }: { children: ReactNode }) {
         <Lembretes ocupado={buscando || !!conta} />
         <MenuMover />
         {conta ? <MenuConta ponto={conta} fechar={fecharConta} /> : null}
+        {avisosPonto ? <PainelAvisos ponto={avisosPonto} fechar={fecharAvisos} /> : null}
         <div className={`toast${aviso ? ' on' : ''}${aviso?.erro ? ' erro' : ''}`} id="toast" role={aviso?.erro ? 'alert' : 'status'}>{aviso?.msg}</div>
       </div>
     </div>

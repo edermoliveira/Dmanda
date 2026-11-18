@@ -6,7 +6,6 @@
 import { dataFiltro, grupoFiltro, permanencia, temArea, type Area, type Demanda } from './demandas.ts';
 import { demandaPrioritaria, ehOrigemPrioritaria } from './prioridade.ts';
 import { ehOficio } from './para-hoje.ts';
-import type { DiaIndisponivel } from './prazos.ts';
 
 export type ChaveSecao = 'urgentes' | 'gabinete' | 'prazos' | 'oficios' | 'aguardando' | 'pessoal' | 'compras' | 'protocolo' | 'sem-prazo';
 export type SecaoCards = {
@@ -28,15 +27,15 @@ const ativa = (d: Demanda) => d.etapa !== 'Finalizado' && !d.arquivada_em;
 /** Desempate estável: chegada mais antiga, cadastro mais antigo e id. */
 const estavel = (a: Demanda, b: Demanda) => (a.chegou_em ?? '9999-12-31').localeCompare(b.chegou_em ?? '9999-12-31') || a.criado_em.localeCompare(b.criado_em) || a.id.localeCompare(b.id);
 
-export function montarSecoes(lista: readonly Demanda[], hoje: string, dias: readonly DiaIndisponivel[] = []): SecaoCards[] {
+export function montarSecoes(lista: readonly Demanda[], hoje: string): SecaoCards[] {
   const ativas = lista.filter(ativa);
-  const data = new Map(ativas.map((d) => [d.id, dataFiltro(d, hoje, dias)] as const));
+  const data = new Map(ativas.map((d) => [d.id, dataFiltro(d, hoje)] as const));
   // vencimento do mais antigo (maior atraso) ao mais distante; sem data por último
   const porVencimento = (a: Demanda, b: Demanda) => (data.get(a.id) ?? '9999-12-31').localeCompare(data.get(b.id) ?? '9999-12-31') || estavel(a, b);
   const ordenar = (l: readonly Demanda[]) => [...l].sort(porVencimento);
   const secao = (chave: ChaveSecao, rotulo: string, criterio: string, demandas: Demanda[], cor: SecaoCards['cor'] = null, semChegada: ReadonlySet<string> = new Set()): SecaoCards => ({ chave, rotulo, criterio, cor, demandas, semChegada });
 
-  const urgentes = ativas.filter((d) => demandaPrioritaria(d) || grupoFiltro(d, hoje, dias) === 'atrasadas');
+  const urgentes = ativas.filter((d) => demandaPrioritaria(d) || grupoFiltro(d, hoje) === 'atrasadas');
   const urgOrdenadas = [...urgentes.filter(demandaPrioritaria).sort(porVencimento), ...urgentes.filter((d) => !demandaPrioritaria(d)).sort(porVencimento)];
 
   // maior permanência primeiro (chegada mais antiga); sem chegada vai para o fim e é sinalizada

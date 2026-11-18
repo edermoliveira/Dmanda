@@ -43,6 +43,8 @@ export function gradeMes(ano: number, mes: number): (string | null)[][] {
 export const semanaDe = (iso: string): string[] => { const d = somarDias(iso, -diaDaSemana(iso)); return Array.from({ length: 7 }, (_, i) => somarDias(d, i)); };
 export const fimDeSemana = (iso: string) => diaDaSemana(iso) === 0 || diaDaSemana(iso) === 6;
 /** Os feriados cadastrados numa data (categoria Feriado em Dias indisponíveis). O evento externo de dia inteiro não entra: ele ajusta prazos, mas o dia continua de trabalho na aparência. */
+/** Um dia avulso e um período podem cobrir a mesma data: o mesmo tipo e a mesma descrição valem como um motivo só (a lista de motivos do dia não repete). */
+export const motivosUnicos = (lista: readonly DiaIndisponivel[]) => lista.filter((x, i) => lista.findIndex((y) => y.categoria === x.categoria && y.descricao.trim() === x.descricao.trim()) === i);
 export const feriadosDe = (data: string, indisponiveis: readonly DiaIndisponivel[]) => indisponiveis.filter((x) => x.data === data && x.categoria === 'Feriado');
 /**
  * Dia fora do trabalho, para o tratamento cinza dos calendários: sábado e domingo pela própria data e o feriado pelo registro de Feriado (nunca pelo texto, pela posição na grade ou pelo tipo de
@@ -74,13 +76,13 @@ export { DIAS_RETORNO_SETOR, contagemRetorno, type ContagemRetorno } from './dem
  * Cada um fica na própria data; o que já passou fica na data em que ocorreu, marcado como atrasado. Arquivada não tem marcos. Finalizada só aparece (no vencimento, sem atraso)
  * quando `comFinalizadas` pede. Aguardando Prefeita não tem marco de data: a espera aparece como texto na própria demanda.
  */
-export function marcosDaDemanda(d: Demanda, dias: readonly DiaIndisponivel[], hoje: string, comFinalizadas = false): Marco[] {
+export function marcosDaDemanda(d: Demanda, hoje: string, comFinalizadas = false): Marco[] {
   if (d.arquivada_em) return [];
   if (d.etapa === 'Finalizado') return comFinalizadas && d.prazo ? [{ tipo: 'vencimento', data: d.prazo, demanda: d, atrasado: false, detalhe: 'Demanda finalizada' }] : [];
   const m: Marco[] = [];
   if (d.prazo) m.push({ tipo: 'vencimento', data: d.prazo, demanda: d, atrasado: diasAte(d.prazo, hoje) < 0, detalhe: d.prazo_original && d.prazo_original !== d.prazo ? `Prazo original ${dataBR(d.prazo_original)}, antecipado${d.prazo_ajuste ? `. Dias pulados: ${d.prazo_ajuste}` : ''}` : 'Prazo' });
   if (d.acompanhar_em) m.push({ tipo: 'acompanhamento', data: d.acompanhar_em, demanda: d, atrasado: diasAte(d.acompanhar_em, hoje) < 0, detalhe: 'Data digitada em Acompanhar em' });
-  const r = contagemRetorno(d, dias);
+  const r = contagemRetorno(d);
   if (r) m.push({ tipo: 'retorno', data: r.data, demanda: d, atrasado: diasAte(r.data, hoje) < 0, detalhe: `${DIAS_RETORNO_SETOR} dias desde ${dataBR(r.base)} (${r.origemBase})${r.ajuste ? `; antecipado: ${r.ajuste}` : ''}` });
   return m.sort((a, b) => a.data.localeCompare(b.data));
 }
@@ -105,12 +107,12 @@ export const ROTULO_NIVEL: Record<NivelCarga, string> = { zero: 'sem pendências
 
 export type CargaDia = { carga: number; demandas: number; atrasada: boolean };
 /** Cada demanda soma a carga uma só vez, no dia da data aplicável, mesmo tendo vários marcos. Demandas sem nenhum marco ficam fora (vão para Pendências sem prazo). */
-export function cargaPorDia(demandas: readonly Demanda[], dias: readonly DiaIndisponivel[], hoje: string): Map<string, CargaDia> {
+export function cargaPorDia(demandas: readonly Demanda[], hoje: string): Map<string, CargaDia> {
   const mapa = new Map<string, CargaDia>();
   for (const d of demandas) {
     const c = cargaDaDemanda(d);
     if (!c) continue;
-    const data = dataAplicavel(marcosDaDemanda(d, dias, hoje));
+    const data = dataAplicavel(marcosDaDemanda(d, hoje));
     if (!data) continue;
     const x = mapa.get(data) ?? { carga: 0, demandas: 0, atrasada: false };
     x.carga += c; x.demandas += 1; x.atrasada = x.atrasada || diasAte(data, hoje) < 0;
@@ -119,9 +121,9 @@ export function cargaPorDia(demandas: readonly Demanda[], dias: readonly DiaIndi
   return mapa;
 }
 /** Demandas abertas sem nenhuma data aplicável: nada é inventado, elas ficam numa lista própria. Das que chegaram há mais tempo para as mais recentes. */
-export function pendenciasSemPrazo(demandas: readonly Demanda[], dias: readonly DiaIndisponivel[], hoje: string): Demanda[] {
+export function pendenciasSemPrazo(demandas: readonly Demanda[], hoje: string): Demanda[] {
   return demandas
-    .filter((d) => d.etapa !== 'Finalizado' && !d.arquivada_em && marcosDaDemanda(d, dias, hoje).length === 0)
+    .filter((d) => d.etapa !== 'Finalizado' && !d.arquivada_em && marcosDaDemanda(d, hoje).length === 0)
     .sort((a, b) => (a.chegou_em ?? '9999').localeCompare(b.chegou_em ?? '9999') || a.criado_em.localeCompare(b.criado_em));
 }
 
@@ -131,9 +133,9 @@ export type OpcoesAgenda = { demandas: readonly Demanda[]; eventos: readonly Eve
 /** Tudo o que cai num dia, no desenho da Agenda: eventos em ordem cronológica, dias indisponíveis e marcos das demandas (atrasados primeiro, depois por tipo). */
 export function itensDoDia(data: string, o: OpcoesAgenda): ItensDoDia {
   const ordem: Record<TipoMarco, number> = { vencimento: 0, retorno: 1, acompanhamento: 2 };
-  const marcos = o.demandas.flatMap((d) => marcosDaDemanda(d, o.indisponiveis, o.hoje, o.comFinalizadas)).filter((m) => m.data === data)
+  const marcos = o.demandas.flatMap((d) => marcosDaDemanda(d, o.hoje, o.comFinalizadas)).filter((m) => m.data === data)
     .sort((a, b) => Number(b.atrasado) - Number(a.atrasado) || ordem[a.tipo] - ordem[b.tipo] || a.demanda.criado_em.localeCompare(b.demanda.criado_em));
-  return { data, eventos: ordenarEventos(o.eventos.filter((e) => e.data === data)), indisponiveis: o.indisponiveis.filter((x) => x.data === data), marcos };
+  return { data, eventos: ordenarEventos(o.eventos.filter((e) => e.data === data)), indisponiveis: motivosUnicos(o.indisponiveis.filter((x) => x.data === data)), marcos };
 }
 /**
  * O que a célula do Mês mostra de um dia: primeiro os compromissos (dia inteiro antes, depois por horário) e então as demandas, uma linha por demanda mesmo com mais de um marco no dia.
@@ -171,7 +173,7 @@ export function recortarItensGrade(itens: readonly ItemGrade[], limite: number):
 /** Marcos de um intervalo de datas (inclusive), agrupados por dia: usado pela semana e pelo mês. */
 export function marcosPorDia(o: OpcoesAgenda, de: string, ate: string): Map<string, Marco[]> {
   const mapa = new Map<string, Marco[]>();
-  for (const d of o.demandas) for (const m of marcosDaDemanda(d, o.indisponiveis, o.hoje, o.comFinalizadas)) if (m.data >= de && m.data <= ate) mapa.set(m.data, [...(mapa.get(m.data) ?? []), m]);
+  for (const d of o.demandas) for (const m of marcosDaDemanda(d, o.hoje, o.comFinalizadas)) if (m.data >= de && m.data <= ate) mapa.set(m.data, [...(mapa.get(m.data) ?? []), m]);
   return mapa;
 }
 
@@ -185,7 +187,7 @@ export function descreverDia(data: string, o: { carga?: CargaDia; eventos: numbe
   // com a leitura das demandas falha, "sem pendências" seria mentira: o número é desconhecido
   p.push(o.semDemandas ? 'pendências indisponíveis' : c && c.carga ? `${plural(c.carga, 'pendência')} em ${plural(c.demandas, 'demanda')}, ${ROTULO_NIVEL[nivelDaCarga(c.carga)]}${c.atrasada ? ', com atraso' : ''}` : 'sem pendências');
   if (o.eventos) p.push(plural(o.eventos, 'compromisso'));
-  for (const x of o.indisponiveis) p.push(`${x.categoria === 'Feriado' ? 'feriado' : 'evento externo'}: ${x.descricao}`);
+  for (const x of motivosUnicos(o.indisponiveis)) p.push(`${x.categoria === 'Feriado' ? 'feriado' : 'evento externo'}: ${x.descricao}`);
   if (o.selecionado) p.push('selecionado');
   return p.join('; ');
 }

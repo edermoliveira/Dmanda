@@ -2,7 +2,6 @@
 // (o banco guarda as vagas e impede duplicação). Humor e produtividade não entram no cálculo. Sem relógio: a data de hoje vem de fora.
 import { contagemRetorno, dataFiltro, diasAte, esperaPrefeita, permanencia, type Demanda, type Etapa } from './demandas.ts';
 import { chaveOpcao } from './documentos.ts';
-import type { DiaIndisponivel } from './prazos.ts';
 import { demandaPrioritaria } from './prioridade.ts';
 
 export const VAGAS_PARA_HOJE = 4;
@@ -21,10 +20,10 @@ export const ehUrgente = (c: ClasseUrgencia) => c === 'atrasada' || c === 'hoje'
  * Ordem: atrasadas, depois vencem hoje, depois até 7 dias, depois sem prazo. Dentro de cada grupo, a marca Rápida primeiro, depois a data mais antiga, a maior permanência e o cadastro mais antigo.
  * Quem escolhe as candidatas das vagas livres é `candidatasParaVagas` (as pedidas pela Prefeita ou pelo Gabinete passam à frente).
  */
-export function elegiveisParaHoje(lista: readonly Demanda[], hoje: string, dias: readonly DiaIndisponivel[] = []): Elegivel[] {
+export function elegiveisParaHoje(lista: readonly Demanda[], hoje: string): Elegivel[] {
   const saida: Elegivel[] = [];
   for (const d of lista) {
-    const a = dataDaAcao(d, hoje, dias);
+    const a = dataDaAcao(d, hoje);
     if (!a) continue;
     const n = a.data ? diasAte(a.data, hoje) : null;
     if (n !== null && n > 7) continue;
@@ -44,15 +43,15 @@ export function elegiveisParaHoje(lista: readonly Demanda[], hoje: string, dias:
  * A data de ação da demanda aberta, sem o corte de 7 dias, ou nulo quando não há ação do usuário agora (finalizada, arquivada, ou em espera sem cobrança devida).
  * `data` é nulo quando há ação possível mas nenhuma data (Cadastro, Vistos ou Fazendo sem prazo). Em espera, a data é a da cobrança e `cobranca` fica verdadeiro.
  */
-export function dataDaAcao(d: Demanda, hoje: string, dias: readonly DiaIndisponivel[] = []): { data: string | null; cobranca: boolean } | null {
+export function dataDaAcao(d: Demanda, hoje: string): { data: string | null; cobranca: boolean } | null {
   if (d.etapa === 'Finalizado' || d.arquivada_em) return null;
   if (d.etapa === 'Aguardando retorno' || d.etapa === 'Aguardando Prefeita') {
-    const datas = [d.acompanhar_em, d.etapa === 'Aguardando retorno' ? contagemRetorno(d, dias)?.data ?? null : null].filter((x): x is string => !!x && diasAte(x, hoje) <= 0);
+    const datas = [d.acompanhar_em, d.etapa === 'Aguardando retorno' ? contagemRetorno(d)?.data ?? null : null].filter((x): x is string => !!x && diasAte(x, hoje) <= 0);
     if (datas.length) return { data: datas.reduce((m, x) => (x < m ? x : m)), cobranca: true };
     if (d.etapa === 'Aguardando Prefeita' && esperaPrefeita(d, hoje)?.alerta) return { data: hoje, cobranca: true };
     return null;
   }
-  return { data: dataFiltro(d, hoje, dias), cobranca: false };
+  return { data: dataFiltro(d, hoje), cobranca: false };
 }
 
 export type Vaga = { posicao: number; demanda_id: string };
@@ -84,7 +83,7 @@ export type Urgencia = { demandas: Demanda[]; /** verdadeiro quando não há urg
  * Ordem: Prefeita e Gabinete primeiro; em cada grupo a data mais antiga (maior atraso) antes da mais próxima, depois a marca Rápida, a maior permanência, o cadastro mais antigo e o id.
  * Sem nenhuma urgência, mostra as demais elegíveis que têm vencimento, do mais próximo ao mais distante (nada de vencimento inventado: as sem data ficam de fora).
  */
-export function urgenciasDoInicio(vagas: readonly Vaga[], lista: readonly Demanda[], hoje: string, dias: readonly DiaIndisponivel[] = []): Urgencia {
+export function urgenciasDoInicio(vagas: readonly Vaga[], lista: readonly Demanda[], hoje: string): Urgencia {
   const ocupadas = new Set(vagasAbertas(vagas, lista).map((v) => v.demanda.id));
   const ordem = (a: { d: Demanda; data: string | null; prio: boolean }, b: { d: Demanda; data: string | null; prio: boolean }) =>
     Number(b.prio) - Number(a.prio)
@@ -96,13 +95,13 @@ export function urgenciasDoInicio(vagas: readonly Vaga[], lista: readonly Demand
   const urgentes: { d: Demanda; data: string | null; prio: boolean }[] = [];
   for (const d of lista) {
     if (ocupadas.has(d.id)) continue;
-    const a = dataDaAcao(d, hoje, dias);
+    const a = dataDaAcao(d, hoje);
     if (!a) continue;
     const prio = demandaPrioritaria(d), n = a.data ? diasAte(a.data, hoje) : null;
     if (prio || (n !== null && (n <= 0 || (ehOficio(d) && n <= 7)))) urgentes.push({ d, data: a.data, prio });
   }
   if (urgentes.length) return { demandas: urgentes.sort(ordem).map((x) => x.d), proximos: false };
-  const proximos = elegiveisParaHoje(lista, hoje, dias).filter((e) => e.data && !ocupadas.has(e.demanda.id));
+  const proximos = elegiveisParaHoje(lista, hoje).filter((e) => e.data && !ocupadas.has(e.demanda.id));
   return { demandas: proximos.sort((a, b) => a.data!.localeCompare(b.data!) || ORDEM[a.classe] - ORDEM[b.classe]).map((e) => e.demanda), proximos: true };
 }
 

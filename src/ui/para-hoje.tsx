@@ -114,10 +114,10 @@ function Pilha({ vagas }: { vagas: Vaga[] }) {
 // O painel de execução do dia (o antigo Foco do dia): até 4 vagas persistentes, guardadas no banco. Ao concluir ou arquivar uma demanda, só a vaga liberada é reposta. Uma urgência que surge depois
 // das vagas escolhidas aparece na Urgência, sem trocar a seleção. Não é o grupo "Vencem hoje" (que lista tudo o que vence hoje, com ou sem ação).
 export function ParaHoje() {
-  const { demandas, hoje, dias, paraHoje, sincronizarParaHoje, carregando } = useApp();
+  const { demandas, hoje, paraHoje, sincronizarParaHoje, carregando } = useApp();
   const secao = useRef<HTMLElement>(null);
   const modo = useModo(secao);
-  const elegiveis = useMemo(() => elegiveisParaHoje(demandas, hoje, dias), [demandas, hoje, dias]);
+  const elegiveis = useMemo(() => elegiveisParaHoje(demandas, hoje), [demandas, hoje]);
   const abertas = useMemo(() => vagasAbertas(paraHoje, demandas), [paraHoje, demandas]);
   const ocupadas = new Set(abertas.map((v) => v.demanda.id));
   const faltaCompletar = precisaCompletar(paraHoje, demandas, elegiveis);
@@ -127,7 +127,7 @@ export function ParaHoje() {
   useEffect(() => { if (!carregando && hoje !== '2000-01-01' && candidatas) void sincronizarParaHoje(candidatas.split(',')); }, [candidatas, carregando, hoje, sincronizarParaHoje]);
   // Urgência (decisão 80): fora das vagas, sem repetir nenhuma demanda; na web e no iPad é uma faixa de cards lado a lado com rolagem horizontal própria, no iPhone segue o baralho.
   // O Início tem só estas duas seções de demandas: o antigo "Na fila" e as listas dos contadores saíram (as demais demandas estão em Demandas).
-  const { demandas: urgentes, proximos } = useMemo(() => urgenciasDoInicio(paraHoje, demandas, hoje, dias), [paraHoje, demandas, hoje, dias]);
+  const { demandas: urgentes, proximos } = useMemo(() => urgenciasDoInicio(paraHoje, demandas, hoje), [paraHoje, demandas, hoje]);
   return (
     <section ref={secao} className="sec ph" data-painel="para-hoje" data-modo={modo} aria-labelledby="ph-t">
       <h3><span id="ph-t">Para hoje</span><Ajuda rotulo="Sobre o Para hoje">Demandas para focar hoje, as prioridades do dia</Ajuda></h3>

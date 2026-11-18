@@ -30,7 +30,7 @@ function textoRotina(r: EstadoRotina | null) {
 }
 
 export function PaginaInicio() {
-  const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina, dias, setFiltro } = useApp();
+  const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina, setFiltro } = useApp();
   const router = useRouter();
   useAjustar(`${demandas.length}`);
   return (
@@ -46,7 +46,7 @@ export function PaginaInicio() {
           <section className="sec">
             <div className="stats tres" role="group" aria-label="Ver as demandas por prazo em Demandas">
               {GRUPOS_INICIO.map(([g, nome, icone, alerta]) => {
-                const n = porGrupo(demandas, g, hoje, dias).length;
+                const n = porGrupo(demandas, g, hoje).length;
                 return (
                   <button key={g} className={`stat st-${g}${alerta && n ? ' alerta' : ''}`} onClick={() => { setFiltro({ ...FILTRO_VAZIO, prazo: g }); router.push('/demandas'); }}>
                     <span className="st-ic"><Icone nome={icone} /></span><span className="n">{n}</span><span className="r">{nome}</span>
@@ -99,11 +99,11 @@ function PainelFiltros({ pos, fechar }: { pos: { x: number; y: number }; fechar:
 }
 
 export function PaginaDemandas() {
-  const { demandas, carregando, erroCarga, visao, setVisao, filtro, setFiltro, abrirJanela, hoje, setAbaArquivo, dias } = useApp();
+  const { demandas, carregando, erroCarga, visao, setVisao, filtro, setFiltro, abrirJanela, hoje, setAbaArquivo } = useApp();
   const router = useRouter();
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-  const lista = filtrar(demandas, filtro, hoje, dias);
-  const nAt = demandas.filter((d) => grupoFiltro(d, hoje, dias) === 'atrasadas').length;
+  const lista = filtrar(demandas, filtro, hoje);
+  const nAt = demandas.filter((d) => grupoFiltro(d, hoje) === 'atrasadas').length;
   const nFiltros = (filtro.tipo ? 1 : 0) + (filtro.origem ? 1 : 0) + (filtro.ano ? 1 : 0) + (filtro.prazo ? 1 : 0);
   const [toque, setToque] = useState(false);
   useEffect(() => { const m = matchMedia('(max-width: 899px)'); const f = () => setToque(m.matches); f(); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, []);

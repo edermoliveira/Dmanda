@@ -8,13 +8,17 @@ import type { DadosEvento, Evento } from '@/lib/eventos';
 import { registrosValidos, type RegistroDia } from '@/lib/registros';
 import type { Opcao } from '@/lib/documentos';
 import type { Vaga } from '@/lib/para-hoje';
-import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
-export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarRegistros };
+import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPeriodo, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
+export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPeriodo, validarRegistros };
 export type { TarefaEdicao };
 
 export type Chamar = (funcao: string, args: Record<string, unknown>) => Promise<unknown>;
 export type Resultado<T> = { ok: true; dados: T } | { ok: false; erro: string; conflito?: true };
 export type RespostaDia = { dia: DiaIndisponivel; recalculadas: number };
+/** `repetida`: a operação (mesmo `operacao_id`) já tinha sido aplicada; o resultado é o de agora, sem aplicar de novo. */
+export type RespostaPeriodo = { periodo_id: string; dias: DiaIndisponivel[]; recalculadas: number; repetida: boolean };
+/** A conferência depois de uma resposta perdida: a operação foi aplicada? Se não foi, ela é CANCELADA no banco (um pedido tardio com a mesma identidade é recusado). `dias` vazio quando o período foi excluído depois. */
+export type ConferenciaPeriodo = { encontrada: boolean; cancelada: boolean; periodo_id: string | null; dias: DiaIndisponivel[] };
 
 export function criarOperacoes(chamar: Chamar) {
   const demanda = async (f: string, a: Record<string, unknown>) => (await chamar(f, a)) as Demanda;
@@ -36,8 +40,17 @@ export function criarOperacoes(chamar: Chamar) {
     desarquivar: (demandaId: string) => demanda('desarquivar_demanda', { p_id: id(demandaId, 'Demanda') }),
     excluir: async (demandaId: string, confirmado: boolean) => (await chamar('excluir_demanda', { p_id: id(demandaId, 'Demanda'), p_confirmado: confirmado === true })) as { id: string; excluida: true },
     listarDias: async () => (await chamar('listar_dias_indisponiveis', {})) as DiaIndisponivel[],
-    salvarDia: async (dia: unknown) => (await chamar('salvar_dia_indisponivel', { p: validarDia(dia) })) as RespostaDia,
+    /** SÓ para ALTERAR um dia avulso que já existe (`id`): é idempotente (repetir grava os mesmos valores). Cadastrar um dia novo é `salvarPeriodo` (um período de um dia), que tem a identidade da operação e a conferência: um segundo protocolo aqui duplicaria o dia numa resposta perdida. */
+    salvarDia: async (dia: unknown) => {
+      const p = validarDia(dia);
+      if (!p.id) throw new ErroDmanda('Para cadastrar um dia novo use o cadastro com identidade da operação (um dia é um período de um dia).');
+      return (await chamar('salvar_dia_indisponivel', { p })) as RespostaDia;
+    },
     excluirDia: async (diaId: string) => (await chamar('excluir_dia_indisponivel', { p_id: id(diaId, 'Dia') })) as { id: string; excluido: true; recalculadas: number },
+    /** Grava todos os dias do período de uma vez (ou altera o período do `periodo_id`) e recalcula os vencimentos afetados na mesma transação. Repetir o mesmo `operacao_id` não aplica de novo. */
+    salvarPeriodo: async (periodo: unknown) => (await chamar('salvar_periodo_indisponivel', { p: validarPeriodo(periodo) })) as RespostaPeriodo,
+    conferirPeriodoPorOperacao: async (operacaoId: string) => (await chamar('conferir_periodo_por_operacao', { p_operacao: id(operacaoId, 'Operação') })) as ConferenciaPeriodo,
+    excluirPeriodo: async (periodoId: string) => (await chamar('excluir_periodo_indisponivel', { p_periodo: id(periodoId, 'Período') })) as { periodo_id: string; excluido: true; dias: number; recalculadas: number },
     // ---------- Entradas (anotações) ----------
     /** arquivadas = false: as ativas. true: as arquivadas e as que já viraram demanda (Arquivo). */
     listarEntradas: async (arquivadas = false) => (await chamar('listar_entradas', { p_arquivadas: !!arquivadas })) as Entrada[],

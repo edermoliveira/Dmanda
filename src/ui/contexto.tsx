@@ -17,6 +17,7 @@ import type { Vaga } from '@/lib/para-hoje';
 import { substituirRegistros, type RegistroDia } from '@/lib/registros';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';
+import { avisosDoSistema, comLeitura, MSG_INCERTA, MSG_SEM_REDE, type AcaoAviso, type AvisoComLeitura, type FonteId, type PeriodoIncerto } from '@/lib/avisos-sistema';
 
 export type Visao = 'cards' | 'quadro' | 'tabela' | 'lista';
 // nova: o cadastro guiado de demanda (com entradaId, ele nasce de uma anotação: Virar demanda). entrada: a janela de uma anotação (sem id, uma anotação nova).
@@ -44,8 +45,23 @@ type Ctx = {
   /** Feriados e eventos externos de dia inteiro cadastrados: a prévia do vencimento usa a mesma regra do banco. */
   dias: DiaIndisponivel[];
   /** `rotulo`: o começo do aviso depois de gravar (a Agenda diz em que data o registro ficou). */
-  salvarDia: (dia: { id?: string; data: string; descricao: string; categoria: CategoriaDia }, rotulo?: string) => Promise<boolean>;
+  salvarDia: (dia: { id: string; data: string; descricao: string; categoria: CategoriaDia }, rotulo?: string) => Promise<{ ok: true } | { ok: false; erro: string }>;
   excluirDia: (id: string) => Promise<boolean>;
+  /** Cadastra (ou, com `periodo_id` de um período que existe, substitui) todos os dias de um período de uma vez. Só devolve true com a gravação confirmada pelo banco. */
+  /**
+   * `operacao_id` é a identidade DA TENTATIVA (repetir a mesma não aplica de novo); `periodo_id`, só ao ALTERAR um período que existe. `incerto` descreve o envio para o caso de a resposta se perder:
+   * o resultado fica registrado como incerto (barra e sininho, com "Conferir se foi gravado"), e a confirmação "Período cadastrado" só aparece com a resposta do banco.
+   */
+  salvarPeriodo: (periodo: { operacao_id: string; periodo_id?: string; data_inicio: string; data_fim: string; descricao: string; categoria: CategoriaDia }, incerto: { resumo: string }, rotulo?: string) => Promise<{ ok: true } | { ok: false; erro: string; incerto: boolean }>;
+  /** Gravações de período sem resposta confirmada: ainda não se sabe se o banco as aplicou. */
+  periodosIncertos: PeriodoIncerto[];
+  /** Pergunta ao servidor se a operação foi aplicada (pela identidade dela) e atualiza a lista e os vencimentos. Se não foi, o servidor a CANCELA: um pedido atrasado com essa identidade não será gravado depois. */
+  conferirPeriodo: (operacaoId: string) => Promise<{ ok: true; encontrada: boolean } | { ok: false; erro: string }>;
+  /** Confere todas as incertas; devolve as que foram gravadas (pelo resumo). As demais ficam canceladas no servidor. */
+  conferirPendentes: () => Promise<{ ok: true; gravados: string[] } | { ok: false; erro: string }>;
+  /** A ação direta de um aviso (recarregar uma leitura ou conferir um período). */
+  executarAcaoAviso: (acao: AcaoAviso) => Promise<void>;
+  excluirPeriodo: (periodoId: string) => Promise<boolean>;
   hoje: string;
   carregando: boolean;
   erroCarga: string | null;
@@ -75,6 +91,15 @@ type Ctx = {
   carregandoEventos: boolean;
   erroEventos: string | null;
   recarregarEventos: () => Promise<void>;
+  /** Dias indisponíveis: erro da leitura (nulo quando leu). Lista vazia com erro NÃO é "nenhum dia cadastrado": a leitura falhou e os feriados e o retorno do setor ficam incertos. */
+  erroDias: string | null;
+  recarregarDias: () => Promise<void>;
+  /** Os problemas de leitura de agora (os mesmos na barra global, no aviso da tela e no sininho) e o que a pessoa já marcou como lido. Marcar como lido NÃO resolve: só some quando a leitura volta. */
+  avisosSistema: AvisoComLeitura[];
+  marcarAvisoLido: (id: string) => void;
+  marcarAvisosLidos: () => void;
+  /** A ação direta dos avisos: relê só a fonte que falhou (ou todas, no problema de conexão). */
+  recarregarFonte: (f: FonteId | 'todas') => Promise<void>;
   criarEvento: (dados: DadosEvento) => Promise<ResultadoEvento>;
   salvarEvento: (id: string, dados: DadosEvento, versao: number) => Promise<ResultadoEvento>;
   buscarEvento: (id: string) => Promise<Evento | null>;
@@ -154,10 +179,8 @@ const Contexto = createContext<Ctx | null>(null);
 
 // Falha ao falar com o servidor (sem internet, servidor fora do ar): a chamada lança em vez de devolver { ok: false }.
 // Nenhuma dessas falhas vira sucesso: a tela mostra o motivo, nada muda e o que foi digitado continua nos campos e nos rascunhos.
-const MSG_SEM_REDE = 'Sem conexão com o servidor. Nada foi gravado. Confira a internet e tente de novo; o que você digitou continua na tela.';
 // Só "Nada foi gravado" quando é certo: sem conexão ANTES de enviar (o pedido nem saiu) ou recusa do servidor. Se o pedido saiu e a resposta não voltou, o servidor pode ter gravado:
 // o resultado é incerto, e a pessoa confere antes de repetir (as repetições que importam usam a identidade da tentativa e não duplicam).
-const MSG_INCERTA = 'Sem confirmação do servidor: não dá para saber se foi gravado. Confira a lista antes de repetir; o que você digitou continua na tela.';
 async function explicarFalha(offlineAntes: boolean): Promise<string> {
   if (offlineAntes) return MSG_SEM_REDE;
   try {
@@ -191,6 +214,14 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [carregandoEventos, setCarregandoEventos] = useState(true);
   const [erroEventos, setErroEventos] = useState<string | null>(null);
+  const [erroDias, setErroDias] = useState<string | null>(null);
+  const [lidos, setLidos] = useState<string[]>([]);
+  // gravações de período com resultado incerto (ref para o formulário ler o valor de agora, estado para a tela) e vencimentos que a tela não conseguiu reler depois de uma mudança no calendário
+  const incertosRef = useRef<PeriodoIncerto[]>([]);
+  const [incertos, setIncertos] = useState<PeriodoIncerto[]>([]);
+  // guardadas também no navegador: se a página for recarregada antes da conferência, o aviso com "Conferir se foi gravado" continua (um pedido atrasado ainda poderia chegar ao servidor)
+  const definirIncertos = useCallback((f: (l: PeriodoIncerto[]) => PeriodoIncerto[]) => { incertosRef.current = f(incertosRef.current); setIncertos(incertosRef.current); gravarLS('dmanda:periodos-incertos', incertosRef.current); }, []);
+  const [vencimentosDesatualizados, setVencimentosDesatualizados] = useState(false);
   const [opcoes, setOpcoes] = useState<Record<'origem' | 'tipo', Opcao[]>>({ origem: [], tipo: [] });
   const [paraHoje, setParaHoje] = useState<Vaga[]>([]);
   const [registros, setRegistros] = useState<RegistroDia[]>([]);
@@ -253,6 +284,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setGrupos(gruposGuardados(ui.grupos));
     setRascunhos(rascunhosGuardados<Rascunho>(lerLS<unknown>('dmanda:rascunhos', null)));
     setDispensados(textosGuardados(lerLS<unknown>('dmanda:avisos-vistos', null)));
+    const guardadas = lerLS<unknown>('dmanda:periodos-incertos', []);   // só entra o que tem a forma esperada (o que está guardado pode estar corrompido)
+    if (Array.isArray(guardadas)) { const ok = guardadas.filter((x): x is PeriodoIncerto => !!x && typeof x === 'object' && typeof (x as PeriodoIncerto).operacao_id === 'string' && /^[0-9a-f-]{36}$/i.test((x as PeriodoIncerto).operacao_id) && typeof (x as PeriodoIncerto).resumo === 'string').map((x) => ({ operacao_id: x.operacao_id, resumo: x.resumo.slice(0, 220) })); incertosRef.current = ok; setIncertos(ok); }
     setPronto(true);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -285,7 +318,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setCarregando(true);
     const r = await protegido(() => srv.listarDemandas(false));
     // a data de hoje vai no mesmo lote das demandas: sem isso os cards aparecem um instante com a data provisória e mostram prazos errados
-    if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); } else setErroCarga(r.erro);
+    if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); setVencimentosDesatualizados(false); } else setErroCarga(r.erro);
     setCarregando(false);
   }, []);
   // Uma leitura por vez: se já há uma em andamento, quem pede de novo recebe a mesma (a busca e o Perfil abrem e pedem os arquivados; em desenvolvimento o React ainda repete o efeito da montagem,
@@ -313,6 +346,20 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (r.ok) { setEventos(r.dados); setErroEventos(null); } else setErroEventos(r.erro);
     setCarregandoEventos(false);
   }, []);
+  // só os dias indisponíveis (o "Tentar de novo" do aviso): em falha mantém o que já havia na tela e acende o erro
+  const recarregarDias = useCallback(async () => {
+    const r = await protegido(() => srv.listarDias());
+    if (r.ok) { setDias(r.dados); setErroDias(null); } else setErroDias(r.erro);
+  }, []);
+  const recarregarFonte = useCallback(async (f: FonteId | 'todas') => {
+    const tudo = f === 'todas';
+    await Promise.all([
+      tudo || f === 'demandas' ? recarregar() : null,
+      tudo || f === 'dias' ? recarregarDias() : null,
+      tudo || f === 'eventos' ? recarregarEventos() : null,
+      tudo || f === 'entradas' ? recarregarEntradas() : null,
+    ]);
+  }, [recarregar, recarregarDias, recarregarEventos, recarregarEntradas]);
   const aplicarEvento = useCallback((e: Evento) => setEventos((l) => ordenarEventosPorData([...l.filter((x) => x.id !== e.id), e])), []);
   const lendoEntradasArquivadas = useRef<Promise<boolean> | null>(null);
   const carregarEntradasArquivadas = useCallback((silencioso = false) => {
@@ -343,7 +390,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setHoje(hojeISO());
     // uma só chamada ao servidor traz tudo (ver servidor/carga.ts); cada parte tem o seu resultado e o seu erro
     void protegido(() => cargaInicial()).then((r) => {
-      if (!r.ok) { setErroCarga(r.erro); setErroEntradas(r.erro); setErroEventos(r.erro); setErroRegistros(r.erro); setCarregando(false); setCarregandoEntradas(false); setCarregandoEventos(false); setCarregandoRegistros(false); return; }
+      if (!r.ok) { setErroCarga(r.erro); setErroEntradas(r.erro); setErroEventos(r.erro); setErroRegistros(r.erro); setErroDias(r.erro); setCarregando(false); setCarregandoEntradas(false); setCarregandoEventos(false); setCarregandoRegistros(false); return; }
       const c = r.dados;
       if (c.demandas.ok) { setHoje(hojeISO()); setDemandas(c.demandas.dados); setErroCarga(null); } else setErroCarga(c.demandas.erro);
       setCarregando(false);
@@ -353,7 +400,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       setCarregandoEventos(false);
       if (c.registros.ok) { setRegistros(c.registros.dados); setErroRegistros(null); } else setErroRegistros(c.registros.erro);
       setCarregandoRegistros(false);
-      if (c.dias.ok) setDias(c.dias.dados);
+      if (c.dias.ok) { setDias(c.dias.dados); setErroDias(null); } else setErroDias(c.dias.erro);
       if (c.opcoes.ok) setOpcoes(agruparOpcoes(c.opcoes.dados));
       if (c.paraHoje.ok) setParaHoje(c.paraHoje.dados);
       if (c.rotina?.ok) setRotina(c.rotina.dados);
@@ -379,7 +426,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       if (!c.ok) return; // sem rede agora: o que está na tela continua
       const { demandas: r, dias: d, entradas: en, eventos: evs, registros: rg, opcoes: op, paraHoje: ph } = c.dados;
       if (gravacoes.current === antes && pendentes.current === 0 && !janelaAberta.current) {
-        if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); if (d.ok) setDias(d.dados); }
+        if (r.ok) { setHoje(hojeISO()); setDemandas(r.dados); setErroCarga(null); }
+        if (d.ok) { setDias(d.dados); setErroDias(null); }   // os dias valem por si: não dependem de as demandas terem voltado nesta releitura
         if (en.ok) { setEntradas(en.dados); setErroEntradas(null); }
         if (evs.ok) { setEventos(evs.dados); setErroEventos(null); }
         if (rg.ok) { setRegistros(rg.dados); setErroRegistros(null); }
@@ -421,6 +469,14 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     return { ok: true, evento: r.dados };
   }, [aplicarEvento, gravando]);
   const avisosEventos = useMemo(() => (agoraMin === null ? [] : avisosDeHoje(eventos, hoje, agoraMin).filter((a) => !dispensados.includes(chaveAviso(a.evento)))), [eventos, hoje, agoraMin, dispensados]);
+  // Um problema por causa, derivado das leituras que falharam: sai sozinho quando a leitura volta, e a marca de "lido" sai junto (se o problema voltar, volta como novo).
+  const problemas = useMemo(() => avisosDoSistema({ demandas: erroCarga, dias: erroDias, eventos: erroEventos, entradas: erroEntradas }, { incertos, vencimentosDesatualizados }), [erroCarga, erroDias, erroEventos, erroEntradas, incertos, vencimentosDesatualizados]);
+  const avisosSistema = useMemo(() => comLeitura(problemas, lidos), [problemas, lidos]);
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => { setLidos((l) => (l.every((id) => problemas.some((p) => p.id === id)) ? l : l.filter((id) => problemas.some((p) => p.id === id)))); }, [problemas]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+  const marcarAvisoLido = useCallback((id: string) => setLidos((l) => (l.includes(id) ? l : [...l, id])), []);
+  const marcarAvisosLidos = useCallback(() => setLidos(problemas.map((p) => p.id)), [problemas]);
   // fixar, arquivar e recuperar são ações pontuais da lista: o aviso (ou o erro) aparece na tela
   const acaoEntrada = useCallback(async (f: () => Promise<Resultado<Entrada>>, msg: string) => {
     const r = await rodarEntrada(f);
@@ -431,12 +487,40 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
 
   // O servidor já recalculou os vencimentos afetados (inclusive os das demandas arquivadas): relê as demandas para a tela mostrar os novos. Se a leitura falhar, a tela diz isso em vez de
   // anunciar o recálculo com os prazos antigos à vista. As arquivadas voltam a ser lidas quando o Arquivo abrir.
-  const aposCalendario = useCallback(async (inicio: string, n: number) => {
+  // `n` (quantos vencimentos o servidor recalculou) é desconhecido ao conferir uma operação de resposta perdida: o texto diz só que os vencimentos foram relidos.
+  const aposCalendario = useCallback(async (inicio: string, n?: number) => {
     const lista = await protegido(() => srv.listarDemandas(false));
     setArquivadas(null);
-    const resumo = n === 0 ? 'Nenhum vencimento precisou mudar.' : n === 1 ? '1 vencimento foi recalculado.' : `${n} vencimentos foram recalculados.`;
-    if (lista.ok) { setDemandas(lista.dados); avisar(`${inicio}. ${resumo}`); } else avisar(`${inicio}. ${resumo} A tela não conseguiu ler os novos vencimentos: recarregue para vê-los.`, true);
+    const resumo = n === undefined ? 'Os vencimentos foram relidos do servidor.' : n === 0 ? 'Nenhum vencimento precisou mudar.' : n === 1 ? '1 vencimento foi recalculado.' : `${n} vencimentos foram recalculados.`;
+    // se a releitura falha, a tela fica com vencimentos que podem estar velhos: isso vira um problema visível (barra e sininho, com o botão de carregar as demandas), não só um aviso que some
+    if (lista.ok) { setDemandas(lista.dados); setVencimentosDesatualizados(false); avisar(`${inicio}. ${resumo}`); } else { setVencimentosDesatualizados(true); avisar(`${inicio}. ${resumo} A tela não conseguiu ler os novos vencimentos: use o aviso no topo para carregar as demandas de novo.`, true); }
   }, [avisar]);
+
+  // Conferência de uma gravação de período de resultado incerto, pela identidade da operação (nunca pelo conteúdo): aplicada ou não. Em falha de leitura, continua incerta.
+  const conferirPeriodo = useCallback(async (operacaoId: string): Promise<{ ok: true; encontrada: boolean } | { ok: false; erro: string }> => {
+    const r = await protegido(() => srv.conferirPeriodoPorOperacao(operacaoId));
+    if (!r.ok) { avisar(r.erro, true); return { ok: false, erro: r.erro }; }
+    definirIncertos((l) => l.filter((x) => x.operacao_id !== operacaoId));
+    if (!r.dados.encontrada) { avisar('Conferido: não foi gravado e aquela tentativa foi cancelada: ela não será gravada depois. Nada mudou no servidor.'); return { ok: true, encontrada: false }; }
+    const pid = r.dados.periodo_id, gravados = r.dados.dias;
+    setDias((l) => [...l.filter((x) => x.periodo_id !== pid), ...gravados].sort((a, b) => a.data.localeCompare(b.data)));
+    await aposCalendario(gravados.length ? 'Conferido: foi gravado' : 'Conferido: foi gravado e já foi excluído depois');
+    void recarregarDias();
+    return { ok: true, encontrada: true };
+  }, [avisar, aposCalendario, definirIncertos, recarregarDias]);
+  const conferirPendentes = useCallback(async (): Promise<{ ok: true; gravados: string[] } | { ok: false; erro: string }> => {
+    const gravados: string[] = [];
+    for (const p of [...incertosRef.current]) {
+      const r = await conferirPeriodo(p.operacao_id);
+      if (!r.ok) return { ok: false, erro: r.erro };
+      if (r.encontrada) gravados.push(p.resumo);
+    }
+    return { ok: true, gravados };
+  }, [conferirPeriodo]);
+  const executarAcaoAviso = useCallback(async (acao: AcaoAviso) => {
+    if (acao.conferir) await conferirPeriodo(acao.conferir);
+    else if (acao.recarregar) await recarregarFonte(acao.recarregar);
+  }, [conferirPeriodo, recarregarFonte]);
 
   const registrarDias = useCallback(async (lista: { dia: string; humor: number }[]): Promise<{ ok: true } | { ok: false; erro: string }> => {
     const r = await gravando(() => protegido(() => srvP.registrarDias(lista)));
@@ -486,7 +570,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       avisar('Entrada excluída');
       return true;
     },
-    eventos, carregandoEventos, erroEventos, recarregarEventos,
+    eventos, carregandoEventos, erroEventos, recarregarEventos, erroDias, recarregarDias, avisosSistema, marcarAvisoLido, marcarAvisosLidos, recarregarFonte,
     criarEvento: (dados) => rodarEvento(() => srvA.criarEvento(dados)),
     salvarEvento: (id, dados, versao) => rodarEvento(() => srvA.salvarEvento(id, dados, versao)),
     buscarEvento: async (id) => { const r = await protegido(() => srvA.buscarEvento(id)); if (!r.ok) return null; aplicarEvento(r.dados); return r.dados; },
@@ -521,9 +605,39 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     guardarRascunho,
     salvarDia: async (dia, rotulo) => {
       const r = await gravando(() => protegido(() => srv.salvarDia(dia)));
-      if (!r.ok) { avisar(r.erro, true); return false; }
+      if (!r.ok) { avisar(r.erro, true); return { ok: false, erro: r.erro }; }
       setDias((l) => [...l.filter((x) => x.id !== r.dados.dia.id), r.dados.dia].sort((a, b) => a.data.localeCompare(b.data)));
-      await aposCalendario(rotulo ?? (dia.id ? 'Dia alterado' : 'Dia cadastrado'), r.dados.recalculadas);
+      await aposCalendario(rotulo ?? 'Dia alterado', r.dados.recalculadas);
+      void recarregarDias();   // a gravação de um dia não prova que a lista inteira foi lida: só uma leitura completa limpa o erro dos dias
+      return { ok: true };
+    },
+    salvarPeriodo: async (periodo, incerto, rotulo) => {
+      const offlineAntes = typeof navigator !== 'undefined' && !navigator.onLine;   // só sem conexão ANTES de enviar é certo que nada saiu
+      const r = await gravando(() => protegido(() => srv.salvarPeriodo(periodo)));
+      if (!r.ok) {
+        // o pedido pode ter saído e a resposta não voltou (inclusive quando a conexão caiu no meio): o banco pode ter gravado, agora ou depois. Fica registrado como incerto (o formulário e o aviso do topo
+        // conferem pela identidade da operação, e a conferência cancela a tentativa que não for encontrada), e nada é confirmado. Recusa de regra do banco (resposta com erro) não é incerta.
+        const duvida = (r.erro === MSG_INCERTA || r.erro === MSG_SEM_REDE) && !offlineAntes;
+        if (duvida) definirIncertos((l) => (l.some((x) => x.operacao_id === periodo.operacao_id) ? l : [...l, { operacao_id: periodo.operacao_id, ...incerto }]));
+        const erro = duvida ? MSG_INCERTA : r.erro;
+        avisar(erro, true);
+        return { ok: false, erro, incerto: duvida };
+      }
+      definirIncertos((l) => l.filter((x) => x.operacao_id !== periodo.operacao_id));
+      const { periodo_id: pid, dias: gravados, recalculadas, repetida } = r.dados;
+      setDias((l) => [...l.filter((x) => x.periodo_id !== pid), ...gravados].sort((a, b) => a.data.localeCompare(b.data)));
+      const base = rotulo ?? 'Período gravado';
+      await aposCalendario(`${base}${gravados.length === 1 ? '' : `: ${gravados.length} dias`}${repetida ? ' (esta operação já tinha sido aplicada)' : ''}`, repetida ? undefined : recalculadas);
+      void recarregarDias();
+      return { ok: true };
+    },
+    periodosIncertos: incertos, conferirPeriodo, conferirPendentes, executarAcaoAviso,
+    excluirPeriodo: async (periodoId) => {
+      const r = await gravando(() => protegido(() => srv.excluirPeriodo(periodoId)));
+      if (!r.ok) { avisar(r.erro, true); return false; }
+      setDias((l) => l.filter((x) => x.periodo_id !== periodoId));
+      await aposCalendario(r.dados.dias === 1 ? 'Dia excluído' : `Período excluído (${r.dados.dias} dias)`, r.dados.recalculadas);
+      void recarregarDias();
       return true;
     },
     excluirDia: async (diaId) => {
@@ -531,6 +645,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       if (!r.ok) { avisar(r.erro, true); return false; }
       setDias((l) => l.filter((x) => x.id !== diaId));
       await aposCalendario('Dia excluído', r.dados.recalculadas);
+      void recarregarDias();
       return true;
     },
     criar: async (dados, msg = 'Demanda cadastrada', entradaId) => {
@@ -568,7 +683,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
+  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, erroDias, recarregarDias, avisosSistema, marcarAvisoLido, marcarAvisosLidos, recarregarFonte, incertos, conferirPeriodo, conferirPendentes, executarAcaoAviso, definirIncertos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

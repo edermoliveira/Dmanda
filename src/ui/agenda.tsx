@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { ChipEspera } from './cartoes';
+import { AvisosDaTela } from './avisos';
 import { useColunaFixa } from './coluna-fixa';
 import { diasDesde, plural, titulo, type Demanda } from '@/lib/demandas';
 import { somarDias, type DiaIndisponivel } from '@/lib/prazos';
@@ -177,7 +178,7 @@ function ListaDia({ data, o, concluidas, semDemandas, corpo }: { data: string; o
   const vazio = !itens.eventos.length && !grupos.length && !itens.indisponiveis.length;
   return (
     <>
-      {semDemandas ? <div className="erro-carga" role="alert"><b>As demandas não carregaram.</b><span>Vencimentos, retornos e a carga deste dia ficam indisponíveis; os compromissos aparecem normalmente.</span><button type="button" className="btn mini" onClick={() => void recarregar()}>Tentar de novo</button></div> : null}
+      {semDemandas ? <div className="erro-carga" role="alert"><b>As demandas não carregaram.</b><span>Vencimentos, retornos e a carga deste dia ficam indisponíveis; os compromissos aparecem normalmente.</span><button type="button" className="btn mini" onClick={() => void recarregar()}>Carregar as demandas de novo</button></div> : null}
       <div className={corpo}>
         {itens.indisponiveis.map((x) => <ItemIndisponivel key={x.id} x={x} />)}
         {eventos.length ? <><h4 className="agd-h4">Compromissos e lembretes</h4>{eventos.map(({ e, c }) => <ItemEvento key={e.id} e={e} conflitos={c} />)}</> : null}
@@ -480,7 +481,7 @@ function VisaoSemana({ semana, dia, hoje, o, oCat, cat, carga, amplo, concluidas
 
 // ---------- página ----------
 export function PaginaAgenda() {
-  const { demandas, dias, eventos, hoje, carregando, carregandoEventos, erroEventos, erroCarga, recarregar, recarregarEventos } = useApp();
+  const { demandas, dias, eventos, hoje, carregando, carregandoEventos, erroEventos, erroCarga, recarregar } = useApp();
   const [modo, setModoBruto] = useState<Modo>('mes');
   const [cat, setCat] = useState<Categoria>('tudo');
   const [concluidas, setConcluidas] = useState(false);
@@ -546,12 +547,13 @@ export function PaginaAgenda() {
   const filtrosAtivos = (cat !== 'tudo' ? 1 : 0) + (concluidas ? 1 : 0) + (finalizadas ? 1 : 0);
   const verDemandas = cat !== 'eventos', verEventos = cat !== 'demandas';
   const opcoes: OpcoesAgenda = useMemo(() => ({ demandas, eventos, indisponiveis: dias, hoje, comFinalizadas: finalizadas }), [demandas, eventos, dias, hoje, finalizadas]);
-  const carga = useMemo(() => (verDemandas ? cargaPorDia(demandas, dias, hoje) : new Map<string, CargaDia>()), [verDemandas, demandas, dias, hoje]);
-  const semPrazo = useMemo(() => pendenciasSemPrazo(demandas, dias, hoje), [demandas, dias, hoje]);
+  const carga = useMemo(() => (verDemandas ? cargaPorDia(demandas, hoje) : new Map<string, CargaDia>()), [verDemandas, demandas, hoje]);
+  const semPrazo = useMemo(() => pendenciasSemPrazo(demandas, hoje), [demandas, hoje]);
   const eventosVisiveis = useMemo(() => (verEventos ? eventos : []), [verEventos, eventos]);
   // o que o Mês e a gaveta mostram já respeita o filtro Tudo, Demandas ou Compromissos
   const opcoesCat: OpcoesAgenda = useMemo(() => ({ ...opcoes, demandas: verDemandas ? opcoes.demandas : [], eventos: verEventos ? opcoes.eventos : [] }), [opcoes, verDemandas, verEventos]);
-  const indispPorData = useMemo(() => { const m = new Map<string, DiaIndisponivel[]>(); for (const x of dias) m.set(x.data, [...(m.get(x.data) ?? []), x]); return m; }, [dias]);
+  // os registros de uma data (um dia avulso e um período podem cobrir a mesma data): o mesmo tipo e a mesma descrição aparecem uma vez só
+  const indispPorData = useMemo(() => { const m = new Map<string, DiaIndisponivel[]>(); for (const x of dias) { const l = m.get(x.data) ?? []; if (!l.some((y) => y.categoria === x.categoria && y.descricao.trim() === x.descricao.trim())) m.set(x.data, [...l, x]); } return m; }, [dias]);
 
   const { ano, mes } = anoMes(dia);
   const semana = useMemo(() => semanaDe(dia), [dia]);
@@ -588,7 +590,7 @@ export function PaginaAgenda() {
         </div>
       </div>
 
-      {erroEventos ? <div className="erro-carga" role="alert"><b>Não foi possível carregar os eventos.</b><span>{erroEventos}</span><button className="btn mini" onClick={() => void recarregarEventos()}>Tentar de novo</button></div> : null}
+      <AvisosDaTela tela="agenda" />
 
       <section className="agd-resumo" aria-label={modo === 'hoje' ? 'Data e resumo do dia' : 'Resumo do período'} data-nao-util={(modo === 'hoje' && diaNaoUtil(dia, dias)) || undefined}>
         <div className="agd-linha-per">
@@ -632,7 +634,7 @@ export function PaginaAgenda() {
       {!aguardando && modo === 'mes' ? (
         <div className="agd-mes-cols">
           <section className="agd-painel agd-cal" aria-label={`Calendário de ${tituloMes(dia)}`}>
-            {semDem ? <div className="agd-aviso-carga" role="status"><Icone nome="alert" /><span>As demandas não carregaram: vencimentos, retornos e a carga do mês estão indisponíveis. Os compromissos aparecem normalmente.</span><button type="button" className="btn mini" onClick={() => void recarregar()}>Tentar de novo</button></div> : null}
+            {semDem ? <div className="agd-aviso-carga" role="status"><Icone nome="alert" /><span>As demandas não carregaram: vencimentos, retornos e a carga do mês estão indisponíveis. Os compromissos aparecem normalmente.</span><button type="button" className="btn mini" onClick={() => void recarregar()}>Carregar as demandas de novo</button></div> : null}
             <div className="agd-mes">
               <GradeMes dia={dia} hoje={hoje} carga={carga} o={opcoesCat} indispPorData={indispPorData} semDemandas={semDem} compacto={compacto} painelAberto={painelAberto} escolher={(d) => setData(d)} abrir={tocarDia} />
               <AbasMeses dia={dia} escolherMes={mudarMes} />
@@ -669,7 +671,7 @@ function VisaoHoje({ dia, o, cat, concluidas, semDemandas }: { dia: string; o: O
   const itens = itensDoDia(dia, { ...o, demandas: cat === 'eventos' ? [] : o.demandas, eventos: cat === 'demandas' ? [] : o.eventos });
   const eventos = comConflitos(itens.eventos), grupos = agruparPorDemanda(itens.marcos);
   const atrasados = useMemo(() => (dia === hoje && cat !== 'eventos' ? agruparPorDemanda(marcosAtrasados(demandas, dias, hoje, dia)) : []), [dia, hoje, cat, demandas, dias]);
-  const semPrazo = useMemo(() => (cat === 'eventos' ? [] : pendenciasSemPrazo(demandas, dias, hoje)), [cat, demandas, dias, hoje]);
+  const semPrazo = useMemo(() => (cat === 'eventos' ? [] : pendenciasSemPrazo(demandas, hoje)), [cat, demandas, hoje]);
   return (
     <div className="agd-hoje">
       <section className="agd-painel" aria-labelledby="agd-h-c">

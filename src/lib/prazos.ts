@@ -5,7 +5,8 @@
 export const CATEGORIAS_DIA = ['Feriado', 'Evento externo'] as const;
 export type CategoriaDia = (typeof CATEGORIAS_DIA)[number];
 export const ROTULO_CATEGORIA: Record<CategoriaDia, string> = { Feriado: 'Feriado', 'Evento externo': 'Evento externo de dia inteiro' };
-export type DiaIndisponivel = { id: string; data: string; descricao: string; categoria: CategoriaDia; criado_em?: string };
+/** `periodo_id` liga os dias gravados juntos como um período (curso, semana, recesso); um dia avulso não tem. Cada dia do período é uma linha, então todo cálculo lê a mesma lista de sempre. */
+export type DiaIndisponivel = { id: string; data: string; descricao: string; categoria: CategoriaDia; criado_em?: string; periodo_id?: string };
 
 /** Botões de prazo: dias corridos a partir da data de chegada, excluindo o dia da chegada e incluindo o último (decisão 81). */
 export const BOTOES_PRAZO = [5, 10, 20, 30] as const;
@@ -49,10 +50,12 @@ export function ajustarPrazo(original: string, dias: readonly DiaIndisponivel[])
   for (const x of [...dias].sort((a, b) => (a.criado_em ?? '').localeCompare(b.criado_em ?? '') || a.id.localeCompare(b.id))) porData.set(x.data, [...(porData.get(x.data) ?? []), x]);
   const pulados: string[] = [];
   let d = original;
-  for (let n = 1; ; n++) {
-    if (n > 400) throw new Error('Não há dia disponível nos 400 dias anteriores a essa data. Confira os dias indisponíveis cadastrados.');
+  // Sem limite fixo de dias: cada volta anda um dia para trás e só continua enquanto o dia é fim de semana ou está cadastrado. Os dias cadastrados são em número finito, então a sequência acaba
+  // no primeiro dia útil sem cadastro (um limite antigo de 400 dias recusava, ou parava num dia ainda indisponível, quando um recesso longo passava dele).
+  for (;;) {
     const semana = diaDaSemana(d);
-    const razoes = [...(semana === 6 ? ['sábado'] : semana === 0 ? ['domingo'] : []), ...(porData.get(d) ?? []).map((x) => `${x.categoria.toLowerCase()}: ${x.descricao.trim()}`)];
+    // a união dos registros do dia: o mesmo motivo cadastrado duas vezes (um dia avulso e um período sobre a mesma data) aparece uma vez só
+    const razoes = [...(semana === 6 ? ['sábado'] : semana === 0 ? ['domingo'] : []), ...new Set((porData.get(d) ?? []).map((x) => `${x.categoria.toLowerCase()}: ${x.descricao.trim()}`))];
     if (!razoes.length) break;
     pulados.push(`${diaMes(d)} ${razoes.join(', ')}`);
     d = somarDias(d, -1);
@@ -63,3 +66,28 @@ export function ajustarPrazo(original: string, dias: readonly DiaIndisponivel[])
 const SEMANA_CURTA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 /** "sex, 05/03/2027": a data com o dia da semana, para a pessoa conferir o que o ajuste fez. */
 export const dataComSemana = (iso: string) => `${SEMANA_CURTA[diaDaSemana(iso)]}, ${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+
+/** Um período de indisponibilidade vai até 366 dias (um ano). A mesma conferência vale na tela, na operação do servidor e no banco. */
+export const MAX_DIAS_PERIODO = 366;
+/** Quantos dias há de `inicio` a `fim`, os dois inclusivos (um só dia vale 1). */
+export const diasNoPeriodo = (inicio: string, fim: string) => Math.round((emMs(fim) - emMs(inicio)) / MS_DIA) + 1;
+/** Conferência do intervalo, com as mesmas mensagens do banco. Nulo quando o intervalo vale. */
+export function erroDoPeriodo(inicio: string, fim: string): string | null {
+  if (!inicio) return 'Informe a data inicial.';
+  if (!fim) return 'Informe a data final.';
+  if (fim < inicio) return 'A data final não pode ser anterior à data inicial.';
+  if (diasNoPeriodo(inicio, fim) > MAX_DIAS_PERIODO) return `O período passa de ${MAX_DIAS_PERIODO} dias. Cadastre em mais de um período.`;
+  return null;
+}
+
+/** Um item da lista de dias cadastrados: um dia avulso, ou um período (os dias gravados juntos, do primeiro ao último). */
+export type ItemDia = { chave: string; periodo_id: string | null; inicio: string; fim: string; dias: number; ids: string[]; descricao: string; categoria: CategoriaDia };
+export function agruparDias(dias: readonly DiaIndisponivel[]): ItemDia[] {
+  const itens = new Map<string, ItemDia>();
+  for (const x of dias) {
+    const chave = x.periodo_id ?? x.id, atual = itens.get(chave);
+    if (!atual) itens.set(chave, { chave, periodo_id: x.periodo_id ?? null, inicio: x.data, fim: x.data, dias: 1, ids: [x.id], descricao: x.descricao, categoria: x.categoria });
+    else { atual.inicio = x.data < atual.inicio ? x.data : atual.inicio; atual.fim = x.data > atual.fim ? x.data : atual.fim; atual.dias++; atual.ids.push(x.id); }
+  }
+  return [...itens.values()].sort((a, b) => a.inicio.localeCompare(b.inicio) || a.descricao.localeCompare(b.descricao, 'pt-BR'));
+}

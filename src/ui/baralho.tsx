@@ -247,10 +247,10 @@ const notaDeChegada = (d: Demanda, hoje: string) => { const n = permanencia(d, h
  * concluir ou reabrir aparece em todas as ocorrências.
  */
 export function SecoesCards({ lista }: { lista: Demanda[] }) {
-  const { hoje, dias } = useApp();
+  const { hoje } = useApp();
   const secao = useRef<HTMLDivElement>(null);
   const modo = useModo(secao);
-  const secoes = useMemo(() => montarSecoes(lista, hoje, dias), [lista, hoje, dias]);
+  const secoes = useMemo(() => montarSecoes(lista, hoje), [lista, hoje]);
   return (
     <div ref={secao} className="grupos-cards" data-modo={modo}>
       {secoes.map((s) => {

@@ -4,6 +4,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Icone } from './Icone';
 import { Opcoes } from './janela-base';
+import { useApp } from './contexto';
 import { SeletorOpcao } from './seletor';
 import { anoReconhecido } from '@/lib/documentos';
 import {
@@ -117,9 +118,11 @@ export function Descricao({ c, mudar, prefixo }: { c: Campos; mudar: (p: Partial
 // ---------- chegada e prazo ----------
 /** Descreve o vencimento que o banco vai gravar para a data original escolhida, com a mesma regra dele (antecipa para o último dia disponível anterior). */
 export function PreviaPrazo({ c, dias, hoje }: { c: Campos; dias: readonly DiaIndisponivel[]; hoje: string }) {
+  const { erroDias } = useApp();
   if (!c.prazo_original) return <p className="prev-prazo" role="status">Sem prazo: a demanda fica sem vencimento e nada é inventado.</p>;
-  let r: ReturnType<typeof ajustarPrazo>;
-  try { r = ajustarPrazo(c.prazo_original, dias); } catch (e) { return <p className="prev-prazo" role="alert">{(e as Error).message}</p>; }
+  // Sem a leitura completa dos dias indisponíveis a prévia não sabe se o prazo original cai em feriado ou evento externo: não mostra um vencimento como se fosse o certo. O banco confere e grava o definitivo ao salvar.
+  if (erroDias) return <p className="prev-prazo" role="status" data-prazo-a-confirmar>Prazo original: <b>{dataComSemana(c.prazo_original)}</b>. Vencimento <b>a confirmar</b>: os dias indisponíveis não carregaram, então não dá para dizer se esse dia está livre. O Dmanda confere e grava o vencimento certo ao salvar; veja-o na demanda depois de salvar.</p>;
+  const r = ajustarPrazo(c.prazo_original, dias);
   const k = diasAte(r.prazo, hoje);
   const quanto = k < 0 ? `vencida há ${plural(-k, 'dia')}` : k === 0 ? 'vence hoje' : `faltam ${plural(k, 'dia')}`;
   const viva = duracaoViva({ ...c, chegou_em: c.chegou_em || null, prazo_base_em: c.prazo_base_em || null });

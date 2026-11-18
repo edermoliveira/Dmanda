@@ -15,6 +15,7 @@ import { novoUuid } from './campos';
 import { emLote, epocaDoApp, pendentes, registrar, type Pedido } from './ajuste';
 import * as srvE from '@/servidor/entradas';
 import { useApp, useOnline } from './contexto';
+import { AvisosDaTela } from './avisos';
 import {
   aparar, camposEmConflito, carimbo, contarTags, COR_AUTOMATICA, diferencas, estadoDe, filtrarEntradas, LIMITE_TEXTO, LIMITE_TITULO, ordenarEntradas, QTD_CORES, resumoDe, semTags, tagsDe, temTitulo, vazia,
   type CamposEntrada, type Entrada,
@@ -77,7 +78,7 @@ export function useVirarDemanda() {
 
 // ---------- a página ----------
 export function PaginaEntradas() {
-  const { entradas, carregandoEntradas, erroEntradas, recarregarEntradas, abrirJanela, fixarEntrada, rascunhos, setAbaArquivo } = useApp();
+  const { entradas, carregandoEntradas, erroEntradas, abrirJanela, fixarEntrada, rascunhos, setAbaArquivo } = useApp();
   const router = useRouter();
   const virar = useVirarDemanda();
   const [texto, setTexto] = useState('');
@@ -96,7 +97,7 @@ export function PaginaEntradas() {
         <button className="btn gl" aria-label="Ver entradas arquivadas" onClick={() => { setAbaArquivo('entradas'); router.push('/arquivo'); }}><Icone nome="archive" /><span className="tx">Arquivadas</span></button>
         <button className="btn escuro" aria-label="Nova entrada" onClick={() => abrirJanela({ t: 'entrada' })}><Icone nome="plus" /><span className="tx">Nova entrada</span></button>
       </div>
-      {erroEntradas ? <div className="erro-carga" role="alert"><b>Não foi possível carregar as entradas.</b><span>{erroEntradas}</span><button className="btn mini" onClick={() => void recarregarEntradas()}>Tentar de novo</button></div> : null}
+      <AvisosDaTela tela="entradas" />
       {semAlteracaoSalva ? <p className="aviso-rascunho" role="status">Há uma entrada nova que ainda não foi salva no Dmanda e está só neste aparelho. <button className="btn mini" onClick={() => abrirJanela({ t: 'entrada' })}>Continuar</button></p> : null}
       {tags.length ? (
         <div className="tagbar" role="group" aria-label="Filtrar por tag">

@@ -1,7 +1,7 @@
 // Validação das entradas das operações (puro, sem banco nem alias de importação: roda também nos testes de regras, direto no Node).
 // As regras de negócio ficam no banco (migrações); aqui só se confere o formato e se traduz o erro em mensagem para a pessoa.
 import { AREAS, ETAPAS, PRAZOS } from '../lib/demandas.ts';
-import { BOTOES_PRAZO, CATEGORIAS_DIA, type CategoriaDia } from '../lib/prazos.ts';
+import { BOTOES_PRAZO, CATEGORIAS_DIA, erroDoPeriodo, type CategoriaDia } from '../lib/prazos.ts';
 import { COR_MAX_ACEITA, LIMITE_TEXTO, LIMITE_TITULO } from '../lib/entradas.ts';
 import { erroDoEvento, TIPOS_EVENTO, type DadosEvento } from '../lib/eventos.ts';
 import { DIAS_CORRECAO, NIVEIS, type Nivel } from '../lib/registros.ts';
@@ -61,6 +61,24 @@ export function validarDia(entrada: unknown): { id?: string; data: string; descr
   if (!descricao) throw new ErroDmanda('Descreva o dia, por exemplo: Natal.');
   const categoria = enumerado(e.categoria, CATEGORIAS_DIA, 'Categoria');
   return { ...(e.id ? { id: id(e.id, 'Dia') } : {}), data, descricao, categoria };
+}
+
+/**
+ * Período de indisponibilidade (curso de vários dias, semana, recesso): data inicial e final inclusivas, mais descrição e tipo, como no dia avulso.
+ * `operacao_id` (obrigatório) é a identidade DA TENTATIVA, gerada pela tela: repetir o mesmo envio com ele, depois de uma resposta perdida, devolve o resultado já aplicado, sem duplicar nem alterar de novo.
+ * `periodo_id` (opcional) é o período que está sendo ALTERADO: sem ele, o período é novo. As duas identidades são independentes: uma operação nova nunca altera um período por herdar a tentativa anterior.
+ */
+export function validarPeriodo(entrada: unknown): { operacao_id: string; periodo_id?: string; data_inicio: string; data_fim: string; descricao: string; categoria: CategoriaDia } {
+  if (!entrada || typeof entrada !== 'object' || Array.isArray(entrada)) throw new ErroDmanda('Dados do período inválidos.');
+  const e = entrada as Record<string, unknown>;
+  const inicio = dataOuNulo(e.data_inicio ?? null, 'Data inicial'), fim = dataOuNulo(e.data_fim ?? null, 'Data final');
+  const operacao = id(e.operacao_id, 'Operação');
+  const erroIntervalo = erroDoPeriodo(inicio ?? '', fim ?? '');
+  if (erroIntervalo) throw new ErroDmanda(erroIntervalo);
+  const descricao = texto(e.descricao, 'Descrição', 160).trim();
+  if (!descricao) throw new ErroDmanda('Descreva o período, por exemplo: Recesso de fim de ano.');
+  const categoria = enumerado(e.categoria, CATEGORIAS_DIA, 'Categoria');
+  return { operacao_id: operacao, ...(e.periodo_id ? { periodo_id: id(e.periodo_id, 'Período') } : {}), data_inicio: inicio!, data_fim: fim!, descricao, categoria };
 }
 
 /**
