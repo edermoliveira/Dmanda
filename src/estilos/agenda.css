@@ -198,7 +198,7 @@
   .agd-it-h, .agd-it-m { display: none; }
 }
 /* marcas só do heatmap compacto (celular): escondidas fora dele */
-.agd-evm, .agd-so-compacto { display: none; }
+.agd-so-compacto { display: none; }
 /* celular: sete colunas de segunda a domingo e a faixa JAN a DEZ cabem sem rolagem horizontal. A prioridade é a área de toque (44 px na data e na aba, sem sobrepor vizinhos) e o título legível:
    o painel de vidro sai, a margem lateral cai para 6 px, os espaços entre as células ficam em 2 px, a numeração das semanas sai e a hora e o rótulo do marco ficam na gaveta. */
 @container agd (max-width: 560px) {
@@ -345,8 +345,6 @@
 .agd-linha { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 14px; background: color-mix(in srgb, var(--card) 70%, transparent); box-shadow: 0 0 0 1px var(--card-brd); color: var(--text); font: inherit; text-align: start; cursor: pointer; transition: background-color var(--agd-dur) ease; }
 .agd-linha:hover { background: color-mix(in srgb, var(--acc) 8%, var(--card)); }
 .app[data-dir="d"] .agd-linha:focus-visible { outline: 3px dashed var(--foco); outline-offset: 2px; }
-.agd-linha-t { display: grid; gap: 2px; min-width: 0; font-size: calc(14px * var(--esc)); overflow-wrap: anywhere; }
-.agd-linha-t small { font-size: calc(13px * var(--esc)); color: var(--text2); }
 
 /* ---------- semana (14/11/2026): domingo a sábado, na direção do Mês ----------
    Largura útil a partir de 1040 px (decisão 75; eram 900 px, com colunas de 120 px e texto espremido): sete colunas com o resumo de cada dia (até quatro itens e o "+N · ver o dia"). Abaixo disso, a faixa com as sete datas. Nos dois casos o dia escolhido aparece

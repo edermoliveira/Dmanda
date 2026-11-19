@@ -65,7 +65,6 @@
   .app[data-dir="d"] .ph-atras[data-volta] { animation: none; }
 }
 /* as listas de cards das outras páginas no celular: o mesmo baralho; nas demais larguras a grade segue como era */
-.app[data-dir="d"] .cartas { min-width: 0; }
 
 
 /* títulos e chips na pilha: a explicação do Para hoje vai para a linha de baixo e os chips de prazo e de espera quebram em vez de passar da borda do card */

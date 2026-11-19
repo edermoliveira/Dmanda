@@ -4,10 +4,10 @@
    ===================================================================== */
 
 /* ---------- fontes: principal (títulos), secundária (subtítulos e textos), mono (detalhes) ---------- */
-h1, h2, .logo, .top-logo, .frase, .stat .n, .clima b, .assunto, .grande-n { font-family: var(--font-h); }
+h1, h2, .logo, .top-logo, .frase, .stat .n, .assunto, .grande-n { font-family: var(--font-h); }
 h3, h4, .grupo-h, .coluna header h4, .pagehead p, .sec > h3 { font-family: var(--font); }
 h3, h4 { font-weight: 700; }
-.mono, .pz, .tags .num, .cnt, .badge, kbd, .prog b, .linha-c .num, .quando, .ag-h b, .ag-d, .meta b, .tabela td.mono, .rng b { font-family: var(--font-n); }
+.mono, .pz, .tags .num, .cnt, kbd, .prog b, .linha-c .num, .quando, .meta b, .tabela td.mono, .rng b { font-family: var(--font-n); }
 
 /* ---------- vidro líquido ---------- */
 /* --vidro: fator da transparência do preenchimento do vidro (1 = antes; .7 = cerca de 30% mais transparente). Vale para barras, menu, painéis e botões; não vale para cards, janelas e caixas de preenchimento. Bordas e realces ficam como estavam. */
@@ -15,8 +15,8 @@ h3, h4 { font-weight: 700; }
 .app[data-tema="claro"] { --lg-top: hsl(0 0% 98.8% / calc(.68 * var(--vidro))); --lg-bot: hsl(0 0% 98.8% / calc(.26 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .5); --lg-edge: hsl(0 0% 98.8% / .95); --lg-edge2: hsl(0 0% 98.8% / .5); --lg-sh: hsl(215 40% 30% / .14); }
 .app[data-tema="escuro"] { --lg-top: hsl(0 0% 98.8% / calc(.14 * var(--vidro))); --lg-bot: hsl(0 0% 98.8% / calc(.04 * var(--vidro))); --lg-hi: hsl(0 0% 98.8% / .16); --lg-edge: hsl(0 0% 98.8% / .30); --lg-edge2: hsl(0 0% 98.8% / .10); --lg-sh: hsl(0 0% 3.9% / .5); }
 
-.app .painel, .app .stat, .app .alerta-l, .app .tabs, .app .filtro, .app .btn.gl, .app .icbtn, .app .perfil-b, .app .menuplus, .app .bar, .app .busca-box, .app .modal, .app .balao,
-.app .etapas-tabs button, .app .sw, .app .tema-c, .app .pend, .app .chat-f input, .app .linha, .app .tabela-w, .app .ag-col, .app .ag-cel, .app .bolha.ia, .app .toast {
+.app .painel, .app .stat, .app .tabs, .app .filtro, .app .btn.gl, .app .icbtn, .app .perfil-b, .app .menuplus, .app .bar, .app .busca-box, .app .modal, .app .balao,
+.app .etapas-tabs button, .app .sw, .app .pend, .app .linha, .app .tabela-w, .app .toast {
   background: radial-gradient(130% 80% at 12% 0%, var(--lg-hi), transparent 55%), linear-gradient(150deg, var(--lg-top), var(--lg-bot));
   border: 1px solid var(--lg-edge2);
   box-shadow: inset 0 1px 0 var(--lg-edge), inset 0 -1px 0 var(--lg-edge2), 0 10px 30px var(--lg-sh);
@@ -37,7 +37,7 @@ h3, h4 { font-weight: 700; }
   box-shadow: inset 0 1px 0 hsl(0 0% 98.8% / .75), inset 0 -3px 8px hsl(0 0% 3.9% / .12), 0 14px 32px var(--lg-sh);
 }
 .app .btn.pri { background: radial-gradient(130% 100% at 20% 0%, hsl(0 0% 98.8% / .4), transparent 60%), var(--acc); box-shadow: inset 0 1px 0 hsl(0 0% 98.8% / .6); }
-.app .chip.neutro, .app .pz, .app .selo { box-shadow: inset 0 1px 0 var(--lg-edge2); }
+.app .chip.neutro, .app .pz { box-shadow: inset 0 1px 0 var(--lg-edge2); }
 .app .tabs button[aria-pressed="true"] { background: radial-gradient(130% 90% at 20% 0%, var(--lg-hi), transparent 60%), var(--card); }
 .app .emo { background: radial-gradient(120% 90% at 25% 0%, var(--lg-hi), transparent 60%), var(--card); box-shadow: inset 0 1px 0 var(--lg-edge2); }
 .app .emo[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--acc), 0 6px 16px var(--lg-sh); }
@@ -75,7 +75,6 @@ h3, h4 { font-weight: 700; }
 .m-h h3 { font-size: calc(20px * var(--esc)); }
 .m-h .icbtn-s { margin: 0; }
 .m-f { display: flex; align-items: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-.m-cols { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; }
 .dois { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .fld { display: grid; gap: 6px; margin-bottom: 12px; }
 .fld > label, .fld > span:first-child { font-size: calc(12px * var(--esc)); font-weight: 700; color: var(--text2); }
@@ -112,7 +111,6 @@ h3, h4 { font-weight: 700; }
 
 @container tela (max-width: 899px) {
   .ind3 { grid-template-columns: 1fr; }
-  .m-cols { grid-template-columns: 1fr; }
   .reg-l > span { min-width: 0; flex-basis: 100%; }
   .balao { top: 76px; right: 12px; }
 }

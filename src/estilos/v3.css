@@ -9,27 +9,27 @@
 .app[data-tema="claro"] { --solido: rgba(254,254,254,.98); --btn-bg: rgba(254,254,254,.5); --btn-brd: rgba(10,10,10,.12); --btn-hi: rgba(254,254,254,.95); --btn-hov: rgba(254,254,254,.85); }
 .app[data-tema="escuro"] { --btn-bg: rgba(252,252,252,.07); --btn-brd: rgba(252,252,252,.16); --btn-hi: rgba(252,252,252,.14); --btn-hov: rgba(252,252,252,.14); }
 .app[data-tema="claro"] .modal .fld input, .app[data-tema="claro"] .modal .fld select, .app[data-tema="claro"] .modal .fld textarea, .app[data-tema="claro"] .modal .add-t input { background: #FEFEFE; }
-.app .modal .fld input, .app .modal .fld select, .app .modal .fld textarea, .app .modal .add-t input, .app .busca-box input, .app .chat-f input { border-color: var(--campo); }
+.app .modal .fld input, .app .modal .fld select, .app .modal .fld textarea, .app .modal .add-t input, .app .busca-box input { border-color: var(--campo); }
 
 /* ---------- tipografia ---------- */
 .app { font-size: var(--fs, calc(16px * var(--esc))); line-height: 1.45; }
 .pagehead h1 { font-size: calc(37px * var(--esc)); font-weight: 700; line-height: 1.15; letter-spacing: -.035em; }
 .sec > h3, .cfg h3, .painel > h3, .ph h3, .m-h h3, .sub-f { font-family: var(--font); font-size: calc(19px * var(--esc)); font-weight: 700; line-height: 1.35; }
 .sec > h3 small, .sub-f small { font-size: calc(13px * var(--esc)); font-weight: 400; }
-.btn, .navi, .tabs button, .vis button, .etapas-tabs button, .perfil-b, .menuplus button, .opcoes button, .pend, .stat .r, .tema-c b { font-family: var(--font-ui, var(--font)); font-weight: 600; font-size: calc(14px * var(--esc)); line-height: 1.4; }
+.btn, .navi, .tabs button, .vis button, .etapas-tabs button, .perfil-b, .menuplus button, .opcoes button, .pend, .stat .r { font-family: var(--font-ui, var(--font)); font-weight: 600; font-size: calc(14px * var(--esc)); line-height: 1.4; }
 .btn.mini { font-size: calc(14px * var(--esc)); }
-.mono, .tags .num, .cab .num, .mini-card .num, .tempo, .ag-mini b, .p-tags, .quando, kbd, .cnt, .meta b, .pz { font-weight: 400; line-height: 1.5; }
+.mono, .tags .num, .cab .num, .mini-card .num, .tempo, .p-tags, .quando, kbd, .cnt, .meta b, .pz { font-weight: 400; line-height: 1.5; }
 .tags .num, .cab .num, .mini-card .num, .tempo, .p-tags, .quando, kbd, .meta b { font-size: calc(12px * var(--esc)); }
 @container tela (max-width: 899px) { .pagehead h1 { font-size: calc(28px * var(--esc)); } }
 
 /* ---------- botões: flat, vidro líquido da Apple (sem relevo 3D) ---------- */
-.app .btn, .app .btn.gl, .app .icbtn, .app .perfil-b, .app .tabs, .app .filtro, .app .etapas-tabs button, .app .pend, .app .sw, .app .tema-c, .app .emo, .app .w-r {
+.app .btn, .app .btn.gl, .app .icbtn, .app .perfil-b, .app .tabs, .app .filtro, .app .etapas-tabs button, .app .pend, .app .sw, .app .emo {
   background: var(--btn-bg); border: 1px solid var(--btn-brd);
   box-shadow: inset 0 1px 0 var(--btn-hi);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(1.6); backdrop-filter: blur(var(--blur)) saturate(1.6);
   transition: background .18s, border-color .18s, transform .12s;
 }
-.app .btn:hover, .app .btn.gl:hover, .app .icbtn:hover, .app .perfil-b:hover, .app .etapas-tabs button:hover, .app .pend:hover, .app .sw:hover, .app .tema-c:hover, .app .emo:hover, .app .w:hover .w-r { background: var(--btn-hov); }
+.app .btn:hover, .app .btn.gl:hover, .app .icbtn:hover, .app .perfil-b:hover, .app .etapas-tabs button:hover, .app .pend:hover, .app .sw:hover, .app .emo:hover { background: var(--btn-hov); }
 .app .btn:active, .app .icbtn:active, .app .emo:active { transform: scale(.97); }
 .app .btn.pri, .app .btn.escuro, .app .modal .btn.pri {
   background: color-mix(in srgb, var(--acc) 92%, transparent); color: var(--acc-ink); border: 1px solid hsl(0 0% 98.8% / .4);
@@ -42,7 +42,7 @@
 }
 .app .tabs button[aria-pressed="true"] { background: var(--card); box-shadow: inset 0 1px 0 var(--btn-hi), 0 1px 3px var(--lg-sh); }
 .app .btn.perigo, .app .modal .btn.perigo { background: var(--perigo); color: var(--on-perigo); border-color: transparent; box-shadow: none; }
-.app .btn[aria-pressed="true"], .app .sw[aria-pressed="true"], .app .tema-c[aria-pressed="true"] { border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc-soft), inset 0 1px 0 var(--btn-hi); }
+.app .btn[aria-pressed="true"], .app .sw[aria-pressed="true"] { border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc-soft), inset 0 1px 0 var(--btn-hi); }
 .app .modal .btn { background: var(--btn-bg); border-color: var(--campo); box-shadow: none; }
 /* Quadro no celular: a etapa escolhida precisa de contraste nos dois modos */
 .app .etapas-tabs button { color: var(--text); }
@@ -86,29 +86,9 @@
 /* ---------- Início ---------- */
 .faixa { position: relative; display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; z-index: 6; }
 .w { position: relative; }
-.w-r { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: var(--r-btn); max-width: 100%; }
-.w-r .ic { width: 18px; height: 18px; color: var(--acc-text); }
-.w-r .emo-img { width: 24px; height: 24px; }
-.w-r b { font-size: calc(14px * var(--esc)); font-weight: 600; }
-.w-r .w-t { font-size: calc(14px * var(--esc)); font-weight: 600; font-family: var(--font-ui, var(--font)); }
-.w-fr { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(14px * var(--esc)); }
-.app .w-c { position: absolute; top: calc(100% + 8px); left: 0; z-index: 12; width: max-content; min-width: 260px; max-width: min(380px, 86vw); display: none; padding: 14px 16px; background: var(--solido); border: 1px solid var(--solido-brd); box-shadow: 0 18px 50px var(--lg-sh); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.w-c::before { content: ""; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }
-.w:hover .w-c, .w:focus-within .w-c { display: block; }
-.w-humor .w-c { min-width: 300px; }
-.w-c .frase { font-size: calc(19px * var(--esc)); margin: 4px 0 0; line-height: 1.35; }
-.w-c .emos { margin: 8px 0; }
-.w-c .pend { width: 100%; }
 @container tela (max-width: 899px) {
   .w { position: static; }
-  .app .w-c { left: 0; right: 0; width: auto; max-width: none; top: calc(100% + 4px); }
 }
-.ag-mini-l { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; }
-.ag-mini { flex: 0 0 auto; min-width: 150px; max-width: 230px; display: grid; gap: 2px; padding: 10px 14px; border-radius: 12px; background: var(--azul-bg); color: var(--azul-tx); font-size: calc(14px * var(--esc)); line-height: 1.35; }
-.ag-mini b { font-size: calc(12px * var(--esc)); }
-.ag-mini.hoje { box-shadow: 0 0 0 2px var(--acc); }
-.link-s { border: 0; background: none; color: var(--acc-text); font-weight: 600; font-size: calc(13px * var(--esc)); padding: 12px 8px; margin: -12px 0 -12px 4px; }
-.link-s:hover { text-decoration: underline; }
 .stats.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 16px; }
 .app[data-dir] .stats.tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .app[data-dir] .stats.tres .stat:last-child { grid-column: auto; }
@@ -120,7 +100,6 @@
   .stats.tres .stat .n { font-size: calc(26px * var(--esc)); }
   .stats.tres .stat .r { font-size: calc(12px * var(--esc)); }
 }
-.balao-f { margin: 8px 0 0; min-height: 1.4em; }
 
 /* ---------- Entradas: post-its quadrados com a ponta dobrada ---------- */
 .postits { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 24px 20px; }
