@@ -16,7 +16,7 @@ import type { Opcao } from '@/lib/documentos';
 import type { Vaga } from '@/lib/para-hoje';
 import { substituirRegistros, type RegistroDia } from '@/lib/registros';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
-import type { CategoriaDia, DiaIndisponivel } from '@/lib/prazos';
+import { venceAntesDaChegada, type CategoriaDia, type DiaIndisponivel } from '@/lib/prazos';
 import { avisosDoSistema, comLeitura, MSG_INCERTA, MSG_SEM_REDE, type AcaoAviso, type AvisoComLeitura, type FonteId, type PeriodoIncerto } from '@/lib/avisos-sistema';
 
 export type Visao = 'cards' | 'quadro' | 'tabela' | 'lista';
@@ -470,7 +470,9 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   }, [aplicarEvento, gravando]);
   const avisosEventos = useMemo(() => (agoraMin === null ? [] : avisosDeHoje(eventos, hoje, agoraMin).filter((a) => !dispensados.includes(chaveAviso(a.evento)))), [eventos, hoje, agoraMin, dispensados]);
   // Um problema por causa, derivado das leituras que falharam: sai sozinho quando a leitura volta, e a marca de "lido" sai junto (se o problema voltar, volta como novo).
-  const problemas = useMemo(() => avisosDoSistema({ demandas: erroCarga, dias: erroDias, eventos: erroEventos, entradas: erroEntradas }, { incertos, vencimentosDesatualizados }), [erroCarga, erroDias, erroEventos, erroEntradas, incertos, vencimentosDesatualizados]);
+  // Demandas GRAVADAS e abertas (não finalizadas, não arquivadas, a mesma elegibilidade dos marcos da Agenda) cujo vencimento antecipado ficou antes da chegada: lido dos dados do servidor, nunca de rascunho.
+  const antesDaChegada = useMemo(() => demandas.filter((d) => d.etapa !== 'Finalizado' && !d.arquivada_em && venceAntesDaChegada({ chegada: d.chegou_em, original: d.prazo_original, ajustado: d.prazo })).map((d) => ({ id: d.id, assunto: d.assunto })), [demandas]);
+  const problemas = useMemo(() => avisosDoSistema({ demandas: erroCarga, dias: erroDias, eventos: erroEventos, entradas: erroEntradas }, { incertos, vencimentosDesatualizados, antesDaChegada }), [erroCarga, erroDias, erroEventos, erroEntradas, incertos, vencimentosDesatualizados, antesDaChegada]);
   const avisosSistema = useMemo(() => comLeitura(problemas, lidos), [problemas, lidos]);
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => { setLidos((l) => (l.every((id) => problemas.some((p) => p.id === id)) ? l : l.filter((id) => problemas.some((p) => p.id === id)))); }, [problemas]);
@@ -520,6 +522,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const executarAcaoAviso = useCallback(async (acao: AcaoAviso) => {
     if (acao.conferir) await conferirPeriodo(acao.conferir);
     else if (acao.recarregar) await recarregarFonte(acao.recarregar);
+    else if (acao.abrir) setJanela({ t: 'editar', id: acao.abrir });
   }, [conferirPeriodo, recarregarFonte]);
 
   const registrarDias = useCallback(async (lista: { dia: string; humor: number }[]): Promise<{ ok: true } | { ok: false; erro: string }> => {

@@ -2,17 +2,21 @@
 // Um aviso aqui é um PROBLEMA DE ESTADO que a pessoa consegue enfrentar dentro do Dmanda: uma leitura que falhou (sem conexão, ou o servidor não devolveu), vencimentos que a tela não conseguiu reler
 // depois de uma mudança no calendário, ou uma gravação de período cujo resultado ficou incerto. Em todos há uma ação direta ("carregar de novo", "conferir se foi gravado").
 // Barra, aviso da tela e sininho mostram o MESMO problema (mesmo id) e somem juntos quando a causa some. Marcar como lido só tira a contagem do sininho: a causa continua, e a barra também.
+// Exceção de escopo (decisão 84): o aviso de vencimento antecipado antes da chegada é um alerta sobre um DADO, derivado das demandas gravadas, e vale só no sininho (escopo "sino"), com a ação "Abrir a demanda".
 // O que NÃO entra aqui: erro de código ou de regra de negócio. Esses viram mensagem da própria operação (o aviso rápido) ou um estado honesto no dado afetado, e o detalhe técnico fica no registro do servidor.
+
+import { AVISO_ANTES_DA_CHEGADA } from './prazos.ts';
 
 export type FonteId = 'demandas' | 'dias' | 'eventos' | 'entradas';
 /** Mensagens de rede. A de "sem conexão" vale para leitura e gravação (nada chegou ao servidor); a de "resultado incerto" é de gravação: o pedido saiu e a resposta não voltou. */
 export const MSG_SEM_REDE = 'Sem conexão com o servidor. Nada foi gravado. Confira a internet e tente de novo; o que você digitou continua na tela.';
 export const MSG_INCERTA = 'Sem confirmação do servidor: não dá para saber se foi gravado. Confira a lista antes de repetir; o que você digitou continua na tela.';
 
-/** `global`: grave, afeta várias telas ou operações e se resolve dentro do Dmanda (barra no topo de todas as telas). `tela`: localizado, aparece na tela correspondente. Os dois aparecem no sininho. */
-export type EscopoAviso = 'global' | 'tela';
-/** A ação direta de um aviso: recarregar uma leitura (ou todas), ou conferir no servidor se um período foi gravado (identificado pela operação). */
-export type AcaoAviso = { rotulo: string; recarregar?: FonteId | 'todas'; conferir?: string };
+/** `global`: grave, afeta várias telas ou operações e se resolve dentro do Dmanda (barra no topo de todas as telas). `tela`: localizado, aparece na tela correspondente. Os dois aparecem no sininho.
+ * `sino`: só no sininho (um alerta sobre um dado, como a demanda cujo vencimento antecipado ficou antes da chegada): não ocupa a barra global nem a faixa de nenhuma tela. */
+export type EscopoAviso = 'global' | 'tela' | 'sino';
+/** A ação direta de um aviso: recarregar uma leitura (ou todas), conferir no servidor se um período foi gravado (identificado pela operação) ou abrir uma demanda (`abrir` é o id dela). */
+export type AcaoAviso = { rotulo: string; recarregar?: FonteId | 'todas'; conferir?: string; abrir?: string };
 export type AvisoSistema = {
   id: string;
   escopo: EscopoAviso;
@@ -28,7 +32,9 @@ export type AvisoComLeitura = AvisoSistema & { lido: boolean };
 export type FalhasLeitura = Partial<Record<FonteId, string | null>>;
 /** Um período cuja gravação ficou com resultado incerto: a operação enviada e como a pessoa a conhece (descrição e datas). */
 export type PeriodoIncerto = { operacao_id: string; resumo: string };
-export type OutrosProblemas = { incertos?: readonly PeriodoIncerto[]; vencimentosDesatualizados?: boolean };
+/** Uma demanda GRAVADA e aberta cujo vencimento antecipado ficou antes da chegada (a condição é decidida por `venceAntesDaChegada`, sobre os dados que o servidor devolveu). */
+export type DemandaAntesDaChegada = { id: string; assunto: string };
+export type OutrosProblemas = { incertos?: readonly PeriodoIncerto[]; vencimentosDesatualizados?: boolean; antesDaChegada?: readonly DemandaAntesDaChegada[] };
 
 const NOME: Record<FonteId, string> = { demandas: 'as demandas', dias: 'os dias indisponíveis', eventos: 'os eventos da Agenda', entradas: 'as entradas' };
 const TECNICO = 'Se continuar, o problema é técnico e não depende de você: o detalhe fica no registro do servidor e o que já foi gravado não muda.';
@@ -65,9 +71,13 @@ export function avisosDoSistema(falhas: FalhasLeitura, outros: OutrosProblemas =
   if (outros.vencimentosDesatualizados) {
     lista.push({ id: 'vencimentos', escopo: 'global', titulo: 'Os vencimentos na tela podem estar desatualizados.', orientacao: 'Um dia ou período indisponível mudou no servidor, mas a tela não conseguiu ler os vencimentos recalculados. Carregue as demandas de novo para ver as datas atuais.', acao: { rotulo: 'Carregar as demandas de novo', recarregar: 'demandas' } });
   }
+  for (const d of outros.antesDaChegada ?? []) {
+    lista.push({ id: `chegada-${d.id}`, escopo: 'sino', titulo: `Vencimento antes da chegada: ${d.assunto}`, orientacao: AVISO_ANTES_DA_CHEGADA, acao: { rotulo: 'Abrir a demanda', abrir: d.id } });
+  }
   if (sem.length > 1) lista.push({ id: 'conexao', escopo: 'global', titulo: 'Sem conexão com o servidor.', orientacao: `Não carregaram: ${sem.map((f) => NOME[f]).join(', ')}. Confira a conexão com a internet e carregue tudo de novo. O que você já gravou não muda.`, acao: { rotulo: 'Carregar tudo de novo', recarregar: 'todas' } });
   for (const f of falhou) if (!(sem.length > 1 && sem.includes(f))) lista.push(aviso(f, falhas[f]!));
-  return lista.sort((a, b) => Number(b.escopo === 'global') - Number(a.escopo === 'global'));
+  const peso = (a: AvisoSistema) => (a.escopo === 'global' ? 2 : a.escopo === 'tela' ? 1 : 0);
+  return lista.sort((a, b) => peso(b) - peso(a));
 }
 
 /** Junta os problemas de agora com o que a pessoa já marcou como lido. Um id que saiu da lista (a causa foi resolvida) não fica guardado: se o problema voltar, volta como novo. */

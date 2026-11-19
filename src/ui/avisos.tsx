@@ -82,8 +82,8 @@ export function PainelAvisos({ ponto, fechar }: { ponto: { x: number; y: number 
               <div className="avisos-cab"><Icone nome="alert" /><b>{a.titulo}</b>{a.lido ? null : <span className="chip neutro">Novo</span>}</div>
               <span>{a.orientacao}</span>
               <div className="avisos-acoes">
-                <button type="button" className="btn mini" data-acao="recarregar" onClick={() => void executarAcaoAviso(a.acao)}>{a.acao.rotulo}</button>
-                {a.lido ? <small className="data">Lido. O problema continua até carregar.</small> : <button type="button" className="btn mini" data-acao="lido" onClick={() => marcarAvisoLido(a.id)}>Marcar como lido</button>}
+                <button type="button" className="btn mini" data-acao={a.acao.abrir ? 'abrir' : 'recarregar'} onClick={() => { if (a.acao.abrir) fechar(); void executarAcaoAviso(a.acao); }}>{a.acao.rotulo}</button>
+                {a.lido ? <small className="data">{a.escopo === 'sino' ? 'Lido. O aviso continua enquanto a condição existir.' : 'Lido. O problema continua até carregar.'}</small> : <button type="button" className="btn mini" data-acao="lido" onClick={() => marcarAvisoLido(a.id)}>Marcar como lido</button>}
               </div>
             </article>
           ))}

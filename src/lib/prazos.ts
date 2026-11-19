@@ -63,7 +63,16 @@ export function ajustarPrazo(original: string, dias: readonly DiaIndisponivel[])
   return { prazo: d, ajuste: pulados.length ? pulados.join('; ') : null };
 }
 
-const SEMANA_CURTA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+/** O texto do aviso (decisão 84): o cálculo continua o mesmo, a antecipação só é sinalizada quando o vencimento ajustado fica antes da chegada. */
+export const AVISO_ANTES_DA_CHEGADA = 'O vencimento antecipado ficou antes da chegada. Confira a chegada, o prazo e os dias indisponíveis cadastrados.';
+/**
+ * Verdadeiro só quando a chegada, o prazo original e o vencimento ajustado são conhecidos, a antecipação mexeu no prazo (ajustado antes do original) e o ajustado é ESTRITAMENTE anterior à chegada.
+ * Um prazo escolhido à mão que já é anterior à chegada, sem antecipação, não é "antecipado": não dispara. Derivada dos dados, sem persistência: acompanha o que está vigente e some sozinha.
+ */
+export const venceAntesDaChegada = (c: { chegada?: string | null; original?: string | null; ajustado?: string | null }): boolean =>
+  !!c.chegada && !!c.original && !!c.ajustado && c.ajustado < c.original && c.ajustado < c.chegada;
+
+const SEMANA_CURTA =['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 /** "sex, 05/03/2027": a data com o dia da semana, para a pessoa conferir o que o ajuste fez. */
 export const dataComSemana = (iso: string) => `${SEMANA_CURTA[diaDaSemana(iso)]}, ${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 
