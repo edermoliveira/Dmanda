@@ -98,6 +98,12 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
   const mSemCheg = marcosDaDemanda(dem('semcheg', { chegou_em: null, prazo_original: '2026-12-31', prazo: '2026-12-23', prazo_ajuste: '31/12 feriado: Recesso' }), hoje)[0];
   ok(mAntes.data === '2026-12-23' && mAntes.detalhe.includes(`Prazo original 31/12/2026, antecipado. Dias pulados: 31/12 feriado: Recesso; 30/12 feriado: Recesso. ${TXT_AVISO}`) && mAntes.detalhe.endsWith('cadastrados'), 'Agenda: o marco de vencimento antes da chegada traz o aviso (a data do marco continua a do vencimento ajustado)');
   ok(!mDepois.detalhe.includes('antes da chegada') && !mSemCheg.detalhe.includes('antes da chegada'), 'Agenda: ajustado depois da chegada (14/12) e chegada ausente não trazem o aviso');
+  // critério de aderência: o efetivo antes da chegada basta (prazo informado direto, ou sem prazo original); o texto muda, a data do marco não
+  const TXT_FICOU = 'O vencimento ficou antes da chegada. Confira a chegada, o prazo e os dias indisponíveis cadastrados';
+  const mDireto = marcosDaDemanda(dem('direto', { chegou_em: '2026-12-14', prazo_original: '2026-12-10', prazo: '2026-12-10' }), hoje)[0];
+  const mSemOrig = marcosDaDemanda(dem('semorig', { chegou_em: '2026-12-14', prazo_original: null, prazo: '2026-12-10' }), hoje)[0];
+  const mIgual = marcosDaDemanda(dem('igual', { chegou_em: '2026-12-10', prazo_original: '2026-12-10', prazo: '2026-12-10' }), hoje)[0];
+  ok(mDireto.data === '2026-12-10' && mDireto.detalhe === `Prazo. ${TXT_FICOU}` && mSemOrig.data === '2026-12-10' && mSemOrig.detalhe === `Prazo. ${TXT_FICOU}` && !mDireto.detalhe.includes('antecipado') && mIgual.detalhe === 'Prazo', 'Agenda: prazo informado direto antes da chegada e registro sem prazo original trazem o texto "ficou" (sem "antecipado"); vencimento igual à chegada não avisa');
   const pref = dem('p', { etapa: 'Aguardando Prefeita', prazo: '2026-11-14', prazo_original: '2026-11-14' });
   ok(marcosDaDemanda(pref, hoje).map((x) => x.tipo).join() === 'vencimento', 'Aguardando Prefeita mantém só o vencimento (a espera é texto, não data)');
 

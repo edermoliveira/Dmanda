@@ -153,6 +153,8 @@ const somaIso = (iso, n) => prazoPorDias(n, iso);
 //     acompanha os dados vigentes e some quando a condição some. Exemplo: chegada 28/12/2026, prazo original 31/12 (3 dias), indisponível de 24/12/2026 a 03/01/2027: ajustado 23/12.
 // =============================================================================================================================================
 const AVISO = 'O vencimento antecipado ficou antes da chegada. Confira a chegada, o prazo e os dias indisponíveis cadastrados.';
+const AVISO_FICOU = 'O vencimento ficou antes da chegada. Confira a chegada, o prazo e os dias indisponíveis cadastrados.';
+const NOME_P = 'Ofício com prazo anterior à chegada';
 const NOME_V = 'Ofício da virada do ano', NOME_D = 'Ofício de meados de dezembro';
 const cadastrar = async (pg, assunto, chegada, prazo) => {
   await ir(pg, '/demandas', '.grupo-cards');
@@ -215,7 +217,7 @@ const itensSino = async (pg) => { await pg.click('.sino'); await pg.waitForSelec
   ok(/Avisos: 1 problema novo/.test(s.rotulo) && s.n === '1', `aviso da chegada, sininho: um aviso novo para a demanda da virada (${s.rotulo})`);
   ok((await pg.locator('.erro-carga').count()) === 0, 'aviso da chegada: nada ocupa a barra global nem a faixa da tela');
   let itens = await itensSino(pg);
-  ok(itens.length === 1 && itens[0].escopo === 'sino' && itens[0].texto.includes(NOME_V) && itens[0].texto.includes(AVISO) && !itens[0].texto.includes(NOME_D), `aviso da chegada, sininho: um item só, com o assunto e o texto aprovado (${itens.map((i) => i.texto).join(' | ').slice(0, 220)})`);
+  ok(itens.length === 1 && itens[0].escopo === 'sino' && itens[0].texto.includes(NOME_V) && itens[0].texto.includes(AVISO) && !itens[0].texto.includes(AVISO_FICOU) && !itens[0].texto.includes(NOME_D), `aviso da chegada, sininho: um item só, com o assunto e o texto "antecipado"; nenhum para a demanda de 14/12 (${itens.map((i) => i.texto).join(' | ').slice(0, 220)})`);
   await pg.screenshot({ path: `${CAPTURAS}/aviso-chegada-sininho-claro.png` });
   await pg.keyboard.press('Escape'); await esperar(300);
   // recarregar não duplica: continua um item só
@@ -223,7 +225,7 @@ const itensSino = async (pg) => { await pg.click('.sino'); await pg.waitForSelec
   itens = await itensSino(pg);
   ok(itens.length === 1 && (await sino(pg)).n === '1', 'aviso da chegada, sininho: depois de recarregar continua um item só (sem duplicar)');
   // a ação abre a demanda certa, com o aviso na consulta
-  await pg.click('.avisos-painel [data-acao="abrir"]');
+  await pg.click(`.avisos-painel .avisos-item:has-text("${NOME_V}") [data-acao="abrir"]`);
   await pg.waitForSelector('.modal .ler', { timeout: 20000 }); await esperar(300);
   ler = await texto(pg, '.modal');
   ok(ler.includes(NOME_V) && ler.includes(AVISO) && !(await pg.$('.avisos-painel')), 'aviso da chegada, sininho: "Abrir a demanda" fecha o painel e abre a consulta da demanda certa');
@@ -238,6 +240,7 @@ const itensSino = async (pg) => { await pg.click('.sino'); await pg.waitForSelec
   await pg.keyboard.press('Escape'); await fechada(pg).catch(() => {});
   s = await sino(pg);
   ok(/nenhum agora/.test(s.rotulo) && s.n === '0', `aviso da chegada, sininho: a condição deixou de existir e o aviso sumiu (${s.rotulo})`);
+  await pg.keyboard.press('Escape'); await esperar(300);
   // a chegada volta a 28/12: o aviso volta; excluir o período devolve o vencimento ao original e o aviso some de novo
   await abrirDemanda(pg, NOME_V); await editarChegada(pg);
   await pg.fill('#d-chegou', '2026-12-28'); await salvarSecao(pg);
@@ -252,6 +255,43 @@ const itensSino = async (pg) => { await pg.click('.sino'); await pg.waitForSelec
   ler = await texto(pg, '.modal');
   ok(/nenhum agora/.test(s.rotulo) && ler.includes(`Vencimento ${dataComSemana('2026-12-31')}`) && !/Prazo original/.test(ler) && !ler.includes('antes da chegada'), `aviso da chegada: excluído o período, o vencimento volta ao original (31/12), a consulta e o sininho ficam sem aviso (${s.rotulo})`);
   await pg.keyboard.press('Escape'); await fechada(pg).catch(() => {});
+  // critério de aderência: o vencimento efetivo antes da chegada basta, sem prazo original diferente nem antecipação. Prazo informado direto antes da chegada: prévia, gravação, consulta, Agenda e sininho com o texto "ficou" (o caso sem prazo original não existe no banco, que exige os dois campos juntos: fica nos testes de regras)
+  let av;
+  await cadastrar(pg, NOME_P, '2026-12-14', '2026-12-10');
+  previa = await texto(pg, '.modal .prev-prazo');
+  av = await pg.$$eval('.modal [data-antes-chegada]', (l) => l.map((x) => x.textContent.trim()));
+  ok(previa.includes(`Vencimento: ${dataComSemana('2026-12-10')}`) && !/antecipado para/.test(previa) && av.length === 1 && av[0] === AVISO_FICOU, `aviso da chegada, prévia: prazo 10/12 informado direto antes da chegada 14/12 não é antecipação e avisa com o texto "ficou" (${previa.slice(0, 140)})`);
+  await pg.fill('#n-chegou', '2026-12-10'); await esperar(300);
+  ok(!(await pg.$('.modal [data-antes-chegada]')), 'aviso da chegada, prévia: prazo igual à chegada (10/12) não avisa');
+  await pg.fill('#n-chegou', '2026-12-14'); await esperar(300);
+  await gravarCadastro(pg);
+  await abrirDemanda(pg, NOME_P);
+  ler = await texto(pg, '.modal');
+  av = await pg.$$eval('.modal [data-antes-chegada]', (l) => l.map((x) => x.textContent.trim()));
+  ok(ler.includes(`Vencimento ${dataComSemana('2026-12-10')}`) && !/Prazo original/.test(ler) && !/Ajuste/.test(ler) && av.length === 1 && av[0] === AVISO_FICOU, 'aviso da chegada, consulta: a demanda gravada com prazo direto antes da chegada mostra o texto "ficou", sem linhas de ajuste');
+  await pg.keyboard.press('Escape'); await fechada(pg).catch(() => {});
+  await ir(pg, '/agenda', '.agd');
+  await pg.click('.agd-barra .opcoes button:has-text("Dia")'); await esperar(400);
+  await pg.fill('.agd-data input', '2026-12-10'); await pg.waitForFunction(() => document.querySelector('.agd-data input')?.value === '2026-12-10'); await esperar(700);
+  const notas2 = await pg.$$eval('.agd-nota', (l) => l.map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
+  ok(notas2.length === 1 && notas2.every((t) => t.includes(`Vencimento: Prazo. ${AVISO_FICOU.replace(/\.$/, '')}.`)) && (await texto(pg, '.agd')).includes(NOME_P), `aviso da chegada, Agenda: o vencimento de 10/12 sem antecipação traz a nota com o texto "ficou" (${notas2.join(' || ').slice(0, 200)})`);
+  await ir(pg, '/', '.stat.st-atrasadas');
+  itens = await itensSino(pg);
+  ok(itens.length === 1 && itens[0].escopo === 'sino' && itens[0].texto.includes(AVISO_FICOU) && !itens[0].texto.includes(AVISO) && itens[0].texto.includes(NOME_P) && (await sino(pg)).n === '1' && (await pg.locator('.erro-carga').count()) === 0, `aviso da chegada, sininho: o registro sem antecipação aparece com o texto "ficou" e nada ocupa a barra global (${itens.map((i) => i.texto).join(' | ').slice(0, 240)})`);
+  await pg.keyboard.press('Escape'); await esperar(300);
+  // corrigir a chegada para 10/12 (igual ao vencimento): o aviso desse registro some e o prazo gravado não muda
+  await abrirDemanda(pg, NOME_P); await editarChegada(pg);
+  await pg.fill('#d-chegou', '2026-12-10'); await esperar(300);
+  ok(!(await pg.$('.modal [data-antes-chegada]')) && (await pg.inputValue('#d-prazo')) === '2026-12-10', 'aviso da chegada, edição: com a chegada igual ao prazo (10/12) a prévia não avisa e o prazo continua 10/12');
+  await salvarSecao(pg);
+  await abrirDemanda(pg, NOME_P);
+  ler = await texto(pg, '.modal');
+  ok(/Chegou em 10\/12\/2026/.test(ler) && ler.includes(`Vencimento ${dataComSemana('2026-12-10')}`) && !ler.includes('antes da chegada'), 'aviso da chegada: salva a chegada 10/12, o vencimento continua 10/12 e a consulta não avisa mais');
+  await pg.keyboard.press('Escape'); await fechada(pg).catch(() => {});
+  await ir(pg, '/', '.stat.st-atrasadas');
+  itens = await itensSino(pg);
+  ok(itens.length === 0 && /nenhum agora/.test((await sino(pg)).rotulo), 'aviso da chegada, sininho: corrigida a chegada (10/12), o aviso do registro sumiu');
+  await pg.keyboard.press('Escape'); await esperar(300);
   await ctx.close();
 }
 
