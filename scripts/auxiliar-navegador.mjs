@@ -60,32 +60,48 @@ const encerrar = (processo) => {
 /**
  * Sobe o `next dev` com o banco de teste na `pasta` e na `porta`, espera ele responder e devolve `{ base, processo, parar }`. `parar()` é idempotente e encerra a árvore de processos; os que sobrarem
  * são encerrados ao sair do script. Dá para subir outro servidor (outra pasta, outra rodada) depois de `parar()`; depois de parar, um `await esperar(2500)` deixa o Windows soltar a pasta do PGlite.
- * O Next às vezes sai logo depois de responder, ao mostrar um aviso de atualização, e repetir a partida resolve: por isso a resposta só vale se o processo continuar de pé depois de `estabilizar` ms
- * (6 s), e a partida é repetida até `tentativas` vezes. Se nenhuma funcionar, lança um erro (em vez de deixar o navegador falhar sem explicação).
+ * Falhas de partida dão erro claro (nunca um navegador falhando sem explicação), cada uma com a sua regra:
+ *  - o processo SAIU antes de responder (porta ocupada, erro de configuração...): erro na hora, com as últimas linhas da saída; repetir não resolve, e a porta ocupada é dita como tal;
+ *  - NUNCA respondeu em `esperaMax` ms (4 min): erro, e o processo é encerrado;
+ *  - respondeu e CAIU em seguida: é o caso conhecido do Next (sai logo depois de responder, ao mostrar um aviso de atualização) e repetir resolve. Por isso a resposta só vale se o processo continuar
+ *    de pé depois de `estabilizar` ms (6 s), e só essa situação repete a partida, até `tentativas` vezes.
  * `lembretes: true` mantém os lembretes do Perfil ligados (as outras suítes os desligam). `cron: true` define o segredo da rotina diária (sem ele a rota responde 503; só quem a chama precisa).
- * `env` acrescenta ou troca variáveis (um valor `undefined` remove a variável).
+ * `env` acrescenta ou troca variáveis (um valor `undefined` remove a variável). `comando` ([executável, argumentos]) troca o servidor: só o teste do próprio auxiliar o usa.
  */
-export async function iniciarServidor({ porta, pasta, lembretes = false, cron = false, env = {}, tentativas = 4, estabilizar = 6000 }) {
+export async function iniciarServidor({ porta, pasta, lembretes = false, cron = false, env = {}, tentativas = 4, estabilizar = 6000, esperaMax = 240_000, comando = null }) {
   const completo = { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: pasta, ...(cron ? { CRON_SECRET: SEGREDO_CRON_TESTE } : {}), ...(lembretes ? {} : { DMANDA_SEM_LEMBRETES: 'sim' }), ...env };
   for (const k of Object.keys(completo)) if (completo[k] === undefined) delete completo[k];
   if (!ganchoDeSaida) { ganchoDeSaida = true; process.on('exit', () => { for (const p of [...ativos]) encerrar(p); }); }
   const base = `http://localhost:${porta}`;
-  for (let tentativa = 0; tentativa < tentativas; tentativa++) {
-    const processo = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', String(porta)], { env: completo, stdio: 'ignore' });
+  const [exe, args] = comando ?? [process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', String(porta)]];
+  const portaOcupada = (saida) => /EADDRINUSE|address already in use/i.test(saida);
+  for (let tentativa = 1; tentativa <= tentativas; tentativa++) {
+    const processo = spawn(exe, args, { env: completo, stdio: ['ignore', 'pipe', 'pipe'] });
+    let saida = ''; const guardar = (b) => { saida = (saida + b).slice(-1500); };
+    processo.stdout.on('data', guardar); processo.stderr.on('data', guardar);
     ativos.add(processo);
-    for (let i = 0; i < 120 && processo.exitCode === null; i++) {
-      let respondeu = false;
-      try { respondeu = (await fetch(base + '/')).status < 500; } catch { /* ainda subindo */ }
-      if (respondeu) {
-        await esperar(estabilizar);
-        if (processo.exitCode === null) return { base, processo, parar: () => encerrar(processo) };
-        break;
-      }
-      await esperar(2000);
+    const limite = Date.now() + esperaMax;
+    let respondeu = false;
+    while (processo.exitCode === null && Date.now() < limite) {
+      try { respondeu = (await fetch(base + '/', { signal: AbortSignal.timeout(5000) })).status < 500; } catch { /* ainda subindo */ }
+      if (respondeu) break;
+      await esperar(Math.min(2000, Math.max(0, limite - Date.now())));
     }
+    if (!respondeu) {
+      await esperar(200); // deixa a saída final chegar
+      const codigo = processo.exitCode;
+      encerrar(processo);
+      throw new Error(codigo === null
+        ? `O servidor de teste não respondeu em ${Math.round(esperaMax / 1000)} s na porta ${porta}; foi encerrado.`
+        : `O servidor de teste saiu (código ${codigo}) antes de responder na porta ${porta}${portaOcupada(saida) ? ': a porta já está em uso' : ''}. Últimas linhas: ${saida.trim().slice(-600) || '(sem saída)'}`);
+    }
+    await esperar(estabilizar);
+    if (processo.exitCode === null) return { base, processo, parar: () => encerrar(processo) };
+    await esperar(200);
     encerrar(processo);
+    if (portaOcupada(saida)) throw new Error(`O servidor de teste não subiu: a porta ${porta} já está em uso por outro processo (quem respondeu não foi este servidor).`);
   }
-  throw new Error(`O servidor de teste não ficou de pé na porta ${porta} em ${tentativas} tentativas.`);
+  throw new Error(`O servidor de teste respondeu e caiu logo em seguida em ${tentativas} tentativas seguidas na porta ${porta}.`);
 }
 
 /** Encerra todos os servidores de teste que este script subiu (as suítes que reiniciam o servidor entre rodadas chamam como `parar()`). */

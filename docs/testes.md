@@ -8,7 +8,7 @@ Estes testes validam a lógica e a interface no banco de **teste** (PGlite), com
 
 | O quê | Onde fica |
 |---|---|
-| Servidor de teste (`next dev` com `DMANDA_BANCO=teste`), espera, parada, repetição da partida se o Next sair ao mostrar o aviso de atualização | `iniciarServidor` e `pararServidores` em `scripts/auxiliar-navegador.mjs` |
+| Servidor de teste (`next dev` com `DMANDA_BANCO=teste`), espera, parada, repetição da partida **só** quando o Next responde e cai logo depois (aviso de atualização); saída antes de responder, porta ocupada e servidor mudo dão erro claro na hora | `iniciarServidor` e `pararServidores` em `scripts/auxiliar-navegador.mjs` (os caminhos negativos são provados em `testar:auxiliar`) |
 | Edge, WebKit, contexto com relógio e tema, erros de página e de console, contador de verificações (`ok`, `aguardar`, `resumo`) | `scripts/auxiliar-navegador.mjs` |
 | Titular de teste (`USUARIO_TESTE`, e-mail autorizado) | `src/servidor/banco-teste-base.mjs` (o servidor de desenvolvimento e as suítes usam o mesmo) |
 | Sementes de dados fictícios | `scripts/semear-agenda.mjs`, `semear-volume.mjs`, `auxiliar-origem.mjs`, `auxiliar-retorno.mjs` |
@@ -22,7 +22,7 @@ Estes testes validam a lógica e a interface no banco de **teste** (PGlite), com
 
 ## Portas
 
-7100 aplicação e prévias; 7103 app; 7104 interface; 7105 entradas; 7106 ajustes; 7108 agenda; 7110 medir:desempenho; 7111 resistência; 7112 config; 7113 perfil; 7114 origem; 7115 medição local; 7116 baralho; 7117 campos; 7118 busca; 7119 fila-cards; 7120 verificar:ajuste-cards; 7121 detalhe; 7122 a 7124 capturas; 7125 auditoria; 7126 cards-inicio; 7127 vagas-carrosseis; 7128 prazo-chegada; 7129 e 7130 acesso-direto (aplicativo e Supabase falso); 7141 falha-dias; 7142 restauracao-v4; 7143 periodos; 7200 protótipo.
+7100 aplicação e prévias; 7103 app; 7104 interface; 7105 entradas; 7106 ajustes; 7108 agenda; 7110 medir:desempenho; 7111 resistência; 7112 config; 7113 perfil; 7114 origem; 7115 medição local; 7116 baralho; 7117 campos; 7118 busca; 7119 fila-cards; 7120 verificar:ajuste-cards; 7121 detalhe; 7122 a 7124 capturas; 7125 auditoria; 7126 cards-inicio; 7127 vagas-carrosseis; 7128 prazo-chegada; 7129 e 7130 acesso-direto (aplicativo e Supabase falso), mais 7131 e 7132 nas duas rodadas de falha da exportação; 7140 capturar-referencia-visual; 7141 falha-dias; 7142 restauracao-v4; 7143 periodos; 7150 a 7155 servidores falsos de `testar:auxiliar` (processos de Node de poucas linhas, não o Next); 7200 protótipo.
 
 ## Esqueleto de uma suíte de navegador
 
@@ -73,3 +73,10 @@ As contagens são as de quando cada descrição foi escrita; as de hoje estão e
 - Também: `npx tsc --noEmit`, `npx eslint src scripts`, `npm run build`.
 - Testes do protótipo: ver `prototipo/CLAUDE.md`.
 
+
+## Acrescentado em 19/11/2026 (bloco de acabamento técnico)
+
+- `npm run testar:auxiliar`: os caminhos NEGATIVOS do auxiliar das suítes (19 verificações, sem Next, sem navegador, sem banco; servidores falsos de Node nas portas 7150 a 7155). Cada caso roda um script filho de verdade, com uma falha deliberada, e confere código de saída, mensagem, tempo e se sobrou processo: servidor que sai antes de responder (erro na hora, com o código e as últimas linhas, sem repetir), servidor mudo (espera limitada, processo encerrado), porta ocupada por outro servidor (dita como ocupada, sem repetir), servidor que responde e cai (repetido até o limite e só ele; uma queda é resolvida pela segunda partida), saída do script sem `parar()` (normal, com erro e com exceção: o servidor é encerrado junto), asserção que falha (FALHOU com o valor obtido, resumo "1 de 3", saída 1), `aguardar` que estoura (FALHOU com o motivo, saída 1), exceção no meio (saída diferente de zero e sem "Tudo certo"). Provado por mutação: um resumo que devolvesse sempre 0 derrubou 2 verificações.
+- `testar:acesso-direto` passou a cobrir a exportação com falhas sem relação com autenticação (rede do banco caindo, erro 500, regra do banco recusando a operação, lista protegida sem titular, endereço e chave de serviço ausentes, chave recusada): sempre 500 genérico, nunca 401, sem arquivo de sucesso e sem detalhe interno na resposta.
+- `npm run capturar:referencia -- gravar <rótulo>` e `-- comparar <A> <B>` (`scripts/capturar-referencia-visual.mjs`, porta 7140): referência visual do aplicativo inteiro com dados fictícios fixos, relógio de 03/11/2026 10:30, movimento reduzido, Claro e Escuro, computador (1360 px), iPad (820 px), iPhone (390 px, Edge) e iPhone no WebKit emulado, 33 telas e janelas por perfil e tema (Início, as quatro visões de Demandas, filtros, detalhe com e sem aviso, Entradas, Agenda em Dia, Semana e Mês, gaveta do dia, novo evento, nova tarefa, cadastro em três passos e com erro, Configurações, dias indisponíveis com erro, Arquivo, Documentos, IA, Mais, busca, sino, menu da conta, Perfil, foco por teclado e página inexistente). Grava PNG e o resumo do estilo calculado de todos os elementos; `comparar` lista as diferenças, mede os pixels que mudaram e monta uma folha lado a lado com a diferença.
+- `supabase/propostas/verificar_migracoes_1_4_hospedado.sql` e `copia_funcional_leitura.sql`: consultas SOMENTE DE LEITURA para o plano de publicação (`docs/plano-publicacao-consolidada.md`); `testar:banco` as executa antes e depois das duas migrações e confere o que o plano diz que elas mostram.
