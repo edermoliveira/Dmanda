@@ -482,6 +482,15 @@ const certa = await fetch(rota, { headers: { authorization: 'Bearer ' + SEGREDO 
 ok(certa.status === 200 && corpo.ok === true && Object.keys(corpo).sort().join() === 'data_ref,ok,usuarios' && !certa.headers.get('set-cookie'), 'rotina diária: com o segredo certo responde 200, só com data e contagem, e não define cookie nem sessão');
 const certa2 = await fetch(rota, { headers: { authorization: 'Bearer ' + SEGREDO } });
 ok(certa2.status === 200 && !JSON.stringify(corpo).includes('Resposta ao TCE'), 'rotina diária: repetir a chamada é aceito e a resposta não traz texto das demandas');
+// 12c) vitrines do design antigo retiradas: respondem como página inexistente (sem redirecionamento); a marca e os ícones que o aplicativo usa seguem servidos
+for (const p of ['/marca', '/pecas', '/tokens']) {
+  const r = await fetch(BASE + p, { redirect: 'manual' });
+  ok(r.status === 404, `${p} responde 404 (página inexistente), sem redirecionar (obtido ${r.status})`);
+}
+const manifesto = await (await fetch(BASE + '/manifest.webmanifest')).json();
+const iconesDoManifesto = manifesto.icons.map((i) => i.src);
+const estaticos = await Promise.all([...iconesDoManifesto, '/icon.svg', '/marca/icone-app.svg'].map(async (u) => [u, (await fetch(BASE + u)).status]));
+ok(iconesDoManifesto.length > 0 && estaticos.every(([, s]) => s === 200), 'ícones do manifesto, ícone da página e marca do aplicativo continuam servidos' + (estaticos.every(([, s]) => s === 200) ? '' : ': ' + JSON.stringify(estaticos)));
 await ir('/');
 await pg.waitForFunction(() => /Rotina diária na nuvem: última execução/.test(document.querySelector('.rotina-estado')?.textContent || ''), null, { timeout: 15000 }).then(() => ok(true, 'o Início mostra a última execução da rotina diária'), () => ok(false, 'o Início mostra a última execução da rotina diária'));
 
