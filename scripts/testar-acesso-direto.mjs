@@ -5,11 +5,16 @@
 import { chromium, webkit, devices } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { operacoesPermitidasNoBanco } from './auxiliar-operacoes.mjs';
 import { iniciarSupabaseFalso, CHAVE_SERVICO } from './supabase-falso.mjs';
+import { iniciarServidor } from './auxiliar-navegador.mjs';
 
-const PORTA = process.env.PORTA_TESTE_ACESSO || '7129', PORTA_FALSO = 7130, BASE = `http://localhost:${PORTA}`, RAIZ = '.dados-teste/acesso-direto', CAPTURAS = '.dados-teste/acesso-direto-capturas';
+const PORTA = process.env.PORTA_TESTE_ACESSO || '7129', PORTA_FALSO = 7130, BASE = `http://localhost:${PORTA}`, RAIZ = join(tmpdir(), 'dmanda-acesso-direto'), CAPTURAS = join(tmpdir(), 'dmanda-acesso-direto-capturas');
+// Os dados e as capturas ficam FORA do projeto de propósito: o banco de teste deste script é aberto por ESTE processo (não pelo Next) e cada pedido do servidor o grava; dentro da árvore
+// do projeto, essas escritas faziam o `next dev` recompilar e recarregar a página em laço (observado em 19/11/2026 depois de retirar o design antigo), e a página nunca terminava de carregar.
 const EMAIL = 'titular-de-teste@exemplo.invalid', USUARIO = 'f0f0f0f0-0000-4000-8000-0000000000a1', SEGREDO_CRON = 'segredo-do-cron-de-teste-0123456789';
 rmSync(RAIZ, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true }); mkdirSync(RAIZ, { recursive: true });
 let falhas = 0, total = 0;
@@ -29,7 +34,8 @@ const falso = await iniciarSupabaseFalso({ db, porta: PORTA_FALSO });
 const env = { ...process.env, NEXT_PUBLIC_SUPABASE_URL: falso.url, SUPABASE_SERVICE_ROLE_KEY: CHAVE_SERVICO, CRON_SECRET: SEGREDO_CRON, DMANDA_SEM_LEMBRETES: 'sim', PORT: PORTA };
 delete env.DMANDA_BANCO; delete env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; delete env.NEXT_PUBLIC_SUPABASE_ANON_KEY; delete env.DMANDA_EMAIL_AUTORIZADO;
 const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } falso.parar(); };
+const pararPrincipal = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
+const parar = () => { pararPrincipal(); falso.parar(); };
 process.on('exit', parar);
 for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/api/sonda'); if (r.status < 500) break; } catch { /* subindo */ } await esperar(2000); }
 
@@ -150,6 +156,35 @@ const A = await novo(edge, { viewport: { width: 1440, height: 900 } });
 }
 
 // =============================================================================================================================================
+// 3b) exportação: toda falha sem relação com o usuário é 500 e nunca 401 (o aplicativo está aberto: não há login a pedir), sem arquivo de sucesso e sem detalhe interno
+// =============================================================================================================================================
+const exportar = async (base) => {
+  const r = await fetch(base + '/api/exportar', { redirect: 'manual' }), texto = await r.text();
+  let json = null; try { json = JSON.parse(texto); } catch { /* não é JSON */ }
+  return { status: r.status, tipo: r.headers.get('content-type') ?? '', anexo: r.headers.get('content-disposition'), cache: r.headers.get('cache-control'), texto, json };
+};
+const DETALHES_INTERNOS = /dmanda-exportacao|lista protegida|Operação (não permitida|indisponível)|sem-config|sb_secret|127\.0\.0\.1|PGRST|P0001|fetch failed|at .*\.(ts|js):/i;
+const recusada = (x) => x.status === 500 && /application\/json/.test(x.tipo) && x.anexo === null && x.cache === 'no-store' && x.json?.ok === false && x.json.erro === 'Não foi possível gerar a cópia agora.' && !DETALHES_INTERNOS.test(x.texto);
+const resumoDe = (x) => `status ${x.status}, anexo ${x.anexo}, corpo ${x.texto.slice(0, 160)}`;
+{
+  const bom = await exportar(BASE);
+  ok(bom.status === 200 && /attachment; filename="dmanda-copia-\d{4}-\d{2}-\d{2}\.json"/.test(bom.anexo ?? '') && bom.json?.formato === 'dmanda-exportacao' && bom.json.versao === 4, 'exportação: com tudo certo, 200, v4 e arquivo para baixar (o que as falhas abaixo não podem devolver)');
+  falso.estado.falhas.set('executar_como_titular', 'cai');
+  let x = await exportar(BASE); ok(recusada(x), `exportação: com a conexão do banco caindo, 500 genérico, sem arquivo e sem detalhe (${resumoDe(x)})`);
+  falso.estado.falhas.set('executar_como_titular', '500');
+  x = await exportar(BASE); ok(recusada(x), `exportação: com erro 500 do banco, 500 genérico, sem arquivo e sem detalhe (${resumoDe(x)})`);
+  falso.estado.falhas.set('executar_como_titular', 'P0001:Operação não permitida.');
+  x = await exportar(BASE); ok(recusada(x), `exportação: com o banco recusando a operação (código e banco fora de compasso), 500 e não 401 (${resumoDe(x)})`);
+  falso.estado.falhas.delete('executar_como_titular');
+  // o caso real da lista protegida vazia: a função do banco levanta P0001 e o servidor não pode tratar isso como pedido de login
+  const lista = await sqlq('select email from dmanda_privado.acesso_autorizado');
+  await db.query('delete from dmanda_privado.acesso_autorizado');
+  try { x = await exportar(BASE); ok(recusada(x), `exportação: sem titular na lista protegida do banco, 500 e não 401, sem repetir a mensagem do banco (${resumoDe(x)})`); }
+  finally { for (const l of lista) await db.query('insert into dmanda_privado.acesso_autorizado (email) values ($1)', [l.email]); }
+  x = await exportar(BASE); ok(x.status === 200 && x.json?.versao === 4, 'exportação: restabelecida a causa, volta a responder 200 com a v4');
+}
+
+// =============================================================================================================================================
 // 4) interface em Claro e Escuro, nas larguras pertinentes (computador, iPad, iPhone), sem a seção de Aparelhos
 // =============================================================================================================================================
 {
@@ -175,6 +210,20 @@ const A = await novo(edge, { viewport: { width: 1440, height: 900 } });
   ok(r1.status === 0 && /Tudo certo/.test(r1.stdout), 'verificação "rest" (leitura pela chave de serviço, função fora da lista e argumento inválido recusados, sem chave recusado)' + (r1.status ? ': ' + r1.stdout.split('\n').filter((l) => /FALHOU/.test(l)).join(' | ') : ''));
   ok(r2.status === 0 && /Tudo certo/.test(r2.stdout), 'verificação "dominio" (rotas abertas sem cookie, /acesso e /login 307, exportação v4 igual à leitura do banco, cron 401, sem segredo no HTML)' + (r2.status ? ': ' + r2.stdout.split('\n').filter((l) => /FALHOU/.test(l)).join(' | ') : ''));
   ok(!r1.stdout.includes(CHAVE_SERVICO) && !r2.stdout.includes(CHAVE_SERVICO) && !r1.stdout.includes(EMAIL) && !r2.stdout.includes(EMAIL) && !/Demanda fictícia|Nota fictícia/.test(r1.stdout + r2.stdout), 'as verificações não imprimem a chave, o e-mail nem o conteúdo dos registros');
+}
+
+// =============================================================================================================================================
+// 5) exportação: falta de configuração e chave de serviço recusada (servidores novos, um por vez: só pode haver um next dev)
+// =============================================================================================================================================
+{
+  pararPrincipal(); await esperar(3000);
+  const REAL = { DMANDA_BANCO: undefined, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: undefined, NEXT_PUBLIC_SUPABASE_ANON_KEY: undefined, DMANDA_EMAIL_AUTORIZADO: undefined, CRON_SECRET: SEGREDO_CRON };
+  const caso = async (porta, extra, descricao) => {
+    const s = await iniciarServidor({ porta, pasta: `${RAIZ}/pg`, env: { ...REAL, PORT: String(porta), ...extra } });
+    try { const x = await exportar(s.base); ok(recusada(x), `exportação: ${descricao}: 500 genérico, sem arquivo e sem detalhe (${resumoDe(x)})`); } finally { s.parar(); await esperar(3000); }
+  };
+  await caso(7131, { NEXT_PUBLIC_SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '' }, 'sem endereço nem chave de serviço configurados no servidor');
+  await caso(7132, { NEXT_PUBLIC_SUPABASE_URL: falso.url, SUPABASE_SERVICE_ROLE_KEY: 'chave-de-servico-errada-de-teste' }, 'com a chave de serviço recusada pelo banco');
 }
 
 await wk?.close(); await edge.close();

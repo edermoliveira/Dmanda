@@ -13,7 +13,7 @@ export async function iniciarSupabaseFalso({ db, porta }) {
   const estado = {
     chamadas: [],                 // "POST /rest/v1/rpc/executar_como_titular", ...
     corpos: [],                   // { fn, args } de cada chamada (sem a chave), para conferir o que o servidor enviou
-    falhas: new Map(),            // função -> 'cai' (a conexão cai antes de responder) | '500'
+    falhas: new Map(),            // função -> 'cai' (a conexão cai antes de responder) | '500' | 'P0001:<mensagem>' (regra do banco)
   };
   const json = (res, status, corpo) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(corpo === undefined ? '' : JSON.stringify(corpo)); };
   const srv = http.createServer(async (req, res) => {
@@ -28,6 +28,8 @@ export async function iniciarSupabaseFalso({ db, porta }) {
     const falha = estado.falhas.get(fn);
     if (falha === 'cai') { req.socket.destroy(); return; }
     if (falha === '500') return json(res, 500, { code: 500, msg: 'falha proposital' });
+    // regra do banco recusando a operação (como o PostgREST devolve um RAISE com errcode P0001): 'P0001:<mensagem>'
+    if (typeof falha === 'string' && falha.startsWith('P0001:')) return json(res, 400, { code: 'P0001', message: falha.slice(6), details: null, hint: null });
     try {
       let r;
       if (fn === 'executar_como_titular') {

@@ -16,8 +16,9 @@ export async function GET() {
     const corpo = { formato: 'dmanda-exportacao', versao: 4, exportado_em: agora.toISOString(), fuso: 'America/Sao_Paulo', demandas: ativas, arquivadas, dias_indisponiveis: dias, entradas, entradas_arquivadas: entradasArquivadas, eventos };
     return new Response(JSON.stringify(corpo, null, 2), { headers: { ...cabecalhos, 'content-disposition': `attachment; filename="dmanda-copia-${hojeISO(agora)}.json"` } });
   } catch (e) {
-    if (e instanceof ErroDmanda) return Response.json({ ok: false, erro: e.message }, { status: 401, headers: cabecalhos });
-    console.error('[exportar] falhou:', (e as { code?: string })?.code ?? 'sem código');
+    // O aplicativo é aberto: nenhuma falha daqui é "falta de login". Uma regra do banco recusando a leitura (ErroDmanda: titular ausente da lista protegida, operação fora da lista) é falha do servidor,
+    // como a rede caindo, a configuração ausente ou a chave de serviço recusada: sempre 500, sem arquivo e sem repetir a mensagem do banco ao navegador. O log do servidor leva só a causa.
+    console.error('[exportar] falhou:', e instanceof ErroDmanda ? `regra do banco: ${e.message}` : ((e as { code?: string })?.code ?? 'sem código'));
     return Response.json({ ok: false, erro: 'Não foi possível gerar a cópia agora.' }, { status: 500, headers: cabecalhos });
   }
 }
