@@ -8,6 +8,9 @@ export const lerGuardado = <T = unknown>(chave: string, padrao: T): T => { try {
 /** Guarda um valor JSON no navegador. Sem armazenamento (modo privado, cota cheia) o valor vale só nesta visita. */
 export const guardarNoNavegador = (chave: string, valor: unknown): void => { try { localStorage.setItem(chave, JSON.stringify(valor)); } catch { /* sem armazenamento: vale só nesta visita */ } };
 
+/** Quanto a janela espera depois da última tecla para guardar o rascunho no aparelho (as cinco janelas com texto digitado usam este valor; as suítes esperam esse tempo). */
+export const ESPERA_RASCUNHO_MS = 500;
+
 export const eObjeto = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 

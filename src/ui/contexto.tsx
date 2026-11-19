@@ -14,10 +14,13 @@ import { avisosDeHoje, compararEventos, minutosAgora, type AvisoEvento, type Dad
 import type { Entrada } from '@/lib/entradas';
 import type { Opcao } from '@/lib/documentos';
 import type { Vaga } from '@/lib/para-hoje';
-import { substituirRegistros, type RegistroDia } from '@/lib/registros';
+import { EVENTO_REGISTRO_GRAVADO, substituirRegistros, type RegistroDia } from '@/lib/registros';
 import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 import { avisoAntesDaChegada, type CategoriaDia, type DiaIndisponivel } from '@/lib/prazos';
 import { avisosDoSistema, comLeitura, MSG_INCERTA, MSG_SEM_REDE, type AcaoAviso, type AvisoComLeitura, type FonteId, type PeriodoIncerto } from '@/lib/avisos-sistema';
+
+/** As chaves que o contexto guarda no navegador (cada uma é lida e gravada em lugares diferentes deste arquivo; os textos são os que já estão guardados nos aparelhos). */
+const CHAVE = { aparencia: 'dmanda:aparencia', menuAberto: 'dmanda:menu-aberto', ui: 'dmanda:ui', rascunhos: 'dmanda:rascunhos', avisosVistos: 'dmanda:avisos-vistos', periodosIncertos: 'dmanda:periodos-incertos' } as const;
 
 // nova: o cadastro guiado de demanda (com entradaId, ele nasce de uma anotação: Virar demanda). entrada: a janela de uma anotação (sem id, uma anotação nova).
 export type Janela = { t: 'nova'; entradaId?: string } | { t: 'editar'; id: string } | { t: 'tarefa' } | { t: 'entrada'; id?: string } | { t: 'evento'; id?: string; data?: string } | { t: 'dia'; data?: string } | null;
@@ -217,7 +220,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const incertosRef = useRef<PeriodoIncerto[]>([]);
   const [incertos, setIncertos] = useState<PeriodoIncerto[]>([]);
   // guardadas também no navegador: se a página for recarregada antes da conferência, o aviso com "Conferir se foi gravado" continua (um pedido atrasado ainda poderia chegar ao servidor)
-  const definirIncertos = useCallback((f: (l: PeriodoIncerto[]) => PeriodoIncerto[]) => { incertosRef.current = f(incertosRef.current); setIncertos(incertosRef.current); gravarLS('dmanda:periodos-incertos', incertosRef.current); }, []);
+  const definirIncertos = useCallback((f: (l: PeriodoIncerto[]) => PeriodoIncerto[]) => { incertosRef.current = f(incertosRef.current); setIncertos(incertosRef.current); gravarLS(CHAVE.periodosIncertos, incertosRef.current); }, []);
   const [vencimentosDesatualizados, setVencimentosDesatualizados] = useState(false);
   const [opcoes, setOpcoes] = useState<Record<'origem' | 'tipo', Opcao[]>>({ origem: [], tipo: [] });
   const [paraHoje, setParaHoje] = useState<Vaga[]>([]);
@@ -271,28 +274,28 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     const t = lerLS<unknown>(CHAVE_TEMA, null);
     setModo(t === 'escuro' || t === 'claro' ? t : 'sistema');
     setSistemaEscuro(matchMedia('(prefers-color-scheme: dark)').matches);
-    setAparencia(aparenciaGuardada(lerLS<unknown>('dmanda:aparencia', null)));
-    setMenuAberto(lerLS<unknown>('dmanda:menu-aberto', false) === true);
+    setAparencia(aparenciaGuardada(lerLS<unknown>(CHAVE.aparencia, null)));
+    setMenuAberto(lerLS<unknown>(CHAVE.menuAberto, false) === true);
     // o que está guardado pode estar corrompido ou ser de outra versão: só entra o que tem a forma esperada (ver lib/armazenamento.ts)
-    const ui = lerLS<Record<string, unknown> | null>('dmanda:ui', null) ?? {};
+    const ui = lerLS<Record<string, unknown> | null>(CHAVE.ui, null) ?? {};
     const visaoUi = visaoGuardada(ui.visao), ordemUi = ordemGuardada(ui.ordem);
     if (visaoUi) setVisaoE(visaoUi);
     if (ordemUi) setOrdem(ordemUi);
     setGrupos(gruposGuardados(ui.grupos));
-    setRascunhos(rascunhosGuardados<Rascunho>(lerLS<unknown>('dmanda:rascunhos', null)));
-    setDispensados(textosGuardados(lerLS<unknown>('dmanda:avisos-vistos', null)));
-    const guardadas = lerLS<unknown>('dmanda:periodos-incertos', []);   // só entra o que tem a forma esperada (o que está guardado pode estar corrompido)
+    setRascunhos(rascunhosGuardados<Rascunho>(lerLS<unknown>(CHAVE.rascunhos, null)));
+    setDispensados(textosGuardados(lerLS<unknown>(CHAVE.avisosVistos, null)));
+    const guardadas = lerLS<unknown>(CHAVE.periodosIncertos, []);   // só entra o que tem a forma esperada (o que está guardado pode estar corrompido)
     if (Array.isArray(guardadas)) { const ok = guardadas.filter((x): x is PeriodoIncerto => !!x && typeof x === 'object' && typeof (x as PeriodoIncerto).operacao_id === 'string' && /^[0-9a-f-]{36}$/i.test((x as PeriodoIncerto).operacao_id) && typeof (x as PeriodoIncerto).resumo === 'string').map((x) => ({ operacao_id: x.operacao_id, resumo: x.resumo.slice(0, 220) })); incertosRef.current = ok; setIncertos(ok); }
     setPronto(true);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
-  useEffect(() => { if (pronto) gravarLS('dmanda:ui', { visao, ordem, grupos: gruposFechados }); }, [pronto, visao, ordem, gruposFechados]);
+  useEffect(() => { if (pronto) gravarLS(CHAVE.ui, { visao, ordem, grupos: gruposFechados }); }, [pronto, visao, ordem, gruposFechados]);
   // Claro e Escuro ficam guardados; Sistema apaga a escolha (o script do <head> e a primeira leitura já seguem o aparelho sem ela)
   useEffect(() => {
     if (!pronto) return;
     if (modo === 'sistema') { try { localStorage.removeItem(CHAVE_TEMA); } catch { /* sem armazenamento: vale só nesta visita */ } } else gravarLS(CHAVE_TEMA, modo);
   }, [pronto, modo]);
-  useEffect(() => { if (pronto) gravarLS('dmanda:aparencia', aparencia); }, [pronto, aparencia]);
+  useEffect(() => { if (pronto) gravarLS(CHAVE.aparencia, aparencia); }, [pronto, aparencia]);
   useEffect(() => {
     const mq = matchMedia('(prefers-color-scheme: dark)');
     const ouvir = () => setSistemaEscuro(mq.matches);
@@ -436,7 +439,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
 
   // estável (identidade fixa): as janelas a usam em efeitos que gravam o rascunho sozinhos
   // parte do que está guardado no navegador, não só da memória desta aba: outra aba ou a PWA do mesmo aparelho pode ter guardado um rascunho que esta não conhece, e gravar o mapa da memória o apagaria
-  const guardarRascunho = useCallback((chave: string, r: Rascunho | null) => setRascunhos((m) => { const guardado = lerLS<unknown>('dmanda:rascunhos', null); const n = { ...(eObjeto(guardado) ? rascunhosGuardados<Rascunho>(guardado) : m) }; if (r) n[chave] = r; else delete n[chave]; gravarLS('dmanda:rascunhos', n); return n; }), []);
+  const guardarRascunho = useCallback((chave: string, r: Rascunho | null) => setRascunhos((m) => { const guardado = lerLS<unknown>(CHAVE.rascunhos, null); const n = { ...(eObjeto(guardado) ? rascunhosGuardados<Rascunho>(guardado) : m) }; if (r) n[chave] = r; else delete n[chave]; gravarLS(CHAVE.rascunhos, n); return n; }), []);
 
   const gravando = useCallback(async <T,>(f: () => Promise<T>): Promise<T> => {
     gravacoes.current++; pendentes.current++;
@@ -527,7 +530,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (!r.ok) return { ok: false, erro: r.erro };
     setRegistros((atual) => substituirRegistros(atual, r.dados));
     // avisa o relógio dos lembretes: registrar hoje, em qualquer lugar, responde ao lembrete pendente
-    window.dispatchEvent(new CustomEvent('dmanda:registro-gravado', { detail: lista.map((x) => x.dia) }));
+    window.dispatchEvent(new CustomEvent(EVENTO_REGISTRO_GRAVADO, { detail: lista.map((x) => x.dia) }));
     return { ok: true };
   }, [gravando]);
   const recarregarRegistros = useCallback(async () => {
@@ -582,7 +585,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       return true;
     },
     avisosEventos,
-    dispensarAviso: (e) => setDispensados((l) => { const n = [...l, chaveAviso(e)].slice(-200); gravarLS('dmanda:avisos-vistos', n); return n; }),
+    dispensarAviso: (e) => setDispensados((l) => { const n = [...l, chaveAviso(e)].slice(-200); gravarLS(CHAVE.avisosVistos, n); return n; }),
     aviso, avisar, ambiente, rotina, tema,
     alternarTema: () => setModo(tema === 'claro' ? 'escuro' : 'claro'),
     modo, setModo, aparencia,
@@ -593,7 +596,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       setAparencia((a) => ({ ...a, paleta: Math.floor(Math.random() * PALETAS.length), titulo: c.titulo, texto: c.texto, mono: c.mono }));
     },
     menuAberto,
-    alternarMenu: () => setMenuAberto((v) => { gravarLS('dmanda:menu-aberto', !v); return !v; }),
+    alternarMenu: () => setMenuAberto((v) => { gravarLS(CHAVE.menuAberto, !v); return !v; }),
     visao, setVisao: setVisaoE, filtro, setFiltro: (f) => setFiltroE((x) => ({ ...x, ...f })),
     ordem, ordenarPor: (coluna) => setOrdem((o) => ({ coluna, sentido: o.coluna === coluna ? (o.sentido === 1 ? -1 : 1) : 1 })),
     gruposFechados, alternarGrupo: (e) => setGrupos((g) => ({ ...g, [e]: !g[e] })),

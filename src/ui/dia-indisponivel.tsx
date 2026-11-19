@@ -5,6 +5,7 @@
 // Regras de sempre na janela da Agenda: o que é digitado vai para o rascunho do aparelho; clicar fora com texto novo não fecha; Esc e X guardam o rascunho; só Cancelar descarta;
 // a falha de gravação mantém tudo nos campos; o clique repetido não envia duas vezes; ao fechar, o foco volta ao botão que abriu.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ESPERA_RASCUNHO_MS } from '@/lib/armazenamento';
 import { useApp } from './contexto';
 import { novoUuid } from './campos';
 import { Icone } from './Icone';
@@ -119,7 +120,7 @@ export function JanelaDiaIndisponivel({ data: dataOrigem }: { data?: string }) {
   // rascunho automático, meio segundo depois da última alteração
   useEffect(() => {
     if (!sujo) return;
-    const t = setTimeout(() => guardarRascunho(CHAVE, { dados: { dia: { ...c }, origem } }), 500);
+    const t = setTimeout(() => guardarRascunho(CHAVE, { dados: { dia: { ...c }, origem } }), ESPERA_RASCUNHO_MS);
     return () => clearTimeout(t);
   }, [sujo, c, origem, guardarRascunho]);
   const fecharGuardando = () => { guardarRascunho(CHAVE, sujo ? { dados: { dia: { ...c }, origem } } : null); fecharJanela(); };

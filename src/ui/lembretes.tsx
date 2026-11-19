@@ -11,7 +11,7 @@ import { Janela } from './janela-base';
 import { EscalaCinco, FormularioRegistro } from './escala';
 import { hojeISO } from '@/lib/demandas';
 import { lerEstado, OCIOSO_MS, resolver, tique, type EstadoLembretes, type Pendente } from '@/lib/lembretes';
-import { diasPendentes, diaPorExtenso, type Nivel } from '@/lib/registros';
+import { diasPendentes, diaPorExtenso, EVENTO_REGISTRO_GRAVADO, type Nivel } from '@/lib/registros';
 
 const CHAVE = 'dmanda:lembretes';
 const TIQUE_MS = 30_000;
@@ -78,8 +78,8 @@ export function Lembretes({ ocupado }: { ocupado: boolean }) {
   // registrar hoje pelo Início, pelo Perfil ou por outra janela também responde ao lembrete pendente (senão ele pediria de novo o que acabou de ser registrado)
   useEffect(() => {
     const f = (e: Event) => { if (((e as CustomEvent<string[]>).detail ?? []).includes(hojeISO())) resolverPendente(); };
-    addEventListener('dmanda:registro-gravado', f);
-    return () => removeEventListener('dmanda:registro-gravado', f);
+    addEventListener(EVENTO_REGISTRO_GRAVADO, f);
+    return () => removeEventListener(EVENTO_REGISTRO_GRAVADO, f);
   }, [resolverPendente]);
 
   // o convite espera a pessoa terminar o que está fazendo (janela, busca ou Perfil abertos): abre sozinho depois, uma vez

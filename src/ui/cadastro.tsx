@@ -10,6 +10,7 @@
 // Virar demanda (Entradas): o cadastro abre com o assunto e a descrição vindos da anotação (tudo editável). A anotação só sai de Entradas quando a demanda é criada no passo 2: a criação e o vínculo
 // são gravados juntos pelo banco. Cancelar antes disso não mexe na anotação. O vínculo (entradaId) viaja no rascunho, então recarregar ou repetir a criação liga sempre à mesma anotação.
 import { useEffect, useRef, useState } from 'react';
+import { ESPERA_RASCUNHO_MS } from '@/lib/armazenamento';
 import { useApp } from './contexto';
 import { Janela, Grupo } from './janela-base';
 import { CAMPOS_VAZIOS, CamposChegadaPrazo, CamposIdentificacao, CAMPOS_DA_SECAO, chaveTarefa, doCampos, EditorTarefas, mudou, novoUuid, paraDadosNovos, paraEnvio, type Campos, type Secao, type TarefaForm } from './campos';
@@ -55,7 +56,7 @@ export function JanelaNova({ entradaId, entrada }: { entradaId?: string; entrada
   // rascunho automático do cadastro inteiro (meio segundo depois da última alteração): recarregar ou perder a sessão não perde o texto, as tarefas em edição nem o vínculo com a demanda já criada
   useEffect(() => {
     if (!d && !sujoAntes) return;
-    const t = setTimeout(() => guardarRascunho('nova', { dados: c, passo, idNovo, ...comEntrada, ...(d ? { demandaId: d.id, versao: versaoBase, tarefas: paraEnvio(tarefas), nt } : {}) }), 500);
+    const t = setTimeout(() => guardarRascunho('nova', { dados: c, passo, idNovo, ...comEntrada, ...(d ? { demandaId: d.id, versao: versaoBase, tarefas: paraEnvio(tarefas), nt } : {}) }), ESPERA_RASCUNHO_MS);
     return () => clearTimeout(t);
   }, [d, sujoAntes, c, passo, idNovo, versaoBase, tarefas, nt, guardarRascunho, eId]); // eslint-disable-line react-hooks/exhaustive-deps
 

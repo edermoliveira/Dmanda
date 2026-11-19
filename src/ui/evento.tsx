@@ -3,6 +3,7 @@
 // Regras de sempre: o que é digitado vai para o rascunho do aparelho; clicar fora com texto novo não fecha; Esc e X guardam o rascunho; só Cancelar descarta;
 // falha ou conflito de versão nunca apagam o que foi digitado; criar repete com o mesmo identificador (clique repetido ou resposta perdida nunca duplica); excluir pede confirmação.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ESPERA_RASCUNHO_MS } from '@/lib/armazenamento';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { Janela, Opcoes } from './janela-base';
@@ -55,7 +56,7 @@ function JanelaEvento({ evento, idOriginal, dataInicial }: { evento: Evento | nu
   // rascunho automático, meio segundo depois da última alteração
   useEffect(() => {
     if (!sujo) return;
-    const t = setTimeout(() => guardarRascunho(chave, { dados: { ev: { ...c } }, idNovo: evento ? undefined : idNovo, versao: versaoBase }), 500);
+    const t = setTimeout(() => guardarRascunho(chave, { dados: { ev: { ...c } }, idNovo: evento ? undefined : idNovo, versao: versaoBase }), ESPERA_RASCUNHO_MS);
     return () => clearTimeout(t);
   }, [sujo, c, chave, evento, idNovo, versaoBase, guardarRascunho]);
   const fecharGuardando = () => { if (sujo) guardarRascunho(chave, { dados: { ev: { ...c } }, idNovo: evento ? undefined : idNovo, versao: versaoBase }); else guardarRascunho(chave, null); fecharJanela(); };

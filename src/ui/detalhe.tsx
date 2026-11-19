@@ -4,6 +4,7 @@
 // Regras herdadas do desenho aprovado: clicar fora não fecha se há texto novo; Esc, X e Fechar guardam o rascunho; só Cancelar descarta; salvar é atômico no banco e
 // recusado (nada gravado, edição local mantida) se a demanda mudou em outro aparelho depois que a edição começou.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ESPERA_RASCUNHO_MS } from '@/lib/armazenamento';
 import { createPortal } from 'react-dom';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
@@ -67,7 +68,7 @@ function Detalhe({ d }: { d: Demanda }) {
   // rascunho automático, meio segundo depois da última alteração (recarregar, sessão encerrada ou o sistema fechar o aplicativo não perdem o texto)
   useEffect(() => {
     if (!sujo) return;
-    const t = setTimeout(() => guardarRascunho(chave, { dados: { ...c, etapa }, tarefas: abertas.includes('tarefas') ? lista : undefined, nt: '', versao: versaoBase, secoes: abertas }), 500);
+    const t = setTimeout(() => guardarRascunho(chave, { dados: { ...c, etapa }, tarefas: abertas.includes('tarefas') ? lista : undefined, nt: '', versao: versaoBase, secoes: abertas }), ESPERA_RASCUNHO_MS);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sujo, c, etapa, tarefas, nt, abertas, versaoBase, chave, guardarRascunho]);

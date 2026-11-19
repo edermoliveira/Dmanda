@@ -53,6 +53,9 @@ export function textoDoDia(p: PontoDia, hoje: string): string {
 }
 
 /** Frase conclusiva do dia: sempre neutra e acolhedora, sem comparação, meta nem classificação. */
+/** Nome do evento que o contexto dispara na janela depois de gravar o humor e que os lembretes escutam (duas telas, um nome só). */
+export const EVENTO_REGISTRO_GRAVADO = 'dmanda:registro-gravado';
+
 export function fraseDoDia(concluidasHoje: number): string {
   if (concluidasHoje === 0) return 'Hoje ainda não há demanda finalizada. Dia com zero também acontece e não desfaz o resto da semana.';
   return `Hoje: ${textoConcluidas(concluidasHoje)}.`;

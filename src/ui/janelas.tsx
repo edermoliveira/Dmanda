@@ -2,6 +2,7 @@
 // Janelas do aplicativo: o cadastro guiado de demanda (cadastro.tsx), a consulta e edição da demanda (detalhe.tsx), o dia indisponível da Agenda (dia-indisponivel.tsx) e a nova tarefa do menu "+".
 // Regras de rascunho do protótipo aprovado: clicar fora não fecha se houver texto novo; Esc e X fecham e guardam o rascunho; Cancelar descarta.
 import { useEffect, useState } from 'react';
+import { ESPERA_RASCUNHO_MS } from '@/lib/armazenamento';
 import { useApp } from './contexto';
 import { Janela } from './janela-base';
 import { useTentativa } from './campos';
@@ -25,7 +26,7 @@ export function JanelaTarefa() {
   // rascunho automático (ver a janela de edição)
   useEffect(() => {
     if (!sujo) return;
-    const t = setTimeout(() => guardarRascunho('tarefa', { dados: { assunto: '', dem }, nt: texto }), 500);   // `dem` volta com o rascunho (a leitura acima já o esperava, mas ele nunca era guardado)
+    const t = setTimeout(() => guardarRascunho('tarefa', { dados: { assunto: '', dem }, nt: texto }), ESPERA_RASCUNHO_MS);   // `dem` volta com o rascunho (a leitura acima já o esperava, mas ele nunca era guardado)
     return () => clearTimeout(t);
   }, [sujo, texto, dem, guardarRascunho]);
   const fecharGuardando = () => { guardarRascunho('tarefa', sujo ? { dados: { assunto: '', dem }, nt: texto } : null); fecharJanela(); };
