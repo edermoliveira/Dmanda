@@ -3,8 +3,8 @@
 // A seção 4 (decisão 75, a página não salta na troca do card) roda também no WebKit do Playwright, quando ele existe neste computador.
 // Adaptado do teste da branch bloco/inicio-perfil-clima (914c435), sem Clima, pagamentos, prioridade por origem nem quatro vagas.
 // Uso: node scripts/testar-baralho.mjs   (nunca toca o Supabase real)
-import { chromium, webkit, devices } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { devices } from 'playwright-core';
+import { abrirEdge, abrirWebkit, criarVerificador, esperar, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { somarDias } from '../src/lib/prazos.ts';
@@ -14,9 +14,7 @@ const USUARIO = '00000000-0000-4000-8000-000000000001';
 rmSync(PASTA, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true });
 const PASSAR = '[data-painel="para-hoje"] > .ph-pilha [data-pilha-passar]', AVANCAR = '[data-painel="para-hoje"] > .ph-pilha [data-pilha-avancar]', ABRIR = '[data-painel="para-hoje"] > .ph-pilha [data-pilha-abrir]';
 const ATIVA = '[data-painel="para-hoje"] > .ph-pilha';
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
-const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+const { ok, resumo } = criarVerificador();
 
 // ---------- dados: quatro vagas ocupadas (Alfa, Charlie, Eco, Quarta) e duas urgências fora delas (Delta, Foxtrot) ----------
 const ID = {};
@@ -41,20 +39,10 @@ let HOJE;
   await db.close();
 }
 
-let servidor = null;
-const subir = async () => {
-  // o Next às vezes interrompe a partida para mostrar um aviso de atualização (e sai); repetir logo em seguida passa. Por isso a partida é repetida se o servidor sair antes de responder.
-  for (let tentativa = 0; tentativa < 4; tentativa++) {
-  servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
-    for (let i = 0; i < 60; i++) { if (servidor.exitCode !== null) break; try { const r = await fetch(BASE + '/'); if (r.status < 500) { await new Promise((r2) => setTimeout(r2, 6000)); if (servidor.exitCode === null) return; break; } } catch { /* subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
-    try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ }
-  }
-};
-const parar = () => { if (servidor) { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } servidor = null; } };
-process.on('exit', parar);
+const subir = async () => { await iniciarServidor({ porta: PORTA, pasta: PASTA }); };
 await subir();
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const erros = [];
 const PERFIS = { desktop: { viewport: { width: 1440, height: 900 } }, ipad: { viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }, celular: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } };
 const abrir = async (perfil, { extra = {}, antes, motor = nav } = {}) => {
@@ -292,7 +280,7 @@ parar();
 // e a rolagem era cortada no novo limite (a tela "saltava para o topo"). Sem instrumentação, só o WebKit salta (o Chromium não refaz o layout nesse instante). Aqui o teste lê a altura do
 // palco no instante exato em que o card sai, o que obriga os dois motores a calcular o layout ali: por isso a medição do palco e a da rolagem valem nos dois, e as duas falhavam antes da correção (a da rolagem, quando a página estava no fim). O WebKit do Playwright é o motor do Safari no Windows com ponteiro sintético: NÃO é o Safari do iPhone, que continua dependendo do gesto no aparelho.
 await subir();
-const wk = await webkit.launch().catch((e) => { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); return null; });
+const wk = await abrirWebkit();
 const instrumentar = (pg) => pg.evaluate(() => {
   const m = document.querySelector('.main'), R = { m, log: [], pilha: null, minPalco: Infinity, trocas: 0 };
   const reg = (fase) => { if (R.pilha?.isConnected) R.log.push({ fase, st: m.scrollTop, topo: R.pilha.getBoundingClientRect().top }); };
@@ -383,5 +371,4 @@ parar();
 await nav.close();
 ok(erros.length === 0, `nenhum erro de console ou de página${erros.length ? ': ' + erros.slice(0, 3).join(' | ') : ''}`);
 console.log(`\nCapturas para abrir localmente: ${CAPTURAS}`);
-console.log(falhas ? `\n${falhas} verificação(ões) falharam de ${total}.` : `\nTudo certo: ${total} verificações.`);
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

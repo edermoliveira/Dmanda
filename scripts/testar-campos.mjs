@@ -6,8 +6,8 @@
 // A aceitação de um controle visível NÃO é "o elemento existe e o clique funciona": a suíte mede pixels. Cada controle é fotografado e a borda precisa aparecer na imagem com contraste de pelo menos 3:1 sobre o fundo;
 // o campo de data vazio precisa mostrar tinta (a dica) e a data preenchida também. O WebKit do Playwright é o motor do Safari, NÃO o Safari do iPhone: o seletor nativo de data e o toque real ficam para o aparelho.
 // NÃO valida o Supabase real. Sobe o próprio servidor (porta 7117, pasta de dados nova). Uso: node scripts/testar-campos.mjs
-import { chromium, webkit } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { webkit } from 'playwright-core';
+import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 
@@ -22,14 +22,10 @@ rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { rec
   await chamarComoUsuario(db, USUARIO, 'criar_demanda', { p: { assunto: 'Vencimento de prova', prazo_original: '2026-12-24' } });
   await db.close();
 }
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+await iniciarServidor({ porta: PORTA, pasta: PASTA });
+const { ok, resumo } = criarVerificador();
 
-const motores = [['Edge', await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] })]];
+const motores = [['Edge', await abrirEdge()]];
 try { motores.push(['WebKit', await webkit.launch()]); } catch (e) { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); }
 const erros = [];
 // A camada desenhada do campo de data só vale onde `@supports (-webkit-touch-callout: none)` é verdadeiro (Safari do iPhone e do iPad); nenhum navegador deste computador atende essa condição.
@@ -309,5 +305,4 @@ for (const [nome, nav] of motores) {
 
 ok(erros.length === 0, 'nenhum erro de página nem de console durante os fluxos' + (erros.length ? `: ${erros.slice(0, 4).join(' | ')}` : ''));
 for (const [, n] of motores) await n.close();
-console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

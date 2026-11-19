@@ -4,23 +4,18 @@
 //   3) cards: o título tem prioridade sobre a descrição em vários tamanhos de janela, zooms e aparelhos emulados, nunca fica cortado ao meio e a descrição volta quando há espaço;
 //   4) tipografia: escala única de 85% (--esc) aplicada uma só vez, sem zoom nem transform, com as exceções documentadas (piso de 10 px e campos de 16 px no toque).
 // Sobe o próprio servidor numa porta separada, com pasta de dados nova. NÃO valida o Supabase real. Uso: node scripts/testar-interface.mjs
-import { chromium } from 'playwright-core';
+import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { escolherOpcao } from './auxiliar-origem.mjs';
-import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
 
 const PORTA = process.env.PORTA_TESTE_INTERFACE || '7104', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/interface';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
+const { ok, resumo } = criarVerificador();
 
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const erros = [];
 const novoContexto = async (opcoes, { visao = 'cards', tema = 'claro' } = {}) => {
   const ctx = await nav.newContext(opcoes);
@@ -369,5 +364,4 @@ ok(conta('Tarefa perdida').length === 1 && conta('Tarefa perdida')[0].n_tarefas 
 ok(conta('Resposta perdida').length === 1 && conta('Resposta perdida')[0].etapa === 'Cadastro', 'banco: "Resposta perdida" existe uma só vez, em Cadastro');
 ok(conta('Criada pelo botão da coluna').length === 1 && conta('Criada pelo botão da coluna')[0].etapa === 'Vistos', 'banco: a demanda do botão da coluna foi criada uma vez e foi para Vistos só pela conclusão do cadastro');
 await db.close();
-console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

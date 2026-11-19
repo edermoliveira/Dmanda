@@ -3,8 +3,8 @@
 //      e nunca vai parar nos cards de fundo;
 //   2) Agenda: carregando, dados indisponíveis, recuperação e resultado vazio de verdade, nos painéis "Onde o período aperta" e "Pendências sem prazo" (e no painel de demandas do Dia).
 // O WebKit do Playwright é o motor do Safari no Windows, NÃO o Safari do iPhone. Uso: node scripts/testar-auditoria.mjs (nunca toca o Supabase real)
-import { chromium, webkit, devices } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { webkit, devices } from 'playwright-core';
+import { abrirEdge, criarVerificador, esperar, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { somarDias } from '../src/lib/prazos.ts';
@@ -12,9 +12,7 @@ import { somarDias } from '../src/lib/prazos.ts';
 const PORTA = process.env.PORTA_TESTE_AUDITORIA || '7125', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/auditoria';
 const USUARIO = '00000000-0000-4000-8000-000000000001';
 rmSync(PASTA, { recursive: true, force: true });
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
-const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+const { ok, resumo } = criarVerificador();
 
 // ---------- dados: quatro vagas (Alfa em Cadastro, Charlie com pendências, Eco aguardando a Prefeita, Quarta em Fazendo) e duas urgências fora delas; nenhuma demanda sem data e nenhum dia cheio ----------
 const ID = {};
@@ -48,13 +46,9 @@ let MES_APERTA = false; // o painel "Onde o mês aperta" tem dias a listar? Calc
   await db.close();
 }
 
-let servidor = null;
-const parar = () => { if (servidor) { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } servidor = null; } };
-process.on('exit', parar);
-servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* subindo */ } await esperar(2000); }
+await iniciarServidor({ porta: PORTA, pasta: PASTA });
 
-const edge = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const edge = await abrirEdge();
 let wk = null; try { wk = await webkit.launch(); } catch (e) { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); }
 const erros = [];
 const abrir = async (motor, { device = null, largura = 390, reduzido = false, rota = '/', esperarSel = '[data-painel="para-hoje"] .ph-pilha', agenda = null, intercept = null, rapido = false } = {}) => {
@@ -249,5 +243,4 @@ for (const [nome, motor, device] of [['Edge', edge, null], ...(wk ? [['WebKit em
 
 ok(erros.length === 0, 'nenhum erro de console ou de página' + (erros.length ? `: ${erros.slice(0, 3).join(' | ')}` : ''));
 await edge.close(); if (wk) await wk.close(); parar();
-console.log(falhas ? `\n${falhas} verificação(ões) falharam de ${total}.` : `\nTudo certo: ${total} verificações.`);
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

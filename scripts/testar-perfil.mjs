@@ -4,8 +4,7 @@
 // Computador, iPad e iPhone EMULADOS (não são aparelhos reais), claro e escuro, zoom do navegador a 125% e texto do aplicativo a 125%. Sobe o próprio servidor na porta 7113.
 // O acesso sem sessão e com conta não autorizada é testado no testar-sessao (Auth falso); aqui o banco de teste não tem login. Nunca toca o Supabase real.
 // Uso: node scripts/testar-perfil.mjs
-import { chromium } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { diasPendentes, serieDoPeriodo } from '../src/lib/registros.ts';
@@ -46,14 +45,10 @@ const PENDENTES = diasPendentes(HOJE, [], [{ id: 'f', data: FERIADO, descricao: 
 if (PENDENTES.length < 2) throw new Error('A semente precisa de pelo menos 2 dias de trabalho pendentes na janela (ajuste a data de referência).');
 await db.close();
 
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (cond, m) => { total++; console.log((cond ? 'ok     ' : 'FALHOU ') + m); if (!cond) falhas++; };
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA, lembretes: true });
+const { ok, resumo } = criarVerificador();
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const erros = [], externas = [], acoes = [];
 const HORA8 = new Date(`${HOJE}T08:00:00-03:00`);
 const novo = async (opcoes = {}, { tema = 'claro', instante = HORA8, texto125 = false } = {}) => {
@@ -454,5 +449,5 @@ console.log(recargasPorHidratacao.length ? 'nota de infraestrutura: ' + recargas
 ok(recargasPorHidratacao.length <= 2, 'infraestrutura: no máximo 2 recargas por falta de hidratação durante todo o teste (' + recargasPorHidratacao.length + ')');
 ok(externas.length === 0, `privacidade: nenhuma requisição saiu para fora do computador durante todo o teste (telemetria): ${externas.length ? [...new Set(externas)].join(', ') : 'nenhuma'}`);
 ok(erros.length === 0, 'nenhum erro de console ou de página' + (erros.length ? ': ' + erros.slice(0, 3).join(' | ') : ''));
-console.log(`\n${total - falhas}/${total} verificações passaram. Capturas para olhar: ${CAPTURAS}`);
-process.exit(falhas ? 1 : 0);
+console.log(`\nCapturas para olhar: ${CAPTURAS}`);
+process.exit(resumo());

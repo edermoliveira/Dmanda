@@ -3,8 +3,7 @@
 // cadastro sem documento e o documento chegando depois, ano reconhecido ou confirmado e os filtros combinados sobre registros antigos. Computador e celular EMULADOS, claro e escuro.
 // Todas as mudanças durante o teste passam pela interface (o banco de teste pertence ao servidor); as conferências no banco acontecem no fim, com o servidor parado.
 // Sobe o próprio servidor na porta 7114. Nunca toca o Supabase real. Uso: node scripts/testar-origem.mjs
-import { chromium } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { somarDias } from '../src/lib/prazos.ts';
@@ -34,14 +33,10 @@ await mk('Ano manual', { tipo: 'Ofício', numero: 'sem formato', documento_ano: 
 await mk('Antiga sem nada', {});
 await db.close();
 
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (cond, m) => { total++; console.log((cond ? 'ok     ' : 'FALHOU ') + m); if (!cond) falhas++; };
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
+const { ok, resumo } = criarVerificador();
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const erros = [];
 const novo = async (opcoes = { viewport: { width: 1360, height: 900 } }, { tema = 'claro', instante = null } = {}) => {
   const ctx = await nav.newContext(opcoes);
@@ -291,5 +286,5 @@ await db.close();
 await nav.close();
 
 ok(erros.length === 0, 'nenhum erro de console ou de página' + (erros.length ? ': ' + erros.slice(0, 3).join(' | ') : ''));
-console.log(`\n${total - falhas}/${total} verificações passaram. Capturas para olhar: ${CAPTURAS}`);
-process.exit(falhas ? 1 : 0);
+console.log(`\nCapturas para olhar: ${CAPTURAS}`);
+process.exit(resumo());

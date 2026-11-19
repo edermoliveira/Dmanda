@@ -3,11 +3,9 @@
 // e só uma leitura completa bem-sucedida resolve o problema. "Lido" no sininho não resolve nada. Aqui a falha é injetada só nas leituras (a resposta da ação do servidor é reescrita; o banco segue com os dados).
 // Navegador (Edge) com banco de teste (PGlite) semeado por semear-agenda.mjs; porta 7141. NÃO valida o Supabase real nem aparelho físico.
 // Uso: node scripts/testar-falha-dias.mjs
-import { chromium } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
-import { semearAgenda, USUARIO_TESTE } from './semear-agenda.mjs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { semearAgenda } from './semear-agenda.mjs';
+import { abrirEdge, criarVerificador, instanteDaReferencia, iniciarServidor, novoContexto, semearBanco } from './auxiliar-navegador.mjs';
 
 const PORTA = process.env.PORTA_TESTE_FALHA_DIAS || '7141', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/falha-dias';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
@@ -15,34 +13,22 @@ const REFERENCIA = '2026-11-03';   // terça-feira; o feriado semeado cai em hoj
 const S = await semearAgenda(PASTA, REFERENCIA);
 const FERIADO = S.dia.data;
 // uma demanda em Aguardando retorno cujo retorno (10 dias de 31/10 = 10/11) cai EXATAMENTE no feriado semeado: o servidor a antecipa para 09/11 com o calendário completo
-{
-  const db = await abrirBancoTeste({ pasta: PASTA });
-  const c = (f, a) => chamarComoUsuario(db, USUARIO_TESTE, f, a);
+await semearBanco(PASTA, async (c) => {
   const x = await c('criar_demanda', { p: { assunto: 'Retorno sobre o feriado', tipo: 'Memorando', etapa: 'Aguardando retorno', setor: 'PGM' } });
   await c('atualizar_demanda', { p_id: x.id, p: { encaminhada_em: '2026-10-31' } });
-  await db.close();
-}
+});
 const SEM_REDE = 'Sem conexão com o servidor. Nada foi gravado. Confira a internet e tente de novo; o que você digitou continua na tela.';   // o texto que o contexto usa para "sem conexão"
-const horaSP = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Sao_Paulo', hour12: false });
-const INSTANTE = new Date(`${REFERENCIA}T${horaSP}-03:00`);
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste' }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+const INSTANTE = instanteDaReferencia(REFERENCIA);
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
+const { ok, resumo } = criarVerificador();
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const erros = [];
 // `falha` liga e desliga a falha simulada: `dias`, `eventos` e `demandas` reescrevem a parte correspondente da carga inicial; `dias` também reescreve a releitura só dos dias (a lista de dias que volta depois de um cadastro
 // ou do botão do aviso); `rede` faz TODAS as partes falharem com o texto de "sem conexão". O banco continua com os dados.
 const novo = async (viewport = { width: 1360, height: 900 }, tema = 'claro') => {
-  const ctx = await nav.newContext({ viewport });
-  await ctx.clock.install({ time: INSTANTE });
-  await ctx.addInitScript((t) => { try { localStorage.setItem('dmanda-tema', JSON.stringify(t)); localStorage.setItem('dmanda:agenda', JSON.stringify({ modo: 'mes', cat: 'tudo' })); } catch { /* sem armazenamento */ } }, tema);
-  const pg = await ctx.newPage(), falha = { dias: false, eventos: false, rede: false, demandas: false, vezes: 0 };
-  pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
-  pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::ERR|offline|Failed to fetch/i.test(m.text())) erros.push('console: ' + m.text().slice(0, 300)); });
+  const { ctx, pg } = await novoContexto(nav, { opcoes: { viewport }, instante: INSTANTE, tema, agenda: { modo: 'mes', cat: 'tudo' }, erros });
+  const falha = { dias: false, eventos: false, rede: false, demandas: false, vezes: 0 };
   await pg.route('**/*', async (route) => {
     const q = route.request();
     if (!(q.method() === 'POST' && q.headers()['next-action'])) { await route.continue(); return; }
@@ -321,5 +307,4 @@ for (const [rotuloTela, viewport] of [['computador 1360', { width: 1360, height:
 
 ok(erros.length === 0, 'nenhum erro de página nem de console' + (erros.length ? ': ' + JSON.stringify(erros.slice(0, 4)) : ''));
 await nav.close(); parar();
-console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

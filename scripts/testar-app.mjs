@@ -1,25 +1,19 @@
 // Teste de ponta a ponta da aplicação funcional, no navegador (Edge), com o banco local de TESTE (PGlite, mesmas migrações do Supabase).
 // Sobe o próprio servidor numa porta separada, com uma pasta de dados nova, e no fim lê direto do banco o que foi gravado.
 // NÃO valida o Supabase real nem o login Google (ainda sem projeto e credenciais). Uso: node scripts/testar-app.mjs
-import { chromium } from 'playwright-core';
+import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { escolherOpcao } from './auxiliar-origem.mjs';
-import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync, readFileSync } from 'node:fs';
 import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
 
 const SEGREDO = 'segredo-de-teste-1234567890';
 const PORTA = process.env.PORTA_TESTE || '7103', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/e2e';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: SEGREDO }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA, cron: true });
+const { ok, resumo } = criarVerificador();
 
-async function esperarServidor() { for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) return; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); } throw new Error('servidor não subiu'); }
-await esperarServidor();
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const ctx = await nav.newContext({ viewport: { width: 1360, height: 780 } });
 const pg = await ctx.newPage();
 const erros = [];
@@ -508,5 +502,4 @@ const rotinaBanco = (await db.query("select (select count(*)::int from public.re
 console.log('Banco (rotina):', JSON.stringify({ resumos: rotinaBanco.resumos, execs: rotinaBanco.execs, atrasadas: rotinaBanco.dados?.atrasadas, abertas: rotinaBanco.dados?.abertas }));
 ok(rotinaBanco.resumos === 1 && rotinaBanco.execs === 2 && rotinaBanco.dados.abertas === 1 && rotinaBanco.dados.finalizadas === 1 && rotinaBanco.dados.atrasadas === 1, 'banco: um resumo de hoje (repetição não duplica), duas execuções registradas e contagens iguais às demandas');
 await db.close();
-console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

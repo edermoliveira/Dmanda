@@ -1,14 +1,13 @@
 // Detalhe da demanda (consulta com lápis) distribuído pela largura e pelo conteúdo (decisão 73), no navegador (Edge) com o banco local de TESTE (PGlite, dados fictícios):
 // janela larga com duas colunas quando a largura útil permite (800 px), uma coluna em janela intermediária e estreita, blocos largos (tarefas, seção em edição) na largura inteira, ordem de leitura e de foco
 // preservada, descrição e tarefas longas, poucas tarefas e nenhuma, sem corte nem rolagem horizontal, e os fluxos de edição e de conclusão de tarefa intactos.
-// Sobe o próprio servidor (porta 7125) com a pasta de dados semeada antes. NÃO valida o Supabase real. Uso: node scripts/testar-detalhe.mjs
-import { chromium } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+// Sobe o próprio servidor (porta 7121) com a pasta de dados semeada antes. NÃO valida o Supabase real. Uso: node scripts/testar-detalhe.mjs
+import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { semearAgenda, USUARIO_TESTE } from './semear-agenda.mjs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 
-const PORTA = process.env.PORTA_TESTE_DETALHE || '7125', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/detalhe';
+const PORTA = process.env.PORTA_TESTE_DETALHE || '7121', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/detalhe';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
 const DESCRICAO = 'O Ministério Público encaminhou requisição para que a Secretaria preste informações detalhadas sobre os contratos de limpeza urbana, coleta seletiva e destinação final dos resíduos sólidos do município, abrangendo os exercícios de 2023, 2024 e 2025.\n\nÉ necessário reunir as planilhas de medição mensais, as notas fiscais correspondentes, os termos aditivos e as manifestações da fiscalização do contrato.\n\nA resposta deve ser assinada pelo Secretário e acompanhada de cópia integral do processo administrativo, com as folhas numeradas e rubricadas.';
 const TAREFAS = ['Solicitar ao setor de Contratos a cópia integral do processo administrativo, com as folhas numeradas, rubricadas e acompanhadas do índice atualizado de todos os documentos', 'Reunir as planilhas de medição mensais dos exercícios de 2023, 2024 e 2025 e conferir cada valor com as notas fiscais emitidas pela empresa contratada', 'Pedir parecer da Procuradoria sobre os termos aditivos e sobre a regularidade da prorrogação do contrato de coleta seletiva', 'Elaborar o texto da resposta ao Ministério Público explicando as diferenças entre o quantitativo previsto e o efetivamente executado em cada período', 'Revisar o texto com a Controladoria', 'Providenciar a assinatura do Secretário', 'Protocolar a resposta em meio eletrônico e em papel', 'Registrar no Dmanda a data do protocolo', 'Arquivar a cópia da resposta e dos anexos na pasta do exercício correspondente'];
@@ -24,14 +23,10 @@ await semearAgenda(PASTA, '2026-11-03');
   await dem('Memorando sem tarefas', { numero: '312/2026', prazo_original: '2026-11-19' });
   await db.close();
 }
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_SEM_CLIMA: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste' }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
+const { ok, resumo } = criarVerificador();
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const erros = [];
 const PERFIS = {
   1920: { viewport: { width: 1920, height: 1000 } }, 1440: { viewport: { width: 1440, height: 900 } }, 1024: { viewport: { width: 1024, height: 768 } },
@@ -115,6 +110,5 @@ for (const larg of [1920, 1440, 1024, 820, 390, 320]) {
 }
 ok(erros.length === 0, 'nenhum erro de página durante todos os fluxos' + (erros.length ? ': ' + [...new Set(erros)].slice(0, 5).join(' | ') : ''));
 await nav.close();
-console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 parar();
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

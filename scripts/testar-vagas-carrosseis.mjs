@@ -6,8 +6,8 @@
 //   C) tudo em dia: a Urgência mostra os vencimentos mais próximos;
 //   D) os três contadores do Início contra o conjunto aberto em Demandas (hoje, amanhã, 7º e 8º dias, finalizada e arquivada).
 // Claro e Escuro, computador, iPad e iPhone EMULADOS, texto a 125%. O WebKit do Playwright NÃO é o Safari do aparelho. Nunca toca o Supabase real. Uso: node scripts/testar-vagas-carrosseis.mjs
-import { chromium, webkit, devices } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { devices } from 'playwright-core';
+import { abrirEdge, abrirWebkit, criarVerificador, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { somarDias } from '../src/lib/prazos.ts';
@@ -15,8 +15,7 @@ import { somarDias } from '../src/lib/prazos.ts';
 const PORTA = process.env.PORTA_TESTE_VAGAS || '7127', BASE = `http://localhost:${PORTA}`, RAIZ = '.dados-teste/vagas-carrosseis', CAPTURAS = '.dados-teste/vagas-carrosseis-capturas';
 const USUARIO = '00000000-0000-4000-8000-000000000001';
 rmSync(RAIZ, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true }); mkdirSync(RAIZ, { recursive: true });
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
+const { ok, resumo } = criarVerificador();
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 const PH = '[data-painel="para-hoje"]', URG = '[data-nova-urgencia]';
 
@@ -69,20 +68,10 @@ async function semear(nome, tipo, vagas = []) {
 }
 async function comBanco(pasta, f) { const db = await abrirBancoTeste({ pasta }); try { return await f(db, (fn, a) => chamarComoUsuario(db, USUARIO, fn, a)); } finally { await db.close(); } }
 
-let servidor = null;
-const parar = () => { if (servidor) { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } servidor = null; } };
-process.on('exit', parar);
-const subir = async (pasta) => {
-  // o Next às vezes interrompe a partida para mostrar um aviso de atualização (e sai); repetir logo em seguida passa. Por isso a partida é repetida se o servidor sair antes de responder.
-  for (let tentativa = 0; tentativa < 4; tentativa++) {
-  servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: pasta }, stdio: 'ignore' });
-    for (let i = 0; i < 60; i++) { if (servidor.exitCode !== null) break; try { const r = await fetch(BASE + '/'); if (r.status < 500) { await new Promise((r2) => setTimeout(r2, 6000)); if (servidor.exitCode === null) return; break; } } catch { /* subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
-    try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ }
-  }
-};
+const subir = async (pasta) => { await iniciarServidor({ porta: PORTA, pasta }); };
 
-const edge = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
-const wk = await webkit.launch().catch((e) => { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); return null; });
+const edge = await abrirEdge();
+const wk = await abrirWebkit();
 const erros = [];
 const PERFIS = {
   desktop: { viewport: { width: 1440, height: 900 } },
@@ -426,5 +415,4 @@ await wk?.close();
 await edge.close();
 ok(erros.length === 0, `nenhum erro de console ou de página${erros.length ? ': ' + erros.slice(0, 3).join(' | ') : ''}`);
 console.log(`\nCapturas para abrir localmente: ${CAPTURAS}`);
-console.log(falhas ? `\n${falhas} verificação(ões) falharam de ${total}.` : `\nTudo certo: ${total} verificações.`);
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

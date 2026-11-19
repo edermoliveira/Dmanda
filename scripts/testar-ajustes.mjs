@@ -6,22 +6,18 @@
 //   5) cards (Cards, Quadro e Início) sem o selo Legal/Próprio, que continua na Tabela e nos detalhes.
 // Roda no Edge (Chromium) e, quando o WebKit do Playwright abre, também nele (o motor do Safari; NÃO é o Safari do iPhone). Sobe o próprio servidor numa porta separada. NÃO valida o Supabase real.
 // Uso: node scripts/testar-ajustes.mjs   (CAPTURAS=pasta grava imagens para conferência visual)
-import { chromium, webkit, devices } from 'playwright-core';
+import { webkit, devices } from 'playwright-core';
+import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { escolherOpcao } from './auxiliar-origem.mjs';
-import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
 
 const PORTA = process.env.PORTA_TESTE_AJUSTES || '7106', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/ajustes', CAP = process.env.CAPTURAS || '';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true }); if (CAP) mkdirSync(CAP, { recursive: true });
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+await iniciarServidor({ porta: PORTA, pasta: PASTA });
+const { ok, resumo } = criarVerificador();
 
 const erros = [];
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 let wk = null;
 try { wk = await webkit.launch(); } catch (e) { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); }
 
@@ -424,5 +420,5 @@ for (const [nome, opcoes, tema, toque] of [['computador escuro', { viewport: { w
 
 await nav.close(); if (wk) await wk.close();
 console.log('\nErros de página: ' + (erros.length ? '\n' + erros.slice(0, 5).join('\n') : 'nenhum'));
-console.log(`\n${total - falhas} de ${total} verificações passaram${falhas ? `, ${falhas} FALHARAM` : ''}.${wk ? '' : ' (WebKit não rodou)'}`);
-process.exit(falhas || erros.length ? 1 : 0);
+if (!wk) console.log('\n(WebKit não rodou)');
+process.exit(Math.max(resumo(), erros.length ? 1 : 0));

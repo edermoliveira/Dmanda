@@ -1,22 +1,17 @@
 // Entradas (decisões 37 a 39) no navegador (Edge) com o banco local de TESTE (PGlite, mesmas migrações do Supabase): criar, editar, recarregar, cor, tags, busca, fixar, arquivar e recuperar;
 // salvamento automático, rascunho e falha de rede; sem duplicar; edição simultânea; Virar demanda (cancelar, concluir com tarefa, pular, recarregar, repetir); atalho N; cópia dos dados;
 // computador, iPad e iPhone emulados, claro e escuro. Sobe o próprio servidor numa porta separada, com pasta de dados nova. NÃO valida o Supabase real. Uso: node scripts/testar-entradas.mjs
-import { chromium } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
 
 const PORTA = process.env.PORTA_TESTE_ENTRADAS || '7105', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/entradas';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
+const { ok, resumo } = criarVerificador();
 
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const erros = [];
 const novoContexto = async (opcoes, { tema = 'claro' } = {}) => {
   const ctx = await nav.newContext(opcoes);
@@ -679,5 +674,4 @@ ok(linhas.filter((x) => x.arq).length === 0 && tx('nnn') === 1 && !linhas.some((
 ok(tx('Resposta perdida da entrada') === 1 && tx('Perdida e recarregada') === 1 && tx('Clique duplo no Guardar') === 1 && tx('Escrita com o navegador offline') === 1, 'banco: resposta perdida, recarga e clique duplo geraram uma única entrada cada');
 ok(tx('A depois') === 1 && tx('B terceiro') === 1 && tx('A manda') === 0 && tx('A perde') === 0 && tx('B primeiro') === 0 && tx('B segundo') === 0, 'banco: edição simultânea: a versão em conflito virou entrada nova e "usar a do outro" descartou a versão local (o texto final é o do outro aparelho)');
 await db.close();
-console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

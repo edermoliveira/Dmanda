@@ -8,7 +8,7 @@ import { rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node
 import { semearVolume } from './semear-volume.mjs';
 
 const modo = process.argv[2] || 'comparar';
-const PORTA = process.env.PORTA_AJUSTE || '7113', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/ajuste-cards', GOLDEN = '.dados-teste/medicoes/golden-cards.json';
+const PORTA = process.env.PORTA_AJUSTE || '7120', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/ajuste-cards', GOLDEN = '.dados-teste/medicoes/golden-cards.json';
 if (!existsSync('.next/BUILD_ID')) { console.error('Faça `npm run build` antes.'); process.exit(2); }
 mkdirSync('.dados-teste/medicoes', { recursive: true });
 rmSync(PASTA, { recursive: true, force: true });

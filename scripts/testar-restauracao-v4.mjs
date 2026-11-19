@@ -1,3 +1,4 @@
+import { criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 // Restauração da cópia v4 em ambiente ISOLADO (subbloco 1.4), de ponta a ponta e só com dados fictícios:
 //   (1) um banco de teste é semeado com todos os tipos de dado da v4 (e com o que a v4 NÃO leva: humor do dia, vagas do Para hoje e opções);
 //   (2) a ROTA REAL do aplicativo (/api/exportar, rodando contra esse banco) gera o arquivo; ele é conferido contra o contrato (chaves, sem identidade da conta);
@@ -7,15 +8,13 @@
 //       eventos, anotações, vagas do Para hoje, rotina diária e uma segunda restauração por cima.
 // Nunca toca o Supabase real nem as cópias privadas: o banco de origem fica em .dados-teste/restauracao-v4 e o destino é em memória.
 // Uso: node scripts/testar-restauracao-v4.mjs
-import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { ajustarPrazo } from '../src/lib/prazos.ts';
 
 const PORTA = process.env.PORTA_TESTE_RESTAURACAO || '7142', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/restauracao-v4';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
+const { ok, resumo: resumirVerificacoes } = criarVerificador();
 const erroDe = async (p) => { try { await p; return null; } catch (e) { return e.message || String(e); } };
 const ordenar = (l) => [...l].sort((a, b) => a.id.localeCompare(b.id));
 const chaves = (o) => (o && typeof o === 'object' ? Object.keys(o).flatMap((k) => [k, ...chaves(o[k])]) : []);
@@ -62,10 +61,7 @@ const esperado = { demandas: await listar('listar_demandas', { p_arquivadas: fal
 await origem.close();
 
 // ---------- (2) a rota real gera o arquivo ----------
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste' }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
 const resp = await fetch(BASE + '/api/exportar'); const textoCopia = await resp.text(); parar();
 const copia = JSON.parse(textoCopia);
 ok(resp.status === 200 && /attachment; filename="dmanda-copia-\d{4}-\d{2}-\d{2}\.json"/.test(resp.headers.get('content-disposition') ?? '') && resp.headers.get('cache-control') === 'no-store', 'exportação: a rota real responde 200 como arquivo para baixar, sem cache');
@@ -156,5 +152,4 @@ const intruso = await chamarComoUsuario(dest, '00000000-0000-4000-8000-000000000
 ok(intruso.length === 0, 'isolamento: uma conta que não é a do titular não lê nenhuma demanda restaurada');
 await dest.close();
 
-console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
-process.exit(falhas ? 1 : 0);
+process.exit(resumirVerificacoes());

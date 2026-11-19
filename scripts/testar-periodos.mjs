@@ -3,46 +3,29 @@
 // O critério obrigatório: chegada em 14/12/2026 + 15 dias corridos = 29/12; indisponibilidade de 24/12 a 29/12 e 23/12 livre: vencimento efetivo 23/12, original preservado.
 // Navegador (Edge) com banco de teste (PGlite) semeado aqui; porta 7143; dados fictícios. NÃO valida o Supabase real nem aparelho físico.
 // Uso: node scripts/testar-periodos.mjs
-import { chromium } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirEdge, criarVerificador, instanteDaReferencia, iniciarServidor, novoContexto, semearBanco } from './auxiliar-navegador.mjs';
 import { ajustarPrazo, dataComSemana } from '../src/lib/prazos.ts';
 
 const PORTA = process.env.PORTA_TESTE_PERIODOS || '7143', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/periodos';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
 const REFERENCIA = '2026-12-17';   // quinta-feira: 23/12 está a 6 dias (grupo "vencem em 7 dias") e 29/12 a 12
-const USUARIO = '00000000-0000-4000-8000-000000000001';
-{
-  const db = await abrirBancoTeste({ pasta: PASTA });
-  await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-  await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
-  const c = (f, a) => chamarComoUsuario(db, USUARIO, f, a);
+await semearBanco(PASTA, async (c) => {
   await c('criar_demanda', { p: { assunto: 'Exemplo 14/12', tipo: 'Memorando', chegou_em: '2026-12-14', prazo_dias: 15 } });
   const b = await c('criar_demanda', { p: { assunto: 'Retorno no recesso', tipo: 'Memorando', etapa: 'Aguardando retorno', setor: 'PGM' } });
   await c('atualizar_demanda', { p_id: b.id, p: { encaminhada_em: '2026-12-19' } });
   await c('criar_demanda', { p: { assunto: 'Vence no ano novo', tipo: 'Memorando', prazo_original: '2027-01-04' } });
-  await db.close();
-}
-const horaSP = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Sao_Paulo', hour12: false });
-const INSTANTE = new Date(`${REFERENCIA}T${horaSP}-03:00`);
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste' }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+});
+const INSTANTE = instanteDaReferencia(REFERENCIA);
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
+const { ok, resumo } = criarVerificador();
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const erros = [];
 // falha.abortarAntes: o pedido nem chega ao servidor; falha.perderResposta: o servidor recebe e grava, mas a resposta não chega ao navegador (as duas deixam o resultado incerto para a tela)
 const novo = async (viewport = { width: 1360, height: 900 }, tema = 'claro') => {
-  const ctx = await nav.newContext({ viewport });
-  await ctx.clock.install({ time: INSTANTE });
-  await ctx.addInitScript((t) => { try { localStorage.setItem('dmanda-tema', JSON.stringify(t)); localStorage.setItem('dmanda:agenda', JSON.stringify({ modo: 'mes', cat: 'tudo' })); } catch { /* sem armazenamento */ } }, tema);
-  const pg = await ctx.newPage(), falha = { perderResposta: false, abortarAntes: false, reter: false, guardado: null };
-  pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
-  pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::ERR|offline|Failed to fetch/i.test(m.text())) erros.push('console: ' + m.text().slice(0, 300)); });
+  const { ctx, pg } = await novoContexto(nav, { opcoes: { viewport }, instante: INSTANTE, tema, agenda: { modo: 'mes', cat: 'tudo' }, erros });
+  const falha = { perderResposta: false, abortarAntes: false, reter: false, guardado: null };
   // `perderResposta`: o servidor recebe e grava, mas a resposta não chega ao navegador (a falha que mais pode duplicar)
   await pg.route('**/*', async (route) => {
     const q = route.request();
@@ -361,5 +344,4 @@ for (const [rotulo, viewport] of [['computador 1360', { width: 1360, height: 900
 
 ok(erros.length === 0, 'nenhum erro de página nem de console' + (erros.length ? ': ' + JSON.stringify(erros.slice(0, 4)) : ''));
 await nav.close(); parar();
-console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

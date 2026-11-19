@@ -3,8 +3,8 @@
 // (02/11/2026 vira 30/10/2026, com os dias pulados); editar a chegada e ver o novo resultado antes de salvar; cadastrar e excluir indisponibilidade pela tela; legado sem chegada,
 // legado da regra anterior e finalizada preservados; sem chegada o botão diz o que falta. Claro e Escuro, iPhone, iPad e computador (emulados), texto a 125%.
 // O WebKit do Playwright NÃO é o Safari do aparelho. Nunca toca o Supabase real. Uso: node scripts/testar-prazo-chegada.mjs
-import { chromium, webkit, devices } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { devices } from 'playwright-core';
+import { abrirEdge, abrirWebkit, criarVerificador, esperar, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { ajustarPrazo, dataComSemana, prazoPorDias } from '../src/lib/prazos.ts';
@@ -12,11 +12,7 @@ import { ajustarPrazo, dataComSemana, prazoPorDias } from '../src/lib/prazos.ts'
 const PORTA = process.env.PORTA_TESTE_CHEGADA || '7128', BASE = `http://localhost:${PORTA}`, RAIZ = '.dados-teste/prazo-chegada', CAPTURAS = '.dados-teste/prazo-chegada-capturas';
 const USUARIO = '00000000-0000-4000-8000-000000000001';
 rmSync(RAIZ, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true }); mkdirSync(RAIZ, { recursive: true });
-let falhas = 0, total = 0;
-let ultimo = '';
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m + (c || !ultimo ? '' : `
-        obtido: ${ultimo.slice(0, 700)}`)); if (!c) falhas++; ultimo = ''; };
-const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+const verificador = criarVerificador(); const { ok, resumo } = verificador;
 const ID = {};
 
 // ---------- dados fictícios ----------
@@ -36,14 +32,10 @@ await db0.query("insert into dmanda_privado.acesso_autorizado (email) values ('t
 }
 await db0.close();
 
-let servidor = null;
-const parar = () => { if (servidor) { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } servidor = null; } };
-process.on('exit', parar);
-servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: `${RAIZ}/pg` }, stdio: 'ignore' });
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* subindo */ } await esperar(2000); }
+await iniciarServidor({ porta: PORTA, pasta: `${RAIZ}/pg` });
 
-const edge = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
-const wk = await webkit.launch().catch((e) => { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); return null; });
+const edge = await abrirEdge();
+const wk = await abrirWebkit();
 const erros = [];
 const PERFIS = { desktop: { viewport: { width: 1440, height: 900 } }, ipad: { viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }, celular: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } };
 const novoCtx = async (perfil, { motor = edge, tema = 'claro', texto = 100 } = {}) => {
@@ -63,7 +55,7 @@ const ir = async (pg, rota, sel) => {
 };
 const toast = async (pg, re) => { await pg.waitForFunction((r) => { const t = document.querySelector('#toast'); return !!t && t.classList.contains('on') && (!r || new RegExp(r).test(t.textContent ?? '')); }, re ? re.source : null, { timeout: 15000 }); };
 const fechada = (pg) => pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 20000 });
-const texto = async (pg, sel) => { ultimo = ((await pg.innerText(sel)) ?? '').replace(/\s+/g, ' ').trim(); return ultimo; };
+const texto = async (pg, sel) => verificador.obtido(((await pg.innerText(sel)) ?? '').replace(/\s+/g, ' ').trim());
 const abrirDemanda = async (pg, quem) => { await ir(pg, '/demandas', '.grupo-cards'); await pg.fill('#fq', quem); await esperar(500); await pg.locator(`.dcard:has-text("${quem}") .assunto`).first().click(); await pg.waitForSelector('.modal .ler'); };
 const abrirNoQuadro = async (pg, quem) => { await ir(pg, '/demandas', '.grupo-cards'); await pg.click('.toolbar .tabs button[data-v="quadro"]'); await pg.waitForSelector('.quadro .mini-card'); await pg.locator(`.mini-card:has-text("${quem}") .assunto`).first().click(); await pg.waitForSelector('.modal .ler'); };
 const editarChegada = async (pg) => { await pg.click('button[aria-label="Editar chegada e prazo"]'); await pg.waitForSelector('#d-chegou'); };
@@ -400,5 +392,4 @@ await esperar(2500);
 }
 ok(erros.length === 0, `nenhum erro de console ou de página${erros.length ? ': ' + erros.slice(0, 3).join(' | ') : ''}`);
 console.log(`\nCapturas para abrir localmente: ${CAPTURAS}`);
-console.log(falhas ? `\n${falhas} verificação(ões) falharam de ${total}.` : `\nTudo certo: ${total} verificações.`);
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

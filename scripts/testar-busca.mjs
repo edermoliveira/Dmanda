@@ -1,14 +1,13 @@
 // Busca global (lupa e Ctrl+K) e botão "+" (decisão 54) no navegador (Edge) com o banco local de TESTE (PGlite): resultados dos quatro tipos, com e sem acento, por trecho e por número,
 // arquivados e convertidos com estado, falha de leitura, abertura a partir de outra tela, teclado, foco, rascunhos, gravação sem duplicidade e o menu "+" em várias telas.
-// Computador, iPad e iPhone EMULADOS (não são aparelhos reais), claro e escuro, zoom de 125%. Sobe o próprio servidor na porta 7112. Nunca toca o Supabase real.
+// Computador, iPad e iPhone EMULADOS (não são aparelhos reais), claro e escuro, zoom de 125%. Sobe o próprio servidor na porta 7118. Nunca toca o Supabase real.
 // Uso: node scripts/testar-busca.mjs
-import { chromium } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 
-const PORTA = process.env.PORTA_TESTE_BUSCA || '7112', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/busca';
+const PORTA = process.env.PORTA_TESTE_BUSCA || '7118', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/busca';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
 
 // ---- semente fictícia ----
@@ -35,14 +34,10 @@ const v2 = await ev({ titulo: 'Audiência pública de março', tipo: 'Compromiss
 const v3 = await ev({ titulo: 'Seminário antigo', tipo: 'Compromisso', data: '2026-01-12', dia_inteiro: true });
 await db.close();
 
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (cond, m) => { total++; console.log((cond ? 'ok     ' : 'FALHOU ') + m); if (!cond) falhas++; };
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
+const { ok, resumo } = criarVerificador();
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const erros = [];
 const novo = async (opcoes, tema = 'claro') => {
   const ctx = await nav.newContext(opcoes);
@@ -330,5 +325,4 @@ for (const [nome, opcoes, tema] of perfis) {
 
 ok(erros.length === 0, `sem erros de página nem de console (${erros.length})${erros.length ? ': ' + erros.slice(0, 3).join(' | ') : ''}`);
 await nav.close(); parar();
-console.log(`\n${total - falhas}/${total} verificações passaram`);
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

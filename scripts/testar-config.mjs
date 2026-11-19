@@ -3,20 +3,15 @@
 // armazenamento corrompido, escolhas antigas preservadas, contraste das dez paletas nos dois modos, alvos de toque, layout em computador, iPad e celular,
 // cards nos limites de altura, e o cadastro de dias indisponíveis intacto. Sobe o próprio servidor (porta 7112, pasta de dados nova).
 // NÃO valida o Supabase real. Uso: node scripts/testar-config.mjs
-import { chromium } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 
 const PORTA = process.env.PORTA_TESTE_CONFIG || '7112', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/config';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
-const servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA, CRON_SECRET: 'segredo-de-teste-1234567890' }, stdio: 'ignore' });
-const parar = () => { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } };
-process.on('exit', parar);
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
-for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 2000)); }
+const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
+const { ok, resumo } = criarVerificador();
 
-const nav = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const nav = await abrirEdge();
 const erros = [];
 const PERFIS = {
   computador: { viewport: { width: 1360, height: 800 } },
@@ -509,6 +504,5 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
 
 ok(erros.length === 0, 'nenhum erro de página nem de console durante toda a execução' + (erros.length ? ': ' + [...new Set(erros)].slice(0, 5).join(' | ') : ''));
 await nav.close();
-console.log(`\n${total - falhas} de ${total} verificações aprovadas.`);
 parar();
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());

@@ -2,8 +2,8 @@
 //   revelar o próximo card durante o arrasto (parcial nos dois sentidos, gesto completo, rolagem, foco e clique nos cards de fundo), medido no baralho da Urgência do Início.
 // As filas de Demandas > Cards (nove seções) e a Urgência completa são da suíte testar-vagas-carrosseis (decisão 80); as antigas por tipo e área e o "Na fila" saíram da interface.
 // O WebKit do Playwright é o motor do Safari no Windows, NÃO o Safari do iPhone: o toque real fica para o aparelho. Uso: node scripts/testar-fila-cards.mjs (nunca toca o Supabase real)
-import { chromium, webkit, devices } from 'playwright-core';
-import { spawn, spawnSync } from 'node:child_process';
+import { webkit, devices } from 'playwright-core';
+import { abrirEdge, criarVerificador, esperar, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
 import { somarDias } from '../src/lib/prazos.ts';
@@ -11,9 +11,7 @@ import { somarDias } from '../src/lib/prazos.ts';
 const PORTA = process.env.PORTA_TESTE_FILA || '7119', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/fila-cards', CAPTURAS = '.dados-teste/fila-cards-capturas';
 const USUARIO = '00000000-0000-4000-8000-000000000001';
 rmSync(PASTA, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true });
-let falhas = 0, total = 0;
-const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
-const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+const { ok, resumo } = criarVerificador();
 
 // ---------- dados fictícios: 17 demandas em seis grupos ----------
 let HOJE;
@@ -37,16 +35,10 @@ let HOJE;
   await db.close();
 }
 
-let servidor = null;
-const subir = async () => {
-  servidor = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', PORTA], { env: { ...process.env, DMANDA_BANCO: 'teste', DMANDA_SEM_LEMBRETES: 'sim', DMANDA_PASTA_TESTE: PASTA }, stdio: 'ignore' });
-  for (let i = 0; i < 120; i++) { try { const r = await fetch(BASE + '/'); if (r.status < 500) break; } catch { /* subindo */ } await esperar(2000); }
-};
-const parar = () => { if (servidor) { try { spawnSync('taskkill', ['/pid', String(servidor.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* já parou */ } servidor = null; } };
-process.on('exit', parar);
+const subir = async () => { await iniciarServidor({ porta: PORTA, pasta: PASTA }); };
 await subir();
 
-const edge = await chromium.launch({ channel: 'msedge', headless: true, args: ['--disable-gpu', '--disable-extensions', '--renderer-process-limit=1'] });
+const edge = await abrirEdge();
 let wk = null; try { wk = await webkit.launch(); } catch (e) { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); }
 const erros = [];
 const PERFIS = { desktop: { viewport: { width: 1440, height: 900 } }, ipad: { viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }, celular: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } };
@@ -145,5 +137,4 @@ parar();
 await edge.close();
 ok(erros.length === 0, `nenhum erro de console ou de página${erros.length ? ': ' + erros.slice(0, 3).join(' | ') : ''}`);
 console.log(`\nCapturas para abrir localmente: ${CAPTURAS}`);
-console.log(falhas ? `\n${falhas} verificação(ões) falharam de ${total}.` : `\nTudo certo: ${total} verificações.`);
-process.exit(falhas ? 1 : 0);
+process.exit(resumo());
