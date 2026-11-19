@@ -5,7 +5,7 @@
 // Sobe o próprio servidor na porta 7114. Nunca toca o Supabase real. Uso: node scripts/testar-origem.mjs
 import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 import { somarDias } from '../src/lib/prazos.ts';
 import { escolherOpcao, valorDoSeletor } from './auxiliar-origem.mjs';
 
@@ -13,10 +13,8 @@ const PORTA = process.env.PORTA_TESTE_ORIGEM || '7114', BASE = `http://localhost
 rmSync(PASTA, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true });
 
 // ---- semente fictícia (relativa ao dia de hoje do banco) ----
-const USUARIO = '00000000-0000-4000-8000-000000000001';
 let db = await abrirBancoTeste({ pasta: PASTA });
-await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+await prepararTitularDeTeste(db, USUARIO);
 const c = (f, a) => chamarComoUsuario(db, USUARIO, f, a);
 const HOJE = (await db.query('select public.hoje()::text as h')).rows[0].h;
 if (Number((await db.query("select extract(epoch from date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '1 day' - (now() at time zone 'America/Sao_Paulo'))::int as s")).rows[0].s) < 2400) throw new Error('Faltam menos de 40 minutos para a meia-noite em Brasília: o banco usa o relógio real e o dia viraria no meio do teste. Rode de novo depois da meia-noite.');

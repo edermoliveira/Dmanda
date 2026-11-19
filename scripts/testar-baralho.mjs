@@ -6,11 +6,10 @@
 import { devices } from 'playwright-core';
 import { abrirEdge, abrirWebkit, criarVerificador, esperar, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 import { somarDias } from '../src/lib/prazos.ts';
 
 const PORTA = process.env.PORTA_TESTE_BARALHO || '7116', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/baralho', CAPTURAS = '.dados-teste/baralho-capturas';
-const USUARIO = '00000000-0000-4000-8000-000000000001';
 rmSync(PASTA, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true });
 const PASSAR = '[data-painel="para-hoje"] > .ph-pilha [data-pilha-passar]', AVANCAR = '[data-painel="para-hoje"] > .ph-pilha [data-pilha-avancar]', ABRIR = '[data-painel="para-hoje"] > .ph-pilha [data-pilha-abrir]';
 const ATIVA = '[data-painel="para-hoje"] > .ph-pilha';
@@ -21,8 +20,7 @@ const ID = {};
 let HOJE;
 {
   const db = await abrirBancoTeste({ pasta: PASTA });
-  await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-  await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+  await prepararTitularDeTeste(db, USUARIO);
   HOJE = (await db.query('select public.hoje()::text as h')).rows[0].h;
   const c = (f, a) => chamarComoUsuario(db, USUARIO, f, a);
   const tarefas = async (id, textos, feitas = 0) => { for (let i = 0; i < textos.length; i++) { const r = await c('adicionar_tarefa', { p_demanda: id, p_texto: textos[i] }); if (i < feitas) await c('marcar_tarefa', { p_id: r.tarefas[i].id, p_concluida: true }); } };

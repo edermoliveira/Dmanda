@@ -1523,7 +1523,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const ua = (f, a) => chamarComoUsuario(a19, U, f, a);
   const antiga1 = await ua('criar_demanda', { p: { assunto: 'Antiga A', tipo: 'Ofício', numero: '32/2026', origem: 'Prefeita' } });
   const antiga2 = await ua('criar_demanda', { p: { assunto: 'Antiga B', numero: '2024/1250', origem: 'Secretaria de Obras' } });
-  const antiga3 = await ua('criar_demanda', { p: { assunto: 'Antiga C', tipo: 'Memorando', numero: 'sem formato', origem: '  prefeita ' } });
+  await ua('criar_demanda', { p: { assunto: 'Antiga C', tipo: 'Memorando', numero: 'sem formato', origem: '  prefeita ' } });
   const antes = JSON.stringify((await a19.query('select id, tipo, numero, origem, assunto, etapa, prazo, versao, atualizado_em from public.demandas order by assunto')).rows);
   const tarefasAntes = JSON.stringify((await a19.query('select id, texto, demanda_id from public.tarefas order by id')).rows);
   const aclAntes = JSON.stringify((await a19.query("select p.oid::regprocedure::text as f, p.prosecdef, p.proacl::text as acl from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and p.proname not in ('criar_demanda','atualizar_demanda') order by 1")).rows);

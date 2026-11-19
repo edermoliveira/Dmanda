@@ -20,7 +20,7 @@ await semearBanco(PASTA, async (c) => {
 const SEM_REDE = 'Sem conexão com o servidor. Nada foi gravado. Confira a internet e tente de novo; o que você digitou continua na tela.';   // o texto que o contexto usa para "sem conexão"
 const INSTANTE = instanteDaReferencia(REFERENCIA);
 const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
-const { ok, resumo } = criarVerificador();
+const { ok, resumo, aguardar } = criarVerificador();
 
 const nav = await abrirEdge();
 const erros = [];
@@ -300,8 +300,7 @@ for (const [rotuloTela, viewport] of [['computador 1360', { width: 1360, height:
   await pg.keyboard.press('Shift+Tab'); ok(await dentro(), 'teclado: Shift+Tab também circula dentro do painel');
   await pg.keyboard.press('Escape'); await pg.waitForSelector('.avisos-painel', { state: 'detached' }); await pg.waitForTimeout(100);
   ok(await pg.evaluate(() => document.activeElement?.classList.contains('sino')), 'teclado: Esc fecha o painel e devolve o foco ao sininho');
-  await pg.click('.sino'); await pg.waitForSelector('.avisos-painel'); await pg.mouse.click(300, 600); await pg.waitForSelector('.avisos-painel', { state: 'detached' });
-  ok(true, 'clicar fora do painel fecha');
+  await pg.click('.sino'); await pg.waitForSelector('.avisos-painel'); await pg.mouse.click(300, 600); await aguardar(pg.waitForSelector('.avisos-painel', { state: 'detached' }), 'clicar fora do painel fecha');
   await ctx.close();
 }
 

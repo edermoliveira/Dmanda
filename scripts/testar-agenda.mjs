@@ -21,7 +21,7 @@ const HOJE = S.hoje;
 const horaSP = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Sao_Paulo', hour12: false });
 const INSTANTE_REFERENCIA = new Date(`${REFERENCIA}T${horaSP}-03:00`);
 const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
-const { ok, resumo } = criarVerificador();
+const { ok, resumo, aguardar } = criarVerificador();
 
 const nav = await abrirEdge();
 const erros = [];
@@ -266,12 +266,10 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok((await pg.$$eval('.agd-dia', (c) => c[0].getAttribute('data-data'))) === somarDias(d0, 7), 'navegar avança exatamente sete dias e mantém domingo como primeiro dia');
   await pg.click('.agd-nav .btn.mini:has-text("Hoje")');
   // espera de Prefeita e cores de evento
-  const diaE = S.e.prazo, diaF = S.f.prazo;
+  const diaE = S.e.prazo;
   await paraData(pg, diaE);
   await modo(pg, 'Dia');
   await modo(pg, 'Semana');
-  ok(true, 'semana navegada sem erro');
-  void diaF;
 
   // --- Hoje ---
   await pg.click('.agd-nav .btn.mini:has-text("Hoje")'); await modo(pg, 'Dia');
@@ -688,8 +686,7 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   ok(i1 >= 0 && i1 < i2 && i2 < i3 && lista.filter((x) => x === 'Ponto facultativo de teste').length === 1, 'Configurações: os dias cadastrados pela Agenda aparecem uma vez cada, em ordem de data (o clique duplo gravou uma vez só)');
   ok(/Cadastrar dia ou período indisponível/.test(await pg.textContent('#cfg-novo-t')) && (await pg.$$eval('.cfg-dias-form .cfg-form label', (l) => l.map((x) => x.textContent).join())) === 'Data inicial,Data final (opcional),Tipo,Descrição', 'Configurações: o mesmo formulário (Data inicial, Data final opcional, Tipo e Descrição), com o título "Cadastrar dia ou período indisponível"');
   await pg.click('[aria-label="Editar Ponto facultativo de teste"]'); await pg.fill('#cfg-desc', 'Ponto facultativo editado'); await pg.click('.cfg-form .btn.pri');
-  await pg.waitForFunction(() => document.querySelector('.cfg-lista')?.textContent.includes('Ponto facultativo editado'), null, { timeout: 15000 });
-  ok(true, 'Configurações: editar o dia cadastrado pela Agenda funciona');
+  await aguardar(pg.waitForFunction(() => document.querySelector('.cfg-lista')?.textContent.includes('Ponto facultativo editado'), null, { timeout: 15000 }), 'Configurações: editar o dia cadastrado pela Agenda funciona');
   for (const d of ['Ponto facultativo editado', 'Congresso de teste', 'Recesso de teste']) { await pg.click(`[aria-label="Excluir ${d}"]`); await pg.click('.cfg-lista .btn:has-text("Confirmar exclusão")'); await pg.waitForFunction((x) => !document.querySelector('.cfg-lista')?.textContent.includes(x), d, { timeout: 15000 }); }
   ok(!/Ponto facultativo|Congresso de teste|Recesso de teste/.test((await pg.textContent('.cfg-dias')) ?? ''), 'Configurações: excluir tira os três dias (o calendário volta ao que era)');
   await ctx.close();

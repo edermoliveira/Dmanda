@@ -5,11 +5,10 @@
 import { webkit, devices } from 'playwright-core';
 import { abrirEdge, criarVerificador, esperar, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 import { somarDias } from '../src/lib/prazos.ts';
 
 const PORTA = process.env.PORTA_TESTE_FILA || '7119', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/fila-cards', CAPTURAS = '.dados-teste/fila-cards-capturas';
-const USUARIO = '00000000-0000-4000-8000-000000000001';
 rmSync(PASTA, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true });
 const { ok, resumo } = criarVerificador();
 
@@ -17,8 +16,7 @@ const { ok, resumo } = criarVerificador();
 let HOJE;
 {
   const db = await abrirBancoTeste({ pasta: PASTA });
-  await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-  await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+  await prepararTitularDeTeste(db, USUARIO);
   HOJE = (await db.query('select public.hoje()::text as h')).rows[0].h;
   const mk = (assunto, tipo, area, dias, extra = {}) => chamarComoUsuario(db, USUARIO, 'criar_demanda', { p: { assunto, tipo, area, numero: '', etapa: 'Fazendo', ...(dias === null ? {} : { prazo_original: somarDias(HOJE, dias) }), ...extra } });
   // Processo, Geral (azul)

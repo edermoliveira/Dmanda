@@ -9,21 +9,19 @@
 import { webkit } from 'playwright-core';
 import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 
 const PORTA = process.env.PORTA_TESTE_CAMPOS || '7117', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/campos';
-const USUARIO = '00000000-0000-4000-8000-000000000001';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
 // uma demanda com prazo numa quinta-feira (24/12/2026): cadastrar o Feriado nesse dia antecipa o vencimento
 {
   const db = await abrirBancoTeste({ pasta: PASTA });
-  await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-  await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+  await prepararTitularDeTeste(db, USUARIO);
   await chamarComoUsuario(db, USUARIO, 'criar_demanda', { p: { assunto: 'Vencimento de prova', prazo_original: '2026-12-24' } });
   await db.close();
 }
 await iniciarServidor({ porta: PORTA, pasta: PASTA });
-const { ok, resumo } = criarVerificador();
+const { ok, resumo, aguardar } = criarVerificador();
 
 const motores = [['Edge', await abrirEdge()]];
 try { motores.push(['WebKit', await webkit.launch()]); } catch (e) { console.log('WebKit indisponível neste computador: ' + String(e.message).split('\n')[0]); }
@@ -155,8 +153,7 @@ for (const [nome, nav] of motores) for (const esquema of ['light', 'dark']) {
   await pg.click('[aria-label="Editar Natal de prova"]'); await pg.waitForTimeout(200);
   ok((await pg.inputValue('#cfg-data')) === '2026-12-24' && (await pg.inputValue('#cfg-desc')) === 'Natal de prova' && /Alterar dia/.test(await pg.textContent('#cfg-novo-t')), `${R}: editar traz a data e a descrição ao formulário`);
   await pg.fill('#cfg-desc', 'Natal editado'); await pg.keyboard.press('Enter');
-  await pg.waitForFunction(() => document.querySelector('.cfg-lista')?.textContent.includes('Natal editado'), null, { timeout: 15000 });
-  ok(true, `${R}: a edição é gravada (Enter na descrição envia)`);
+  await aguardar(pg.waitForFunction(() => document.querySelector('.cfg-lista')?.textContent.includes('Natal editado'), null, { timeout: 15000 }), `${R}: a edição é gravada (Enter na descrição envia)`);
   // Tipo e Descrição: o seletor muda e a digitação chega ao campo
   await pg.waitForFunction(() => document.querySelector('#cfg-desc').value === '' && document.querySelector('.cfg-dias-form .campo-data:has(#cfg-data)')?.dataset.vazio === 'sim', null, { timeout: 15000 }); // o formulário volta ao vazio depois da gravação
   await pg.selectOption('#cfg-cat', 'Evento externo').catch(() => {}); await pg.fill('#cfg-desc', 'Congresso de prova'); await pg.fill('#cfg-data', '2026-12-10');

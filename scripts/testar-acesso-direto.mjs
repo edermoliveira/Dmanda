@@ -4,8 +4,9 @@
 // NÃO prova o Supabase real (plataforma, papéis, chaves), o Safari físico nem o domínio final. Uso: node scripts/testar-acesso-direto.mjs
 import { chromium, webkit, devices } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
-import { rmSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { operacoesPermitidasNoBanco } from './auxiliar-operacoes.mjs';
 import { iniciarSupabaseFalso, CHAVE_SERVICO } from './supabase-falso.mjs';
 
 const PORTA = process.env.PORTA_TESTE_ACESSO || '7129', PORTA_FALSO = 7130, BASE = `http://localhost:${PORTA}`, RAIZ = '.dados-teste/acesso-direto', CAPTURAS = '.dados-teste/acesso-direto-capturas';
@@ -138,7 +139,7 @@ const A = await novo(edge, { viewport: { width: 1440, height: 900 } });
 // 3) o que o servidor chamou e o que o navegador recebeu
 // =============================================================================================================================================
 {
-  const permitidas = (readFileSync(readdirSync('supabase/migrations').map((f) => 'supabase/migrations/' + f).find((f) => f.includes('entrada_direta')), 'utf8').match(/array\[([^\]]+)\]/)?.[1] ?? '').match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1));
+  const permitidas = operacoesPermitidasNoBanco().nomes;   // a lista vigente (a migração mais recente que define executar_como_titular), não a da primeira versão
   const caminhos = [...new Set(falso.estado.chamadas.map((c) => c.split('?')[0]))];
   ok(caminhos.every((c) => ['POST /rest/v1/rpc/executar_como_titular', 'POST /rest/v1/rpc/rotina_diaria'].includes(c)), `o servidor só chamou executar_como_titular e a rotina diária (${caminhos.join(', ')})`);
   ok(!falso.estado.chamadas.some((c) => /auth|aparelho|convite|exigir|estado_aparelho/i.test(c)) && rotinasChamadas().length > 5 && rotinasChamadas().every((f) => permitidas.includes(f)), `nenhuma chamada ao Auth nem às funções retiradas; ${rotinasChamadas().length} operações executadas, todas da lista permitida`);

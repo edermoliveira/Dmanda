@@ -6,8 +6,8 @@
 import { chromium } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync, existsSync, copyFileSync, writeFileSync, readdirSync } from 'node:fs';
-import { semearAgenda, USUARIO_TESTE } from './semear-agenda.mjs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { semearAgenda } from './semear-agenda.mjs';
+import { abrirBancoTeste, chamarComoUsuario, USUARIO_TESTE } from '../src/servidor/banco-teste-base.mjs';
 
 const ROTULO = process.argv[2];
 if (!['antes', 'depois'].includes(ROTULO)) { console.error('Informe antes ou depois.'); process.exit(2); }

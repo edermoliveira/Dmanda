@@ -1,6 +1,7 @@
 // Regras puras de datas e grupos do Início (src/lib/demandas.ts) e de Entradas (src/lib/entradas.ts), sem navegador nem banco. Uso: node scripts/testar-regras.mjs
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { operacoesChamadasPeloCodigo, operacoesPermitidasNoBanco } from './auxiliar-operacoes.mjs';
 import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO, duracaoViva, recontarPelaChegada, sanearRascunho, textoFaltaChegada, erroDoPeriodo, diasNoPeriodo, agruparDias, MAX_DIAS_PERIODO } from '../src/lib/prazos.ts';
 import { avisosDoSistema, comLeitura, MSG_SEM_REDE, MSG_INCERTA } from '../src/lib/avisos-sistema.ts';
 import { AVISO_ANTES_DA_CHEGADA, AVISO_VENCIMENTO_ANTES_DA_CHEGADA, avisoAntesDaChegada, venceAntesDaChegada } from '../src/lib/prazos.ts';
@@ -568,6 +569,23 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(sec.every((x) => new Set(x.demandas.map((d) => d.id)).size === x.demandas.length) && !sec.some((x) => x.demandas.some((d) => d.id === 'G' || d.id === 'H2')) && sec.filter((x) => x.demandas.some((d) => d.id === 'A')).length === 4, 'cards: nenhuma repetição dentro da fila, finalizada e arquivada fora, e o mesmo id em várias filas');
   const mesmo = montarSecoes([...S].reverse(), H).map((x) => x.demandas.map((d) => d.id).join()).join('|');
   ok(mesmo === sec.map((x) => x.demandas.map((d) => d.id).join()).join('|'), 'cards: a mesma coleção em outra ordem de entrada dá exatamente as mesmas filas (desempate estável)');
+}
+// as operações pedidas ao banco: o código (src/nucleo, src/servidor) e a lista fixa de executar_como_titular no SQL precisam mudar juntos; uma operação nova sem a lista do banco só falharia em produção
+{
+  const banco = operacoesPermitidasNoBanco(), codigo = operacoesChamadasPeloCodigo();
+  const soNoCodigo = codigo.filter((n) => !banco.nomes.includes(n)), soNoBanco = banco.nomes.filter((n) => !codigo.includes(n));
+  ok(codigo.length > 30 && soNoCodigo.length === 0, `operações: tudo que o código pede ao banco está liberado em executar_como_titular (${banco.arquivo}); faltam no SQL: ${soNoCodigo.join(', ') || 'nenhuma'}`);
+  ok(soNoBanco.length === 0, `operações: o banco não libera nada que o código não use (a lista não acumula operações mortas); sobram no SQL: ${soNoBanco.join(', ') || 'nenhuma'}`);
+}
+// as portas das suítes de navegador: cada uma tem a sua (duas suítes na mesma porta se atrapalham quando alguém as roda juntas); a convenção só existia nos números escritos em cada arquivo
+{
+  const usos = new Map();
+  for (const arq of readdirSync('scripts').filter((f) => f.endsWith('.mjs'))) {
+    const fonte = readFileSync(join('scripts', arq), 'utf8');
+    for (const m of fonte.matchAll(/process\.env\.PORTA\w*\s*\|\|\s*'(71\d\d)'|PORTA_FALSO = (71\d\d)/g)) usos.set(m[1] ?? m[2], [...(usos.get(m[1] ?? m[2]) ?? []), arq]);
+  }
+  const repetidas = [...usos].filter(([, arqs]) => arqs.length > 1).map(([p, arqs]) => `${p}: ${arqs.join(' e ')}`);
+  ok(usos.size > 20 && repetidas.length === 0, `portas: cada suíte de navegador usa a sua porta (${usos.size} portas, repetidas: ${repetidas.join('; ') || 'nenhuma'})`);
 }
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);

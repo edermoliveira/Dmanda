@@ -4,8 +4,8 @@
 // Sobe o próprio servidor (porta 7121) com a pasta de dados semeada antes. NÃO valida o Supabase real. Uso: node scripts/testar-detalhe.mjs
 import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
-import { semearAgenda, USUARIO_TESTE } from './semear-agenda.mjs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { semearAgenda } from './semear-agenda.mjs';
+import { abrirBancoTeste, chamarComoUsuario, USUARIO_TESTE } from '../src/servidor/banco-teste-base.mjs';
 
 const PORTA = process.env.PORTA_TESTE_DETALHE || '7121', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/detalhe';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });

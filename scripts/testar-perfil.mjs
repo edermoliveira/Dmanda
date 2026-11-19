@@ -6,7 +6,7 @@
 // Uso: node scripts/testar-perfil.mjs
 import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 import { diasPendentes, serieDoPeriodo } from '../src/lib/registros.ts';
 import { somarDias } from '../src/lib/prazos.ts';
 
@@ -14,10 +14,8 @@ const PORTA = process.env.PORTA_TESTE_PERFIL || '7113', BASE = `http://localhost
 rmSync(PASTA, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true });
 
 // ---- semente fictícia, relativa ao dia de hoje do banco (a janela de correção usa o relógio do banco) ----
-const USUARIO = '00000000-0000-4000-8000-000000000001';
 let db = await abrirBancoTeste({ pasta: PASTA });
-await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+await prepararTitularDeTeste(db, USUARIO);
 const c = (f, a) => chamarComoUsuario(db, USUARIO, f, a);
 const HOJE = (await db.query('select public.hoje()::text as h')).rows[0].h;
 if (Number((await db.query("select extract(epoch from date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '1 day' - (now() at time zone 'America/Sao_Paulo'))::int as s")).rows[0].s) < 1800) throw new Error('Faltam menos de 30 minutos para a meia-noite em Brasília: o banco usa o relógio real e o dia viraria no meio do teste. Rode depois da virada.');
@@ -32,7 +30,7 @@ for (const [d, qtd] of Object.entries(CONTAGEM)) {
     if (d === dia(-2)) await c('arquivar_demanda', { p_id: dm.id });
   }
 }
-const aberta1 = await c('criar_demanda', { p: { assunto: 'Demanda aberta para concluir', tipo: 'Ofício', numero: '10/2026', prazo_original: dia(7) } });
+await c('criar_demanda', { p: { assunto: 'Demanda aberta para concluir', tipo: 'Ofício', numero: '10/2026', prazo_original: dia(7) } });
 await c('criar_demanda', { p: { assunto: 'Outra demanda aberta', tipo: 'Memorando', numero: '11/2026', prazo_original: dia(20) } });
 // registros antigos (fora da janela de correção): um com zero finalizadas (-8), os outros em dias variados; -10 fica SEM registro e com 3 finalizadas
 const REG_ANTIGOS = { [dia(-8)]: 3, [dia(-12)]: 5, [dia(-15)]: 1, [dia(-20)]: 4, [dia(-27)]: 2 };
@@ -46,7 +44,7 @@ if (PENDENTES.length < 2) throw new Error('A semente precisa de pelo menos 2 dia
 await db.close();
 
 const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA, lembretes: true });
-const { ok, resumo } = criarVerificador();
+const { ok, resumo, aguardar } = criarVerificador();
 
 const nav = await abrirEdge();
 const erros = [], externas = [], acoes = [];
@@ -98,7 +96,6 @@ const semAcoesEmVoo = async () => { for (let i = 0; i < 400 && acoesEmVoo.size; 
 const assentar = async (pg, seletor = '.app') => { await semAcoesEmVoo(); await locksLivres(pg); await estavel(pg, seletor); };
 const quadroPronto = (pg) => pg.waitForSelector('[data-quadro="humor"] .ini-reg-v, [data-quadro="humor"] .erro-carga', { timeout: 60000 });
 const estadoLembretes = (pg) => pg.evaluate(() => JSON.parse(localStorage.getItem('dmanda:lembretes') ?? 'null'));
-const posts = () => acoes.length;
 const gravacoes = () => acoes.filter((x) => /"dia":"\d{4}-\d{2}-\d{2}"/.test(x)).length;
 // espera um aviso NOVO (com o texto pedido, se houver): o aviso anterior pode ainda estar na tela
 const toast = async (pg, re) => { await pg.waitForFunction((r) => { const t = document.querySelector('#toast'); return !!t && t.classList.contains('on') && (!r || new RegExp(r).test(t.textContent ?? '')); }, re ? re.source : null, { timeout: 10000 }); return pg.textContent('#toast'); };
@@ -283,8 +280,7 @@ const T = await novo({ viewport: { width: 1360, height: 900 } });
   ok((await marcado(pg, '[data-dia-sel]', 'humor')) === 1 && !/Corrigido|Registrado\./.test((await pg.textContent('[data-dia-sel]')) ?? ''), 'correção: falha ao gravar mantém a seleção e não mostra sucesso');
   await pg.unroute('**/*');
   await pg.click('[data-dia-sel] .reg-form .btn.pri');
-  await pg.waitForFunction((d) => /humor muito mal/.test(document.querySelector('#pf-det')?.textContent ?? ''), d1, { timeout: 10000 });
-  ok(true, 'correção: depois da falha, repetir grava e o resumo do dia passa a dizer humor muito mal');
+  await aguardar(pg.waitForFunction(() => /humor muito mal/.test(document.querySelector('#pf-det')?.textContent ?? ''), null, { timeout: 10000 }), 'correção: depois da falha, repetir grava e o resumo do dia passa a dizer humor muito mal');
   await pg.click(`.hist-t button.hd[data-dia="${dia(-6)}"]`);
   ok((await pg.$('[data-dia-sel] .reg-form')) === null && /só é possível registrar ou corrigir hoje e os 5 dias anteriores/i.test((await pg.textContent('[data-dia-sel]')) ?? ''), 'correção: o sexto dia anterior não pode ser corrigido (sem formulário, com a explicação)');
   await pg.click(`.hist-t button.hd[data-dia="${dia(-8)}"]`);
@@ -315,8 +311,7 @@ const T = await novo({ viewport: { width: 1360, height: 900 } });
   // Configurações > Perfil
   await abrir(pg, '/config');
   ok(!!(await pg.$('[data-secao="perfil"]')), 'Configurações: existe a seção Perfil');
-  await pg.click('[data-secao="perfil"] .btn.pri'); await pg.waitForSelector('[data-perfil]');
-  ok(true, 'Configurações > Perfil abre a mesma gaveta');
+  await pg.click('[data-secao="perfil"] .btn.pri'); await aguardar(pg.waitForSelector('[data-perfil]'), 'Configurações > Perfil abre a mesma gaveta');
   await pg.click('[data-perfil] .btn:has-text("Abrir configurações")'); await pg.waitForFunction(() => !document.querySelector('.dr-ov'));
   ok(new URL(pg.url()).pathname === '/config', 'da gaveta, "Abrir configurações" leva a Configurações e fecha a gaveta');
 
@@ -356,8 +351,7 @@ const T = await novo({ viewport: { width: 1360, height: 900 } });
   await avancar(pg, 170);   // 2 h 50 min de uso
   ok((await pg.$$('.balao')).length === 0, 'lembretes: com 2 h 50 min de trabalho ainda não há lembrete');
   await avancar(pg, 20);    // 3 h 10 min
-  await pg.waitForSelector('.balao[data-lembrete="horas"]', { timeout: 15000 });
-  ok(true, 'lembretes: depois de 3 horas de trabalho o balão aparece de novo');
+  await aguardar(pg.waitForSelector('.balao[data-lembrete="horas"]', { timeout: 15000 }), 'lembretes: depois de 3 horas de trabalho o balão aparece de novo');
   // não respondido: recarregar não perde nem repete
   await pg.reload({ waitUntil: 'load' }); await pg.waitForSelector('.app .main'); await hidratada(pg); await quadroPronto(pg); await assentar(pg);
   ok((await pg.$$('.balao[data-lembrete="horas"]')).length === 1, 'lembretes: o lembrete ainda sem resposta continua depois de recarregar (uma vez só, nem perdido nem repetido)');
@@ -372,16 +366,14 @@ const T = await novo({ viewport: { width: 1360, height: 900 } });
   await pg.unroute('**/*');
   await pg.click('.balao .btn:has-text("Tentar de novo")'); await toast(pg);
   await pg.waitForFunction(() => !document.querySelector('.balao'), null, { timeout: 10000 });
-  await pg2.waitForFunction(() => !document.querySelector('.balao'), null, { timeout: 10000 });
-  ok(true, 'balão: ao gravar em uma aba, o lembrete some nas duas');
+  await aguardar(pg2.waitForFunction(() => !document.querySelector('.balao'), null, { timeout: 10000 }), 'balão: ao gravar em uma aba, o lembrete some nas duas');
   // com as duas abas em uso o tempo conta uma só vez: 2 h 50 depois não há lembrete (se contasse em dobro, haveria)
   // só a primeira aba é usada: o relógio falso avança cada aba em sequência, o que não existe no mundo real; o caso de duas abas em uso ao mesmo tempo está nas regras (testar:regras)
   await avancar(pg, 140);
   await Promise.all([assentar(pg), assentar(pg2)]);
   ok((await pg.$$('.balao')).length === 0 && (await pg2.$$('.balao')).length === 0, 'duas abas abertas, uma em uso: a aba parada não soma tempo (2 h 20 min depois do último lembrete, 5 h 30 min no total, não há lembrete novo)');
   await avancar(pg, 70);   // folga de 30 min além das 6 horas
-  await pg.waitForSelector('.balao[data-lembrete="horas"]', { timeout: 10000 });
-  ok(true, 'duas abas abertas: o próximo lembrete vem no marco das 6 horas de trabalho');
+  await aguardar(pg.waitForSelector('.balao[data-lembrete="horas"]', { timeout: 10000 }), 'duas abas abertas: o próximo lembrete vem no marco das 6 horas de trabalho');
   // registrar hoje por outro caminho (o Perfil) responde ao lembrete pendente: ele não pede de novo o que acabou de ser registrado
   await abrirPerfil(pg);
   await nivel(pg, '[data-dia-sel]', 'humor', 3);
@@ -400,8 +392,7 @@ const T = await novo({ viewport: { width: 1360, height: 900 } });
   const amanha = await pg.evaluate(() => ({ jan: !!document.querySelector('.modal-ov'), titulo: document.querySelector('#m-tit')?.textContent, estado: JSON.parse(localStorage.getItem('dmanda:lembretes') ?? 'null') }));
   ok(amanha.estado?.dia === dia(1) && amanha.estado.lembretes === 0 && amanha.estado.trabalhado < 120, 'retorno no dia seguinte: o contador recomeça do zero com a data nova (nada de ontem é carregado)');
   ok(RESTANTES > 0 ? amanha.jan && amanha.titulo === 'Completar os últimos dias' : !amanha.jan, RESTANTES > 0 ? 'retorno no dia seguinte: o convite para completar os dias volta (ainda há dia de trabalho sem registro na nova janela de 5 dias)' : 'retorno no dia seguinte: sem dia pendente, o convite não aparece (neste dia da semana todos os dias da janela foram preenchidos)');
-  if (amanha.jan) await pg.keyboard.press('Escape'); await pg.waitForSelector('.balao[data-lembrete="entrada"]', { timeout: 10000 });
-  ok(true, 'retorno no dia seguinte: o balão de entrada do novo dia também aparece');
+  if (amanha.jan) await pg.keyboard.press('Escape'); await aguardar(pg.waitForSelector('.balao[data-lembrete="entrada"]', { timeout: 10000 }), 'retorno no dia seguinte: o balão de entrada do novo dia também aparece');
   // o banco ainda está em "hoje": gravar o "dia seguinte" é recusado, com a escolha preservada
   await nivel(pg, '.balao', 'humor', 4);
   await pg.waitForSelector('.balao .reg-erro', { timeout: 15000 });

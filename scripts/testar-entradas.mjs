@@ -8,7 +8,7 @@ import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
 const PORTA = process.env.PORTA_TESTE_ENTRADAS || '7105', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/entradas';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
 const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
-const { ok, resumo } = criarVerificador();
+const { ok, resumo, aguardar } = criarVerificador();
 
 
 const nav = await abrirEdge();
@@ -60,8 +60,7 @@ const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
   await pg.waitForTimeout(1600);
   ok(await estado(pg) === 'vazio', 'só espaços também contam como vazio');
   await pg.fill('#e-titulo', 'Título sem texto');
-  await esperaEstado(pg, 'salvo');
-  ok(true, 'só o título já basta: a entrada é salva');
+  await aguardar(esperaEstado(pg, 'salvo'), 'só o título já basta: a entrada é salva');
   await pg.fill('#e-titulo', ''); await pg.waitForTimeout(300);
   ok(await estado(pg) === 'vazia-existente', 'esvaziar uma entrada salva não a apaga: o estado explica que ela não pode ficar vazia e a última versão salva continua');
   await pg.fill('#e-titulo', 'Ligar para o RH'); await pg.fill('#e-texto', 'Sobre as escalas de fim de ano #rh #Escalas');
@@ -285,8 +284,7 @@ const passoAtual = (pg) => pg.$$eval('.modal .passos li', (e) => e.findIndex((x)
   await esperaEstado(pg, 'offline', 8000); await pg.waitForTimeout(800);
   ok(/Sem conexão/.test(await pg.textContent('.estado-entrada')) && !!(await rascunhos(pg))['e:nova'], 'offline: o estado diz "Sem conexão" e o texto está no rascunho do aparelho');
   await ctx.setOffline(false);
-  await esperaEstado(pg, 'salvo', 20000);
-  ok(true, 'ao voltar a conexão a entrada é salva sozinha, sem precisar de clique');
+  await aguardar(esperaEstado(pg, 'salvo', 20000), 'ao voltar a conexão a entrada é salva sozinha, sem precisar de clique');
   await pg.click('.modal .btn.pri'); await janelaFechada(pg);
 
   // edição de uma entrada existente sem rede: rascunho marcado na grade
@@ -642,8 +640,7 @@ for (const [nome, opcoes, tema, toque] of aparelhos) {
     ok(await contar(pg, 'Cor escolhida') === 0, `${nome}: arquivar por toque funciona (sem depender do hover)`);
     await ir(pg, '/arquivo'); await pg.tap('.tabs [data-aba="entradas"]'); await pg.waitForSelector('.linha:has-text("Cor escolhida")');
     await pg.tap('.linha:has-text("Cor escolhida") .btn:has-text("Recuperar")');
-    await pg.waitForFunction(() => !/Cor escolhida/.test(document.querySelector('.main')?.textContent || ''), null, { timeout: 10000 });
-    ok(true, `${nome}: recuperar por toque funciona`);
+    await aguardar(pg.waitForFunction(() => !/Cor escolhida/.test(document.querySelector('.main')?.textContent || ''), null, { timeout: 10000 }), `${nome}: recuperar por toque funciona`);
     await ir(pg);
     await pg.tap(`${nota('Cor escolhida')} .pin-b.virar`); await pg.waitForSelector('#n-assunto');
     const camposCad = await pg.$$eval('.modal input:not([type=checkbox]), .modal textarea', (e) => e.map((x) => parseFloat(getComputedStyle(x).fontSize)));

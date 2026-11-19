@@ -4,17 +4,14 @@ import { createClient } from '@supabase/supabase-js';
 import { modoTeste } from '@/lib/supabase/config';
 import { ErroConflito, ErroDmanda, type Chamar } from '@/nucleo/operacoes';
 
-const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
-
 type Banco = { db: import('@electric-sql/pglite').PGlite };
 const g = globalThis as unknown as { __dmandaBancoTeste?: Promise<Banco> };
 
 async function bancoTeste(): Promise<Banco> {
   g.__dmandaBancoTeste ??= (async () => {
-    const { abrirBancoTeste } = await import('./banco-teste-base.mjs');
+    const { abrirBancoTeste, prepararTitularDeTeste } = await import('./banco-teste-base.mjs');
     const db = await abrirBancoTeste({ pasta: process.env.DMANDA_PASTA_TESTE ?? './.dados-teste/pg' });
-    await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO_TESTE]);
-    await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+    await prepararTitularDeTeste(db);
     return { db };
   })();
   return g.__dmandaBancoTeste;
@@ -29,7 +26,7 @@ function traduzir(e: { message?: string; code?: string }): Error {
 }
 
 const chamarTeste: Chamar = async (funcao, args) => {
-  const { chamarComoUsuario } = await import('./banco-teste-base.mjs');
+  const { chamarComoUsuario, USUARIO_TESTE } = await import('./banco-teste-base.mjs');
   const { db } = await bancoTeste();
   try {
     return await chamarComoUsuario(db, USUARIO_TESTE, funcao, args);

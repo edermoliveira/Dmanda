@@ -9,7 +9,7 @@ import { rmSync, mkdirSync } from 'node:fs';
 const PORTA = process.env.PORTA_TESTE_CONFIG || '7112', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/config';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
 const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
-const { ok, resumo } = criarVerificador();
+const { ok, resumo, aguardar } = criarVerificador();
 
 const nav = await abrirEdge();
 const erros = [];
@@ -449,11 +449,9 @@ for (const perfil of ['computador', 'ipad', 'celular']) {
   await pg.click('button:has-text("Cadastrar dia")'); await pg.waitForSelector('.cfg-lista li', { timeout: 20000 });
   ok((await pg.textContent('.cfg-lista li')).includes('Natal (teste)'), 'Dias indisponíveis: cadastrar continua funcionando junto da aparência');
   await pg.click('button[aria-label="Editar Natal (teste)"]'); await pg.fill('#cfg-desc', 'Natal editado'); await pg.click('button:has-text("Salvar alteração")');
-  await pg.waitForFunction(() => document.querySelector('.cfg-lista li')?.textContent.includes('Natal editado'), null, { timeout: 15000 });
-  ok(true, 'Dias indisponíveis: editar continua funcionando');
+  await aguardar(pg.waitForFunction(() => document.querySelector('.cfg-lista li')?.textContent.includes('Natal editado'), null, { timeout: 15000 }), 'Dias indisponíveis: editar continua funcionando');
   await pg.click('button[aria-label="Excluir Natal editado"]'); await pg.click('button:has-text("Confirmar exclusão")');
-  await pg.waitForFunction(() => !document.querySelector('.cfg-lista'), null, { timeout: 15000 });
-  ok(true, 'Dias indisponíveis: excluir continua funcionando');
+  await aguardar(pg.waitForFunction(() => !document.querySelector('.cfg-lista'), null, { timeout: 15000 }), 'Dias indisponíveis: excluir continua funcionando');
   await ctx.close();
 }
 

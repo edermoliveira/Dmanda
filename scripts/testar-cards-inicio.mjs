@@ -8,11 +8,10 @@
 import { devices } from 'playwright-core';
 import { abrirEdge, abrirWebkit, criarVerificador, esperar, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 import { somarDias } from '../src/lib/prazos.ts';
 
 const PORTA = process.env.PORTA_TESTE_CARDS_INICIO || '7126', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/cards-inicio', CAPTURAS = '.dados-teste/cards-inicio-capturas';
-const USUARIO = '00000000-0000-4000-8000-000000000001';
 rmSync(PASTA, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true });
 const { ok, resumo } = criarVerificador();
 const PH = '[data-painel="para-hoje"]', PILHA = `${PH} > .ph-pilha`, ARRASTO = `${PILHA} .ph-arrasto`;
@@ -23,8 +22,7 @@ const ESPERADA = ['U10', 'U6 longa', 'U3', 'U1 longa', 'Uhoje'];   // atrasadas 
 let HOJE;
 {
   const db = await abrirBancoTeste({ pasta: PASTA });
-  await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-  await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+  await prepararTitularDeTeste(db, USUARIO);
   HOJE = (await db.query('select public.hoje()::text as h')).rows[0].h;
   const c = (f, a) => chamarComoUsuario(db, USUARIO, f, a);
   const mk = async (assunto, o, textos = ['t1']) => { const d = await c('criar_demanda', { p: { assunto, tipo: 'Memorando', numero: '', ...o } }); for (const t of textos) await c('adicionar_tarefa', { p_demanda: d.id, p_texto: t }); return d; };
@@ -112,8 +110,7 @@ for (const [motor, navegador, extra] of [['Edge', nav, {}], ...(wk ? [['WebKit e
   ok((await pg.evaluate(() => scrollY)) === y0, `${motor}: a página não saltou durante as trocas`);
   const nu = await tam(pg, `[data-nova-urgencia] .ph-arrasto`).catch(() => null);
   await ctx.close();
-  if (nu) ok(nu.w === d0.w && nu.h === d0.h, `${motor}: o baralho da Nova urgência no iPhone tem o mesmo tamanho (${nu.w}x${nu.h} px)`);
-  else ok(true, `${motor}: sem baralho de Nova urgência para medir nesta página`);
+  ok(!!nu && nu.w === d0.w && nu.h === d0.h, `${motor}: o baralho da Nova urgência no iPhone existe e tem o mesmo tamanho do card ativo (${nu ? `${nu.w}x${nu.h}` : 'ausente'} px)`);
 }
 
 // =============== 2) as três ações do deck na mesma faixa ===============

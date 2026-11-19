@@ -3,9 +3,10 @@
 // sobe com DMANDA_BANCO=teste (PGlite) numa pasta de dados descartável.
 import { chromium, webkit } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE } from '../src/servidor/banco-teste-base.mjs';
 
-export const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
+export { prepararTitularDeTeste, USUARIO_TESTE };
+
 /** O segredo da rotina diária nos servidores de teste (só existe aqui; as suítes que chamam a rota importam esta constante). */
 export const SEGREDO_CRON_TESTE = 'segredo-de-teste-1234567890';
 
@@ -19,6 +20,10 @@ export function criarVerificador() {
     v.ultimo = '';
   };
   v.obtido = (valor) => { v.ultimo = valor; return valor; };
+  /** Uma verificação por espera: se `promessa` (um waitFor...) se cumpre, é um "ok"; se estoura o tempo, é um "FALHOU" com o motivo, em vez de derrubar o script sem o resumo. */
+  v.aguardar = async (promessa, mensagem) => {
+    try { await promessa; v.ok(true, mensagem); } catch (e) { v.ok(false, `${mensagem} (${String(e.message).split('\n')[0]})`); }
+  };
   v.resumo = () => {
     console.log(v.falhas ? `\n${v.falhas} de ${v.total} verificações falharam.` : `\nTudo certo: ${v.total} verificações.`);
     return v.falhas ? 1 : 0;
@@ -27,12 +32,6 @@ export function criarVerificador() {
 }
 
 export const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
-
-/** Prepara o titular de teste num banco já aberto (usuário e e-mail autorizado). */
-export async function prepararTitularDeTeste(db, usuario = USUARIO_TESTE) {
-  await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [usuario]);
-  await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
-}
 
 /**
  * Abre o banco de teste da pasta, prepara o titular, entrega `chamar(funcao, args)` (o titular de teste chamando uma função SQL) e fecha o banco ao final de `semear(chamar, db)`.

@@ -3,13 +3,12 @@
 // Nunca toca o Supabase real. Uso: node scripts/previa-prazo-chegada.mjs   (porta 7100 ou PORT; para o aparelho na mesma rede, DMANDA_ORIGENS_DEV com o IPv4 exato do computador; só um `next dev` por vez neste projeto)
 import { spawn } from 'node:child_process';
 import { rmSync, mkdirSync } from 'node:fs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 
-const PASTA = '.dados-teste/previa-prazo-chegada', USUARIO = '00000000-0000-4000-8000-000000000001', porta = process.env.PORT || '7100';
+const PASTA = '.dados-teste/previa-prazo-chegada', porta = process.env.PORT || '7100';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
 const db = await abrirBancoTeste({ pasta: PASTA });
-await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+await prepararTitularDeTeste(db, USUARIO);
 const c = (f, a) => chamarComoUsuario(db, USUARIO, f, a);
 await c('salvar_dia_indisponivel', { p: { data: '2026-11-02', descricao: 'Finados', categoria: 'Feriado' } });
 const mk = async (assunto, o) => { const d = await c('criar_demanda', { p: { assunto, numero: '', etapa: 'Fazendo', ...o } }); await c('adicionar_tarefa', { p_demanda: d.id, p_texto: 'Conferir o andamento' }); return d; };

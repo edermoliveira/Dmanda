@@ -1,8 +1,7 @@
 // Semeia um banco de TESTE (PGlite) com um volume escolhido de dados fictícios, relativos a hoje. Usado por medir-desempenho.mjs e testar-resistencia.mjs.
 // Nunca toca o Supabase real: só abre a pasta de teste informada, antes de o servidor subir.
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE } from '../src/servidor/banco-teste-base.mjs';
 
-export const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
 // demandas ativas, tarefas por demanda, demandas arquivadas, entradas, entradas arquivadas, eventos, dias indisponíveis
 export const VOLUMES = {
   vazio: { demandas: 0, tarefas: 0, arquivadas: 0, entradas: 0, entradasArq: 0, eventos: 0, dias: 0 },
@@ -16,8 +15,7 @@ const TIPOS = ['Ofício', 'Memorando', 'Processo', 'Protocolo'];
 export async function semearVolume(pasta, nome) {
   const v = VOLUMES[nome];
   const db = await abrirBancoTeste({ pasta });
-  await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO_TESTE]);
-  await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+  await prepararTitularDeTeste(db);
   const c = (f, a) => chamarComoUsuario(db, USUARIO_TESTE, f, a);
   const mais = async (n) => (await db.query('select (public.hoje() + $1::int)::text as d', [n])).rows[0].d;
   const hoje = await mais(0);

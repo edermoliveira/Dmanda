@@ -1,6 +1,6 @@
 // Auxiliar dos testes de navegador: escolher ou criar a origem e o tipo do documento pelo dropdown (o campo não é mais um texto livre).
 // `prefixo` é o da janela ('n' no cadastro, 'd' na consulta). Cria pela opção "+ Nova origem" / "+ Criar tipo" quando o nome ainda não existe.
-const ID = { origem: 'origem', tipo: 'tipo' }, CRIAR = { origem: '+ Nova origem', tipo: '+ Criar tipo' };
+const ID = { origem: 'origem', tipo: 'tipo' };
 
 export async function escolherOpcao(pg, prefixo, campo, nome) {
   const gatilho = `#${prefixo}-${ID[campo]}`;

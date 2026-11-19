@@ -1,14 +1,12 @@
 // Semeia um banco de TESTE (PGlite) com dados relativos a hoje para a Agenda: demandas com prazos, acompanhamento, retorno do setor, espera pela Prefeita, tarefas, dias indisponíveis e eventos.
 // Usado por testar-agenda.mjs. Nunca toca o Supabase real: só abre a pasta de dados de teste informada, antes de o servidor subir.
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE } from '../src/servidor/banco-teste-base.mjs';
 
-export const USUARIO_TESTE = '00000000-0000-4000-8000-000000000001';
 
 /** `ref` (AAAA-MM-DD) é a data de referência: todas as datas e os instantes ("parada há N dias") nascem dela, não do relógio. Sem ela vale a data do banco (hoje, em Brasília). */
 export async function semearAgenda(pasta, ref = null, { mes = false } = {}) {
   const db = await abrirBancoTeste({ pasta });
-  await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO_TESTE]);
-  await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+  await prepararTitularDeTeste(db);
   const c = (f, a) => chamarComoUsuario(db, USUARIO_TESTE, f, a);
   const hoje = ref ?? (await db.query('select public.hoje()::text as h')).rows[0].h;
   const mais = async (n) => (await db.query('select ($1::date + $2::int)::text as d', [hoje, n])).rows[0].d;

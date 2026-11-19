@@ -6,6 +6,7 @@
 // Uso: node scripts/capturar-calendarios.mjs <rótulo> [porta]   (grava em .dados-teste/comparacao-calendarios/<rótulo>/ com medidas.json e refaz o índice HTML)
 // Pode rodar a partir de outra cópia de trabalho (por exemplo, a 395e45a): usa o Next e o banco de teste da pasta atual. Só abre um banco de TESTE descartável (PGlite); nunca toca o Supabase real.
 import { chromium } from 'playwright-core';
+import { prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 import { spawn, spawnSync } from 'node:child_process';
 import { rmSync, mkdirSync, existsSync, writeFileSync, readdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -21,14 +22,12 @@ const REFERENCIA = '2026-11-03';
 rmSync(PASTA, { recursive: true, force: true }); rmSync(SAIDA, { recursive: true, force: true }); mkdirSync(SAIDA, { recursive: true });
 
 const { abrirBancoTeste, chamarComoUsuario } = await import(pathToFileURL(resolve('src/servidor/banco-teste-base.mjs')).href);
-const USUARIO = '00000000-0000-4000-8000-000000000001';
 
 // ---------- dados: só chamadas que existem nas três versões ----------
 const demo = {};
 {
   const db = await abrirBancoTeste({ pasta: PASTA });
-  await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-  await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+  await prepararTitularDeTeste(db, USUARIO);
   const c = (f, a) => chamarComoUsuario(db, USUARIO, f, a);
   const dem = (assunto, o = {}) => c('criar_demanda', { p: { assunto, tipo: 'Memorando', numero: '', etapa: 'Fazendo', ...o } });
   const tarefas = async (id, n) => { for (let i = 0; i < n; i++) await c('adicionar_tarefa', { p_demanda: id, p_texto: `Tarefa ${i + 1}` }); };

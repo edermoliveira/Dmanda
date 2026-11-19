@@ -5,16 +5,14 @@
 import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 
 const PORTA = process.env.PORTA_TESTE_BUSCA || '7118', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/busca';
 rmSync(PASTA, { recursive: true, force: true }); mkdirSync('.dados-teste', { recursive: true });
 
 // ---- semente fictícia ----
-const USUARIO = '00000000-0000-4000-8000-000000000001';
 const db = await abrirBancoTeste({ pasta: PASTA });
-await db.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+await prepararTitularDeTeste(db, USUARIO);
 const c = (f, a) => chamarComoUsuario(db, USUARIO, f, a);
 const HOJE = (await db.query('select public.hoje()::text as h')).rows[0].h;
 const dem = (assunto, o = {}) => c('criar_demanda', { p: { assunto, tipo: 'Processo', ...o } });
@@ -24,18 +22,18 @@ const d2 = await dem('Parecer sobre a licitação antiga', { numero: '77/2026', 
 await c('adicionar_tarefa', { p_demanda: d2.id, p_texto: 'Anexar planilha de custos' });
 await c('arquivar_demanda', { p_id: d2.id });
 const d3 = await dem('Demanda finalizada de teste', { numero: '300/2026' }); await c('concluir_demanda', { p_id: d3.id });
-const e1 = await c('criar_entrada', { p: { titulo: 'Ligar para o Jurídico', texto: 'Combinar a reunião das 14h #tce' } });
+await c('criar_entrada', { p: { titulo: 'Ligar para o Jurídico', texto: 'Combinar a reunião das 14h #tce' } });
 const e2 = await c('criar_entrada', { p: { titulo: 'Lista de compras do gabinete', texto: 'café e papel' } }); await c('arquivar_entrada', { p_id: e2.id });
 const e3 = await c('criar_entrada', { p: { titulo: 'Ideia de capacitação', texto: 'curso de excel para os servidores' } });
 await c('criar_demanda_de_entrada', { p_entrada: e3.id, p: { id: randomUUID(), assunto: 'Capacitação dos servidores', tipo: 'Memorando' } });
 const ev = (o) => c('criar_evento', { p: { tipo: 'Reunião', ...o } });
-const v1 = await ev({ titulo: 'Reunião de secretariado', data: HOJE, inicio: '09:00', fim: '10:00' });
-const v2 = await ev({ titulo: 'Audiência pública de março', tipo: 'Compromisso', data: '2027-03-15', dia_inteiro: true });
-const v3 = await ev({ titulo: 'Seminário antigo', tipo: 'Compromisso', data: '2026-01-12', dia_inteiro: true });
+await ev({ titulo: 'Reunião de secretariado', data: HOJE, inicio: '09:00', fim: '10:00' });
+await ev({ titulo: 'Audiência pública de março', tipo: 'Compromisso', data: '2027-03-15', dia_inteiro: true });
+await ev({ titulo: 'Seminário antigo', tipo: 'Compromisso', data: '2026-01-12', dia_inteiro: true });
 await db.close();
 
 const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
-const { ok, resumo } = criarVerificador();
+const { ok, resumo, aguardar } = criarVerificador();
 
 const nav = await abrirEdge();
 const erros = [];
@@ -80,8 +78,7 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   await pg.keyboard.press('Escape'); await buscaFechada(pg);
   ok((await foco(pg)).includes('buscabtn'), 'Esc fecha e o foco volta à lupa');
   // Ctrl+K
-  await pg.keyboard.press('Control+k'); await pg.waitForSelector('.busca-box input');
-  ok(true, 'Ctrl+K abre a busca');
+  await pg.keyboard.press('Control+k'); await aguardar(pg.waitForSelector('.busca-box input'), 'Ctrl+K abre a busca');
   await pg.keyboard.press('Control+k'); await pg.waitForTimeout(200);
   ok((await pg.$$('.busca-ov')).length === 1, 'Ctrl+K com a busca aberta não abre outra');
   await fechaBusca(pg);
@@ -268,8 +265,7 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   ok(/Documento ainda não está implementado/.test((await pg.textContent('#toast')) ?? '') && !(await pg.$('.modal-ov')), 'Documento só avisa que está indisponível');
   // atalho N preservado e busca aberta bloqueia o N
   await pg.waitForTimeout(2500); await pg.evaluate(() => document.activeElement?.blur());
-  await pg.keyboard.press('Escape'); await pg.keyboard.press('n'); await pg.waitForSelector('#e-texto'); await fecharJanela(pg);
-  ok(true, 'o atalho N continua abrindo Nova entrada');
+  await pg.keyboard.press('Escape'); await pg.keyboard.press('n'); await pg.waitForSelector('#e-texto'); await aguardar(fecharJanela(pg), 'o atalho N continua abrindo Nova entrada');
   await abrirBusca(pg); await pg.keyboard.type('nn'); await pg.waitForTimeout(250);
   ok(!(await pg.$('.modal-ov')) && (await pg.inputValue('.busca-box input')) === 'nn', 'digitar "n" no campo da busca não abre Nova entrada');
   await fechaBusca(pg);

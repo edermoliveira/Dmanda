@@ -6,19 +6,17 @@
 import { devices } from 'playwright-core';
 import { abrirEdge, abrirWebkit, criarVerificador, esperar, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 import { ajustarPrazo, dataComSemana, prazoPorDias } from '../src/lib/prazos.ts';
 
 const PORTA = process.env.PORTA_TESTE_CHEGADA || '7128', BASE = `http://localhost:${PORTA}`, RAIZ = '.dados-teste/prazo-chegada', CAPTURAS = '.dados-teste/prazo-chegada-capturas';
-const USUARIO = '00000000-0000-4000-8000-000000000001';
 rmSync(RAIZ, { recursive: true, force: true }); rmSync(CAPTURAS, { recursive: true, force: true }); mkdirSync(CAPTURAS, { recursive: true }); mkdirSync(RAIZ, { recursive: true });
 const verificador = criarVerificador(); const { ok, resumo } = verificador;
 const ID = {};
 
 // ---------- dados fictícios ----------
 const db0 = await abrirBancoTeste({ pasta: `${RAIZ}/pg` });
-await db0.query("insert into auth.users (id, email) values ($1, 'teste@dmanda.local') on conflict do nothing", [USUARIO]);
-await db0.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
+await prepararTitularDeTeste(db0, USUARIO);
 {
   const c = (f, a) => chamarComoUsuario(db0, USUARIO, f, a);
   await c('salvar_dia_indisponivel', { p: { data: '2026-11-02', descricao: 'Finados', categoria: 'Feriado' } });
