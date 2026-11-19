@@ -149,6 +149,113 @@ const somaIso = (iso, n) => prazoPorDias(n, iso);
 }
 
 // =============================================================================================================================================
+// 2b) decisão 84: aviso quando o vencimento antecipado ficou ANTES da chegada. O cálculo não muda; o aviso aparece na prévia, na consulta, na Agenda e no sininho (nunca na barra global),
+//     acompanha os dados vigentes e some quando a condição some. Exemplo: chegada 28/12/2026, prazo original 31/12 (3 dias), indisponível de 24/12/2026 a 03/01/2027: ajustado 23/12.
+// =============================================================================================================================================
+const AVISO = 'O vencimento antecipado ficou antes da chegada. Confira a chegada, o prazo e os dias indisponíveis cadastrados.';
+const NOME_V = 'Ofício da virada do ano', NOME_D = 'Ofício de meados de dezembro';
+const cadastrar = async (pg, assunto, chegada, prazo) => {
+  await ir(pg, '/demandas', '.grupo-cards');
+  await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#n-assunto');
+  await pg.fill('#n-assunto', assunto); await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou');
+  if (chegada) await pg.fill('#n-chegou', chegada);
+  await pg.fill('#n-prazo', prazo); await esperar(300);
+};
+const gravarCadastro = async (pg) => { await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt', { timeout: 20000 }); await pg.click('.modal .btn:has-text("Pular tarefas")'); await fechada(pg); };
+const sino = async (pg) => ({ rotulo: await pg.getAttribute('.sino', 'aria-label'), n: (await pg.getAttribute('.sino', 'data-avisos')) ?? '0' });
+const itensSino = async (pg) => { await pg.click('.sino'); await pg.waitForSelector('.avisos-painel'); return pg.$$eval('.avisos-painel [data-aviso^="chegada-"]', (l) => l.map((x) => ({ id: x.dataset.aviso, escopo: x.dataset.escopo, texto: x.textContent.replace(/\s+/g, ' ').trim() }))); };
+{
+  const { ctx, pg } = await novoCtx('desktop');
+  // o período de 24/12/2026 a 03/01/2027, pela tela de Configurações
+  await ir(pg, '/config', '#cfg-data');
+  await pg.fill('#cfg-data', '2026-12-24'); await pg.fill('#cfg-fim', '2027-01-03'); await pg.fill('#cfg-desc', 'Recesso da virada (teste)'); await pg.click('button:has-text("Cadastrar período")');
+  await pg.waitForFunction(() => document.querySelector('.cfg-lista')?.textContent.includes('Recesso da virada (teste)'), null, { timeout: 20000 }); await esperar(500);
+  // sem chegada: a prévia mostra o ajuste (original 31/12 vira 23/12) mas NÃO avisa (a chegada é desconhecida)
+  await cadastrar(pg, NOME_V, '', '2026-12-31');
+  let previa = await texto(pg, '.modal .prev-prazo');
+  ok(previa.includes(`Vencimento antecipado para ${dataComSemana('2026-12-23')}`) && !(await pg.$('[data-antes-chegada]')), 'aviso da chegada, prévia sem chegada: vence 23/12 (antecipado) e NÃO avisa, porque a chegada é desconhecida');
+  // chegada igual ao vencimento ajustado (23/12): não é estritamente anterior, sem aviso
+  await pg.fill('#n-chegou', '2026-12-23'); await esperar(300);
+  ok((await texto(pg, '.modal .prev-prazo')).includes(`Vencimento antecipado para ${dataComSemana('2026-12-23')}`) && !(await pg.$('[data-antes-chegada]')), 'aviso da chegada, prévia: ajustado igual à chegada (23/12) não avisa');
+  // chegada 28/12/2026: o ajustado (23/12) fica antes dela
+  await pg.fill('#n-chegou', '2026-12-28'); await esperar(300);
+  previa = await texto(pg, '.modal .prev-prazo');
+  const prevAviso = (await pg.$$eval('.modal [data-antes-chegada]', (l) => l.map((x) => x.textContent.trim())));
+  ok(previa.includes(`Prazo original: ${dataComSemana('2026-12-31')}`) && previa.includes(`Vencimento antecipado para ${dataComSemana('2026-12-23')}`) && prevAviso.length === 1 && prevAviso[0] === AVISO, `aviso da chegada, prévia: chegada 28/12 e original 31/12 dão ajustado 23/12 e UM aviso com o texto aprovado (${previa.slice(0, 160)})`);
+  await pg.screenshot({ path: `${CAPTURAS}/aviso-chegada-previa-claro.png` });
+  // o aviso não bloqueia a gravação
+  await gravarCadastro(pg);
+  // consulta (o que o servidor gravou: cálculo preservado)
+  await abrirDemanda(pg, NOME_V);
+  let ler = await texto(pg, '.modal');
+  const consAviso = await pg.$$eval('.modal [data-antes-chegada]', (l) => l.map((x) => x.textContent.trim()));
+  ok(/Chegou em 28\/12\/2026/.test(ler) && ler.includes(`Vencimento ${dataComSemana('2026-12-23')}`) && ler.includes(`Prazo original ${dataComSemana('2026-12-31')}`) && ler.includes('Dias pulados: 31/12 feriado: Recesso da virada (teste)') && ler.includes('24/12 feriado: Recesso da virada (teste)') && consAviso.length === 1 && consAviso[0] === AVISO,
+    `aviso da chegada, consulta: gravou com o cálculo preservado (chegada 28/12, original 31/12, vencimento 23/12, oito dias pulados) e mostra o aviso uma vez (${ler.slice(0, 200)})`);
+  await pg.screenshot({ path: `${CAPTURAS}/aviso-chegada-consulta-claro.png` });
+  await pg.keyboard.press('Escape'); await fechada(pg).catch(() => {});
+  // o caso aprovado anterior: chegada 14/12 e original 29/12, também ajustado para 23/12: SEM aviso, na prévia, na consulta e no sininho
+  await cadastrar(pg, NOME_D, '2026-12-14', '2026-12-29');
+  previa = await texto(pg, '.modal .prev-prazo');
+  ok(previa.includes(`Prazo original: ${dataComSemana('2026-12-29')}`) && previa.includes(`Vencimento antecipado para ${dataComSemana('2026-12-23')}`) && !(await pg.$('[data-antes-chegada]')), 'aviso da chegada, caso aprovado (chegada 14/12, original 29/12, ajustado 23/12): a prévia antecipa e NÃO avisa');
+  await gravarCadastro(pg);
+  await abrirDemanda(pg, NOME_D);
+  ler = await texto(pg, '.modal');
+  ok(ler.includes(`Vencimento ${dataComSemana('2026-12-23')}`) && ler.includes(`Prazo original ${dataComSemana('2026-12-29')}`) && !(await pg.$('[data-antes-chegada]')) && !ler.includes('antes da chegada'), 'aviso da chegada, caso aprovado: a consulta mostra o ajuste e não mostra o aviso');
+  await pg.keyboard.press('Escape'); await fechada(pg).catch(() => {});
+  // Agenda: o marco do vencimento (23/12) traz o aviso só para a demanda da virada
+  await ir(pg, '/agenda', '.agd');
+  await pg.click('.agd-barra .opcoes button:has-text("Dia")'); await esperar(400);
+  await pg.fill('.agd-data input', '2026-12-23'); await pg.waitForFunction(() => document.querySelector('.agd-data input')?.value === '2026-12-23'); await esperar(700);
+  const notas = await pg.$$eval('.agd-nota', (l) => l.map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
+  const linhaV = notas.filter((t) => t.includes('Prazo original 31/12/2026')), linhaD = notas.filter((t) => t.includes('Prazo original 29/12/2026'));
+  ok((await texto(pg, '.agd')).includes(NOME_V) && linhaV.length === 1 && linhaV[0].includes(`antecipado. Dias pulados: 31/12 feriado: Recesso da virada (teste)`) && linhaV[0].endsWith(`${AVISO.replace(/\.$/, '')}.`) && linhaD.length === 1 && !linhaD[0].includes('antes da chegada'), `aviso da chegada, Agenda: o vencimento de 23/12 da demanda da virada traz o aviso e o da demanda de meados de dezembro não (${notas.join(' || ').slice(0, 240)})`);
+  // sininho: um item para a demanda da virada (e nenhum para a outra), fora da barra global, com a ação que abre a demanda certa
+  await ir(pg, '/', '.stat.st-atrasadas');
+  let s = await sino(pg);
+  ok(/Avisos: 1 problema novo/.test(s.rotulo) && s.n === '1', `aviso da chegada, sininho: um aviso novo para a demanda da virada (${s.rotulo})`);
+  ok((await pg.locator('.erro-carga').count()) === 0, 'aviso da chegada: nada ocupa a barra global nem a faixa da tela');
+  let itens = await itensSino(pg);
+  ok(itens.length === 1 && itens[0].escopo === 'sino' && itens[0].texto.includes(NOME_V) && itens[0].texto.includes(AVISO) && !itens[0].texto.includes(NOME_D), `aviso da chegada, sininho: um item só, com o assunto e o texto aprovado (${itens.map((i) => i.texto).join(' | ').slice(0, 220)})`);
+  await pg.screenshot({ path: `${CAPTURAS}/aviso-chegada-sininho-claro.png` });
+  await pg.keyboard.press('Escape'); await esperar(300);
+  // recarregar não duplica: continua um item só
+  await ir(pg, '/', '.stat.st-atrasadas');
+  itens = await itensSino(pg);
+  ok(itens.length === 1 && (await sino(pg)).n === '1', 'aviso da chegada, sininho: depois de recarregar continua um item só (sem duplicar)');
+  // a ação abre a demanda certa, com o aviso na consulta
+  await pg.click('.avisos-painel [data-acao="abrir"]');
+  await pg.waitForSelector('.modal .ler', { timeout: 20000 }); await esperar(300);
+  ler = await texto(pg, '.modal');
+  ok(ler.includes(NOME_V) && ler.includes(AVISO) && !(await pg.$('.avisos-painel')), 'aviso da chegada, sininho: "Abrir a demanda" fecha o painel e abre a consulta da demanda certa');
+  // editar a chegada para 21/12: o ajustado (23/12) deixa de ser anterior, o prazo gravado não muda e o aviso some
+  await editarChegada(pg);
+  await pg.fill('#d-chegou', '2026-12-21'); await esperar(300);
+  ok(!(await pg.$('.modal [data-antes-chegada]')) && (await pg.inputValue('#d-prazo')) === '2026-12-31', 'aviso da chegada, edição: com a chegada em 21/12 a prévia não avisa e o prazo original continua 31/12');
+  await salvarSecao(pg);
+  await abrirDemanda(pg, NOME_V);
+  ler = await texto(pg, '.modal');
+  ok(/Chegou em 21\/12\/2026/.test(ler) && ler.includes(`Vencimento ${dataComSemana('2026-12-23')}`) && ler.includes(`Prazo original ${dataComSemana('2026-12-31')}`) && !ler.includes('antes da chegada'), 'aviso da chegada: salva a chegada 21/12, o vencimento continua 23/12 (original 31/12) e a consulta já não avisa');
+  await pg.keyboard.press('Escape'); await fechada(pg).catch(() => {});
+  s = await sino(pg);
+  ok(/nenhum agora/.test(s.rotulo) && s.n === '0', `aviso da chegada, sininho: a condição deixou de existir e o aviso sumiu (${s.rotulo})`);
+  // a chegada volta a 28/12: o aviso volta; excluir o período devolve o vencimento ao original e o aviso some de novo
+  await abrirDemanda(pg, NOME_V); await editarChegada(pg);
+  await pg.fill('#d-chegou', '2026-12-28'); await salvarSecao(pg);
+  await abrirDemanda(pg, NOME_V);
+  ok(((await texto(pg, '.modal')).includes(AVISO)), 'aviso da chegada: chegada de volta a 28/12, a consulta mostra o aviso de novo');
+  await pg.keyboard.press('Escape'); await fechada(pg).catch(() => {});
+  await ir(pg, '/config', '.cfg-lista');
+  await pg.click('[aria-label="Excluir Recesso da virada (teste)"]'); await pg.click('.cfg-lista .btn:has-text("Confirmar exclusão")');
+  await pg.waitForFunction(() => !document.querySelector('.cfg-lista')?.textContent.includes('Recesso da virada (teste)'), null, { timeout: 20000 }); await esperar(700);
+  s = await sino(pg);
+  await abrirDemanda(pg, NOME_V);
+  ler = await texto(pg, '.modal');
+  ok(/nenhum agora/.test(s.rotulo) && ler.includes(`Vencimento ${dataComSemana('2026-12-31')}`) && !/Prazo original/.test(ler) && !ler.includes('antes da chegada'), `aviso da chegada: excluído o período, o vencimento volta ao original (31/12), a consulta e o sininho ficam sem aviso (${s.rotulo})`);
+  await pg.keyboard.press('Escape'); await fechada(pg).catch(() => {});
+  await ctx.close();
+}
+
+// =============================================================================================================================================
 // 3) registros antigos: legado sem chegada, legado da regra anterior e finalizada
 // =============================================================================================================================================
 {
@@ -211,6 +318,18 @@ for (const [rot, perfil, tema, texto125, motor] of [['computador Escuro', 'deskt
   const vw = await pg.evaluate(() => document.documentElement.clientWidth);
   ok(f2.esq && f2.dir && (await texto(pg, '.modal .prev-prazo')).includes('Dias pulados: 02/11 feriado: Finados') && botoes.length === 4 && botoes.every((b) => b.l >= -1 && b.r <= vw + 1) && (await pg.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)), `${rot}: a prévia com os dias pulados e os quatro botões cabem na largura (${vw} px), sem rolagem lateral (aviso: ${corAviso.cor} sobre ${corAviso.fundo})`);
   await pg.screenshot({ path: `${CAPTURAS}/previa-${rot.replace(/\s+/g, '-')}.png` });
+  // decisão 84: o aviso de vencimento antes da chegada (original 02/11 à mão, chegada 03/11, Finados: ajustado 30/10) fica visível e legível nesta tela
+  await pg.fill('#n-chegou', '2026-11-03'); await pg.fill('#n-prazo', '2026-11-02'); await esperar(300);
+  await pg.$eval('.modal [data-antes-chegada]', (e) => e.scrollIntoView({ block: 'center' })); await esperar(400);   // o aviso fica abaixo da dobra do formulário: rola até ele, como a pessoa faria, antes de medir e capturar
+  const av = await pg.$eval('.modal [data-antes-chegada]', (e) => {
+    const fundo = (el) => { for (let n = el; n; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; const m = c.match(/[\d.]+/g)?.map(Number); if (m && (m.length < 4 || m[3] > 0.5)) return m.slice(0, 3); } return [255, 255, 255]; };
+    const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+    const b = e.querySelector('b') ?? e, cor = getComputedStyle(b).color.match(/[\d.]+/g).map(Number).slice(0, 3), bg = fundo(e), l1 = lum(cor), l2 = lum(bg);
+    const r = e.getBoundingClientRect(), v = document.documentElement.clientWidth, ponto = document.elementFromPoint(r.left + r.width / 2, r.top + Math.min(r.height / 2, 12));
+    return { visivel: !!ponto && e.contains(ponto), texto: e.textContent.trim(), contraste: (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05), esq: r.left >= -1, dir: r.right <= v + 1, alto: r.height > 8, fonte: parseFloat(getComputedStyle(b).fontSize), semRolagem: document.documentElement.scrollWidth <= v + 1 };
+  });
+  ok(av.texto === AVISO && av.visivel && av.esq && av.dir && av.alto && av.fonte >= 10 && av.contraste >= 4.5 && av.semRolagem, `${rot}: o aviso de vencimento antes da chegada está visível (nada o cobre) e inteiro na tela, com fonte de ${av.fonte.toFixed(1)} px, contraste ${av.contraste.toFixed(1)}:1 e sem rolagem lateral`);
+  await pg.screenshot({ path: `${CAPTURAS}/aviso-chegada-${rot.replace(/\s+/g, '-')}.png` });
   await pg.keyboard.press('Escape'); await esperar(300);
   await ctx.close();
 }

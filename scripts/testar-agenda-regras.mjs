@@ -91,6 +91,13 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
   const fin = dem('f', { etapa: 'Finalizado', prazo: '2026-11-05', prazo_original: '2026-11-05', concluida_em: '2026-11-04' });
   ok(marcosDaDemanda(fin, hoje).length === 0 && marcosDaDemanda(fin, hoje, true).length === 1 && marcosDaDemanda(fin, hoje, true)[0].atrasado === false, 'finalizada só aparece quando o filtro pede, no vencimento e nunca como atrasada');
   ok(marcosDaDemanda(dem('arq', { prazo: '2026-11-12', arquivada_em: '2026-11-01T00:00:00Z' }), hoje, true).length === 0, 'arquivada fica fora da Agenda');
+  // decisão 84: o detalhe do marco de vencimento acrescenta o aviso só quando o ajustado ficou antes da chegada (cálculo e data do marco intactos)
+  const TXT_AVISO = 'O vencimento antecipado ficou antes da chegada. Confira a chegada, o prazo e os dias indisponíveis cadastrados';
+  const mAntes = marcosDaDemanda(dem('mantes', { chegou_em: '2026-12-28', prazo_dias: 3, prazo_base_em: '2026-12-28', prazo_original: '2026-12-31', prazo: '2026-12-23', prazo_ajuste: '31/12 feriado: Recesso; 30/12 feriado: Recesso' }), hoje)[0];
+  const mDepois = marcosDaDemanda(dem('depois', { chegou_em: '2026-12-14', prazo_dias: 15, prazo_base_em: '2026-12-14', prazo_original: '2026-12-29', prazo: '2026-12-23', prazo_ajuste: '29/12 feriado: Recesso' }), hoje)[0];
+  const mSemCheg = marcosDaDemanda(dem('semcheg', { chegou_em: null, prazo_original: '2026-12-31', prazo: '2026-12-23', prazo_ajuste: '31/12 feriado: Recesso' }), hoje)[0];
+  ok(mAntes.data === '2026-12-23' && mAntes.detalhe.includes(`Prazo original 31/12/2026, antecipado. Dias pulados: 31/12 feriado: Recesso; 30/12 feriado: Recesso. ${TXT_AVISO}`) && mAntes.detalhe.endsWith('cadastrados'), 'Agenda: o marco de vencimento antes da chegada traz o aviso (a data do marco continua a do vencimento ajustado)');
+  ok(!mDepois.detalhe.includes('antes da chegada') && !mSemCheg.detalhe.includes('antes da chegada'), 'Agenda: ajustado depois da chegada (14/12) e chegada ausente não trazem o aviso');
   const pref = dem('p', { etapa: 'Aguardando Prefeita', prazo: '2026-11-14', prazo_original: '2026-11-14' });
   ok(marcosDaDemanda(pref, hoje).map((x) => x.tipo).join() === 'vencimento', 'Aguardando Prefeita mantém só o vencimento (a espera é texto, não data)');
 

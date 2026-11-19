@@ -729,21 +729,29 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
     ok((await busca(fin.id)).prazo === '2027-03-11', 'finalizada: o calendário novo também não mexe no vencimento do histórico');
     await cu('excluir_dia_indisponivel', { p_id: diaFin.dia.id });
 
-    // dois comportamentos ATUAIS que dependem de decisão de produto (nada mudou na etapa 4; o teste só os registra para ninguém os alterar sem querer)
-    // 1) arquivada: o calendário a recalcula como qualquer demanda não finalizada (já era assim); a chegada, não
+    // dois comportamentos MANTIDOS pela decisão 84 (aprovados; o teste os trava para ninguém os alterar sem querer)
+    // 1) "aberta", para o recálculo, é "não finalizada": a arquivada não finalizada é recalculada pelo calendário como qualquer outra (a chegada, não); a finalizada preserva o histórico, arquivada ou não
     const arq2 = await nova({ prazo_original: '2027-03-08' });
     await cu('arquivar_demanda', { p_id: arq2.id });
     const diaArq = await dia('2027-03-08', 'Feriado depois de arquivar');
     s = await busca(arq2.id);
-    ok(s.arquivada_em !== null && s.prazo === '2027-03-05' && /08\/03 feriado: Feriado depois de arquivar/.test(s.prazo_ajuste), 'comportamento atual: uma demanda arquivada (não finalizada) segue sendo recalculada pelo calendário, a partir do original');
+    ok(s.arquivada_em !== null && s.prazo === '2027-03-05' && /08\/03 feriado: Feriado depois de arquivar/.test(s.prazo_ajuste), 'decisão 84: uma demanda arquivada (não finalizada) segue sendo recalculada pelo calendário, a partir do original');
     await cu('excluir_dia_indisponivel', { p_id: diaArq.dia.id });
-    // 2) indisponibilidade prolongada: o vencimento recua sem limite inferior e pode ficar ANTES da chegada
+    // 2) indisponibilidade prolongada: o vencimento recua sem limite inferior e pode ficar ANTES da chegada (cálculo aprovado; a tela avisa, ver testar:prazo-chegada)
     const longa = await nova({ prazo_dias: 5, chegou_em: '2027-03-01' });
     for (const d of ['2027-03-01', '2027-03-02', '2027-03-03', '2027-03-04', '2027-03-05']) await dia(d, `Recesso ${d.slice(8)}`);
     s = await busca(longa.id);
-    ok(s.prazo_original === '2027-03-06' && s.prazo === '2027-02-26' && s.prazo < s.chegou_em, `comportamento atual: com a semana da chegada inteira indisponível, 01/03 + 5 dias (original 06/03) recua para ${s.prazo}, antes da chegada (01/03), sem aviso; decisão de produto pendente`);
+    ok(s.prazo_original === '2027-03-06' && s.prazo === '2027-02-26' && s.prazo < s.chegou_em, `decisão 84: com a semana da chegada inteira indisponível, 01/03 + 5 dias (original 06/03) recua para ${s.prazo}, antes da chegada (01/03): o cálculo é preservado e a tela é que avisa`);
     await limparDias();
     ok((await busca(longa.id)).prazo === '2027-03-05', 'e sem os dias indisponíveis o vencimento volta a 05/03');
+    // o exemplo aprovado da decisão 84: chegada 28/12/2026 + 3 dias, indisponível de 24/12/2026 a 03/01/2027 (um período): original 31/12, ajustado 23/12 (antes da chegada), original e chegada preservados
+    const virada = await nova({ prazo_dias: 3, chegou_em: '2026-12-28' });
+    const per = await cu('salvar_periodo_indisponivel', { p: { operacao_id: crypto.randomUUID(), data_inicio: '2026-12-24', data_fim: '2027-01-03', descricao: 'Recesso da virada', categoria: 'Feriado' } });
+    s = await busca(virada.id);
+    ok(virada.prazo_original === '2026-12-31' && s.chegou_em === '2026-12-28' && s.prazo_original === '2026-12-31' && s.prazo === '2026-12-23' && s.prazo < s.chegou_em && /^31\/12 feriado: Recesso da virada;.*24\/12 feriado: Recesso da virada$/.test(s.prazo_ajuste) && per.recalculadas >= 1, `decisão 84: chegada 28/12 + 3 dias com recesso de 24/12 a 03/01: original ${s.prazo_original}, ajustado ${s.prazo} (antes da chegada), chegada e original intactos, oito dias pulados`);
+    await cu('excluir_periodo_indisponivel', { p_periodo: per.periodo_id });
+    s = await busca(virada.id);
+    ok(s.prazo === '2026-12-31' && s.prazo_ajuste === null && s.prazo_original === '2026-12-31', 'decisão 84: removido o período, o vencimento volta ao original (o aviso depende só dos dados vigentes)');
 
     // isolamento: o recálculo e as chegadas são de cada usuário
     const deV = await c(V, 'criar_demanda', { p: { assunto: 'Do V', prazo_dias: 10, chegou_em: '2027-03-01' } });

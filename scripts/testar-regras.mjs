@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ajustarPrazo, prazoPorDias, somarDias, diaDaSemana, nomeDoDia, BOTOES_PRAZO, duracaoViva, recontarPelaChegada, sanearRascunho, textoFaltaChegada, erroDoPeriodo, diasNoPeriodo, agruparDias, MAX_DIAS_PERIODO } from '../src/lib/prazos.ts';
 import { avisosDoSistema, comLeitura, MSG_SEM_REDE, MSG_INCERTA } from '../src/lib/avisos-sistema.ts';
+import { AVISO_ANTES_DA_CHEGADA, venceAntesDaChegada } from '../src/lib/prazos.ts';
 import { modoTeste, medicaoLocalPermitida } from '../src/lib/supabase/config.ts';
 import { gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada, eObjeto } from '../src/lib/armazenamento.ts';
 import { aparenciaGuardada, APARENCIA_PADRAO, ePadrao, modoGuardado, temaDoModo, variaveisAparencia, CONJUNTOS, FONTES_TITULO, FONTES_TEXTO, FONTES_MONO, PALETAS, TEXTO, ICONE, CARD } from '../src/lib/aparencia.ts';
@@ -177,6 +178,26 @@ ok(ajustarPrazo('2027-03-07', nenhum).prazo === '2027-03-05' && ajustarPrazo('20
     ok(lidos.length === 1 && lidos[0].lido === true && naoLidos[0].lido === false && avisosDoSistema({ demandas: MSG_SEM_REDE, dias: MSG_SEM_REDE }).length === 1, 'avisos: marcar como lido só muda a marca (o problema continua na lista enquanto a causa existir)');
     ok(avisosDoSistema({ dias: null, demandas: null }).length === 0 && comLeitura(avisosDoSistema({}), ['conexao', 'dias']).length === 0, 'avisos: resolvida a causa, o problema sai da lista (e a marca de lido não sobra para valer no próximo)');
   }
+}
+// decisão 84: aviso de vencimento anterior à chegada. O cálculo continua o mesmo (antecipa até o último dia disponível); o aviso é derivado dos dados e só vale com antecipação real e ajustado ESTRITAMENTE antes da chegada
+{
+  const faixa = (de, ate, nome) => { const l = []; for (let d = de; d <= ate; d = somarDias(d, 1)) l.push(dia(d, nome, 'Feriado', `${nome}${d}`)); return l; };
+  const recesso = faixa('2026-12-24', '2027-01-03', 'Recesso');
+  const original = prazoPorDias(3, '2026-12-28'), a = ajustarPrazo(original, recesso);
+  ok(original === '2026-12-31' && a.prazo === '2026-12-23' && /^31\/12 feriado: Recesso;/.test(a.ajuste) && venceAntesDaChegada({ chegada: '2026-12-28', original, ajustado: a.prazo }), 'aviso da chegada: chegada 28/12/2026 + 3 dias, indisponível de 24/12 a 03/01: original 31/12, ajustado 23/12 (cálculo preservado) e o aviso vale');
+  const orig2 = prazoPorDias(15, '2026-12-14'), a2 = ajustarPrazo(orig2, faixa('2026-12-24', '2026-12-29', 'Recesso'));
+  ok(orig2 === '2026-12-29' && a2.prazo === '2026-12-23' && !venceAntesDaChegada({ chegada: '2026-12-14', original: orig2, ajustado: a2.prazo }), 'aviso da chegada: o caso aprovado (chegada 14/12 + 15 dias, original 29/12, ajustado 23/12) NÃO avisa: o ajustado é depois da chegada');
+  ok(!venceAntesDaChegada({ chegada: '2026-12-23', original, ajustado: '2026-12-23' }) && venceAntesDaChegada({ chegada: '2026-12-24', original, ajustado: '2026-12-23' }), 'aviso da chegada: ajustado igual à chegada não avisa; um dia antes da chegada avisa (estritamente anterior)');
+  ok(!venceAntesDaChegada({ chegada: null, original, ajustado: '2026-12-23' }) && !venceAntesDaChegada({ chegada: '', original, ajustado: '2026-12-23' }) && !venceAntesDaChegada({ original, ajustado: '2026-12-23' }) && !venceAntesDaChegada({ chegada: '2026-12-28', original: null, ajustado: '2026-12-23' }) && !venceAntesDaChegada({ chegada: '2026-12-28', original, ajustado: null }), 'aviso da chegada: chegada, original ou ajustado desconhecidos nunca geram aviso');
+  ok(!venceAntesDaChegada({ chegada: '2026-12-14', original: '2026-12-10', ajustado: '2026-12-10' }), 'aviso da chegada: um prazo escolhido à mão já anterior à chegada, sem antecipação, não é "antecipado" e não avisa');
+  ok(AVISO_ANTES_DA_CHEGADA === 'O vencimento antecipado ficou antes da chegada. Confira a chegada, o prazo e os dias indisponíveis cadastrados.', 'aviso da chegada: o texto é exatamente o aprovado');
+  // o sininho: escopo próprio (nem barra global nem faixa da tela), um item por demanda com id estável, ação que abre a demanda certa, sem duplicar a cada cálculo e sumindo com o dado
+  const lista = [{ id: 'dem-1', assunto: 'Ofício A' }, { id: 'dem-2', assunto: 'Ofício B' }];
+  const s1 = avisosDoSistema({ dias: 'erro do servidor' }, { antesDaChegada: lista }), s2 = avisosDoSistema({ dias: 'erro do servidor' }, { antesDaChegada: lista });
+  const sino = s1.filter((x) => x.escopo === 'sino');
+  ok(sino.length === 2 && sino.map((x) => x.id).join() === 'chegada-dem-1,chegada-dem-2' && sino.every((x) => x.orientacao === AVISO_ANTES_DA_CHEGADA && x.acao.abrir && !x.acao.recarregar && !x.acao.conferir) && sino[1].acao.abrir === 'dem-2' && /Ofício B/.test(sino[1].titulo), 'avisos: um item de sininho por demanda, com id estável e a ação "Abrir a demanda" apontando para a demanda certa');
+  ok(JSON.stringify(s1) === JSON.stringify(s2) && s1[0].escopo === 'global' && s1.filter((x) => x.escopo === 'global').length === 1 && new Set(s1.map((x) => x.id)).size === s1.length, 'avisos: o mesmo estado dá sempre a mesma lista (sem duplicar), com o problema global primeiro e nenhum item do sininho na barra global');
+  ok(avisosDoSistema({}, { antesDaChegada: [] }).length === 0 && avisosDoSistema({}, {}).length === 0 && comLeitura(avisosDoSistema({}, { antesDaChegada: [] }), ['chegada-dem-1']).length === 0 && comLeitura(avisosDoSistema({}, { antesDaChegada: lista }), ['chegada-dem-1']).filter((x) => x.lido).length === 1, 'avisos: corrigida a causa, o item some (e a marca de lido não sobra); lido marca só o item escolhido');
 }
 ok(permanencia({ chegou_em: '2027-03-01' }, '2027-03-04') === 3 && permanencia({ chegou_em: '2027-03-04' }, '2027-03-04') === 0 && permanencia({ chegou_em: null }, '2027-03-04') === null, 'permanência: dias corridos desde a chegada; sem chegada não há contagem inventada');
 ok(numeroDe({ numero: '' }) === '' && numeroDe({ numero: 's/n' }) === '' && numeroDe({ numero: '12/2026' }) === '12/2026' && origemDe({ origem: 'Não informada' }) === '' && origemDe({ origem: '' }) === '' && origemDe({ origem: 'TCE' }) === 'TCE', 'campos opcionais: vazio e os marcadores antigos ("s/n", "Não informada") significam "não informado"');
