@@ -239,7 +239,8 @@ for (const perfil of ['desktop', 'ipad']) {
   await pg.screenshot({ path: `${CAPTURAS}/celular-pilha.png` });
   await ctx.close();
 }
-// ---------- 3) um card só e movimento reduzido ----------
+// ---------- 3) movimento reduzido ----------
+// (a verificação "um card só" que ficava aqui media a Urgência, que nesta cena não tem nenhum card: passava sem medir nada. O caso de um card só está em testar:vagas-carrosseis, "1 de 1" sem passar.)
 {
   const { ctx, pg } = await abrir('celular', { extra: { reducedMotion: 'reduce' } });
   const dur = await pg.$eval(`${ATIVA} .ph-arrasto`, (e) => parseFloat(getComputedStyle(e).transitionDuration));
@@ -248,8 +249,6 @@ for (const perfil of ['desktop', 'ipad']) {
   const animou = pg.waitForSelector('[data-pilha][data-saindo]', { state: 'attached', timeout: 900 }).then(() => true, () => false);
   await deslizar(pg, c.x + c.w / 2 + 110, y, c.x + c.w / 2 - 110, y);
   ok((await ativo(pg)).assunto !== antes && !(await animou), 'com movimento reduzido o gesto troca o card na hora, sem saída animada');
-  const um = await pg.$eval('[data-nova-urgencia]', (e) => ({ pos: e.querySelector('.ph-posicao')?.textContent.trim(), passar: e.querySelector('[data-pilha-passar]')?.getAttribute('aria-disabled') === 'true' })).catch(() => null);
-  ok(um === null || um.pos === undefined || (um.pos === '1 de 1' && um.passar === true), `com um card só, a pilha mostra "1 de 1" e não oferece passar (${JSON.stringify(um)})`);
   await ctx.close();
 }
 parar();

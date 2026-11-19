@@ -260,6 +260,14 @@ const t1 = await novo({ viewport: { width: 1360, height: 900 } });
   await pg.dblclick('.modal .btn.pri'); await pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 });
   r = await rapido(pg, 'tarefa unica do mais'); ok(r.filter((x) => x.tipo === 'tarefa').length === 1, 'Nova tarefa pelo "+": gravada uma única vez');
   await fechaBusca(pg);
+  // o rascunho da Nova tarefa guarda também a demanda escolhida (Esc guarda; ao reabrir, volta o texto e a mesma demanda)
+  await pg.click('.fab'); await pg.click('.menuplus [role="menuitem"]:has-text("Nova tarefa")'); await pg.waitForSelector('#t-dem');
+  const segunda = await pg.$eval('#t-dem', (s) => s.options[1]?.value ?? '');
+  await pg.selectOption('#t-dem', segunda); await pg.fill('#t-texto', 'Rascunho com a segunda demanda'); await pg.waitForTimeout(900);
+  await pg.keyboard.press('Escape'); await pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 });
+  await pg.click('.fab'); await pg.click('.menuplus [role="menuitem"]:has-text("Nova tarefa")'); await pg.waitForSelector('#t-dem');
+  ok(!!segunda && (await pg.inputValue('#t-dem')) === segunda && (await pg.inputValue('#t-texto')) === 'Rascunho com a segunda demanda', 'Nova tarefa: depois de Esc, o rascunho volta com o texto e com a demanda escolhida (não a primeira da lista)');
+  await pg.click('.modal .btn:has-text("Cancelar")'); await pg.waitForFunction(() => !document.querySelector('.modal-ov'), null, { timeout: 15000 });
   // Documento e Chat só avisam
   await pg.click('.fab'); await pg.click('.menuplus [role="menuitem"]:has-text("Documento")', { force: true }); await pg.waitForSelector('#toast.on');
   ok(/Documento ainda não está implementado/.test((await pg.textContent('#toast')) ?? '') && !(await pg.$('.modal-ov')), 'Documento só avisa que está indisponível');

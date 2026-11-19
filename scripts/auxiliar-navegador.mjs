@@ -1,5 +1,4 @@
-// Auxiliar das suítes de navegador: o que toda suíte precisa e que antes era copiado em cada arquivo (servidor de teste, Edge, contexto com observação de erros, contador de verificações).
-// Mudar a forma de subir o servidor de teste (variáveis, espera, parada) ou de filtrar o ruído do console agora é uma mudança aqui, não em 20 arquivos. Nunca toca o Supabase real: o servidor
+// Auxiliar das suítes de navegador: o que toda suíte precisa (servidor de teste, Edge, contexto com observação de erros, contador de verificações). Nunca toca o Supabase real: o servidor
 // sobe com DMANDA_BANCO=teste (PGlite) numa pasta de dados descartável.
 import { chromium, webkit } from 'playwright-core';
 import { spawn, spawnSync } from 'node:child_process';

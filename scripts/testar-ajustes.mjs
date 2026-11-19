@@ -321,7 +321,7 @@ if (wk) await leitura('WebKit iPhone 13', wk, { ...devices['iPhone 13'] }, 'clar
   const texto = await pg.textContent('.modal');
   ok(/Há alterações só neste aparelho/.test(texto) && /Retomar edição/.test(texto), 'rascunho: a leitura informa que há alterações só neste aparelho e oferece retomar');
   ok(!(await pg.$('#e-texto')) && !/TEXTO SÓ NO APARELHO/.test(await pg.textContent('[data-leitura]')), 'rascunho: não entra em edição sozinha e a leitura mostra a versão salva');
-  ok(await pg.evaluate(() => [...document.querySelectorAll('.modal .acoes-entrada button')].every((b) => b.disabled)), 'rascunho: as ações da janela ficam desativadas enquanto o rascunho espera');
+  ok(await pg.evaluate(() => { const bs = [...document.querySelectorAll('.modal .acoes-entrada button')]; return bs.length > 0 && bs.every((b) => b.disabled); }), 'rascunho: as ações da janela ficam desativadas enquanto o rascunho espera');
   await pg.waitForTimeout(3000); // mais que o salvamento automático (1,2 s): nada pode ter sido enviado
   ok(/Só neste aparelho/.test(await pg.textContent('.modal .estado-entrada')), 'rascunho: passados 3 s, continua "só neste aparelho" (nada foi enviado em silêncio)');
   await pg.click('.modal .btn:has-text("Fechar")'); await janelaFechada(pg);

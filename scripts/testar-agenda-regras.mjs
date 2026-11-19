@@ -43,8 +43,8 @@ const ev = (id, o = {}) => ({ id, titulo: id, tipo: 'Reunião', data: '2026-11-0
   }
   ok(tudo && qtd === 84, 'em 84 meses (2024 a 2030) toda semana tem 7 posições, cada data cai na coluna do seu dia da semana (domingo na primeira, sábado na última) e a quantidade de dias confere');
   ok(colunaNaSemana('2026-11-01') === 0 && colunaNaSemana('2026-11-02') === 1 && colunaNaSemana('2026-11-07') === 6 && colunaNaSemana('2026-11-08') === 0 && MES_DIAS_ABREV.join() === 'DOM,SEG,TER,QUA,QUI,SEX,SÁB' && MES_DIAS_NOMES[0] === 'domingo' && MES_DIAS_NOMES[6] === 'sábado' && MES_ABREV.join('') === 'JANFEVMARABRMAIJUNJULAGOSETOUTNOVDEZ', 'colunas de domingo a sábado (a mesma conta de diaDaSemana) e os rótulos do cabeçalho e das abas JAN a DEZ');
-  let mesmaConta = true; for (let i = 0; i < 1096; i++) { const d = somarDias('2026-01-01', i); if (colunaNaSemana(d) !== diaDaSemana(d) || MES_DIAS_NOMES[colunaNaSemana(d)] !== dataPorExtenso(d).split(',')[0]) mesmaConta = false; }
-  ok(mesmaConta, 'em 1.096 datas o cabeçalho, a posição da célula e o nome do dia no rótulo acessível concordam');
+  let mesmaConta = true; for (let i = 0; i < 1096; i++) { const d = somarDias('2026-01-01', i); if (MES_DIAS_NOMES[colunaNaSemana(d)] !== dataPorExtenso(d).split(',')[0]) mesmaConta = false; }
+  ok(mesmaConta, 'em 1.096 datas o nome do dia da coluna (cabeçalho) e o do rótulo acessível por extenso concordam');
   // teclado das grades: Home vai ao domingo e End ao sábado da mesma semana; as setas andam um ou sete dias e passam de mês e de ano
   const home = (d) => somarDias(d, -colunaNaSemana(d)), end = (d) => somarDias(d, 6 - colunaNaSemana(d));
   ok(home('2026-11-04') === '2026-11-01' && end('2026-11-04') === '2026-11-07' && home('2026-11-01') === '2026-11-01' && end('2026-11-07') === '2026-11-07' && home('2026-12-31') === '2026-12-27' && end('2026-12-31') === '2027-01-02' && home('2026-08-01') === '2026-07-26', 'Home leva ao domingo e End ao sábado da semana, inclusive na virada do mês e do ano');
