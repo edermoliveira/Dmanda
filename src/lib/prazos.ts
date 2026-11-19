@@ -63,14 +63,17 @@ export function ajustarPrazo(original: string, dias: readonly DiaIndisponivel[])
   return { prazo: d, ajuste: pulados.length ? pulados.join('; ') : null };
 }
 
-/** O texto do aviso (decisão 84): o cálculo continua o mesmo, a antecipação só é sinalizada quando o vencimento ajustado fica antes da chegada. */
+/** Os textos do aviso (decisão 84). O cálculo continua o mesmo; o aviso só sinaliza que o vencimento efetivo ficou antes da chegada. O primeiro vale quando houve antecipação real, o segundo nos demais casos. */
 export const AVISO_ANTES_DA_CHEGADA = 'O vencimento antecipado ficou antes da chegada. Confira a chegada, o prazo e os dias indisponíveis cadastrados.';
+export const AVISO_VENCIMENTO_ANTES_DA_CHEGADA = 'O vencimento ficou antes da chegada. Confira a chegada, o prazo e os dias indisponíveis cadastrados.';
 /**
- * Verdadeiro só quando a chegada, o prazo original e o vencimento ajustado são conhecidos, a antecipação mexeu no prazo (ajustado antes do original) e o ajustado é ESTRITAMENTE anterior à chegada.
- * Um prazo escolhido à mão que já é anterior à chegada, sem antecipação, não é "antecipado": não dispara. Derivada dos dados, sem persistência: acompanha o que está vigente e some sozinha.
+ * Critério: a chegada e o vencimento efetivo (o ajustado) são conhecidos e o efetivo é ESTRITAMENTE anterior à chegada. Não depende do prazo original nem de ter havido antecipação.
+ * Derivada dos dados, sem persistência: acompanha o que está vigente e some sozinha.
  */
-export const venceAntesDaChegada = (c: { chegada?: string | null; original?: string | null; ajustado?: string | null }): boolean =>
-  !!c.chegada && !!c.original && !!c.ajustado && c.ajustado < c.original && c.ajustado < c.chegada;
+export const venceAntesDaChegada = (c: { chegada?: string | null; ajustado?: string | null }): boolean => !!c.chegada && !!c.ajustado && c.ajustado < c.chegada;
+/** O texto a mostrar, ou nulo sem aviso. Antecipação real (original conhecido e efetivo antes dele): o texto "antecipado"; prazo informado direto antes da chegada ou registro sem prazo original: o texto "ficou". */
+export const avisoAntesDaChegada = (c: { chegada?: string | null; original?: string | null; ajustado?: string | null }): string | null =>
+  !venceAntesDaChegada(c) ? null : c.original && c.ajustado! < c.original ? AVISO_ANTES_DA_CHEGADA : AVISO_VENCIMENTO_ANTES_DA_CHEGADA;
 
 const SEMANA_CURTA =['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 /** "sex, 05/03/2027": a data com o dia da semana, para a pessoa conferir o que o ajuste fez. */

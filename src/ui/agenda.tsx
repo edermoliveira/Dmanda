@@ -10,7 +10,7 @@ import { ChipEspera } from './cartoes';
 import { AvisosDaTela } from './avisos';
 import { useColunaFixa } from './coluna-fixa';
 import { diasDesde, plural, titulo, type Demanda } from '@/lib/demandas';
-import { somarDias, type DiaIndisponivel } from '@/lib/prazos';
+import { avisoAntesDaChegada, somarDias, type DiaIndisponivel } from '@/lib/prazos';
 import { horarioDe, sobrepostosA, type Evento } from '@/lib/eventos';
 import { eObjeto } from '@/lib/armazenamento';
 import {
@@ -46,8 +46,8 @@ function EtiquetaMarco({ m, hoje }: { m: Marco; hoje: string }) {
   return <span className="agd-tag" data-tipo={m.tipo} data-atrasado={m.atrasado || undefined}>{ROTULO_MARCO[m.tipo]}{m.atrasado ? ` · atrasado há ${plural(diasDesde(m.data, hoje), 'dia')}` : ''}</span>;
 }
 
-/** Marcos com nota na lista do dia: acompanhamento e retorno, e o vencimento que foi antecipado (mostra o prazo original e os dias pulados, decisão 81). */
-const comNota = (m: Marco) => m.tipo !== 'vencimento' || (m.demanda.etapa !== 'Finalizado' && !!m.demanda.prazo_original && m.demanda.prazo_original !== m.demanda.prazo);
+/** Marcos com nota na lista do dia: acompanhamento e retorno, e o vencimento que foi antecipado (mostra o prazo original e os dias pulados, decisão 81) ou que ficou antes da chegada (decisão 84). */
+const comNota = (m: Marco) => m.tipo !== 'vencimento' || (m.demanda.etapa !== 'Finalizado' && ((!!m.demanda.prazo_original && m.demanda.prazo_original !== m.demanda.prazo) || !!avisoAntesDaChegada({ chegada: m.demanda.chegou_em, original: m.demanda.prazo_original, ajustado: m.demanda.prazo })));
 
 /** Uma demanda no dia: os marcos dela que caem no dia (um item só, mesmo com dois marcos) e as tarefas pendentes, que se marcam aqui mesmo e atualizam a carga. */
 function ItemDemanda({ marcos, hoje, concluidas, compacto = false }: { marcos: Marco[]; hoje: string; concluidas: boolean; compacto?: boolean }) {

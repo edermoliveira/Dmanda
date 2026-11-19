@@ -2,10 +2,8 @@
 // Um aviso aqui é um PROBLEMA DE ESTADO que a pessoa consegue enfrentar dentro do Dmanda: uma leitura que falhou (sem conexão, ou o servidor não devolveu), vencimentos que a tela não conseguiu reler
 // depois de uma mudança no calendário, ou uma gravação de período cujo resultado ficou incerto. Em todos há uma ação direta ("carregar de novo", "conferir se foi gravado").
 // Barra, aviso da tela e sininho mostram o MESMO problema (mesmo id) e somem juntos quando a causa some. Marcar como lido só tira a contagem do sininho: a causa continua, e a barra também.
-// Exceção de escopo (decisão 84): o aviso de vencimento antecipado antes da chegada é um alerta sobre um DADO, derivado das demandas gravadas, e vale só no sininho (escopo "sino"), com a ação "Abrir a demanda".
+// Exceção de escopo (decisão 84): o aviso de vencimento antes da chegada é um alerta sobre um DADO, derivado das demandas gravadas, e vale só no sininho (escopo "sino"), com a ação "Abrir a demanda".
 // O que NÃO entra aqui: erro de código ou de regra de negócio. Esses viram mensagem da própria operação (o aviso rápido) ou um estado honesto no dado afetado, e o detalhe técnico fica no registro do servidor.
-
-import { AVISO_ANTES_DA_CHEGADA } from './prazos.ts';
 
 export type FonteId = 'demandas' | 'dias' | 'eventos' | 'entradas';
 /** Mensagens de rede. A de "sem conexão" vale para leitura e gravação (nada chegou ao servidor); a de "resultado incerto" é de gravação: o pedido saiu e a resposta não voltou. */
@@ -32,8 +30,8 @@ export type AvisoComLeitura = AvisoSistema & { lido: boolean };
 export type FalhasLeitura = Partial<Record<FonteId, string | null>>;
 /** Um período cuja gravação ficou com resultado incerto: a operação enviada e como a pessoa a conhece (descrição e datas). */
 export type PeriodoIncerto = { operacao_id: string; resumo: string };
-/** Uma demanda GRAVADA e aberta cujo vencimento antecipado ficou antes da chegada (a condição é decidida por `venceAntesDaChegada`, sobre os dados que o servidor devolveu). */
-export type DemandaAntesDaChegada = { id: string; assunto: string };
+/** Uma demanda GRAVADA e aberta cujo vencimento efetivo ficou antes da chegada, com o texto do aviso que cabe nela (decidido por `avisoAntesDaChegada`, sobre os dados que o servidor devolveu). */
+export type DemandaAntesDaChegada = { id: string; assunto: string; aviso: string };
 export type OutrosProblemas = { incertos?: readonly PeriodoIncerto[]; vencimentosDesatualizados?: boolean; antesDaChegada?: readonly DemandaAntesDaChegada[] };
 
 const NOME: Record<FonteId, string> = { demandas: 'as demandas', dias: 'os dias indisponíveis', eventos: 'os eventos da Agenda', entradas: 'as entradas' };
@@ -72,7 +70,7 @@ export function avisosDoSistema(falhas: FalhasLeitura, outros: OutrosProblemas =
     lista.push({ id: 'vencimentos', escopo: 'global', titulo: 'Os vencimentos na tela podem estar desatualizados.', orientacao: 'Um dia ou período indisponível mudou no servidor, mas a tela não conseguiu ler os vencimentos recalculados. Carregue as demandas de novo para ver as datas atuais.', acao: { rotulo: 'Carregar as demandas de novo', recarregar: 'demandas' } });
   }
   for (const d of outros.antesDaChegada ?? []) {
-    lista.push({ id: `chegada-${d.id}`, escopo: 'sino', titulo: `Vencimento antes da chegada: ${d.assunto}`, orientacao: AVISO_ANTES_DA_CHEGADA, acao: { rotulo: 'Abrir a demanda', abrir: d.id } });
+    lista.push({ id: `chegada-${d.id}`, escopo: 'sino', titulo: `Vencimento antes da chegada: ${d.assunto}`, orientacao: d.aviso, acao: { rotulo: 'Abrir a demanda', abrir: d.id } });
   }
   if (sem.length > 1) lista.push({ id: 'conexao', escopo: 'global', titulo: 'Sem conexão com o servidor.', orientacao: `Não carregaram: ${sem.map((f) => NOME[f]).join(', ')}. Confira a conexão com a internet e carregue tudo de novo. O que você já gravou não muda.`, acao: { rotulo: 'Carregar tudo de novo', recarregar: 'todas' } });
   for (const f of falhou) if (!(sem.length > 1 && sem.includes(f))) lista.push(aviso(f, falhas[f]!));

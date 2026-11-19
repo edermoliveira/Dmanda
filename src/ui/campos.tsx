@@ -10,7 +10,7 @@ import { anoReconhecido } from '@/lib/documentos';
 import {
   areasDoTipo, dataBR, diasAte, numeroDe, origemDe, permanencia, plural, temArea, type Area, type DadosDemanda, type Demanda,
 } from '@/lib/demandas';
-import { ajustarPrazo, AVISO_ANTES_DA_CHEGADA, BOTOES_PRAZO, dataComSemana, duracaoViva, prazoPorDias, recontarPelaChegada, textoFaltaChegada, venceAntesDaChegada, type DiaIndisponivel } from '@/lib/prazos';
+import { ajustarPrazo, avisoAntesDaChegada, BOTOES_PRAZO, dataComSemana, duracaoViva, prazoPorDias, recontarPelaChegada, textoFaltaChegada, type DiaIndisponivel } from '@/lib/prazos';
 import type { TarefaEdicao } from '@/nucleo/operacoes';
 
 export type Campos = {
@@ -126,10 +126,12 @@ export function PreviaPrazo({ c, dias, hoje }: { c: Campos; dias: readonly DiaIn
   const k = diasAte(r.prazo, hoje);
   const quanto = k < 0 ? `vencida há ${plural(-k, 'dia')}` : k === 0 ? 'vence hoje' : `faltam ${plural(k, 'dia')}`;
   const viva = duracaoViva({ ...c, chegou_em: c.chegou_em || null, prazo_base_em: c.prazo_base_em || null });
+  const aviso = avisoAntesDaChegada({ chegada: c.chegou_em, original: c.prazo_original, ajustado: r.prazo });   // decisão 84: só aqui, depois do ramo "a confirmar" (calendário confiável)
   return (
     <p className="prev-prazo" role="status">
       {viva ? <>{c.prazo_dias} dias corridos a partir da chegada ({dataBR(c.chegou_em)}), sem contar o dia da chegada: prazo original <b>{dataComSemana(c.prazo_original)}</b>. </> : <>Prazo original: <b>{dataComSemana(c.prazo_original)}</b>. </>}
-      {r.ajuste ? <>Vencimento antecipado para <b>{dataComSemana(r.prazo)}</b> ({quanto}).<span className="ajuste">Dias pulados: {r.ajuste}.</span>{venceAntesDaChegada({ chegada: c.chegou_em, original: c.prazo_original, ajustado: r.prazo }) ? <span className="ajuste" data-antes-chegada><b>{AVISO_ANTES_DA_CHEGADA}</b></span> : null}</> : <>Vencimento: <b>{dataComSemana(r.prazo)}</b> ({quanto}).</>}
+      {r.ajuste ? <>Vencimento antecipado para <b>{dataComSemana(r.prazo)}</b> ({quanto}).<span className="ajuste">Dias pulados: {r.ajuste}.</span></> : <>Vencimento: <b>{dataComSemana(r.prazo)}</b> ({quanto}).</>}
+      {aviso ? <span className="ajuste" data-antes-chegada><b>{aviso}</b></span> : null}
     </p>
   );
 }

@@ -1,7 +1,7 @@
 // Regras puras da Agenda (decisões 46 a 49): grade do mês e da semana, marcos das demandas (vencimento, acompanhamento e retorno do setor), data aplicável,
 // carga pendente do heatmap e dias mais cheios. Sem banco e sem relógio: "hoje" vem sempre de fora. Todas as datas são datas do calendário (AAAA-MM-DD), em UTC puro,
 // então não há deslocamento por fuso. Vencimento, ajuste de prazo e dias indisponíveis seguem exatamente as regras de prazos.ts: nada aqui reescreve um vencimento.
-import { AVISO_ANTES_DA_CHEGADA, diaDaSemana, somarDias, venceAntesDaChegada, type DiaIndisponivel } from './prazos.ts';
+import { avisoAntesDaChegada, diaDaSemana, somarDias, type DiaIndisponivel } from './prazos.ts';
 import { contagemRetorno, DIAS_RETORNO_SETOR, dataBR, diasAte, type Demanda } from './demandas.ts';
 import { ordenarEventos, type Evento } from './eventos.ts';
 
@@ -80,7 +80,11 @@ export function marcosDaDemanda(d: Demanda, hoje: string, comFinalizadas = false
   if (d.arquivada_em) return [];
   if (d.etapa === 'Finalizado') return comFinalizadas && d.prazo ? [{ tipo: 'vencimento', data: d.prazo, demanda: d, atrasado: false, detalhe: 'Demanda finalizada' }] : [];
   const m: Marco[] = [];
-  if (d.prazo) m.push({ tipo: 'vencimento', data: d.prazo, demanda: d, atrasado: diasAte(d.prazo, hoje) < 0, detalhe: d.prazo_original && d.prazo_original !== d.prazo ? `Prazo original ${dataBR(d.prazo_original)}, antecipado${d.prazo_ajuste ? `. Dias pulados: ${d.prazo_ajuste}` : ''}${venceAntesDaChegada({ chegada: d.chegou_em, original: d.prazo_original, ajustado: d.prazo }) ? `. ${AVISO_ANTES_DA_CHEGADA.replace(/\.$/, '')}` : ''}` : 'Prazo' });
+  if (d.prazo) {
+    const base = d.prazo_original && d.prazo_original !== d.prazo ? `Prazo original ${dataBR(d.prazo_original)}, antecipado${d.prazo_ajuste ? `. Dias pulados: ${d.prazo_ajuste}` : ''}` : 'Prazo';
+    const aviso = avisoAntesDaChegada({ chegada: d.chegou_em, original: d.prazo_original, ajustado: d.prazo });   // decisão 84; a nota da Agenda acrescenta o ponto final
+    m.push({ tipo: 'vencimento', data: d.prazo, demanda: d, atrasado: diasAte(d.prazo, hoje) < 0, detalhe: aviso ? `${base}. ${aviso.replace(/\.$/, '')}` : base });
+  }
   if (d.acompanhar_em) m.push({ tipo: 'acompanhamento', data: d.acompanhar_em, demanda: d, atrasado: diasAte(d.acompanhar_em, hoje) < 0, detalhe: 'Data digitada em Acompanhar em' });
   const r = contagemRetorno(d);
   if (r) m.push({ tipo: 'retorno', data: r.data, demanda: d, atrasado: diasAte(r.data, hoje) < 0, detalhe: `${DIAS_RETORNO_SETOR} dias desde ${dataBR(r.base)} (${r.origemBase})${r.ajuste ? `; antecipado: ${r.ajuste}` : ''}` });

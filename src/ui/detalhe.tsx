@@ -15,7 +15,7 @@ import {
 } from './campos';
 import { anoDoDocumento } from '@/lib/documentos';
 import { dataBR, diasAte, diasDesde, diasDesdeInstante, ETAPAS, numeroDe, origemDe, permanencia, plural, temArea, titulo, type DadosDemanda, type Demanda, type Etapa } from '@/lib/demandas';
-import { AVISO_ANTES_DA_CHEGADA, dataComSemana, sanearRascunho, venceAntesDaChegada } from '@/lib/prazos';
+import { avisoAntesDaChegada, dataComSemana, sanearRascunho } from '@/lib/prazos';
 import type { TarefaEdicao } from '@/nucleo/operacoes';
 
 const NOME_SECAO: Record<Secao, string> = { identificacao: 'Identificação', descricao: 'Descrição', chegada: 'Chegada e prazo', andamento: 'Andamento', tarefas: 'Tarefas' };
@@ -125,6 +125,7 @@ function Detalhe({ d }: { d: Demanda }) {
   // ---------- leitura ----------
   const perm = permanencia(d, hoje);
   const k = d.prazo ? diasAte(d.prazo, hoje) : null;
+  const avisoChegada = !fin && !d.arquivada_em ? avisoAntesDaChegada({ chegada: d.chegou_em, original: d.prazo_original, ajustado: d.prazo }) : null;   // decisão 84, só abertas e não arquivadas
   const situacaoPrazo = k === null ? '' : fin ? '' : k < 0 ? ` (vencida há ${plural(-k, 'dia')})` : k === 0 ? ' (vence hoje)' : ` (faltam ${plural(k, 'dia')})`;
   const dias0 = diasDesdeInstante(d.etapa_desde, hoje);
 
@@ -184,7 +185,8 @@ function Detalhe({ d }: { d: Demanda }) {
           {d.prazo ? (
             <>
               <dt>Vencimento</dt><dd><b>{dataComSemana(d.prazo)}</b>{situacaoPrazo}</dd>
-              {d.prazo_original && d.prazo_original !== d.prazo ? <><dt>Prazo original</dt><dd>{dataComSemana(d.prazo_original)}</dd><dt>Ajuste</dt><dd>Antecipado para o dia disponível anterior. Dias pulados: {d.prazo_ajuste}.</dd>{!fin && !d.arquivada_em && venceAntesDaChegada({ chegada: d.chegou_em, original: d.prazo_original, ajustado: d.prazo }) ? <><dt>Atenção</dt><dd data-antes-chegada><b>{AVISO_ANTES_DA_CHEGADA}</b></dd></> : null}</> : null}
+              {d.prazo_original && d.prazo_original !== d.prazo ? <><dt>Prazo original</dt><dd>{dataComSemana(d.prazo_original)}</dd><dt>Ajuste</dt><dd>Antecipado para o dia disponível anterior. Dias pulados: {d.prazo_ajuste}.</dd></> : null}
+              {avisoChegada ? <><dt>Atenção</dt><dd data-antes-chegada><b>{avisoChegada}</b></dd></> : null}
               {d.prazo_dias && d.prazo_base_em ? <><dt>Contagem</dt><dd>{d.prazo_dias} dias corridos {d.prazo_base_em === d.chegou_em ? `a partir da chegada (${dataBR(d.prazo_base_em)})` : `a partir de ${dataBR(d.prazo_base_em)} (${d.chegou_em ? 'não é a chegada atual' : 'sem data de chegada'}; contagem mantida)`}</dd></> : null}
               {!d.chegou_em && (d.prazo_legado || d.prazo_dias) ? <><dt>Base do cálculo</dt><dd data-sem-base>Sem data de chegada: a data registrada foi mantida e não há base para recalculá-la pela chegada. Os dias indisponíveis continuam ajustando o vencimento a partir dela.</dd></> : null}
               {d.prazo_legado ? <><dt>Origem do prazo</dt><dd>Já existia antes do cálculo por prazo original e foi mantido como referência.</dd></> : null}
