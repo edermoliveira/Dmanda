@@ -1,10 +1,8 @@
 'use server';
 // Ações do servidor de Entradas chamadas pela interface. Cada uma devolve { ok, dados | erro }: a tela só mostra sucesso quando o banco confirmou.
-import { chamar } from './banco';
-import { criarOperacoes, executar } from '@/nucleo/operacoes';
+import { operacoes as op } from './banco';
+import { executar } from '@/nucleo/operacoes';
 import type { DadosDemanda } from '@/lib/demandas';
-
-const op = () => criarOperacoes(chamar);
 
 export async function listarEntradas(arquivadas = false) {
   return executar(() => op().listarEntradas(arquivadas));

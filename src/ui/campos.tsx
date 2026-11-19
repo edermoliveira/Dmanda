@@ -7,6 +7,7 @@ import { Opcoes } from './janela-base';
 import { useApp } from './contexto';
 import { SeletorOpcao } from './seletor';
 import { anoReconhecido } from '@/lib/documentos';
+import { LIMITES } from '@/lib/limites';
 import {
   areasDoTipo, dataBR, diasAte, numeroDe, origemDe, permanencia, plural, temArea, type Area, type DadosDemanda, type Demanda,
 } from '@/lib/demandas';
@@ -60,7 +61,6 @@ export function paraDadosSecao(secao: Exclude<Secao, 'tarefas'>, c: Campos, base
   return { setor: c.setor.trim() || null, acompanhar_em: c.acompanhar_em || null, encaminhada_em: c.encaminhada_em || null, reiterada_em: c.reiterada_em || null };
 }
 
-/** Campos de um grupo que diferem do original. */
 export const mudou = (c: Campos, base: Campos, chaves: (keyof Campos)[]) => chaves.some((k) => c[k] !== base[k]);
 
 export const novoUuid = (): string =>
@@ -86,7 +86,7 @@ export function CamposIdentificacao({ c, mudar, prefixo, comDescricao, nota }: {
   const area = temArea(c.tipo), areas = areasDoTipo(c.tipo || null), reconhecido = anoReconhecido(c.numero);
   return (
     <>
-      <div className="fld"><label htmlFor={`${prefixo}-assunto`}>Assunto <small className="data">(obrigatório)</small></label><input id={`${prefixo}-assunto`} value={c.assunto} placeholder="Do que se trata?" maxLength={300} autoComplete="off" onChange={(e) => mudar({ assunto: e.target.value })} /></div>
+      <div className="fld"><label htmlFor={`${prefixo}-assunto`}>Assunto <small className="data">(obrigatório)</small></label><input id={`${prefixo}-assunto`} value={c.assunto} placeholder="Do que se trata?" maxLength={LIMITES.assunto} autoComplete="off" onChange={(e) => mudar({ assunto: e.target.value })} /></div>
       <div className="fld"><label htmlFor={`${prefixo}-origem`}>Origem da solicitação <small className="data">(opcional)</small></label>
         <SeletorOpcao campo="origem" id={`${prefixo}-origem`} rotulo="Origem da solicitação" valor={c.origem} aoEscolher={(v) => mudar({ origem: v })} />
       </div>
@@ -99,7 +99,7 @@ export function CamposIdentificacao({ c, mudar, prefixo, comDescricao, nota }: {
         </div>
       ) : null}
       <div className="dois">
-        <div className="fld"><label htmlFor={`${prefixo}-num`}>Número ou identificação <small className="data">(opcional)</small></label><input id={`${prefixo}-num`} value={c.numero} placeholder="Ex.: 32/2026 ou 2024/1250" maxLength={80} autoComplete="off" onChange={(e) => mudar({ numero: e.target.value })} /></div>
+        <div className="fld"><label htmlFor={`${prefixo}-num`}>Número ou identificação <small className="data">(opcional)</small></label><input id={`${prefixo}-num`} value={c.numero} placeholder="Ex.: 32/2026 ou 2024/1250" maxLength={LIMITES.numero} autoComplete="off" onChange={(e) => mudar({ numero: e.target.value })} /></div>
         <div className="fld"><label htmlFor={`${prefixo}-ano`}>Ano do documento <small className="data">(opcional)</small></label>
           <input id={`${prefixo}-ano`} inputMode="numeric" value={c.ano_documento} placeholder={reconhecido ? `${reconhecido} (reconhecido pelo número)` : 'Ex.: 2026'} maxLength={4} autoComplete="off" onChange={(e) => mudar({ ano_documento: e.target.value.replace(/\D/g, '') })} />
           <span className="data">{c.ano_documento ? 'Ano confirmado por você; apague para voltar a reconhecer pelo número.' : reconhecido ? `Reconhecido pelo número: ${reconhecido}.` : 'Sem ano confirmado. A demanda continua aparecendo em Todos.'}</span>

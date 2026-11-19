@@ -59,7 +59,6 @@ export function JanelaNova({ entradaId, entrada }: { entradaId?: string; entrada
     return () => clearTimeout(t);
   }, [d, sujoAntes, c, passo, idNovo, versaoBase, tarefas, nt, guardarRascunho, eId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ao trocar de passo, o foco vai para o primeiro campo do passo novo
   useEffect(() => { corpo.current?.querySelector<HTMLElement>('input:not([type=checkbox]):not([type=date]), textarea')?.focus(); }, [passo]);
 
   const rascunhoDoQueFicou = (): { chave: string; r: Parameters<typeof guardarRascunho>[1] } | null => {
@@ -95,7 +94,6 @@ export function JanelaNova({ entradaId, entrada }: { entradaId?: string; entrada
     setErro(''); setPasso(2);
   };
 
-  // passo 2 -> 3: cria a demanda (primeira vez) ou grava as alterações (volta ao passo anterior e muda algo)
   const salvarDemanda = async () => {
     if (trava.current) return;
     if (!c.assunto.trim()) { setPasso(1); setErro('Informe o assunto da demanda.'); return; }

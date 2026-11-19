@@ -42,7 +42,6 @@ function Gaveta() {
     return () => { vivo = false; };
   }, [carregarArquivadas]);
 
-  // foco na gaveta ao abrir, Esc fecha (a menos que algo aberto por cima cuide dele), Tab não sai, e ao fechar o foco volta a quem abriu
   useEffect(() => {
     const origem = document.activeElement as HTMLElement | null;
     ref.current?.focus({ preventScroll: true });
@@ -75,7 +74,6 @@ function Gaveta() {
   const max = Math.max(1, ...serie.map((p) => p.concluidas));
   const registroOk = !erroRegistros && !carregandoRegistros;   // só com os registros lidos é que "Sem registro" é verdade
 
-  // o histórico abre no dia mais recente (a rolagem horizontal vai ao fim)
   useEffect(() => { const r = rolagem.current; if (r) r.scrollLeft = r.scrollWidth; }, [registroOk]);
 
   const escolher = (dia: string) => setDiaSel(dia);

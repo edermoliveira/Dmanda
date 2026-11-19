@@ -20,7 +20,6 @@ export function emLote(pecas: Pedido[]) {
 /** Lembra, por peça, o que ela tinha (largura, altura, classes, texto e o "estado do aplicativo") quando foi ajustada: sem mudança, o ajuste anterior continua valendo. */
 const ASSINATURAS = new WeakMap<Element, string>();
 export type Pendentes<T extends HTMLElement> = T[] & { assinaturas: Map<Element, string> };
-/** Grava as assinaturas das peças que acabaram de ser ajustadas. */
 export const registrar = (...grupos: Pendentes<HTMLElement>[]) => grupos.forEach((g) => g.assinaturas.forEach((v, el) => ASSINATURAS.set(el, v)));
 /** Tudo que muda o ajuste de todas as peças de uma vez (tema, escala, largura do quadro, zoom, fontes), lido uma vez por passada. */
 export function epocaDoApp(app: Element, larguraQuadro: number) {

@@ -1,9 +1,11 @@
 // Validação das entradas das operações (puro, sem banco nem alias de importação: roda também nos testes de regras, direto no Node).
 // As regras de negócio ficam no banco (migrações); aqui só se confere o formato e se traduz o erro em mensagem para a pessoa.
+import { dataExiste } from '../lib/datas.ts';
 import { AREAS, ETAPAS, PRAZOS } from '../lib/demandas.ts';
 import { BOTOES_PRAZO, CATEGORIAS_DIA, erroDoPeriodo, type CategoriaDia } from '../lib/prazos.ts';
 import { COR_MAX_ACEITA, LIMITE_TEXTO, LIMITE_TITULO } from '../lib/entradas.ts';
-import { erroDoEvento, TIPOS_EVENTO, type DadosEvento } from '../lib/eventos.ts';
+import { erroDoEvento, LIMITE_DESCRICAO_EVENTO, LIMITE_TITULO_EVENTO, TIPOS_EVENTO, type DadosEvento } from '../lib/eventos.ts';
+import { LIMITES } from '../lib/limites.ts';
 import { DIAS_CORRECAO, NIVEIS, type Nivel } from '../lib/registros.ts';
 
 /** Erro com texto próprio para mostrar na tela. */
@@ -12,14 +14,12 @@ export class ErroDmanda extends Error {}
 export class ErroConflito extends ErroDmanda {}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DATA = /^\d{4}-\d{2}-\d{2}$/;
 export const id = (v: unknown, nome: string) => { if (typeof v !== 'string' || !UUID.test(v)) throw new ErroDmanda(`${nome} inválido.`); return v; };
 export const versaoDe = (v: unknown) => { if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) throw new ErroDmanda('Versão da demanda inválida. Recarregue a tela e abra a demanda de novo.'); return v; };
 export const enumerado = <T extends string>(v: unknown, lista: readonly T[], nome: string) => { if (typeof v !== 'string' || !(lista as readonly string[]).includes(v)) throw new ErroDmanda(`${nome} inválido.`); return v as T; };
 export const texto = (v: unknown, nome: string, max: number) => { if (typeof v !== 'string') throw new ErroDmanda(`${nome} inválido.`); if (v.length > max) throw new ErroDmanda(`${nome} passa de ${max} caracteres.`); return v; };
 /** Data que existe no calendário: o Date.parse do JavaScript aceita 30 de fevereiro (vira 2 de março) e o banco recusa, então a conferência refaz a data. */
-const dataExiste = (v: string) => { const [a, m, d] = v.split('-').map(Number); const x = new Date(Date.UTC(a, m - 1, d)); return x.getUTCFullYear() === a && x.getUTCMonth() === m - 1 && x.getUTCDate() === d; };
-const dataOuNulo = (v: unknown, nome: string) => { if (v === null || v === '') return null; if (typeof v !== 'string' || !DATA.test(v) || !dataExiste(v)) throw new ErroDmanda(`${nome} inválida.`); return v; };
+const dataOuNulo = (v: unknown, nome: string) => { if (v === null || v === '') return null; if (typeof v !== 'string' || !dataExiste(v)) throw new ErroDmanda(`${nome} inválida.`); return v; };
 
 /**
  * Confere o objeto vindo da tela e deixa só os campos conhecidos. Chave ausente = não mexe; null = limpa (chegada, prazo, setor, acompanhamento).
@@ -30,12 +30,12 @@ export function validarDados(entrada: unknown, { criando, aceitaEtapa = false }:
   if (!entrada || typeof entrada !== 'object' || Array.isArray(entrada)) throw new ErroDmanda('Dados da demanda inválidos.');
   const e = entrada as Record<string, unknown>, s: Record<string, unknown> = {};
   if ('id' in e && e.id !== undefined) s.id = id(e.id, 'Identificador');
-  if ('assunto' in e) { const a = texto(e.assunto, 'Assunto', 300); if (!a.trim()) throw new ErroDmanda(criando ? 'Informe o assunto da demanda.' : 'O assunto não pode ficar vazio.'); s.assunto = a; }
+  if ('assunto' in e) { const a = texto(e.assunto, 'Assunto', LIMITES.assunto); if (!a.trim()) throw new ErroDmanda(criando ? 'Informe o assunto da demanda.' : 'O assunto não pode ficar vazio.'); s.assunto = a; }
   else if (criando) throw new ErroDmanda('Informe o assunto da demanda.');
-  if ('numero' in e) s.numero = texto(e.numero, 'Número', 80);
-  if ('origem' in e) s.origem = texto(e.origem, 'Origem', 160);
-  if ('descricao' in e) s.descricao = texto(e.descricao, 'Descrição', 20_000);
-  if ('tipo' in e) { if (e.tipo === null || e.tipo === undefined) s.tipo = null; else { const t = texto(e.tipo, 'Tipo do documento', 80).trim(); s.tipo = t || null; } }
+  if ('numero' in e) s.numero = texto(e.numero, 'Número', LIMITES.numero);
+  if ('origem' in e) s.origem = texto(e.origem, 'Origem', LIMITES.origem);
+  if ('descricao' in e) s.descricao = texto(e.descricao, 'Descrição', LIMITES.descricao);
+  if ('tipo' in e) { if (e.tipo === null || e.tipo === undefined) s.tipo = null; else { const t = texto(e.tipo, 'Tipo do documento', LIMITES.tipo).trim(); s.tipo = t || null; } }
   if ('rapida' in e && e.rapida !== undefined) { if (typeof e.rapida !== 'boolean') throw new ErroDmanda('Marca Rápida inválida.'); s.rapida = e.rapida; }
   if ('documento_ano' in e) { if (e.documento_ano === null || e.documento_ano === '') s.documento_ano = null; else if (typeof e.documento_ano !== 'number' || !Number.isInteger(e.documento_ano) || e.documento_ano < 1900 || e.documento_ano > 2100) throw new ErroDmanda('Ano do documento inválido. Use um ano de 1900 a 2100.'); else s.documento_ano = e.documento_ano; }
   if ('area' in e) s.area = enumerado(e.area, AREAS, 'Área');
@@ -46,18 +46,18 @@ export function validarDados(entrada: unknown, { criando, aceitaEtapa = false }:
   if ('acompanhar_em' in e) s.acompanhar_em = dataOuNulo(e.acompanhar_em, 'Data de acompanhamento');
   if ('encaminhada_em' in e) s.encaminhada_em = dataOuNulo(e.encaminhada_em, 'Data do encaminhamento');
   if ('reiterada_em' in e) s.reiterada_em = dataOuNulo(e.reiterada_em, 'Data da reiteração');
-  if ('setor' in e) s.setor = e.setor === null ? null : texto(e.setor, 'Setor', 160);
+  if ('setor' in e) s.setor = e.setor === null ? null : texto(e.setor, 'Setor', LIMITES.setor);
   if ((criando || aceitaEtapa) && 'etapa' in e && e.etapa !== undefined) s.etapa = enumerado(e.etapa, ETAPAS, 'Etapa');
   return s;
 }
 
-/** Dia indisponível (feriado ou evento externo de dia inteiro) vindo da tela. Com "id" altera, sem "id" cria. */
+/** Dia indisponível (feriado ou evento externo de dia inteiro) vindo da tela. Só confere a forma: com "id" é uma alteração; sem "id" a forma também vale (o SQL cria assim, nas sementes e nos testes), mas a operação `salvarDia` só aceita alterar: um dia novo é um período de um dia (`validarPeriodo`). */
 export function validarDia(entrada: unknown): { id?: string; data: string; descricao: string; categoria: CategoriaDia } {
   if (!entrada || typeof entrada !== 'object' || Array.isArray(entrada)) throw new ErroDmanda('Dados do dia inválidos.');
   const e = entrada as Record<string, unknown>;
   const data = dataOuNulo(e.data ?? null, 'Data');
   if (!data) throw new ErroDmanda('Informe a data.');
-  const descricao = texto(e.descricao, 'Descrição', 160).trim();
+  const descricao = texto(e.descricao, 'Descrição', LIMITES.diaDescricao).trim();
   if (!descricao) throw new ErroDmanda('Descreva o dia, por exemplo: Natal.');
   const categoria = enumerado(e.categoria, CATEGORIAS_DIA, 'Categoria');
   return { ...(e.id ? { id: id(e.id, 'Dia') } : {}), data, descricao, categoria };
@@ -75,7 +75,7 @@ export function validarPeriodo(entrada: unknown): { operacao_id: string; periodo
   const operacao = id(e.operacao_id, 'Operação');
   const erroIntervalo = erroDoPeriodo(inicio ?? '', fim ?? '');
   if (erroIntervalo) throw new ErroDmanda(erroIntervalo);
-  const descricao = texto(e.descricao, 'Descrição', 160).trim();
+  const descricao = texto(e.descricao, 'Descrição', LIMITES.diaDescricao).trim();
   if (!descricao) throw new ErroDmanda('Descreva o período, por exemplo: Recesso de fim de ano.');
   const categoria = enumerado(e.categoria, CATEGORIAS_DIA, 'Categoria');
   return { operacao_id: operacao, ...(e.periodo_id ? { periodo_id: id(e.periodo_id, 'Período') } : {}), data_inicio: inicio!, data_fim: fim!, descricao, categoria };
@@ -134,8 +134,8 @@ export function validarEvento(entrada: unknown, { criando }: { criando: boolean 
   } else {
     // na alteração só se confere o que veio; o banco confere o resultado final com os campos que já estavam gravados
     if ('titulo' in s && !s.titulo) throw new ErroDmanda('O título não pode ficar vazio.');
-    if (typeof s.titulo === 'string' && s.titulo.length > 200) throw new ErroDmanda('O título passa de 200 caracteres.');
-    if (typeof s.descricao === 'string' && s.descricao.length > 5000) throw new ErroDmanda('A descrição passa de 5000 caracteres.');
+    if (typeof s.titulo === 'string' && s.titulo.length > LIMITE_TITULO_EVENTO) throw new ErroDmanda(`O título passa de ${LIMITE_TITULO_EVENTO} caracteres.`);
+    if (typeof s.descricao === 'string' && s.descricao.length > LIMITE_DESCRICAO_EVENTO) throw new ErroDmanda(`A descrição passa de ${LIMITE_DESCRICAO_EVENTO} caracteres.`);
   }
   return s;
 }
@@ -150,7 +150,7 @@ export function validarRegistros(entrada: unknown): { dia: string; humor: Nivel 
   return entrada.map((x) => {
     if (!x || typeof x !== 'object') throw new ErroDmanda('Dia inválido.');
     const r = x as Record<string, unknown>;
-    if (typeof r.dia !== 'string' || !DATA.test(r.dia) || !dataExiste(r.dia)) throw new ErroDmanda('Dia inválido.');
+    if (typeof r.dia !== 'string' || !dataExiste(r.dia)) throw new ErroDmanda('Dia inválido.');
     const nivel = (n: unknown): Nivel => { if (!NIVEIS.includes(n as Nivel)) throw new ErroDmanda('O humor precisa ser escolhido, de 1 a 5.'); return n as Nivel; };
     if (vistos.has(r.dia)) throw new ErroDmanda('O mesmo dia aparece mais de uma vez.');
     vistos.add(r.dia);
@@ -163,7 +163,7 @@ export function validarOpcao(campo: unknown, nome: unknown): { campo: 'origem' |
   const c = enumerado(campo, ['origem', 'tipo'] as const, 'Campo da opção');
   const n = (typeof nome === 'string' ? nome : '').replace(/\s+/g, ' ').trim();
   if (!n) throw new ErroDmanda(c === 'origem' ? 'Digite o nome da origem.' : 'Digite o nome do tipo de documento.');
-  if (n.length > 80) throw new ErroDmanda('O nome passa de 80 caracteres.');
+  if (n.length > LIMITES.opcao) throw new ErroDmanda(`O nome passa de ${LIMITES.opcao} caracteres.`);
   return { campo: c, nome: n };
 }
 

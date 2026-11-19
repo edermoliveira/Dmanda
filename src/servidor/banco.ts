@@ -2,7 +2,7 @@
 // um Postgres local descartável com as mesmas migrações. Os dois executam exatamente as mesmas funções SQL.
 import { createClient } from '@supabase/supabase-js';
 import { modoTeste } from '@/lib/supabase/config';
-import { ErroConflito, ErroDmanda, type Chamar } from '@/nucleo/operacoes';
+import { criarOperacoes, ErroConflito, ErroDmanda, type Chamar } from '@/nucleo/operacoes';
 
 type Banco = { db: import('@electric-sql/pglite').PGlite };
 const g = globalThis as unknown as { __dmandaBancoTeste?: Promise<Banco> };
@@ -45,7 +45,7 @@ export function clienteServico() {
 
 /**
  * Entrada direta (sem sessão do usuário): o servidor chama UMA função do banco, executar_como_titular, com a chave de serviço. Ela só aceita as operações da lista fixa do banco, assume o
- * titular único da lista protegida (nunca vem do pedido) e executa sob a RLS do papel authenticated, como a sessão do titular fazia. O navegador nunca recebe credencial nem escolhe usuário,
+ * titular único da lista protegida (nunca vem do pedido) e executa sob a RLS do papel authenticated. O navegador nunca recebe credencial nem escolhe usuário,
  * tabela ou função: quem chega aqui são as ações do servidor, com nomes e argumentos fixados em src/nucleo/operacoes.ts.
  */
 const chamarSupabase: Chamar = async (funcao, args) => {
@@ -70,3 +70,6 @@ export const chamarServico = async (funcao: string, args: Record<string, unknown
 };
 
 export const chamar: Chamar = (funcao, args) => (modoTeste() ? chamarTeste(funcao, args) : chamarSupabase(funcao, args));
+
+/** As operações de demandas, tarefas, entradas, agenda e perfil sobre o transporte atual: as ações do servidor e a exportação partem daqui (o transporte nunca varia entre elas). */
+export const operacoes = () => criarOperacoes(chamar);

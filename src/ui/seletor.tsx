@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { chaveOpcao } from '@/lib/documentos';
+import { LIMITES } from '@/lib/limites';
 
 export type CampoOpcao = 'origem' | 'tipo';
 const TEXTOS: Record<CampoOpcao, { vazio: string; criar: string; placeholder: string; erroNome: string }> = {
@@ -104,7 +105,7 @@ export function SeletorOpcao({ campo, rotulo, valor, aoEscolher, id }: { campo: 
           <div className="sel-rodape">
             {criando ? (
               <div className="sel-novo">
-                <input ref={campoNome} value={nome} maxLength={80} placeholder={t.placeholder} aria-label={t.placeholder} aria-invalid={!!erro} aria-describedby={erro ? `${base}-e` : undefined} autoComplete="off" disabled={gravando}
+                <input ref={campoNome} value={nome} maxLength={LIMITES.opcao} placeholder={t.placeholder} aria-label={t.placeholder} aria-invalid={!!erro} aria-describedby={erro ? `${base}-e` : undefined} autoComplete="off" disabled={gravando}
                   onChange={(e) => { setNome(e.target.value); setErro(''); }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void salvar(); } }} />
                 <div className="sel-acoes">
                   <button type="button" className="btn mini" disabled={gravando} onClick={() => { setCriando(false); setErro(''); setNome(''); queueMicrotask(() => pop.current?.focus()); }}>Cancelar</button>

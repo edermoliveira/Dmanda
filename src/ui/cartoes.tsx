@@ -12,7 +12,6 @@ const curto = (n: number) => `${n} d`;
 const matiz = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; };
 const AREA_NOME = { Geral: 'geral', Pessoal: 'de pessoal', Compras: 'de compras' } as const;
 
-// origem é opcional: sem origem não aparece nada (nem "Não informada")
 export const OrigemP = ({ d }: { d: Demanda }) => (origemDe(d) ? <span className="origem-p"><i className="pt" style={{ '--h': matiz(origemDe(d)) } as React.CSSProperties} />{origemDe(d)}</span> : <span className="origem-p" />);
 const Numero = ({ d }: { d: Demanda }) => (numeroDe(d) ? <span className="num mono">{numeroDe(d)}</span> : null);
 export const ChipTipo = ({ d }: { d: Demanda }) => (

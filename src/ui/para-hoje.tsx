@@ -11,20 +11,18 @@ import { useApp } from './contexto';
 import { CardDemanda } from './cartoes';
 import { Ajuda } from './ajuda';
 import { Baralho, BaralhoSimples, FaixaCards, useModo } from './baralho';
-import { eObjeto } from '@/lib/armazenamento';
+import { eObjeto, guardarNoNavegador, lerGuardado } from '@/lib/armazenamento';
 import { ativoParaOFim, candidatasParaVagas, elegiveisParaHoje, ETAPA_SEGUINTE, etapaDeEspera, ordemDaPilha, precisaCompletar, urgenciasDoInicio, vagasAbertas } from '@/lib/para-hoje';
 import { plural, type Demanda } from '@/lib/demandas';
 
 const CHAVE_ORDEM = 'dmanda:para-hoje-ordem';
 type OrdemGuardada = { dia: string; ids: string[] };
 function lerOrdem(): OrdemGuardada | null {
-  try {
-    const v = JSON.parse(localStorage.getItem(CHAVE_ORDEM) ?? 'null') as unknown;
-    if (!eObjeto(v) || typeof v.dia !== 'string' || !Array.isArray(v.ids)) return null;
-    return { dia: v.dia, ids: v.ids.filter((x): x is string => typeof x === 'string') };
-  } catch { return null; }
+  const v = lerGuardado<unknown>(CHAVE_ORDEM, null);
+  if (!eObjeto(v) || typeof v.dia !== 'string' || !Array.isArray(v.ids)) return null;
+  return { dia: v.dia, ids: v.ids.filter((x): x is string => typeof x === 'string') };
 }
-function gravarOrdem(o: OrdemGuardada) { try { localStorage.setItem(CHAVE_ORDEM, JSON.stringify(o)); } catch { /* sem armazenamento: vale só nesta visita */ } }
+const gravarOrdem = (o: OrdemGuardada) => guardarNoNavegador(CHAVE_ORDEM, o);
 
 type Vaga = { posicao: number; demanda: Demanda };
 
@@ -121,12 +119,10 @@ export function ParaHoje() {
   const abertas = useMemo(() => vagasAbertas(paraHoje, demandas), [paraHoje, demandas]);
   const ocupadas = new Set(abertas.map((v) => v.demanda.id));
   const faltaCompletar = precisaCompletar(paraHoje, demandas, elegiveis);
-  // as livres são preenchidas pela melhor candidata: pedidos da Prefeita e do Gabinete primeiro, depois a ordem das elegíveis
   const candidatas = faltaCompletar ? candidatasParaVagas(elegiveis, ocupadas).slice(0, 10).map((e) => e.demanda.id).join(',') : '';
   // preenche (ou repõe) só as vagas livres; a lista só muda quando as candidatas mudam, então uma resposta sem efeito não repete a chamada
   useEffect(() => { if (!carregando && hoje !== '2000-01-01' && candidatas) void sincronizarParaHoje(candidatas.split(',')); }, [candidatas, carregando, hoje, sincronizarParaHoje]);
   // Urgência (decisão 80): fora das vagas, sem repetir nenhuma demanda; na web e no iPad é uma faixa de cards lado a lado com rolagem horizontal própria, no iPhone segue o baralho.
-  // O Início tem só estas duas seções de demandas: o antigo "Na fila" e as listas dos contadores saíram (as demais demandas estão em Demandas).
   const { demandas: urgentes, proximos } = useMemo(() => urgenciasDoInicio(paraHoje, demandas, hoje), [paraHoje, demandas, hoje]);
   return (
     <section ref={secao} className="sec ph" data-painel="para-hoje" data-modo={modo} aria-labelledby="ph-t">

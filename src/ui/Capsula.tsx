@@ -11,7 +11,6 @@ export function Capsula({ sel, chave }: { sel: string; chave: string }) {
   const ref = useRef<HTMLElement>(null);
   const anterior = useRef<Ret | null>(null);
 
-  // acompanha a seleção: mede o item marcado e, se a cápsula já estava posicionada, anima do lugar antigo para o novo
   useLayoutEffect(() => {
     const t = ref.current, pai = t?.parentElement;
     const s = pai?.querySelector<HTMLElement>(sel);

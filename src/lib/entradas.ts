@@ -1,3 +1,4 @@
+import { LIMITES } from './limites.ts';
 // Regras puras de Entradas (anotações em post-its): estados, tags, busca, ordem, conversão em demanda e conflito de edição. Sem banco, sem relógio e sem imports
 // (roda também direto no Node, nos testes de regras). As regras que protegem os dados ficam no banco (migração 10); aqui só o que a tela precisa derivar.
 
@@ -17,7 +18,6 @@ export type Entrada = {
   atualizado_em: string;
 };
 
-/** Os campos que a pessoa edita em uma anotação. */
 export type CamposEntrada = { titulo: string; texto: string; cor: number; fixada: boolean };
 
 export const COR_AUTOMATICA = -1;
@@ -26,8 +26,8 @@ export const QTD_CORES = 5;
 export const COR_MAX_ACEITA = 5;
 export const LIMITE_TITULO = 200;
 export const LIMITE_TEXTO = 20_000;
-/** O assunto de uma demanda tem no máximo 300 caracteres (validacao.ts). */
-const LIMITE_ASSUNTO = 300;
+/** O assunto de uma demanda que nasce de uma anotação tem o limite de assunto de qualquer demanda. */
+const LIMITE_ASSUNTO = LIMITES.assunto;
 
 export type EstadoEntrada = 'ativa' | 'arquivada' | 'convertida';
 export const estadoDe = (e: Pick<Entrada, 'arquivada_em' | 'demanda_id'>): EstadoEntrada => (e.demanda_id ? 'convertida' : e.arquivada_em ? 'arquivada' : 'ativa');
@@ -49,7 +49,6 @@ export const carimbo = (iso: string) => {
   const p = Object.fromEntries(new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
   return `${p.day}/${p.month}/${p.year} às ${p.hour}:${p.minute}`;
 };
-/** Tags com a contagem de anotações de cada uma, em ordem alfabética. */
 export function contarTags(lista: Pick<CamposEntrada, 'titulo' | 'texto'>[]): [string, number][] {
   const m = new Map<string, number>();
   for (const e of lista) for (const t of tagsDe(e)) m.set(t, (m.get(t) ?? 0) + 1);

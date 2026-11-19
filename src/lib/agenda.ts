@@ -10,7 +10,6 @@ export const NOMES_MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'ju
 /** Cabeçalho dos calendários, de domingo a sábado (14/11/2026: todos os calendários do Dmanda seguem esta ordem; a posição é a de `diaDaSemana`, 0 é domingo e 6 é sábado). */
 export const MES_DIAS_ABREV = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 export const MES_DIAS_NOMES = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
-/** As abas de meses (JAN a DEZ), na ordem do ano. */
 export const MES_ABREV = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 const NOMES_DIA_LONGO = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
 

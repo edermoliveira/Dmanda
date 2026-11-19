@@ -11,6 +11,7 @@ import { Icone } from './Icone';
 import { Janela } from './janela-base';
 import { dataPorExtenso } from '@/lib/agenda';
 import { dataBR } from '@/lib/demandas';
+import { LIMITES } from '@/lib/limites';
 import { CATEGORIAS_DIA, dataComSemana, diasNoPeriodo, erroDoPeriodo, ROTULO_CATEGORIA, type CategoriaDia } from '@/lib/prazos';
 
 /** `id`: um dia avulso que está sendo alterado. `periodo_id`: um período que está sendo alterado (`data` é o primeiro dia e `data_fim` o último). `data_fim` vazio ou igual a `data`: um dia só. */
@@ -40,7 +41,7 @@ export function CamposDiaIndisponivel({ prefixo, valor, mudar, aoEnviar }: { pre
       <div className="fld"><label htmlFor={`${prefixo}-cat`}>Tipo</label>
         <select id={`${prefixo}-cat`} value={valor.categoria} onChange={(e) => mudar({ categoria: e.target.value as CategoriaDia })}>{CATEGORIAS_DIA.map((c) => <option key={c} value={c}>{ROTULO_CATEGORIA[c]}</option>)}</select></div>
       <div className="fld fld-inteira"><label htmlFor={`${prefixo}-desc`}>Descrição</label>
-        <input id={`${prefixo}-desc`} value={valor.descricao} maxLength={160} placeholder="Ex.: Natal, Congresso da AMVARS, Recesso de fim de ano" autoComplete="off" onChange={(e) => mudar({ descricao: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); aoEnviar(); } }} /></div>
+        <input id={`${prefixo}-desc`} value={valor.descricao} maxLength={LIMITES.diaDescricao} placeholder="Ex.: Natal, Congresso da AMVARS, Recesso de fim de ano" autoComplete="off" onChange={(e) => mudar({ descricao: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); aoEnviar(); } }} /></div>
       {periodo && valor.data && valor.data_fim ? (
         <p className="data fld-inteira di-resumo" role="status" data-periodo-resumo data-invalido={erroIntervalo ? 'sim' : undefined}>
           {erroIntervalo ?? `Período de ${dataComSemana(valor.data)} a ${dataComSemana(valor.data_fim)}: ${diasNoPeriodo(valor.data, valor.data_fim)} dias, com os fins de semana. Todos entram como indisponíveis.`}

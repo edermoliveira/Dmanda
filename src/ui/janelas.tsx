@@ -25,10 +25,10 @@ export function JanelaTarefa() {
   // rascunho automático (ver a janela de edição)
   useEffect(() => {
     if (!sujo) return;
-    const t = setTimeout(() => guardarRascunho('tarefa', { dados: { assunto: '' }, nt: texto }), 500);
+    const t = setTimeout(() => guardarRascunho('tarefa', { dados: { assunto: '', dem }, nt: texto }), 500);   // `dem` volta com o rascunho (a leitura acima já o esperava, mas ele nunca era guardado)
     return () => clearTimeout(t);
-  }, [sujo, texto, guardarRascunho]);
-  const fecharGuardando = () => { guardarRascunho('tarefa', sujo ? { dados: { assunto: '' }, nt: texto } : null); fecharJanela(); };
+  }, [sujo, texto, dem, guardarRascunho]);
+  const fecharGuardando = () => { guardarRascunho('tarefa', sujo ? { dados: { assunto: '', dem }, nt: texto } : null); fecharJanela(); };
   const cancelar = () => { guardarRascunho('tarefa', null); fecharJanela(); };
   const adicionar = async () => { if (!dem || !texto.trim()) return; setSalvando(true); const r = await adicionarTarefa(dem, texto.trim(), tentativa.id(`${dem}|${texto.trim()}`)); setSalvando(false); if (r) { tentativa.limpar(); guardarRascunho('tarefa', null); fecharJanela(); } };
   return (

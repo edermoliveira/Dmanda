@@ -9,7 +9,7 @@ import { atrasada, ETAPA_COR, ETAPAS, feitas, numeroDe, ordemDaEtapa, ordenar, o
 
 // O título é a informação principal do card: ele nunca é espremido para dar lugar ao resto. Linhas que o título mantém: o que o texto precisar, até TETO_TITULO, e nunca
 // menos que MINIMO_TITULO (ou o que o texto tiver, se for curto). Quando falta altura, cede primeiro a descrição (menos linhas, depois some), depois o tempo, só
-// então o título perde linhas (até o mínimo) e por último saem a etapa e a barra de progresso. (A distinção Legal/Próprio saiu da interface, decisão 81.) O título sempre ocupa linhas inteiras (nunca uma letra cortada ao meio).
+// então o título perde linhas (até o mínimo) e por último saem a etapa e a barra de progresso. O título sempre ocupa linhas inteiras (nunca uma letra cortada ao meio).
 // Tudo é recalculado do zero a cada ajuste: ao voltar a existir espaço (janela maior, menu recolhido, zoom menor), o que saiu reaparece.
 const TETO_TITULO = 4;
 const MINIMO_TITULO = 2;

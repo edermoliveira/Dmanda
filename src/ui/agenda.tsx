@@ -12,7 +12,7 @@ import { useColunaFixa } from './coluna-fixa';
 import { diasDesde, plural, titulo, type Demanda } from '@/lib/demandas';
 import { avisoAntesDaChegada, somarDias, type DiaIndisponivel } from '@/lib/prazos';
 import { horarioDe, sobrepostosA, type Evento } from '@/lib/eventos';
-import { eObjeto } from '@/lib/armazenamento';
+import { eObjeto, guardarNoNavegador, lerGuardado } from '@/lib/armazenamento';
 import {
   anoMes, cargaPorDia, colunaNaSemana, dataCurta, dataPorExtenso, descreverDia, diaDoMes, diaNaoUtil, fimDeSemana, gradeMes, motivoNaoUtil, itensDoDia, itensParaGrade, LIMIARES_CARGA, marcosPorDia, MES_ABREV, MES_DIAS_ABREV, MES_DIAS_NOMES, nivelDaCarga, nomeLongoDoDia, NOMES_MES, panorama,
   pendenciasSemPrazo, primeiroDoMes, recortarItensGrade, ROTULO_MARCO, ROTULO_NIVEL, rotuloSemana, semanaDe, somarMeses, tituloMes, trocarMes, diasNoMes, type CargaDia, type ItemGrade, type Marco, type NivelCarga, type OpcoesAgenda, type TipoMarco,
@@ -32,13 +32,11 @@ const FAIXA_NIVEL: Record<NivelCarga, string> = { zero: '0', baixa: `${LIMIARES_
 
 // o que está guardado pode estar corrompido ou ser de outra versão: só entra o que tem a forma esperada
 function lerPrefs(): Preferencias {
-  try {
-    const v = JSON.parse(localStorage.getItem(CHAVE) ?? 'null') as unknown;
-    if (!eObjeto(v)) return {};
-    return { modo: MODOS.some(([m]) => m === v.modo) ? (v.modo as Modo) : undefined, cat: CATEGORIAS.some(([c]) => c === v.cat) ? (v.cat as Categoria) : undefined, concluidas: v.concluidas === true, finalizadas: v.finalizadas === true };
-  } catch { return {}; }
+  const v = lerGuardado<unknown>(CHAVE, null);
+  if (!eObjeto(v)) return {};
+  return { modo: MODOS.some(([m]) => m === v.modo) ? (v.modo as Modo) : undefined, cat: CATEGORIAS.some(([c]) => c === v.cat) ? (v.cat as Categoria) : undefined, concluidas: v.concluidas === true, finalizadas: v.finalizadas === true };
 }
-function gravarPrefs(p: Preferencias) { try { localStorage.setItem(CHAVE, JSON.stringify(p)); } catch { /* sem armazenamento: vale só nesta visita */ } }
+const gravarPrefs = (p: Preferencias) => guardarNoNavegador(CHAVE, p);
 
 // ---------- peças ----------
 /** Contexto de um marco: o rótulo do tipo e a situação (atrasado ou no prazo). */
@@ -550,7 +548,6 @@ export function PaginaAgenda() {
   const carga = useMemo(() => (verDemandas ? cargaPorDia(demandas, hoje) : new Map<string, CargaDia>()), [verDemandas, demandas, hoje]);
   const semPrazo = useMemo(() => pendenciasSemPrazo(demandas, hoje), [demandas, hoje]);
   const eventosVisiveis = useMemo(() => (verEventos ? eventos : []), [verEventos, eventos]);
-  // o que o Mês e a gaveta mostram já respeita o filtro Tudo, Demandas ou Compromissos
   const opcoesCat: OpcoesAgenda = useMemo(() => ({ ...opcoes, demandas: verDemandas ? opcoes.demandas : [], eventos: verEventos ? opcoes.eventos : [] }), [opcoes, verDemandas, verEventos]);
   // os registros de uma data (um dia avulso e um período podem cobrir a mesma data): o mesmo tipo e a mesma descrição aparecem uma vez só
   const indispPorData = useMemo(() => { const m = new Map<string, DiaIndisponivel[]>(); for (const x of dias) { const l = m.get(x.data) ?? []; if (!l.some((y) => y.categoria === x.categoria && y.descricao.trim() === x.descricao.trim())) m.set(x.data, [...l, x]); } return m; }, [dias]);

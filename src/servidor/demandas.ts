@@ -1,12 +1,10 @@
 'use server';
 // Ações do servidor chamadas pela interface. Cada uma devolve { ok, dados | erro }: a tela só mostra sucesso quando o banco confirmou.
-import { chamar } from './banco';
-import { criarOperacoes, executar, type TarefaEdicao } from '@/nucleo/operacoes';
+import { chamar, operacoes as op } from './banco';
+import { executar, type TarefaEdicao } from '@/nucleo/operacoes';
 import type { DadosDemanda, Etapa } from '@/lib/demandas';
 import type { CategoriaDia } from '@/lib/prazos';
 import { modoTeste } from '@/lib/supabase/config';
-
-const op = () => criarOperacoes(chamar);
 
 // Só para os testes automatizados: sem lembretes de humor (o convite da entrada é uma janela e atrapalharia os testes de outras telas). Nunca vale em produção.
 const semLembretes = () => process.env.DMANDA_SEM_LEMBRETES === 'sim' && (modoTeste() || process.env.NODE_ENV !== 'production');

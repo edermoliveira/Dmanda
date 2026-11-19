@@ -4,18 +4,19 @@
 // O estado guardado (dmanda:lembretes) tem contagens e datas, nunca o humor. Duas abas do mesmo aparelho dividem o mesmo estado e se revezam por um travamento
 // do navegador (Web Locks), então um lembrete não aparece duas vezes nem se perde. Cada aparelho tem o seu relógio; o registro do dia, esse sim, vale para todos (está no banco).
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { guardarNoNavegador, lerGuardado } from '@/lib/armazenamento';
 import { useApp } from './contexto';
 import { Icone } from './Icone';
 import { Janela } from './janela-base';
 import { EscalaCinco, FormularioRegistro } from './escala';
 import { hojeISO } from '@/lib/demandas';
-import { estadoInicial, lerEstado, OCIOSO_MS, resolver, tique, type EstadoLembretes, type Pendente } from '@/lib/lembretes';
+import { lerEstado, OCIOSO_MS, resolver, tique, type EstadoLembretes, type Pendente } from '@/lib/lembretes';
 import { diasPendentes, diaPorExtenso, type Nivel } from '@/lib/registros';
 
 const CHAVE = 'dmanda:lembretes';
 const TIQUE_MS = 30_000;
-const lerDoAparelho = (dia: string, agora: number): EstadoLembretes => { try { return lerEstado(JSON.parse(localStorage.getItem(CHAVE) ?? 'null'), dia, agora); } catch { return estadoInicial(dia, agora); } };
-const gravarNoAparelho = (s: EstadoLembretes) => { try { localStorage.setItem(CHAVE, JSON.stringify(s)); } catch { /* sem armazenamento: o lembrete vale só nesta visita */ } };
+const lerDoAparelho = (dia: string, agora: number): EstadoLembretes => lerEstado(lerGuardado<unknown>(CHAVE, null), dia, agora);
+const gravarNoAparelho = (s: EstadoLembretes) => guardarNoNavegador(CHAVE, s);
 /** Uma aba por vez mexe no estado (se o navegador não tiver o travamento, segue sem ele). */
 const exclusivo = async (f: () => void) => { if (typeof navigator !== 'undefined' && navigator.locks?.request) await navigator.locks.request('dmanda-lembretes', f); else f(); };
 

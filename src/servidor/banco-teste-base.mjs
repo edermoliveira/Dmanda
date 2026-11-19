@@ -38,6 +38,7 @@ grant usage on schema public to service_role; grant usage on schema auth to serv
 // Bancos criados antes do registro existir já tinham as duas primeiras migrações.
 const JA_TINHAM = ['20261025000000_nucleo_demandas.sql', '20261025000100_salvar_demanda.sql'];
 
+// `raizMigracoes` (usada por testar:banco e comparar:prazos-legados) aponta para uma pasta com só as migrações de uma época: o banco nasce no esquema antigo para o teste de atualização.
 const RAIZ_MIGRACOES = join(/*turbopackIgnore: true*/ process.cwd(), 'supabase', 'migrations');
 
 /** O titular do banco de teste: o usuário e o e-mail autorizado que o servidor de desenvolvimento e as suítes usam. */
@@ -47,7 +48,7 @@ export async function prepararTitularDeTeste(db, usuario = USUARIO_TESTE) {
   await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
 }
 
-export async function abrirBancoTeste({ pasta } = {}) {
+export async function abrirBancoTeste({ pasta, raizMigracoes = RAIZ_MIGRACOES } = {}) {
   const db = pasta ? new PGlite(pasta) : new PGlite();
   await db.waitReady;
   const ja = await db.query("select to_regnamespace('auth') as a, to_regclass('public.demandas') as d, to_regclass('teste_infra.migracoes') as m");
@@ -57,17 +58,17 @@ export async function abrirBancoTeste({ pasta } = {}) {
   await db.exec('create schema if not exists teste_infra; create table if not exists teste_infra.migracoes (nome text primary key)');
   if (ja.rows[0].d && !ja.rows[0].m) for (const f of JA_TINHAM) await db.query('insert into teste_infra.migracoes (nome) values ($1) on conflict do nothing', [f]);
   const feitas = new Set((await db.query('select nome from teste_infra.migracoes')).rows.map((x) => x.nome));
-  const arquivos = readdirSync(/*turbopackIgnore: true*/ RAIZ_MIGRACOES).filter((x) => x.endsWith('.sql')).sort();
+  const arquivos = readdirSync(/*turbopackIgnore: true*/ raizMigracoes).filter((x) => x.endsWith('.sql')).sort();
   for (const f of arquivos) {
     if (feitas.has(f)) continue;
-    await db.exec(readFileSync(join(/*turbopackIgnore: true*/ RAIZ_MIGRACOES, f), 'utf8'));
+    await db.exec(readFileSync(join(/*turbopackIgnore: true*/ raizMigracoes, f), 'utf8'));
     await db.query('insert into teste_infra.migracoes (nome) values ($1)', [f]);
   }
   return db;
 }
 
 // Entra, dentro de uma transação, como um usuário autenticado: define as claims do JWT (sub, e-mail e provedor, como o Supabase Auth assina)
-// e troca para o papel authenticated. O e-mail vem de auth.users, a menos que seja informado. sessaoId acrescenta a claim session_id que todo token do Supabase traz (aparelhos autorizados).
+// e troca para o papel authenticated. O e-mail vem de auth.users, a menos que seja informado. sessaoId acrescenta a claim session_id que os tokens do Supabase trazem (os testes do esquema anterior à retirada dos aparelhos a usam).
 export async function entrarComo(tx, usuarioId, { email, provedor = 'google', sessaoId } = {}) {
   const e = email !== undefined ? email : ((await tx.query('select email from auth.users where id = $1', [usuarioId])).rows[0]?.email ?? null);
   const claims = JSON.stringify({ sub: usuarioId, role: 'authenticated', email: e, app_metadata: { provider: provedor, providers: [provedor] }, ...(sessaoId ? { session_id: sessaoId } : {}) });

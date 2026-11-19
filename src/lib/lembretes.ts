@@ -1,7 +1,7 @@
 // Relógio dos lembretes discretos de humor (DECISOES.md, seção 9): um na entrada do dia e outro a cada 3 horas de trabalho.
 // Regra pura, sem relógio próprio: quem chama passa o instante, o dia de São Paulo daquele mesmo instante e se o aplicativo está visível.
 //
-// O que é "entrada" e "trabalho" (a sessão é persistente, então não existe um login diário a contar):
+// O que é "entrada" e "trabalho":
 //   - entrada = a primeira vez, em cada dia civil de São Paulo, que o aplicativo está visível e em uso neste aparelho (abrir de manhã, reabrir a PWA, ou voltar a mexer no dia seguinte);
 //   - trabalho = tempo com o aplicativo aberto, visível e em uso (houve toque, tecla ou mouse nos últimos 15 minutos: um computador esquecido ligado à noite não gera lembrete).
 //     Aba escondida, tela bloqueada, computador dormindo e o aparelho fechado não contam: cada tique conta no máximo PASSO_MAX segundos, então voltar depois de um intervalo longo

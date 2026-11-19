@@ -1,6 +1,8 @@
 // Eventos e lembretes próprios da Agenda (decisão 47). Regras puras, sem banco nem relógio: a data de hoje e a hora de agora vêm sempre de fora.
 // Datas são datas do calendário (AAAA-MM-DD) e horários são "HH:MM" sem fuso: nada passa por Date local, então não há deslocamento por UTC.
 
+import { dataExiste } from './datas.ts';
+
 export const TIPOS_EVENTO = ['Reunião', 'Compromisso', 'Lembrete'] as const;
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];
 export type Evento = {
@@ -31,8 +33,6 @@ export const rotuloAviso = (m: number | null) => (m === null ? 'Sem aviso' : m >
 
 export const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 export const minutosDe = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5));
-const DATA = /^\d{4}-\d{2}-\d{2}$/;
-const dataExiste = (v: string) => { if (!DATA.test(v)) return false; const [a, m, d] = v.split('-').map(Number); const x = new Date(Date.UTC(a, m - 1, d)); return x.getUTCFullYear() === a && x.getUTCMonth() === m - 1 && x.getUTCDate() === d; };
 
 /** Confere um evento (a mesma regra da tela e do servidor). Devolve a mensagem para a pessoa, ou nulo quando está certo. */
 export function erroDoEvento(e: DadosEvento): string | null {
@@ -71,7 +71,6 @@ export function seSobrepoem(a: Pick<Evento, 'data' | 'dia_inteiro' | 'inicio' | 
   const [ai, af] = intervalo(a), [bi, bf] = intervalo(b);
   return ai === bi || (ai < bf && bi < af);
 }
-/** Os eventos que se sobrepõem ao informado (ele mesmo fica de fora, por id). */
 export const sobrepostosA = (e: Pick<Evento, 'id' | 'data' | 'dia_inteiro' | 'inicio' | 'fim'>, todos: readonly Evento[]): Evento[] => todos.filter((o) => o.id !== e.id && seSobrepoem(e, o));
 
 export type AvisoEvento = { evento: Evento; tipo: 'em-breve' | 'no-dia'; minutos: number };

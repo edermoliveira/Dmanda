@@ -12,7 +12,7 @@ import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
 import { ParaHoje } from './para-hoje';
 import { SecoesCards } from './baralho';
-import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, type Demanda } from '@/lib/demandas';
+import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, VISOES, type Demanda, type Visao } from '@/lib/demandas';
 import { anoDoDocumento, chaveOpcao } from '@/lib/documentos';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
@@ -66,7 +66,8 @@ export function PaginaInicio() {
 // ---------- Para hoje: src/ui/para-hoje.tsx (com o baralho do celular) ----------
 
 // ---------- Demandas ----------
-const VISOES = [['cards', 'Cards', 'vis-cards'], ['quadro', 'Quadro', 'columns'], ['tabela', 'Tabela', 'vis-tabela'], ['lista', 'Lista', 'vis-lista']] as const;
+// o rótulo e o ícone de cada visão (Record: uma visão nova sem botão não compila)
+const BOTAO_VISAO: Record<Visao, readonly [string, string]> = { cards: ['Cards', 'vis-cards'], quadro: ['Quadro', 'columns'], tabela: ['Tabela', 'vis-tabela'], lista: ['Lista', 'vis-lista'] };
 const PRAZOS_FILTRO = [['', 'Todos'], ['sem', 'Sem prazo'], ['atrasadas', 'Atrasadas'], ['hoje', 'Vencem hoje'], ['sete', 'Próximos 7 dias']] as const;
 
 function PainelFiltros({ pos, fechar }: { pos: { x: number; y: number }; fechar: () => void }) {
@@ -124,7 +125,7 @@ export function PaginaDemandas() {
       <div className="toolbar t4">
         <div className="tabs" role="group" aria-label="Visão">
           <Capsula sel='button[aria-pressed="true"]' chave={visao} />
-          {VISOES.map(([v, nome, icone]) => <button key={v} data-v={v} aria-pressed={visao === v} aria-label={nome} onClick={() => setVisao(v)}><Icone nome={icone} /><span className="tx">{nome}</span></button>)}
+          {VISOES.map((v) => { const [nome, icone] = BOTAO_VISAO[v]; return <button key={v} data-v={v} aria-pressed={visao === v} aria-label={nome} onClick={() => setVisao(v)}><Icone nome={icone} /><span className="tx">{nome}</span></button>; })}
         </div>
         <label className="filtro"><Icone nome="busca" /><input id="fq" placeholder={toque ? 'Filtrar demandas' : 'Filtrar demandas ( / )'} value={filtro.texto} aria-label="Filtrar demandas" autoComplete="off" onChange={(e) => setFiltro({ texto: e.target.value })} /></label>
         <button className="btn gl" aria-pressed={filtro.soAtrasadas} aria-label="Só atrasadas" onClick={() => setFiltro({ soAtrasadas: !filtro.soAtrasadas })}><Icone nome="clock" /><span className="tx">Só atrasadas{nAt ? ` ${nAt}` : ''}</span></button>

@@ -8,7 +8,7 @@ import { useApp } from './contexto';
 import { Janela, Opcoes } from './janela-base';
 import { novoUuid } from './campos';
 import { dataPorExtenso } from '@/lib/agenda';
-import { AVISO_PADRAO, AVISOS_MIN, erroDoEvento, horarioDe, rotuloAviso, sobrepostosA, TIPOS_EVENTO, type DadosEvento, type Evento, type TipoEvento } from '@/lib/eventos';
+import { AVISO_PADRAO, AVISOS_MIN, erroDoEvento, horarioDe, LIMITE_TITULO_EVENTO, rotuloAviso, sobrepostosA, TIPOS_EVENTO, type DadosEvento, type Evento, type TipoEvento } from '@/lib/eventos';
 
 type Campos = { titulo: string; tipo: TipoEvento; data: string; dia_inteiro: boolean; inicio: string; fim: string; aviso: string; descricao: string };
 const PADRAO: Omit<Campos, 'data'> = { titulo: '', tipo: 'Compromisso', dia_inteiro: false, inicio: '09:00', fim: '', aviso: String(AVISO_PADRAO), descricao: '' };
@@ -108,7 +108,7 @@ function JanelaEvento({ evento, idOriginal, dataInicial }: { evento: Evento | nu
       {editando ? (
         <>
           {erro ? <p className="data" role="alert" style={{ color: 'var(--perigo)' }}>{erro}</p> : null}
-          <div className="fld"><label htmlFor="ev-titulo">Título</label><input id="ev-titulo" value={c.titulo} autoComplete="off" maxLength={200} placeholder="Ex.: Reunião com o Gabinete" onChange={(e) => mudar({ titulo: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void gravar(); } }} /></div>
+          <div className="fld"><label htmlFor="ev-titulo">Título</label><input id="ev-titulo" value={c.titulo} autoComplete="off" maxLength={LIMITE_TITULO_EVENTO} placeholder="Ex.: Reunião com o Gabinete" onChange={(e) => mudar({ titulo: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void gravar(); } }} /></div>
           <div className="fld"><label>Tipo</label><Opcoes lista={TIPOS_EVENTO} valor={c.tipo} rotulo="Tipo do evento" aoEscolher={(v) => mudar({ tipo: v })} /></div>
           <div className="fld"><label htmlFor="ev-data">Data</label><input id="ev-data" type="date" value={c.data} onChange={(e) => mudar({ data: e.target.value })} /></div>
           <label className="agd-chk"><input type="checkbox" checked={c.dia_inteiro} onChange={(e) => mudar({ dia_inteiro: e.target.checked, aviso: e.target.checked ? '' : String(AVISO_PADRAO) })} />Dia inteiro (sem horário)</label>

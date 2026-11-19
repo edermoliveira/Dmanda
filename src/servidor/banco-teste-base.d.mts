@@ -1,5 +1,5 @@
 import type { PGlite } from '@electric-sql/pglite';
-export function abrirBancoTeste(opcoes?: { pasta?: string }): Promise<PGlite>;
+export function abrirBancoTeste(opcoes?: { pasta?: string; raizMigracoes?: string }): Promise<PGlite>;
 export const USUARIO_TESTE: string;
 export function prepararTitularDeTeste(db: PGlite, usuario?: string): Promise<void>;
 export type OpcoesJwt = { email?: string | null; provedor?: string; sessaoId?: string };

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { CHAVE_TEMA } from '@/lib/aparencia';
 import {
   DM_Mono, DM_Sans, DM_Serif_Display, Fira_Code, Fraunces, IBM_Plex_Mono, Inter, JetBrains_Mono, Manrope, Nunito_Sans, Outfit, Plus_Jakarta_Sans, Playfair_Display,
   Sora, Source_Sans_3, Space_Grotesk, Space_Mono,
@@ -42,7 +43,6 @@ export const metadata: Metadata = {
   // iPhone e iPad: abre em tela cheia ao instalar pela tela de início. O ícone de início vem de src/app/apple-icon.png e o manifesto de src/app/manifest.ts.
   appleWebApp: { capable: true, title: 'Dmanda', statusBarStyle: 'default' },
   formatDetection: { telephone: false },
-  // painel pessoal e privado: nada de indexação por buscadores
   robots: { index: false, follow: false },
 };
 // Cor da barra do sistema: o fundo de cada tema, lido dos tokens (catalyst.css, --bgbase) por coresDaBarra(); o metadado não aceita variáveis de CSS.
@@ -55,7 +55,7 @@ export function generateViewport(): Viewport {
 }
 
 // Define o modo (claro ou escuro) antes da página aparecer, para não piscar: usa a escolha guardada ou, na primeira vez, a do sistema.
-const scriptTema = `(function(){try{var t=JSON.parse(localStorage.getItem("dmanda-tema"));if(t!=="claro"&&t!=="escuro"){t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro"}document.documentElement.dataset.tema=t}catch(e){document.documentElement.dataset.tema="claro"}})()`;
+const scriptTema = `(function(){try{var t=JSON.parse(localStorage.getItem(${JSON.stringify(CHAVE_TEMA)}));if(t!=="claro"&&t!=="escuro"){t=matchMedia("(prefers-color-scheme: dark)").matches?"escuro":"claro"}document.documentElement.dataset.tema=t}catch(e){document.documentElement.dataset.tema="claro"}})()`;
 
 export default function LayoutApp({ children }: { children: React.ReactNode }) {
   return (

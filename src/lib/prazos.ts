@@ -2,6 +2,8 @@
 // O banco é quem decide de verdade (função ajustar_prazo, na migração 20261029000000, que recalcula também no servidor); esta cópia serve à prévia do
 // formulário e deve dar exatamente o mesmo resultado e o mesmo texto de explicação (há teste de equivalência contra o SQL).
 
+import { emMs, MS_DIA, paraISO } from './datas.ts';
+
 export const CATEGORIAS_DIA = ['Feriado', 'Evento externo'] as const;
 export type CategoriaDia = (typeof CATEGORIAS_DIA)[number];
 export const ROTULO_CATEGORIA: Record<CategoriaDia, string> = { Feriado: 'Feriado', 'Evento externo': 'Evento externo de dia inteiro' };
@@ -11,9 +13,6 @@ export type DiaIndisponivel = { id: string; data: string; descricao: string; cat
 /** Botões de prazo: dias corridos a partir da data de chegada, excluindo o dia da chegada e incluindo o último (decisão 81). */
 export const BOTOES_PRAZO = [5, 10, 20, 30] as const;
 
-const MS_DIA = 86_400_000;
-const emMs = (iso: string) => { const [a, m, d] = iso.slice(0, 10).split('-').map(Number); return Date.UTC(a, m - 1, d); };
-const paraISO = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 /** Soma dias corridos a uma data AAAA-MM-DD (sem fuso: tudo em UTC, então não há deslocamento de dia). */
 export const somarDias = (iso: string, n: number) => paraISO(emMs(iso) + n * MS_DIA);

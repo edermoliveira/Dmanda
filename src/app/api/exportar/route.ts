@@ -2,15 +2,15 @@
 // Entrada direta (sem conta): lê só pelas mesmas funções de sempre, executadas como o titular pelo servidor (executar_como_titular), com a RLS do papel authenticated.
 // Nada é gravado, copiado para o Git nem para outro serviço: o arquivo vai só para quem pediu.
 import { connection } from 'next/server';
-import { chamar } from '@/servidor/banco';
-import { criarOperacoes, ErroDmanda } from '@/nucleo/operacoes';
+import { operacoes } from '@/servidor/banco';
+import { ErroDmanda } from '@/nucleo/operacoes';
 import { hojeISO } from '@/lib/demandas';
 
 export async function GET() {
   await connection(); // só existe por pedido de uma pessoa: nunca entra na pré-geração do build
   const cabecalhos = { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' };
   try {
-    const op = criarOperacoes(chamar);
+    const op = operacoes();
     const [ativas, arquivadas, dias, entradas, entradasArquivadas, eventos] = await Promise.all([op.listar(false), op.listar(true), op.listarDias(), op.listarEntradas(false), op.listarEntradas(true), op.listarEventos()]);
     const agora = new Date();
     const corpo = { formato: 'dmanda-exportacao', versao: 4, exportado_em: agora.toISOString(), fuso: 'America/Sao_Paulo', demandas: ativas, arquivadas, dias_indisponiveis: dias, entradas, entradas_arquivadas: entradasArquivadas, eventos };

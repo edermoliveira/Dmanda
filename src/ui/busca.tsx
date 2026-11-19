@@ -28,7 +28,6 @@ export function Busca({ aoFechar }: { aoFechar: () => void }) {
     return () => { vivo = false; };
   }, [carregarArquivadas, carregarEntradasArquivadas]);
 
-  // Esc fecha, o Tab não sai da busca e, ao fechar, o foco volta a quem abriu (a lupa ou o ponto onde a pessoa estava).
   useEffect(() => {
     const origem = document.activeElement as HTMLElement | null;
     campo.current?.focus();

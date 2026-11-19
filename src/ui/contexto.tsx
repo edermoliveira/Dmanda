@@ -2,14 +2,14 @@
 // Estado do aplicativo no navegador: demandas vindas do banco, preferências de tela, avisos e janelas. Cada operação passa pelo servidor
 // e só atualiza a tela quando o banco confirmou; uma falha vira aviso de erro e nada muda (sem sucesso de mentira).
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { FILTRO_VAZIO, hojeISO, type Coluna, type DadosDemanda, type Demanda, type Etapa, type Filtro } from '@/lib/demandas';
+import { FILTRO_VAZIO, hojeISO, type Coluna, type DadosDemanda, type Demanda, type Etapa, type Filtro, type Visao } from '@/lib/demandas';
 import * as srv from '@/servidor/demandas';
 import * as srvE from '@/servidor/entradas';
 import * as srvA from '@/servidor/agenda';
 import * as srvP from '@/servidor/perfil';
 import { cargaInicial } from '@/servidor/carga';
-import { APARENCIA_PADRAO, aparenciaGuardada, CONJUNTOS, PALETAS, temaDoModo, type Aparencia, type Modo } from '@/lib/aparencia';
-import { eObjeto, gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada } from '@/lib/armazenamento';
+import { APARENCIA_PADRAO, aparenciaGuardada, CHAVE_TEMA, CONJUNTOS, PALETAS, temaDoModo, type Aparencia, type Modo } from '@/lib/aparencia';
+import { eObjeto, gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada, guardarNoNavegador as gravarLS, lerGuardado as lerLS } from '@/lib/armazenamento';
 import { avisosDeHoje, compararEventos, minutosAgora, type AvisoEvento, type DadosEvento, type Evento } from '@/lib/eventos';
 import type { Entrada } from '@/lib/entradas';
 import type { Opcao } from '@/lib/documentos';
@@ -19,7 +19,6 @@ import type { Resultado, TarefaEdicao } from '@/nucleo/operacoes';
 import { avisoAntesDaChegada, type CategoriaDia, type DiaIndisponivel } from '@/lib/prazos';
 import { avisosDoSistema, comLeitura, MSG_INCERTA, MSG_SEM_REDE, type AcaoAviso, type AvisoComLeitura, type FonteId, type PeriodoIncerto } from '@/lib/avisos-sistema';
 
-export type Visao = 'cards' | 'quadro' | 'tabela' | 'lista';
 // nova: o cadastro guiado de demanda (com entradaId, ele nasce de uma anotação: Virar demanda). entrada: a janela de uma anotação (sem id, uma anotação nova).
 export type Janela = { t: 'nova'; entradaId?: string } | { t: 'editar'; id: string } | { t: 'tarefa' } | { t: 'entrada'; id?: string } | { t: 'evento'; id?: string; data?: string } | { t: 'dia'; data?: string } | null;
 // versao: a versão da demanda sobre a qual o rascunho foi digitado (se a demanda mudou depois, o salvamento é recusado em vez de sobrescrever)
@@ -199,8 +198,6 @@ export const useApp = () => { const c = useContext(Contexto); if (!c) throw new 
 /** Um aviso dispensado vale só para aquele evento, naquela data e horário: mudar o horário traz o aviso de volta. */
 const chaveAviso = (e: Evento) => `${e.id}|${e.data}|${e.inicio ?? ''}`;
 const ordenarEventosPorData = (l: Evento[]) => [...l].sort((a, b) => a.data.localeCompare(b.data) || compararEventos(a, b));
-const lerLS = <T,>(chave: string, padrao: T): T => { try { const v = localStorage.getItem(chave); return v ? (JSON.parse(v) as T) : padrao; } catch { return padrao; } };
-const gravarLS = (chave: string, v: unknown) => { try { localStorage.setItem(chave, JSON.stringify(v)); } catch { /* sem armazenamento: vale só nesta visita */ } };
 
 export function ProvedorApp({ children }: { children: ReactNode }) {
   const [demandas, setDemandas] = useState<Demanda[]>([]);
@@ -271,7 +268,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     // quem já escolheu Claro ou Escuro mantém a escolha; sem escolha guardada, o modo é Sistema (era o comportamento até aqui)
-    const t = lerLS<unknown>('dmanda-tema', null);
+    const t = lerLS<unknown>(CHAVE_TEMA, null);
     setModo(t === 'escuro' || t === 'claro' ? t : 'sistema');
     setSistemaEscuro(matchMedia('(prefers-color-scheme: dark)').matches);
     setAparencia(aparenciaGuardada(lerLS<unknown>('dmanda:aparencia', null)));
@@ -293,10 +290,9 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   // Claro e Escuro ficam guardados; Sistema apaga a escolha (o script do <head> e a primeira leitura já seguem o aparelho sem ela)
   useEffect(() => {
     if (!pronto) return;
-    if (modo === 'sistema') { try { localStorage.removeItem('dmanda-tema'); } catch { /* sem armazenamento: vale só nesta visita */ } } else gravarLS('dmanda-tema', modo);
+    if (modo === 'sistema') { try { localStorage.removeItem(CHAVE_TEMA); } catch { /* sem armazenamento: vale só nesta visita */ } } else gravarLS(CHAVE_TEMA, modo);
   }, [pronto, modo]);
   useEffect(() => { if (pronto) gravarLS('dmanda:aparencia', aparencia); }, [pronto, aparencia]);
-  // no modo Sistema, acompanha o aparelho enquanto o aplicativo está aberto
   useEffect(() => {
     const mq = matchMedia('(prefers-color-scheme: dark)');
     const ouvir = () => setSistemaEscuro(mq.matches);
@@ -373,7 +369,6 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     lendoEntradasArquivadas.current = p;
     return p;
   }, [avisar]);
-  // Uma anotação gravada entra na lista certa: ativa em Entradas; arquivada ou convertida no Arquivo.
   const aplicarEntrada = useCallback((e: Entrada) => {
     if (!e.arquivada_em && !e.demanda_id) {
       setEntradas((l) => (l.some((x) => x.id === e.id) ? l.map((x) => (x.id === e.id ? e : x)) : [e, ...l]));
@@ -384,7 +379,6 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Carga inicial das demandas do banco (e do ambiente) ao abrir a tela.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setHoje(hojeISO());

@@ -3,6 +3,8 @@
 // `aparenciaGuardada` devolve sempre um valor utilizável, campo a campo, e nunca derruba a abertura do aplicativo.
 // Os tamanhos de texto continuam sendo `calc(Npx * var(--esc))` (decisão 35): o ajuste do usuário só multiplica o `--esc` padrão.
 import { eObjeto } from './armazenamento.ts';
+/** A chave do localStorage com o modo (claro, escuro ou, sem a chave, o do sistema). O script de abertura do layout e o contexto leem a mesma. */
+export const CHAVE_TEMA = 'dmanda-tema';
 
 export type Modo = 'claro' | 'escuro' | 'sistema';
 export type Tema = 'claro' | 'escuro';
@@ -90,5 +92,4 @@ export function variaveisAparencia(a: Aparencia): Record<string, string> {
   };
 }
 
-/** Resolve o modo escolhido no tema que vale agora. */
 export const temaDoModo = (m: Modo, sistemaEscuro: boolean): Tema => (m === 'sistema' ? (sistemaEscuro ? 'escuro' : 'claro') : m);

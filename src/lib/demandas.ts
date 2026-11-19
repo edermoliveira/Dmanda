@@ -1,9 +1,9 @@
 // Tipos e regras de apresentação de demandas e tarefas, usados pela interface e pelas operações. Sem acesso a banco.
 import { anoDoDocumento, chaveOpcao } from './documentos.ts';
+import { emMs, MS_DIA } from './datas.ts';
 
 export const ETAPAS = ['Cadastro', 'Vistos', 'Fazendo', 'Aguardando retorno', 'Aguardando Prefeita', 'Finalizado'] as const;
 export type Etapa = (typeof ETAPAS)[number];
-export const TIPOS = ['Protocolo', 'Processo', 'Memorando', 'Ofício', 'Pedido de informação', 'Projeto de lei', 'Portaria', 'Outro documento'] as const;
 /** Os tipos de documento de antes (opções iniciais). O tipo agora é um texto livre cadastrável (vem de `opcoes`) e pode faltar: demanda sem documento associado. */
 export type Tipo = string;
 export const AREAS = ['Geral', 'Pessoal', 'Compras'] as const;
@@ -78,12 +78,10 @@ export const temArea = (tipo: string | null | undefined) => !!tipo && TEM_AREA.i
 export const areasDoTipo = (tipo: Tipo | null): readonly Area[] => (tipo === 'Protocolo' ? ['Geral', 'Pessoal'] : AREAS);
 
 // Nenhuma função de data aqui lê o relógio sozinha: a data de hoje vem sempre de fora (contexto da tela), para a renderização do servidor não depender do horário.
-const MS_DIA = 86_400_000;
 /** Data de hoje em Brasília (AAAA-MM-DD), a mesma referência que o banco usa. */
 export function hojeISO(agora: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(agora);
 }
-const emMs = (iso: string) => { const [a, m, d] = iso.slice(0, 10).split('-').map(Number); return Date.UTC(a, m - 1, d); };
 export const diasAte = (iso: string, hoje: string) => Math.round((emMs(iso) - emMs(hoje)) / MS_DIA);
 export const diasDesde = (iso: string, hoje: string) => -diasAte(iso, hoje);
 /** Dias desde um instante (timestamptz), pela data de Brasília. */
@@ -124,7 +122,11 @@ export function filtrar(lista: Demanda[], f: Filtro, hoje: string): Demanda[] {
   });
 }
 
-export type Coluna = 'numero' | 'assunto' | 'origem' | 'prazo' | 'etapa' | 'pct';
+/** As visões de Demandas e as colunas da Tabela: a tela, o que fica guardado no navegador (armazenamento.ts) e a ordenação leem estas listas. */
+export const VISOES = ['cards', 'quadro', 'tabela', 'lista'] as const;
+export type Visao = (typeof VISOES)[number];
+export const COLUNAS = ['numero', 'assunto', 'origem', 'prazo', 'etapa', 'pct'] as const;
+export type Coluna = (typeof COLUNAS)[number];
 export function ordenar(lista: Demanda[], coluna: Coluna, sentido: 1 | -1): Demanda[] {
   const chave = (d: Demanda): string | number => {
     if (coluna === 'prazo') return d.prazo ?? '9999-12-31';
