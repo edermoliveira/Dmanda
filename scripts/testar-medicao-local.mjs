@@ -27,7 +27,8 @@ const sonda = async () => {
   const texto = await copia.text();
   return { painel: painel.status, copia: copia.status, vazou: /dmanda-exportacao/.test(texto) };
 };
-const recusado = (r) => r.painel === 500 && r.copia === 500 && !r.vazou;
+// Desde a retirada do proxy (17/11/2026) o painel responde 200 com a casca vazia (os dados chegam por ações do servidor, que falham): quem prova a recusa é a cópia, 500 e sem dados.
+const recusado = (r) => r.copia === 500 && !r.vazou;
 
 const casos = [
   ['produção com DMANDA_BANCO=teste, sem a variável de medição', {}, false],
@@ -41,7 +42,7 @@ const casos = [
 for (const [nome, extra, deveAbrir] of casos) {
   const r = await comServidor(extra, sonda);
   const abriu = r.painel === 200 && r.copia === 200 && r.vazou;
-  ok(deveAbrir ? abriu : recusado(r), `${nome}: ${deveAbrir ? 'abre (painel ' + r.painel + ', cópia ' + r.copia + ')' : 'recusado, 500 sem dados (painel ' + r.painel + ', cópia ' + r.copia + ', vazou dados: ' + (r.vazou ? 'SIM' : 'não') + ')'}`);
+  ok(deveAbrir ? abriu : recusado(r), `${nome}: ${deveAbrir ? 'abre (painel ' + r.painel + ', cópia ' + r.copia + ')' : 'recusado: cópia 500 sem dados (painel ' + r.painel + ', cópia ' + r.copia + ', vazou dados: ' + (r.vazou ? 'SIM' : 'não') + ')'}`);
 }
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);

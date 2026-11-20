@@ -2437,5 +2437,34 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   await r.close();
 }
 
+// ---------- a verificação proposta para o hospedado (supabase/propostas/verificar_migracoes_1_4_hospedado.sql): mostra o que o plano de publicação diz que mostra, antes e depois das duas migrações ----------
+{
+  const { mkdtempSync, copyFileSync, readdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const SQLV = readFileSync('supabase/propostas/verificar_migracoes_1_4_hospedado.sql', 'utf8');
+  const lido = async (d) => Object.fromEntries((await d.query(SQLV)).rows.map((x) => [x.verificacao, x.resultado]));
+  const raizAntes = mkdtempSync(join(tmpdir(), 'dmanda-ver-'));
+  for (const f of readdirSync('supabase/migrations').filter((x) => x.endsWith('.sql') && !x.startsWith('20261120'))) copyFileSync(join('supabase/migrations', f), join(raizAntes, f));
+  const antes = await abrirBancoTeste({ raizMigracoes: raizAntes }), depois = await abrirBancoTeste();
+  const A = await lido(antes), D = await lido(depois);
+  ok(A['dias_indisponiveis.periodo_id'] === 'ausente' && A['tabela periodos_operacoes'] === 'ausente' && A['demanda_json lê retorno_setor_info'] === 'não' && A['executar_como_titular lista salvar_periodo_indisponivel'] === 'ausente' && A['executar_como_titular lista excluir_periodo_indisponivel'] === 'ausente' && A['executar_como_titular lista conferir_periodo_por_operacao'] === 'ausente' && A['executar_como_titular lista listar_demandas'] === 'presente' && !('função retorno_setor_info' in A) && A['linhas com periodo_id'] === 'n/a', 'verificação hospedada: ANTES das duas migrações mostra coluna, tabela, funções e nomes do período ausentes, e o que já existia presente');
+  ok(D['dias_indisponiveis.periodo_id'] === 'presente' && /^presente rls=t select=t insert=t update=f delete=f$/.test(D['tabela periodos_operacoes']) && D['demanda_json lê retorno_setor_info'] === 'sim' && ['salvar_periodo_indisponivel', 'excluir_periodo_indisponivel', 'conferir_periodo_por_operacao'].every((n) => D[`executar_como_titular lista ${n}`] === 'presente') && D['linhas com periodo_id'] === '0' && D['contagem public.periodos_operacoes'] === '0', 'verificação hospedada: DEPOIS mostra a coluna, a tabela com RLS e só select e insert, os três nomes na lista do titular, o retorno no JSON da demanda e nenhum período gravado');
+  const acl = (x) => /definer=f dono=postgres config=\{"search_path=\\"\\""\} acl=\{postgres=X\/postgres,(authenticated|service_role)=X\/postgres\}/.test(x ?? '');
+  ok(['salvar_periodo_indisponivel', 'excluir_periodo_indisponivel', 'dias_do_periodo', 'conferir_periodo_por_operacao', 'retorno_setor_info', 'executar_como_titular'].every((n) => acl(D[`função ${n}`])) && /service_role=X/.test(D['função executar_como_titular']) && /authenticated=X/.test(D['função salvar_periodo_indisponivel']), 'verificação hospedada: as funções novas são INVOKER, com search_path vazio e EXECUTE só do dono e de authenticated (a do titular, só de service_role)');
+  const tabelasAntes = Object.keys(A).filter((k) => k.startsWith('contagem ')).sort(), tabelasDepois = Object.keys(D).filter((k) => k.startsWith('contagem ') && k !== 'contagem public.periodos_operacoes').sort();
+  ok(tabelasAntes.join() === tabelasDepois.join() && tabelasAntes.length >= 9, `verificação hospedada: a lista de contagens por tabela é a mesma antes e depois (só entra periodos_operacoes): ${tabelasAntes.length} tabelas`);
+  // a cópia funcional por leitura (supabase/propostas/copia_funcional_leitura.sql): todas as tabelas, com as linhas inteiras e o texto sem escape de XML
+  const UC = 'c0c0c0c0-0000-4000-8000-0000000000c1';
+  await depois.exec(`insert into auth.users (id, email) values ('${UC}', 'copia@teste')`); await depois.exec("insert into dmanda_privado.acesso_autorizado (email) values ('copia@teste')");
+  const dc = await chamarComoUsuario(depois, UC, 'criar_demanda', { p: { assunto: 'Cópia & <b>"aspas"</b> ç \\ fim', tipo: 'Memorando' } });
+  await chamarComoUsuario(depois, UC, 'adicionar_tarefa', { p_demanda: dc.id, p_texto: 'Tarefa <i>1</i> & 2' });
+  const copia = (await depois.query(readFileSync('supabase/propostas/copia_funcional_leitura.sql', 'utf8'))).rows[0].copia;
+  const contagens = Object.fromEntries((await depois.query(SQLV)).rows.filter((x) => x.verificacao.startsWith('contagem public.')).map((x) => [x.verificacao.slice('contagem public.'.length), Number(x.resultado)]));
+  ok(Object.keys(contagens).length >= 10 && Object.keys(contagens).every((t) => Array.isArray(copia[t]) && copia[t].length === contagens[t]) && Object.keys(copia).length === Object.keys(contagens).length, 'cópia funcional por leitura: uma chave por tabela de public, cada uma com todas as linhas (o mesmo número da verificação hospedada)');
+  ok(copia.demandas[0].assunto === 'Cópia & <b>"aspas"</b> ç \\ fim' && copia.tarefas[0].texto === 'Tarefa <i>1</i> & 2', 'cópia funcional por leitura: & < > aspas, acento e barra voltam idênticos (o escape de XML não vaza para os dados)');
+  await antes.close(); await depois.close();
+}
+
 console.log('\n' + (falhas ? falhas + ' de ' + total + ' verificações falharam.' : 'Tudo certo: ' + total + ' verificações.'));
 process.exit(falhas ? 1 : 0);
