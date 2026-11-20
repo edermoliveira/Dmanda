@@ -9,8 +9,8 @@ Desenvolvido no computador e publicado na Vercel (entrada direta, sem login: ace
 ## Estado vigente (19/11/2026)
 
 - **Entrada direta, sem login (decisão de 17/11/2026):** os aparelhos autorizados, o pareamento e os códigos foram removidos. O servidor chama o banco com a chave de serviço por `public.executar_como_titular` (lista fixa de operações); não há tela de acesso. O acesso aberto é temporário: a consolidação de segurança fica para o fim (`docs/auditoria-etapa-6.md`, seção "Retirada dos aparelhos"). A retirada foi aplicada no Supabase real e na Vercel (registro em `origin/main`).
-- **Local, nada publicado:** o subbloco 1.4 (períodos de indisponibilidade com identidade da operação, retorno do setor vindo do servidor, avisos, vencimento antes da chegada; decisões 83 e 84) está em `bloco/1-4-lacunas`, fechado tecnicamente. As migrações `20261120000000_periodos_indisponiveis` e `20261120000100_retorno_do_servidor` **não** estão aplicadas no Supabase real. A organização estrutural está em `bloco/organizacao-estrutural` (`docs/organizacao-estrutural.md`).
-- **Retomada:** `CONTINUIDADE-DMANDA.md` (a seção AN é a mais recente), decisões em `DECISOES.md` (a mais recente é a 84), andamento em `ANDAMENTO.md`. O Supabase, a Vercel e a rotina diária estão em `supabase/LEIA-ME.md`.
+- **Local, nada publicado:** o subbloco 1.4 (períodos de indisponibilidade com identidade da operação, retorno do setor vindo do servidor, avisos, vencimento antes da chegada; decisões 83 e 84) está em `bloco/1-4-lacunas`, fechado tecnicamente. As migrações `20261120000000_periodos_indisponiveis` e `20261120000100_retorno_do_servidor` **não** estão aplicadas no Supabase real. A organização estrutural e o acabamento técnico (rotas `/marca`, `/pecas` e `/tokens` retiradas, CSS sem consumidor removido, exportação sem 401 indevido, caminhos de falha do auxiliar de testes provados) estão em `bloco/organizacao-estrutural` (`docs/organizacao-estrutural.md`, decisão 85). O plano de publicação consolidada, **preparado e não executado**, é `docs/plano-publicacao-consolidada.md`: banco primeiro, código depois.
+- **Retomada:** `CONTINUIDADE-DMANDA.md` (a seção AP é a mais recente), decisões em `DECISOES.md` (a mais recente é a 85), andamento em `ANDAMENTO.md`. O Supabase, a Vercel e a rotina diária estão em `supabase/LEIA-ME.md`.
 - **Não apagar sem autorização:** a `main` local (diverge de `origin/main` e não é base de trabalho), o stash do Clima, as branches e os worktrees antigos.
 - O histórico do que este arquivo dizia até 17/11/2026 (etapas, decisões 75 a 83, estado do Supabase em outubro) está em `docs/historico-estado-claude-md.md`; ele não vale como estado vigente.
 
@@ -29,10 +29,10 @@ Variáveis: `.env.local` (nunca vai para o Git; o assistente não lê nem imprim
 
 Testes (rodar só os dos componentes afetados; o que cada um cobre, as portas e como escrever uma suíte nova estão em `docs/testes.md`):
 
-- **Regras puras, sem banco nem navegador:** `testar:regras` (inclui a ligação entre as operações do código e a lista de `executar_como_titular`, e as portas), `testar:agenda-regras`, `testar:fuso`, `testar:restauracao-v4`.
+- **Regras puras, sem banco nem navegador:** `testar:regras` (inclui a ligação entre as operações do código e a lista de `executar_como_titular`, e as portas), `testar:agenda-regras`, `testar:fuso`, `testar:restauracao-v4`, `testar:auxiliar` (os caminhos de falha do auxiliar das suítes, com servidores falsos).
 - **Banco (PGlite):** `testar:banco` (SQL, RLS, rotina diária, prazos, períodos, retorno do servidor, cópia v4 e restauração), `comparar:prazos-legados`.
 - **Navegador (Edge e WebKit emulado, banco de teste, um servidor por vez):** `testar:app`, `interface`, `entradas`, `ajustes`, `agenda`, `periodos`, `falha-dias`, `prazo-chegada`, `config`, `campos`, `busca`, `perfil`, `origem`, `baralho`, `cards-inicio`, `vagas-carrosseis`, `auditoria`, `fila-cards`, `detalhe`, `resistencia`, `acesso-direto` (entrada direta contra um Supabase falso).
-- **Outros:** `verificar:cores` (cor solta só em TS e TSX), `medir:desempenho` e `testar:medicao-local` (exigem `npm run build`), `verificar:ajuste-cards`, `conferir:env` (confere o `.env.local` sem mostrar valores), `npx tsc --noEmit`, `npx eslint src scripts`, `npm run build`.
+- **Outros:** `capturar:referencia` (referência visual do aplicativo inteiro, `gravar` e `comparar-grupos`; use antes e depois de qualquer limpeza de CSS), `verificar:cores` (cor solta só em TS e TSX), `medir:desempenho` e `testar:medicao-local` (exigem `npm run build`), `verificar:ajuste-cards`, `conferir:env` (confere o `.env.local` sem mostrar valores), `npx tsc --noEmit`, `npx eslint src scripts`, `npm run build`.
 - Toda suíte de navegador usa `scripts/auxiliar-navegador.mjs` (servidor de teste, Edge, contexto, verificador) e roda sozinha, nunca em paralelo: a pasta `.next` tem trava. Suíte nova: copiar o esqueleto de `docs/testes.md`.
 
 Estes testes validam a lógica e a interface no banco de **teste**. Não substituem a validação no Supabase real, que se faz com a CLI oficial (`npx supabase db query --linked`, `db push --linked --dry-run`, `db advisors --linked`), sempre só neste projeto, sem `db reset`, e com transações desfeitas para testes que não podem deixar dados.
@@ -80,7 +80,7 @@ Estes testes validam a lógica e a interface no banco de **teste**. Não substit
 
 - `src/nucleo/` operações validadas (reutilizáveis pela futura IA) e lógica da rotina; `src/servidor/` transporte (Supabase real por `executar_como_titular`, ou banco de teste) e ações do servidor; `src/lib/` regras puras e Supabase; `src/ui/` interface; `src/app/api/cron/diaria` rotina diária (autenticação própria por `CRON_SECRET`).
 - Banco em `supabase/migrations/` (versionadas, em ordem). Operações como funções SQL com RLS por usuário.
-- O design antigo (20/10/2026) fica em `src/app/(antigo)` só como referência; não evoluir.
+- O design antigo (20/10/2026), com as vitrines `/marca`, `/pecas` e `/tokens`, foi retirado em 19/11/2026 (decisão 85); o Catalyst é o único design. Os arquivos de `public/marca` ficam (o `icone-app.svg` gera os ícones da PWA).
 - Hidratação: o servidor e o primeiro desenho do cliente devem ser iguais. Nada de `new Date()` na renderização (a data de hoje vem do contexto), nada de mexer no DOM antes da hidratação, e sem `suppressHydrationWarning` ou esperas fixas para esconder divergência. A cápsula de seleção é o componente `Capsula`.
 
 ## Ferramentas (decidido em 25/10/2026)

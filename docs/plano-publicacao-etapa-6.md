@@ -1,5 +1,7 @@
 # Plano de publicação da etapa 6 (decisão 83)
 
+> **Substituído em 19/11/2026 por `docs/plano-publicacao-consolidada.md`** (candidato consolidado, com as duas migrações do subbloco 1.4). Este texto fica como história.
+
 > **SUPERADO em 17/11/2026. NÃO SEGUIR.** Os aparelhos autorizados e o acesso por código foram retirados por decisão do Éder. O plano vigente é `docs/plano-retirada-aparelhos.md` (duas fases). O texto abaixo fica só como registro histórico.
 
 Estado: **proposta para o Éder decidir.** Nada abaixo foi executado no Supabase real, no GitHub ou na Vercel. Cada passo marcado com **[AUTORIZAÇÃO]** só acontece com a sua autorização específica, uma a uma.

@@ -1,5 +1,7 @@
 # Plano de implantação em duas fases: entrada direta e retirada dos aparelhos
 
+> **Substituído em 19/11/2026 por `docs/plano-publicacao-consolidada.md`** (candidato consolidado, com as duas migrações do subbloco 1.4). Este texto fica como história.
+
 Estado: **EXECUTADO em 17/11/2026** (fase 1, publicação, validação do domínio e fase 2; ver "Registro da execução" no fim). O texto abaixo é o roteiro como foi preparado e é mantido como história. Substitui `docs/plano-publicacao-etapa-6.md` no que toca aos aparelhos. Cada passo marcado com **[autorização]** só roda depois de o Éder autorizar aquele passo de forma específica. O assistente nunca lê nem imprime `.env*`, chaves ou o conteúdo de dados reais.
 
 Base: `origin/main` = `b2adb39cad10c290fddf31530653c65f55a8a56f`. Candidato: branch `retirada/aparelhos` (o SHA final aprovado é o que o Éder indicar; abaixo, `$SHA`).

@@ -861,3 +861,16 @@ Sem acesso a esta máquina nesta sessão. **Handoff, somente leitura:** `git fet
 **Mapa, decisões, evidência e pendências fora do escopo (CSS sem uso, contexto da interface, rotas do design antigo, constantes com cópia no SQL):** `docs/organizacao-estrutural.md`. Comandos e convenções de teste: `docs/testes.md`.
 
 **Pendente (decisão do Éder):** avaliar o bloco; só depois, se autorizado, publicar o candidato (as duas migrações do 1.4 continuam por aplicar no Supabase real). Não iniciados: outro bloco funcional.
+
+
+## AP. Acabamento técnico e plano de publicação consolidada (19/11/2026; só local, aguarda avaliação)
+
+**Onde:** mesma branch `bloco/organizacao-estrutural` (worktree `C:\Users\Éder\Desktop\Dmanda-release`), a partir de `b666b64`. Código verificado em `d5d83e5262ebb15a93e2265e366f24263c79733b`; depois dele só documentação. Base remota consultada por `fetch`: `origin/main` = `1b3b9db`. Nada foi enviado, publicado nem aplicado; nenhuma consulta ao Supabase real.
+
+**O que mudou (decisão 85):** `/marca`, `/pecas` e `/tokens` e `src/components` saíram (404 pelo fluxo normal), com `lucide-react` e os scripts `capturar` e `gerar:logo`; 280 linhas de CSS sem consumidor saíram (101 classes, 244 regras, 2 `@keyframes`, 19 propriedades personalizadas), provado por comparação visual com 264 cenários e duas rodadas de cada lado; o tempo do rascunho, o evento do humor e as chaves do contexto têm uma definição só; a exportação v4 nunca devolve 401 (falha do servidor é 500 genérico, sem arquivo e sem detalhe); o auxiliar de testes só repete a partida quando o servidor responde e cai, e os caminhos de falha têm teste (`testar:auxiliar`). Formato v4 e Catalyst intocados. Detalhes, razões, o que ficou e as limitações: `docs/organizacao-estrutural.md`, seção "Acabamento técnico".
+
+**Plano de publicação (preparado, não executado):** `docs/plano-publicacao-consolidada.md`. Ordem obrigatória: banco primeiro (as duas migrações do 1.4, aditivas, sem escrita nem recálculo), depois o código. Cada passo real exige autorização específica do Éder; antes, cópia privada atual (v4 pelo aplicativo e cópia funcional por leitura) e reconferência, por leitura, do que o registro de 17/11 diz do Supabase e da Vercel. O código atual de produção foi provado contra o banco com as duas migrações em PGlite (`testar:banco` 546, `acesso-direto` 48, `app` 137, `config` 175).
+
+**Ferramentas novas:** `npm run testar:auxiliar`; `npm run capturar:referencia -- gravar <rótulo>` e `-- comparar-grupos <A1,A2> <B1,B2>` (obrigatório antes e depois de qualquer limpeza de CSS); `supabase/propostas/verificar_migracoes_1_4_hospedado.sql` e `copia_funcional_leitura.sql` (somente leitura). **Achados:** HTML ou banco aberto por script dentro da árvore do projeto fazem o `next dev` recarregar em laço (a folha de comparação e os dados do `acesso-direto` ficam em `os.tmpdir()`); `.next/dev/types` obsoleto quebra o `tsc` depois de apagar rotas (apagar a pasta gerada resolve).
+
+**Pendente (decisão do Éder):** avaliar este bloco; decidir se e quando executar o plano (cada passo com autorização); o aceite no Safari do iPhone e no iPad; destino privado das cópias (Issue #4). Não iniciados: outro bloco funcional, a ampliação da cópia v4, a divisão do contexto da interface.
