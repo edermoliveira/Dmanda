@@ -81,7 +81,7 @@ Continuação do mesmo bloco (mesma branch, a partir de `b666b64`), com os crit�
 
 **Exportação v4.** Na base `1b3b9db`, `ErroDmanda` virava 401 e o resto 500. Examinadas as causas reais que chegam a cada ramo: 500 (já correto) para a conexão do banco caindo, erro 500 do banco, endereço e chave de serviço ausentes (`sem-config`) e chave recusada; **401 indevido** para as duas regras do banco que chegam como `ErroDmanda` (P0001): `Nenhum usuário da lista protegida foi encontrado.` (`assumir_titular`, titular fora da lista) e `Operação não permitida.` (código e lista de `executar_como_titular` fora de compasso, exatamente o risco de publicar o código antes das migrações). Reproduzido antes da correção em `testar:acesso-direto` (2 falhas, e a mensagem do banco chegava ao navegador). Corrigido com o menor tratamento: o ramo 401 saiu; toda falha é 500 com `Não foi possível gerar a cópia agora.`, sem arquivo e sem detalhe, e o log do servidor leva a causa (a mensagem da regra do banco, ou o código). Não há mais caminho que peça login: o aplicativo é aberto. Versão, campos, significado, nome do arquivo, cabeçalhos e a ausência de arquivo em falha não mudaram. Continua fora (bloco próprio de cópia e recuperação): registros do dia, opções e Para hoje não entram na v4.
 
-**Auxiliar de testes.** Falhas deliberadas provaram os caminhos (`testar:auxiliar`, 19 verificações, ver `docs/testes.md`). Defeito demonstrado e corrigido: o auxiliar repetia a partida em **qualquer** saída antecipada, inclusive a que repetir não resolve (porta ocupada, configuração inválida), e uma porta ocupada por outro servidor que respondia era confundida com o servidor de teste. Agora só se repete quando o servidor respondeu e caiu logo depois (o aviso de atualização do Next); as outras falhas dão erro claro na hora, e o servidor mudo tem espera limitada. Mutação: um resumo que devolvesse sempre 0 derrubou 2 verificações. Achado do processo: um banco de teste aberto pelo **script** (não pelo Next) dentro da árvore do projeto fazia o `next dev` recompilar e recarregar a página em laço em `testar:acesso-direto`; os dados e as capturas dessa suíte agora ficam em `os.tmpdir()`.
+**Auxiliar de testes.** Falhas deliberadas provaram os caminhos (`testar:auxiliar`, 21 verificações, ver `docs/testes.md`). Defeito demonstrado e corrigido: o auxiliar repetia a partida em **qualquer** saída antecipada, inclusive a que repetir não resolve (porta ocupada, configuração inválida), e uma porta ocupada por outro servidor que respondia era confundida com o servidor de teste. Agora só se repete quando o servidor respondeu e caiu logo depois (o aviso de atualização do Next); as outras falhas dão erro claro na hora, e o servidor mudo tem espera limitada. Mutação: um resumo que devolvesse sempre 0 derrubou 2 verificações. Depois da revisão de leitura: o auxiliar também encerra o servidor em Ctrl+C e término pelo sistema (não testável por sinal aqui; o gancho de saída normal é testado), não prende o script que termina sem process.exit (caso "fim natural" testado), e uma suíte que não rodou nenhuma verificação não é aprovação ("Nenhuma verificação rodou.", saída 1). Provado com o Next de verdade: uma porta ocupada por outro servidor que responde dá erro em 4 s dizendo que a porta está em uso. Limitação conhecida: se o processo do Next cair antes de ser encerrado, o `taskkill` não alcança filhos que ele tenha deixado. Achado do processo: um banco de teste aberto pelo **script** (não pelo Next) dentro da árvore do projeto fazia o `next dev` recompilar e recarregar a página em laço em `testar:acesso-direto`; os dados e as capturas dessa suíte agora ficam em `os.tmpdir()`.
 
 **Verificação e cópia do plano de publicação.** `supabase/propostas/verificar_migracoes_1_4_hospedado.sql` e `copia_funcional_leitura.sql` (somente leitura) foram escritas para o plano (`docs/plano-publicacao-consolidada.md`) e são executadas por `testar:banco` antes e depois das duas migrações (6 verificações novas, incluindo texto com `&`, `<`, `>` e aspas voltando idêntico na cópia).
 
@@ -109,7 +109,7 @@ Depois dos comentários e dos ajustes finais de testes foram repetidos `testar:r
 
 **Limites**: tudo em PGlite e Edge, com WebKit emulado e dados fictícios. Não foram testados o Supabase real, o Safari em aparelho real nem o ambiente hospedado. O dia a dia da leitura de contexto (menos tokens por sessão) não foi medido: não há estimativa de economia neste bloco.
 
-### Rodada do acabamento técnico (19/11/2026, sobre `d5d83e5`)
+### Rodada do acabamento técnico (19/11/2026, sobre `4646de4`)
 
 Mesmo executor rastreável (início, término e saída por suíte), com as 27 suítes em sequência depois do último commit de código, mais as verificações estáticas e o build.
 
@@ -118,7 +118,7 @@ Mesmo executor rastreável (início, término e saída por suíte), com as 27 su
 | `tsc` / `eslint src scripts` / `verificar:cores` / `npm run build` | saída 0 / 0 erros e 0 avisos / nenhuma cor solta / saída 0 (a lista de rotas não tem mais `/marca`, `/pecas` nem `/tokens`) |
 | `testar:regras` / `agenda-regras` / `fuso` / `restauracao-v4` | 260 / 89 / 9 / 31 |
 | `testar:banco` | 624 (era 618; +6: verificação hospedada antes e depois e cópia funcional) |
-| `testar:auxiliar` (novo) | 19 |
+| `testar:auxiliar` (novo) | 21 |
 | `testar:acesso-direto` | 56 (era 48; +8: exportação com falhas; reproduziu 2 falhas antes da correção da rota) |
 | `testar:app` | 141 (era 137; +4: rotas antigas em 404 e ícones servidos) |
 | `testar:interface` / `entradas` / `ajustes` / `agenda` / `periodos` / `falha-dias` | 148 / 179 / 604 / 394 / 89 / 96 |
@@ -127,5 +127,7 @@ Mesmo executor rastreável (início, término e saída por suíte), com as 27 su
 | `testar:medicao-local` (build de produção) | 7 (corrigida a expectativa de 17/11, que falhava 6 de 7 também em `origin/main`) |
 | `capturar:referencia` (264 cenários, 2 rodadas antes e 2 depois) | estilo calculado idêntico em 264; 250 imagens idênticas byte a byte, 14 com franja de antialiasing |
 | Código atual de produção contra o banco com as duas migrações novas | `testar:banco` 546, `acesso-direto` 48, `app` 137, `config` 175, todas aprovadas (ver `docs/plano-publicacao-consolidada.md`, seção 9) |
+
+Depois da revisão de leitura e das correções do auxiliar e da exportação, repetidas e aprovadas: `testar:regras` 260, `acesso-direto` 56, `busca` 97, `origem` 51, `fila-cards` 45, `detalhe` 60, `falha-dias` 96, `auxiliar` 21, mais `tsc`, `eslint` e `build`. As demais suítes da tabela não usam o que mudou nessas correções.
 
 Não repetidas: `medir:desempenho` e `verificar:ajuste-cards` (não tocam o que mudou) e `comparar:prazos-legados`.

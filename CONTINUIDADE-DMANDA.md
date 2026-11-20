@@ -865,7 +865,7 @@ Sem acesso a esta máquina nesta sessão. **Handoff, somente leitura:** `git fet
 
 ## AP. Acabamento técnico e plano de publicação consolidada (19/11/2026; só local, aguarda avaliação)
 
-**Onde:** mesma branch `bloco/organizacao-estrutural` (worktree `C:\Users\Éder\Desktop\Dmanda-release`), a partir de `b666b64`. Código verificado em `d5d83e5262ebb15a93e2265e366f24263c79733b`; depois dele só documentação. Base remota consultada por `fetch`: `origin/main` = `1b3b9db`. Nada foi enviado, publicado nem aplicado; nenhuma consulta ao Supabase real.
+**Onde:** mesma branch `bloco/organizacao-estrutural` (worktree `C:\Users\Éder\Desktop\Dmanda-release`), a partir de `b666b64`. Código verificado em `4646de4f66686e5ff3e5bcbe9f97329ecbcaa964`; depois dele só documentação. Base remota consultada por `fetch`: `origin/main` = `1b3b9db`. Nada foi enviado, publicado nem aplicado; nenhuma consulta ao Supabase real.
 
 **O que mudou (decisão 85):** `/marca`, `/pecas` e `/tokens` e `src/components` saíram (404 pelo fluxo normal), com `lucide-react` e os scripts `capturar` e `gerar:logo`; 280 linhas de CSS sem consumidor saíram (101 classes, 244 regras, 2 `@keyframes`, 19 propriedades personalizadas), provado por comparação visual com 264 cenários e duas rodadas de cada lado; o tempo do rascunho, o evento do humor e as chaves do contexto têm uma definição só; a exportação v4 nunca devolve 401 (falha do servidor é 500 genérico, sem arquivo e sem detalhe); o auxiliar de testes só repete a partida quando o servidor responde e cai, e os caminhos de falha têm teste (`testar:auxiliar`). Formato v4 e Catalyst intocados. Detalhes, razões, o que ficou e as limitações: `docs/organizacao-estrutural.md`, seção "Acabamento técnico".
 
