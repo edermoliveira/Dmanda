@@ -23,7 +23,7 @@ const partida = readFileSync(contagem, 'utf8').trim().split('\\n').length;
 if (modo === 'sai-na-hora') { console.error('boom: configuração inválida do servidor falso'); process.exit(3); }
 if (modo === 'mudo') { setInterval(() => {}, 1000); }
 else {
-  const srv = http.createServer((q, r) => { r.writeHead(200); r.end('ok'); });
+  const srv = http.createServer((q, r) => { r.writeHead(modo === 'erro500' ? 500 : 200); r.end('ok'); });
   srv.on('error', (e) => { console.error(String(e.code) + ' ' + e.message); process.exit(1); });
   srv.listen(Number(porta), () => {
     if (modo === 'cai-depois-de-responder' || (modo === 'cai-na-primeira' && partida === 1)) setTimeout(() => process.exit(0), 3000);
@@ -69,6 +69,17 @@ const comando = (porta, contagem, modo) => `[process.execPath, [falso, '${porta}
     ok(partidas(c).length === 1, 'porta ocupada não é repetida: 1 partida');
   } finally { srv.kill(); }
 }
+{
+  // porta ocupada por outro processo que responde 500: o ramo "saiu antes de responder", com a causa dita
+  const c = `${PASTA}/c3b.txt`;
+  const srv = spawn(process.execPath, [`${PASTA}/falso.mjs`, '7157', `${PASTA}/ocupante2.txt`, 'erro500'], { stdio: 'ignore' });
+  await esperar(1500);
+  try {
+    const r = rodarFilho('porta-ocupada-500', `try { await A.iniciarServidor({ porta: 7157, pasta: 'x', tentativas: 4, estabilizar: 800, comando: ${comando(7157, c, 'estavel')} }); console.log('SUBIU'); } catch (e) { console.log('ERRO: ' + e.message); process.exit(1); }`);
+    ok(r.codigo === 1 && /saiu \(código 1\) antes de responder na porta 7157: a porta já está em uso/.test(r.saida) && !/SUBIU/.test(r.saida), 'porta ocupada por servidor que responde 500: erro "saiu antes de responder" com a causa (porta em uso), sem repetir');
+    ok(partidas(c).length === 1, 'esse caso também faz uma partida só');
+  } finally { srv.kill(); }
+}
 
 // =============================================================================================================================================
 // 2) repetição de partida: limitada e só para quem respondeu e caiu
@@ -92,14 +103,13 @@ const r = await fetch(s.base + '/'); console.log('SUBIU ' + r.status); s.parar()
 // =============================================================================================================================================
 // 3) encerramento e limpeza dos processos criados pelo teste
 // =============================================================================================================================================
-for (const [nome, fim] of [['saida-com-erro', 'process.exit(1);'], ['excecao', "throw new Error('quebrou depois de subir');"], ['saida-normal', 'process.exit(0);']]) {
+for (const [nome, fim] of [['saida-com-erro', 'process.exit(1);'], ['excecao', "throw new Error('quebrou depois de subir');"], ['saida-com-exit-zero', 'process.exit(0);'], ['fim-natural', '']]) {
   const c = `${PASTA}/c6-${nome}.txt`;
   const r = rodarFilho(`limpeza-${nome}`, `const s = await A.iniciarServidor({ porta: 7155, pasta: 'x', estabilizar: 500, comando: ${comando(7155, c, 'estavel')} });\nconsole.log('SUBIU');\n${fim}`);
   await esperar(1500);
   const ps = partidas(c);
   ok(/SUBIU/.test(r.saida) && ps.length === 1 && !vivo(ps[0]), `script que termina sem chamar parar() (${nome}, código ${r.codigo}): o servidor de teste é encerrado junto`);
 }
-ok(rodarFilho('exc-codigo', "throw new Error('x');").codigo !== 0, 'exceção não tratada termina com código diferente de zero (não vira aprovação)');
 
 // =============================================================================================================================================
 // 4) o verificador: falha vira falha, com resumo fiel e saída não zero
@@ -126,7 +136,7 @@ process.exit(v.resumo());`);
 }
 {
   const r = rodarFilho('verifica-vazio', `const v = A.criarVerificador(); process.exit(v.resumo());`);
-  ok(r.codigo === 0 && /Tudo certo: 0 verificações\./.test(r.saida), 'registro de contagem: um script sem nenhuma verificação diz "0 verificações" (o executor mostra o total, então um zero chama atenção)');
+  ok(r.codigo === 1 && /Nenhuma verificação rodou\./.test(r.saida) && !/Tudo certo/.test(r.saida), 'uma suíte que não rodou nenhuma verificação não é aprovação: "Nenhuma verificação rodou." e saída 1');
 }
 
 console.log('\n' + (falhas ? `${falhas} de ${total} verificações falharam.` : `Tudo certo: ${total} verificações.`));

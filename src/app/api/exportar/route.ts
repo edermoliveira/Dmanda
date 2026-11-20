@@ -18,7 +18,7 @@ export async function GET() {
   } catch (e) {
     // O aplicativo é aberto: nenhuma falha daqui é "falta de login". Uma regra do banco recusando a leitura (ErroDmanda: titular ausente da lista protegida, operação fora da lista) é falha do servidor,
     // como a rede caindo, a configuração ausente ou a chave de serviço recusada: sempre 500, sem arquivo e sem repetir a mensagem do banco ao navegador. O log do servidor leva só a causa.
-    console.error('[exportar] falhou:', e instanceof ErroDmanda ? `regra do banco: ${e.message}` : ((e as { code?: string })?.code ?? 'sem código'));
+    console.error('[exportar] falhou:', e instanceof ErroDmanda ? `regra do banco: ${e.message}` : ((e as { code?: string })?.code || 'sem código'));
     return Response.json({ ok: false, erro: 'Não foi possível gerar a cópia agora.' }, { status: 500, headers: cabecalhos });
   }
 }

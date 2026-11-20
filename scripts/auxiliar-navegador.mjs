@@ -24,6 +24,8 @@ export function criarVerificador() {
     try { await promessa; v.ok(true, mensagem); } catch (e) { v.ok(false, `${mensagem} (${String(e.message).split('\n')[0]})`); }
   };
   v.resumo = () => {
+    // uma suíte que não rodou nenhuma verificação não está aprovada: algo a impediu de chegar nelas
+    if (v.total === 0) { console.log('\nNenhuma verificação rodou.'); return 1; }
     console.log(v.falhas ? `\n${v.falhas} de ${v.total} verificações falharam.` : `\nTudo certo: ${v.total} verificações.`);
     return v.falhas ? 1 : 0;
   };
@@ -62,7 +64,7 @@ const encerrar = (processo) => {
  * são encerrados ao sair do script. Dá para subir outro servidor (outra pasta, outra rodada) depois de `parar()`; depois de parar, um `await esperar(2500)` deixa o Windows soltar a pasta do PGlite.
  * Falhas de partida dão erro claro (nunca um navegador falhando sem explicação), cada uma com a sua regra:
  *  - o processo SAIU antes de responder (porta ocupada, erro de configuração...): erro na hora, com as últimas linhas da saída; repetir não resolve, e a porta ocupada é dita como tal;
- *  - NUNCA respondeu em `esperaMax` ms (4 min): erro, e o processo é encerrado;
+ *  - NUNCA respondeu em `esperaMax` ms (4 min; até 5 s a mais, o tempo do último pedido): erro, e o processo é encerrado;
  *  - respondeu e CAIU em seguida: é o caso conhecido do Next (sai logo depois de responder, ao mostrar um aviso de atualização) e repetir resolve. Por isso a resposta só vale se o processo continuar
  *    de pé depois de `estabilizar` ms (6 s), e só essa situação repete a partida, até `tentativas` vezes.
  * `lembretes: true` mantém os lembretes do Perfil ligados (as outras suítes os desligam). `cron: true` define o segredo da rotina diária (sem ele a rota responde 503; só quem a chama precisa).
@@ -71,7 +73,12 @@ const encerrar = (processo) => {
 export async function iniciarServidor({ porta, pasta, lembretes = false, cron = false, env = {}, tentativas = 4, estabilizar = 6000, esperaMax = 240_000, comando = null }) {
   const completo = { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: pasta, ...(cron ? { CRON_SECRET: SEGREDO_CRON_TESTE } : {}), ...(lembretes ? {} : { DMANDA_SEM_LEMBRETES: 'sim' }), ...env };
   for (const k of Object.keys(completo)) if (completo[k] === undefined) delete completo[k];
-  if (!ganchoDeSaida) { ganchoDeSaida = true; process.on('exit', () => { for (const p of [...ativos]) encerrar(p); }); }
+  if (!ganchoDeSaida) {
+    ganchoDeSaida = true;
+    process.on('exit', () => { for (const p of [...ativos]) encerrar(p); });
+    // Ctrl+C e término pelo sistema não emitem 'exit': sem estes dois, o servidor ficava órfão segurando a porta (o gancho acima só cobre saída normal, erro e exceção)
+    for (const sinal of ['SIGINT', 'SIGTERM']) process.on(sinal, () => { for (const p of [...ativos]) encerrar(p); process.exit(130); });
+  }
   const base = `http://localhost:${porta}`;
   const [exe, args] = comando ?? [process.execPath, ['node_modules/next/dist/bin/next', 'dev', '-p', String(porta)]];
   const portaOcupada = (saida) => /EADDRINUSE|address already in use/i.test(saida);
@@ -79,6 +86,8 @@ export async function iniciarServidor({ porta, pasta, lembretes = false, cron = 
     const processo = spawn(exe, args, { env: completo, stdio: ['ignore', 'pipe', 'pipe'] });
     let saida = ''; const guardar = (b) => { saida = (saida + b).slice(-1500); };
     processo.stdout.on('data', guardar); processo.stderr.on('data', guardar);
+    // sem isto, um script que termina sem process.exit ficaria preso esperando o servidor que ele mesmo criou, e o gancho de saída nunca rodaria
+    processo.unref(); processo.stdout.unref(); processo.stderr.unref();
     ativos.add(processo);
     const limite = Date.now() + esperaMax;
     let respondeu = false;

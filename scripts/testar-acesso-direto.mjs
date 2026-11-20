@@ -164,7 +164,7 @@ const exportar = async (base) => {
   return { status: r.status, tipo: r.headers.get('content-type') ?? '', anexo: r.headers.get('content-disposition'), cache: r.headers.get('cache-control'), texto, json };
 };
 const DETALHES_INTERNOS = /dmanda-exportacao|lista protegida|Operação (não permitida|indisponível)|sem-config|sb_secret|127\.0\.0\.1|PGRST|P0001|fetch failed|at .*\.(ts|js):/i;
-const recusada = (x) => x.status === 500 && /application\/json/.test(x.tipo) && x.anexo === null && x.cache === 'no-store' && x.json?.ok === false && x.json.erro === 'Não foi possível gerar a cópia agora.' && !DETALHES_INTERNOS.test(x.texto);
+const recusada = (x) => x.status === 500 && /application\/json/.test(x.tipo) && x.anexo === null && x.cache === 'no-store' && x.json?.ok === false && Object.keys(x.json).sort().join() === 'erro,ok' && x.json.erro === 'Não foi possível gerar a cópia agora.' && !DETALHES_INTERNOS.test(x.texto);
 const resumoDe = (x) => `status ${x.status}, anexo ${x.anexo}, corpo ${x.texto.slice(0, 160)}`;
 {
   const bom = await exportar(BASE);
