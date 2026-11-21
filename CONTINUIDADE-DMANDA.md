@@ -1022,3 +1022,21 @@ Publicado `964884fa833d3f27c918aae2ee96771fae723288` em `origin/main` (fast-forw
 **Arquivos temporários (fora do Git, fictícios):** `%TEMP%\dmanda-copia-ficticia\` (cópia fictícia, SQL e as duas leituras do restaurado), mantidos para revisão; podem ser apagados pelo Éder.
 
 **Issue #4:** os critérios técnicos estão atendidos (mecanismo, procedimento, destino privado em uso, restauração hospedada demonstrada); o texto proposto está em `PENDENCIAS.md`, **não publicado**. **Issue #3:** inalterada (execuções compatíveis com o agendamento, origem não comprovada; decisão adiada para a avaliação conjunta). **Proposta para fechar o Bloco 1:** (a) Éder decide #3 (aceitar o limite da origem) e #2 (aceite relatado, com a ressalva escrita); (b) publicar os textos nas Issues #2, #3, #4 e #7 com autorização própria; (c) enviar a branch à `main` com autorização própria (só documentação e dois scripts de apoio; não altera o aplicativo nem dispara mudança de comportamento, mas cada envio à `main` faz um deploy); (d) a consolidação de branches, stashes e arquivos não rastreados tem checkpoint próprio. **O Bloco 1 não está encerrado.**
+
+## AW. PONTO DE PAUSA (21/11/2026; sucede a AV; é o ponto de retomada mais recente)
+
+**Onde:** computador `NOTE-EDER`, checkout `C:\Users\Éder\Desktop\Dmanda-release`, branch `bloco/organizacao-estrutural`. Commit de entrega `1b1f5f4fc6dd0cb90fcd6f861f89da54d7866944`; este registro vem no commit de pausa que o sucede. Última base remota conferida: `origin/main` = `964884fa833d3f27c918aae2ee96771fae723288`. **Oito commits locais** sobre ela antes do commit de pausa (nove com ele), **nada enviado ao GitHub**. Árvore limpa antes do registro, sem arquivos não rastreados; o stash do Clima (`stash@{0}`), as demais branches e o checkout antigo `C:\Users\Éder\Desktop\Dmanda` estão intactos. Andamento oficial: 45%.
+
+**Estado do que foi feito (detalhes nas seções AT, AU e AV, sem repetir aqui):**
+- Recuperação v4 hospedada **concluída**: 28 migrações aplicadas do zero, duas restaurações da cópia fictícia comparadas campo a campo (14 conferências ok em cada), sem duplicação. Projeto descartável `dmanda-teste-restauracao-2026-11-21`, ref `jjjkcrikpmqsaowwjhlb`, **excluído**, com a exclusão confirmada por nova listagem (seção AV). A cópia funcional das dez tabelas segue sem restauração demonstrada.
+- Vercel conferida (deployment, SHA, cron e variáveis Production). A origem das execuções do cron de 20 e 21/11 continua **sem prova direta** (compatível com o agendamento).
+- OneDrive e aparelhos **já confirmados pelo Éder** (decisão 86): não pedir de novo esses aceites.
+- Supabase real: só leituras; entrada aberta mantida.
+
+**Arquivos fictícios, fora do Git, preservados:** `%TEMP%\dmanda-copia-ficticia\` (cópia v4 fictícia, SQL de restauração e as duas leituras do restaurado). Cópias privadas reais: `C:\Users\Éder\Desktop\Dmanda-backups\` e `C:\Users\Éder\OneDrive\Dmanda\Copias\Producao\2026-11-21\`. Nenhuma senha, token, valor de variável, exportação privada ou dado real consta neste registro.
+
+**Processos:** nenhum servidor, suíte ou operação hospedada em andamento; nenhuma porta de 7100 a 7200 em escuta.
+
+**Próximas decisões (cada uma com autorização própria do Éder; nada executado):** (1) proposta de fechamento das Issues #2, #3, #4 e #7 (textos em `PENDENCIAS.md`, não publicados; a #3 depende de aceitar o limite da origem do cron); (2) envio da branch à `main` e consequente deploy (só documentação e dois scripts de apoio); (3) consolidação das referências (branches, stash, arquivos não rastreados), com checkpoint próprio. **Bloco 1 não encerrado; Bloco 2 não iniciado.**
+
+**Próxima ação ao retomar:** `git status` e `git log --oneline -3` no checkout, ler as seções AV e AW, e perguntar ao Éder qual das três decisões acima conduzir primeiro. Só fazer `git fetch` se o Éder pedir.
