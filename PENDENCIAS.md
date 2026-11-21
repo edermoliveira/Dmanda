@@ -132,6 +132,12 @@ O MCP do Figma usa o plano gratuito (Starter): **20 chamadas de leitura por mês
 
 **Estado em 20/11/2026 (substitui as colunas "Quem bloqueia" acima, que ficaram históricas):** as quatro Issues abertas (**#2, #3, #4, #7**) seguem abertas. Login, aparelhos, sessão de 6 horas e branch `producao` são requisitos **superados**: desde 17/11/2026 a entrada é aberta e direta (sem login, código nem aparelho; consolidação de segurança perto do fim do projeto) e a `main` é a única branch e a que publica. Os textos prontos abaixo **não foram publicados**: o Éder decide se e quando comentá-los. Evidências e detalhes: `CONTINUIDADE-DMANDA.md`, seção AR.
 
+## Atualização de 21/11/2026 (Issues NÃO editadas; detalhes na seção AT de CONTINUIDADE-DMANDA.md)
+
+- **#3:** `execucoes_rotina` tem execuções `ok` em 20/11 (09:34:10 UTC) e 21/11 (09:34:09 UTC), dentro da janela do cron e a de 20/11 depois do deploy. O banco não prova que vieram do agendamento. Continua faltando o painel da Vercel (variáveis, cron, deployment com SHA).
+- **#4:** cópias no OneDrive pessoal em `Dmanda\Copias\Producao6-11-21` (integridade local por SHA-256 comprovada; sincronização e privacidade **a conferir pelo Éder** em onedrive.com). Frequência aprovada: manual, nos dias de uso e antes de migrações. Restauração hospedada **não executada** (conta com outros projetos e plano da organização não verificado).
+- **#2 e #7:** sem mudança (aceite físico do Éder; medição em outros dias e no iPhone real).
+
 ## Textos prontos para as Issues (20/11/2026, NÃO publicados)
 
 ### #3 Publicar o aplicativo e ativar a rotina diária

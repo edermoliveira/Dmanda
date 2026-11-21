@@ -1,5 +1,7 @@
 # Demonstração da restauração em um projeto Supabase descartável (preparada em 20/11/2026, não executada)
 
+> **Estado em 21/11/2026: ainda não executada.** Ao retomar, a conta Supabase mostrou outras duas organizações e dois projetos pausados (não tocados), e o plano Free da organização escolhida não pôde ser confirmado pela CLI. Antes de criar o projeto de teste, confirmar no painel que a organização é Free e que a criação custa zero (ver `CONTINUIDADE-DMANDA.md`, seção AT).
+
 Objetivo (Issue #4): provar, num ambiente hospedado de verdade e **só com dados fictícios**, que uma cópia v4 gerada pelo aplicativo é restaurada por `supabase/restaurar-copia.sql` com o conteúdo e os vínculos idênticos. Hoje a restauração está demonstrada **só em PGlite** (`testar:restauracao-v4`, 31 verificações, e `testar:banco`); o que falta é o Supabase hospedado.
 
 Este procedimento **não** cria v5, backup automático nem armazenamento externo, e **nunca** usa o projeto real (`gmxoosvgfcydccyeudej`) nem as cópias privadas. Cada passo marcado com **[Éder]** é uma ação dele; cada passo marcado com **[aprovação]** é uma escrita no projeto de TESTE e só roda com a aprovação pontual da ferramenta.
