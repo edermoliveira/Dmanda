@@ -27,6 +27,10 @@ Relatório único em [`AUDITORIA.md`](AUDITORIA.md): achados confirmados, corrig
 
 **Issue consolidada de auditoria:** o `gh` não está instalado neste computador, então a Issue não pôde ser criada daqui. O texto pronto está no fim de `AUDITORIA.md`; criar pelo site do GitHub (ou instalar o `gh` portátil e `gh auth login`) e vincular às #1 a #4. Não duplicar pendências em várias listas.
 
+## Estado de 21/11/2026 (consolidação local; decisão 89 e seção AZ de `CONTINUIDADE-DMANDA.md`)
+
+Issues #2, #3, #4 e #7 **fechadas**; nenhuma Issue aberta. O computador do trabalho **não é pendência** (descartado como base). **Pendências reais:** (1) decisões de produto reunidas na seção AZ: Clima, mensagem do dia e widgets do Início; Pagamentos e v5 da cópia; ícones definitivos; (2) acabamentos: teclado virtual em aparelho real e avisos fora do app; (3) aceite do Éder da busca global e do Perfil (existem e são testados; sem aceite registrado); (4) autorização do push dos commits de registro e da limpeza de branches remotas (escopo exato na devolutiva da consolidação); (5) bloco de segurança perto do fim. Andamento: 62% pela recontagem de `ANDAMENTO.md`.
+
 ## Fechamento de 21/11/2026 (decisão 87; estado final das Issues)
 
 - **#2 fechada** (https://github.com/edermoliveira/Dmanda/issues/2): aceite em iPhone, iPad e desktop; teclado virtual em aparelho real registrado abaixo como acabamento, **não realizado**.

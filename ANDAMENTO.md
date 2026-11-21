@@ -1,6 +1,37 @@
 # Andamento do Dmanda
 
-Última revisão da fórmula e das evidências: **04/11/2026**. **Total: 45%** (37% até a aprovação da Agenda; 33% antes da aprovação dos ajustes; 29% na primeira reavaliação de 30/10/2026; 18% até 29/10/2026). É a primeira reavaliação que incorpora uma avaliação do usuário: em 30/10/2026 ele **aprovou o bloco entregue na versão `2714937`** (correções do cadastro, cards, tipografia e prazos, na aplicação publicada). A aprovação vale **só** para o que ele disse. Ela **não** comprova a origem das execuções do cron nem a permanência prolongada da sessão, e nada abaixo a usa para isso.
+Última revisão da fórmula e das evidências: **21/11/2026**. **Total: 62%** (a seção "Reavaliação de 21/11/2026", logo abaixo, mostra a aritmética; 45% em 04/11, depois de 37%, 33%, 29% e 18%). Revisão anterior: **04/11/2026**, **45%** (37% até a aprovação da Agenda; 33% antes da aprovação dos ajustes; 29% na primeira reavaliação de 30/10/2026; 18% até 29/10/2026). É a primeira reavaliação que incorpora uma avaliação do usuário: em 30/10/2026 ele **aprovou o bloco entregue na versão `2714937`** (correções do cadastro, cards, tipografia e prazos, na aplicação publicada). A aprovação vale **só** para o que ele disse. Ela **não** comprova a origem das execuções do cron nem a permanência prolongada da sessão, e nada abaixo a usa para isso.
+
+## Reavaliação de 21/11/2026 (conciliação com as evidências datadas desde 04/11): 62%
+
+**Fórmula e critério inalterados:** pontos = peso x percentual feito; percentual = fração dos itens da etapa que cumprem o critério (verificado no ambiente real publicado **e** avaliado pelo Éder), itens de peso igual. **Regras desta recontagem (para não inflar):** (1) item só conta inteiro com aprovação datada que o nomeia ou nomeia a sua tela e funcionamento; (2) meio ponto quando só há aprovação visual ou só passagem no roteiro de 21/11, sem uso exercitado; (3) nenhum ponto por teste, commit ou aceite geral de "versão atual" sem item correspondente; (4) denominadores **não diminuem**: os itens de critérios revogados ficam, trocados pelos sucessores aprovados; (5) o roteiro de 21/11 cobre: Início direto, Para hoje e Urgência, as quatro visões de Demandas, Dia/Semana/Mês da Agenda, Dias indisponíveis e Nova demanda (seção AR de `CONTINUIDADE-DMANDA.md`); **não cobre** VoiceOver, teclado virtual real, concorrência nem gravações reais.
+
+| Etapa | Peso | Itens contados / total | Feito | Pontos | O que mudou desde 04/11 |
+|---|---|---|---|---|---|
+| Planejamento e pesquisa | 8 | 1/1 | 100% | 8,00 | nada |
+| Design system e protótipos | 12 | 0,85 | 85% | 10,20 | nada (a peça "cinco estados" continua sem entrega) |
+| Estrutura | 12 | 6,5/10 | 65% | 7,80 | ver itens abaixo |
+| Demandas | 18 | 8,5/13 | 65,4% | 11,77 | ver itens abaixo |
+| Início | 7 | 5/8 | 62,5% | 4,38 | Para hoje (quatro vagas), Urgência e cards aprovados |
+| Entradas | 6 | 6/6 | 100% | 6,00 | nada |
+| Agenda | 9 | 5/6 | 83,3% | 7,50 | nada (o 6º item segue reservado) |
+| Busca global e botão "+" | 5 | 2/5 | 40% | 2,00 | "+" com Demanda, Tarefa, Entrada e Evento |
+| Configurações | 8 | 4/8 | 50% | 4,00 | aprovação visual de 14/11 e dos campos em 15/11 |
+| Humor e produtividade | 4 | 0/4 | 0% | 0,00 | implementado, sem aceite registrado |
+| Google Calendar e Drive | 5 | 0 | 0% | 0,00 | não iniciada |
+| IA estagiária | 4 | 0 | 0% | 0,00 | não iniciada (página "Em construção") |
+| Documentos | 2 | 0 | 0% | 0,00 | não iniciada (página "Em construção") |
+
+**Soma:** 8,00 + 10,20 + 7,80 + 11,77 + 4,38 + 6,00 + 7,50 + 2,00 + 4,00 = **61,65, ou 62%** (45% em 04/11, com 44,7).
+
+**Itens (evidência):**
+- **Estrutura (6,5 de 10):** (1') entrada direta sem login, que **substitui** "entrada por senha" (revogada em 17/11): 1, verificada em produção em 21/11 e aceita; (2) banco real com 28 migrações aplicadas e RLS: 1; (3) publicação (`dmanda-adm.vercel.app`, deployment verificado em 21/11): 1; (4) menus e moldura: 1; (5') consolidação de segurança, que **substitui** "sessão persistente por horas" (revogada) e fica para o fim do projeto: 0; (6) PWA: iPhone confirmado em 30/10, iPad não presumido: 0,5; (7) cron registrado e Active no painel, execuções `ok` em 17 a 21/11, ressalva aceita pelo Éder, origem não comprovada: 0,5; (8) cópia baixada dentro do app instalado: 0; (9) restauração: v4 demonstrada em projeto hospedado descartável (21/11), cópia funcional não: 0,5; (10) destino fora do aparelho (OneDrive, confirmado pelo Éder): 1.
+- **Demandas (8,5 de 13):** cadastro guiado 1; cards 1; prazo pela chegada (decisão 81, aprovada em 16/11) 1; dias indisponíveis e campo Data (aprovados 30/10, 15/11 e 19/11) 1; Quadro 0,5 (arrasto não avaliado); Tabela 0,5 (só roteiro de 21/11); Lista 1 (aprovada em 30/10); consulta com lápis 0,5 (aprovação visual do detalhe em 14/11); tarefas 0 (sem aceite do item); etapas (mover, concluir, reabrir, aprovadas na etapa 3 de 16/11) 1; arquivo e exclusão 0,5; filtros, busca e ordenação 0,5; uso com dados reais avaliado 0.
+- **Início (5 de 8):** indicadores e contadores levando a Demandas filtrada 1; Para hoje com quatro vagas persistentes 1; Urgência 1; cards e baralho do celular 1; regra de "Aguardando retorno" e retorno do setor 1; clima 0; mensagem do dia 0; widgets 0.
+- **Busca e "+" (2 de 5):** "+" com Demanda, Tarefa e Entrada 1; Evento 1; Documento 0; Chat 0; busca global 0 (existe e é testada, sem aceite registrado por item).
+- **Configurações (4 de 8):** layout e campos (14 e 15/11) 1; modo, paletas, fontes, tamanhos, fundo e movimento e restaurar padrão 0,5 cada (aprovação visual da tela, sem aceite funcional por item); ícones definitivos 0 (o Éder ainda não escolheu).
+
+**Decisão de ponderação pendente (não bloqueia):** os critérios revogados de Estrutura (login por senha e sessão por horas) foram trocados pelos sucessores aprovados, mantendo o denominador 10. Se o Éder preferir contá-los como 0 sem sucessor, Estrutura cai para 5,5 de 10 (6,6 pontos) e o total para 60,45, ou **60%**. O ponto de meio da cron (item 7) subiria para inteiro se ele considerar a aceitação da ressalva como cumprimento do critério (+0,6 ponto). Nada disso altera o código nem a próxima entrega.
 
 **Segunda reavaliação de 30/10/2026 (depois do bloco de ajustes).** O usuário **aprovou o funcionamento de Entradas** (versão `1aecf40`, testada por ele na PWA do iPhone) e pediu cinco ajustes de consulta e interface, entregues no commit `c932dac` e **ainda aguardando a conferência dele no iPhone**. A aprovação vale para o **funcionamento**; não é aprovação visual. Mudanças nas contas: (a) Entradas passa a contar os itens que ele aprovou; (b) Estrutura ganha meio ponto, porque ele confirmou usar a PWA no iPhone (o iPad não é presumido); (c) Demandas **perde** meio item: "Dias indisponíveis" estava contado como aprovado, e ele apontou depois o campo Data saindo do quadro no iPhone, então o item volta a meio ponto até ele conferir a correção.
 
