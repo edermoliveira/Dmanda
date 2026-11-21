@@ -978,3 +978,26 @@ Publicado `964884fa833d3f27c918aae2ee96771fae723288` em `origin/main` (fast-forw
 **Pendências por Issue (nenhuma publicada ou fechada):** #2 aceite no iPhone e no iPad (do Éder); #3 painel da Vercel (variáveis, cron, deployment com SHA); a parte "execução automática depois do deploy" tem execuções `ok` em 20 e 21/11, sem prova de origem; #4 sincronização e privacidade do OneDrive e restauração hospedada; #7 medição repetida em outros dias e no iPhone real. **Bloco 1 não está encerrado.**
 
 **Commits ainda não enviados (sobre `964884f`):** `a31ebde`, `8617680`, `a394014`, `e4ee19c` e o commit desta seção. Nada de push, deploy, Issue ou branch alterados.
+
+## AU. CHECKPOINT DE 21/11/2026 (ponto de retomada mais recente; sucede a AT)
+
+**Onde:** `NOTE-EDER`, `C:\Users\Éder\Desktop\Dmanda-release`, branch `bloco/organizacao-estrutural`, `origin` = `edermoliveira/Dmanda`. Sem avanço em `origin/main` (`964884fa833d3f27c918aae2ee96771fae723288`) desde a AT; o `HEAD` na entrada foi `8390316921757710cd92261d47b1cfe476117e31`, árvore limpa; o commit desta seção vem por cima.
+
+**Confirmações do Éder (decisão 86):** OneDrive (`Dmanda\Copias\Producao\2026-11-21` na nuvem, acesso só dele) e aprovação da versão atual em iPhone, iPad e desktop. Isso **substitui** na AT as frases "Sincronização: NÃO comprovada" e "Privacidade: NÃO comprovada" e o aceite como pendência; o hash após download da nuvem continua não reportado e não é condição. Entrada aberta mantida.
+
+**Vercel (painel, só leitura, 21/11):** deployment de Production `wRyaYGaw2cpCTM6eSy8j38KbeVGA` (Ready, `main`, `964884f`) é o atual do domínio `dmanda-adm.vercel.app`; cron `/api/cron/diaria` Active em `0 9 * * *` UTC; as três variáveis exigidas existem só em Production (valores não abertos). A origem das execuções de 20 e 21/11 (09:34 UTC) **não é demonstrável**: logs da Hobby de 1 hora e Cron Jobs sem histórico. Detalhes na decisão 86, item 4. Há, além das três, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` e `DMANDA_EMAIL_AUTORIZADO` em Production (esta última, resíduo do acesso por e-mail; avaliar remover no bloco de segurança).
+
+**Restauração hospedada (Issue #4): BLOQUEADA, nada criado.** A CLI não mostra plano nem custo; o painel do Supabase abriu na tela de entrada neste navegador (sessão não logada), e eu não digito credenciais nem uso login social em nome do Éder. Sem comprovação de Free e custo zero, não se cria projeto. Nenhum outro projeto foi pausado, alterado ou excluído. **Ação humana indispensável:** entrar no Supabase (`supabase.com/dashboard`) no navegador "NOTE-EDER" já conectado, ou me mostrar a página `Organização dmanda > Billing` com o plano Free e a estimativa de custo de um projeto novo em US$ 0. Com isso, executo a demonstração sem nova autorização.
+
+**Deltas locais sobre `964884f` (6 commits, 9 arquivos, +326 -4), separando código e documentação:**
+- **Código e scripts (só `8617680`):** `scripts/gerar-copia-ficticia.mjs` (54 linhas: sobe o banco de teste, semeia só dados `FICTÍCIO`, chama a rota real `/api/exportar`, recusa gravar se algum assunto não for fictício e monta o SQL de restauração com o JSON embutido) e `scripts/comparar-copia-restaurada.mjs` (63 linhas: compara campo a campo, só imprime contagens e nomes de campo, saída 1 em qualquer diferença); `package.json` ganha os atalhos `copia:ficticia` e `copia:comparar`. Não tocam `src/`, o banco nem o comportamento do aplicativo. Revisados por leitura em 21/11; o comparador foi rodado com `--origem` nas cópias reais de 21/11 (saída 0).
+- **Documentação:** `a31ebde` (registro da implantação em `docs/plano-publicacao-consolidada.md` e `CLAUDE.md`), `a394014` (seção AR, textos das Issues, demonstração e inventário), `e4ee19c` (AS, pausa), `bea0976` (AT) e `8390316` (correção de um caminho em `PENDENCIAS.md`). `CLAUDE.md` e `docs/testes.md` receberam só texto: estado vigente e menção aos dois scripts.
+- Nenhum arquivo `.env*`, exportação real ou credencial entrou no Git (as cópias privadas ficam fora do repositório).
+
+**Estado separado:** **Local:** branch com os commits acima, nada enviado. **GitHub:** `main` em `964884f`; Issues #2, #3, #4 e #7 abertas e não editadas. **Vercel:** `964884f` em Production, cron e variáveis conferidos. **Supabase real:** só leituras (rotina e cópias); migrações do 1.4 já aplicadas; nenhum recurso novo.
+
+**Limites que a #7 preserva:** a medição hospedada de 20/11 foi pequena, sequencial e só de leitura; o PGlite com uma conexão não comprova concorrência real entre transações hospedadas; sem estabilidade estatística nem testes não realizados.
+
+**Consolidação de referências (proposta, sem execução):** tags preservam commits; o stash (`stash@{0}`), os arquivos não rastreados do checkout antigo `C:\Users\Éder\Desktop\Dmanda` (Pagamentos, documentação, `main` divergente) e dados fora do Git precisam de preservação própria. Nada foi apagado, movido ou realinhado.
+
+**Próximo checkpoint para fechar o Bloco 1:** (1) o Éder resolve o acesso ao Supabase acima e eu executo e excluo o projeto de teste, ou o Éder decide abrir mão da demonstração hospedada (a prova em PGlite permanece); (2) o Éder decide se o limite da origem da rotina basta para a #3; (3) publicação dos textos nas Issues, com autorização própria; (4) push da branch para a `main`, com autorização própria. **O Bloco 1 não está encerrado.**
