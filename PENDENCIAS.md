@@ -27,6 +27,19 @@ Relatório único em [`AUDITORIA.md`](AUDITORIA.md): achados confirmados, corrig
 
 **Issue consolidada de auditoria:** o `gh` não está instalado neste computador, então a Issue não pôde ser criada daqui. O texto pronto está no fim de `AUDITORIA.md`; criar pelo site do GitHub (ou instalar o `gh` portátil e `gh auth login`) e vincular às #1 a #4. Não duplicar pendências em várias listas.
 
+## Fechamento de 21/11/2026 (decisão 87; estado final das Issues)
+
+- **#2 fechada** (https://github.com/edermoliveira/Dmanda/issues/2): aceite em iPhone, iPad e desktop; teclado virtual em aparelho real registrado abaixo como acabamento, **não realizado**.
+- **#4 fechada** (https://github.com/edermoliveira/Dmanda/issues/4): OneDrive confirmado e recuperação v4 hospedada demonstrada duas vezes; cobertura só da v4.
+- **#7 fechada** (https://github.com/edermoliveira/Dmanda/issues/7): escopo original confrontado e atendido; limitações registradas (testes de abas locais; medição hospedada pequena e só de leitura; sem concorrência hospedada).
+- **#3 FECHADA em 21/11/2026** (https://github.com/edermoliveira/Dmanda/issues/3) depois da publicação verificada de `085c03c` (equivalente a `57b20ce`, ver `CONTINUIDADE-DMANDA.md`, seção AY); o texto abaixo é o que foi adaptado e postado. Texto a postar e fechar depois: "Atualização de 21/11/2026 e fechamento. Publicado `<SHA>` na `main` (fast-forward de `964884f`), deployment `<id>` Ready e ativo no domínio `dmanda-adm.vercel.app`, associação domínio, deployment e SHA conferida por painel; cron `/api/cron/diaria` Active em `0 9 * * *` UTC igual ao `vercel.json`; `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `CRON_SECRET` só em Production (valores não abertos). Execuções diárias `ok` em `execucoes_rotina` de 17 a 21/11 (sempre por volta de 09:34 UTC), **compatíveis com o agendamento**; a **origem não foi comprovada** com as evidências disponíveis (os logs da Hobby cobrem 1 hora e o banco não registra o originador); o Éder aceitou esse conjunto e a ressalva. Requisitos antigos superados: login por e-mail e senha, aparelhos autorizados e branch `producao`; a entrada é aberta e direta e a `main` é a única branch que publica. Segurança consolidada permanece para bloco próprio perto do fim."
+
+## Checklist de acabamentos (operacional; criado em 21/11/2026)
+
+Itens que o Éder autorizou deixar para os acabamentos. Nenhum está realizado; marcar só com a verificação feita.
+
+- [ ] **Teclado virtual em aparelho real (origem: Issue #2, fechada em 21/11/2026 com este item registrado).** Critério observável: no iPhone e no iPad reais (Safari e PWA instalada), em Claro e Escuro, abrir **Nova demanda** e **Dias indisponíveis** (dia avulso e período) e tocar em cada campo de texto com o teclado aberto. Passa se, em todos: o campo focado não fica coberto pelo teclado, o botão de continuar ou salvar continua alcançável (por rolagem do formulário, nunca da página inteira), não aparece rolagem horizontal e, ao fechar o teclado, o layout volta ao normal. Falha em qualquer um: registrar aparelho, orientação e campo. Sem aceite em nome do Éder: só ele marca como verificado.
+
 ## Fora das Issues por enquanto
 
 - **`.env.example`:** atualizado em 26/10/2026 (tinha nomes antigos). O modelo é o próprio arquivo versionado.
