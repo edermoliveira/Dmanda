@@ -4,7 +4,7 @@
 // Uso: node scripts/previa-auth.mjs            (rede local: o endereço do computador na rede é descoberto; DMANDA_IP_PREVIA troca)
 //      node scripts/previa-auth.mjs --limpar   (recomeça do zero, com as contas fictícias de novo)
 import { spawn } from 'node:child_process';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'node:fs';
 import { networkInterfaces, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { abrirBancoTeste, chamarComoUsuario, prepararAdminDeTeste, criarContaDeTeste, ADMIN_TESTE } from '../src/servidor/banco-teste-base.mjs';
@@ -39,6 +39,11 @@ if (nova) {
 }
 const falso = await iniciarAuthFalso({ db, porta: PORTA_AUTH, host: '0.0.0.0', urlApp: BASE });
 for (const x of CONTAS) falso.definirSenha(x.email, x.senha);
+// as senhas FICTÍCIAS definidas durante a avaliação (convite, recuperação, troca) ficam num arquivo junto do banco desta prévia, para uma reinicialização não as perder
+const ARQ_SENHAS = join(RAIZ, 'senhas-ficticias.json');
+try { for (const [e, sn] of Object.entries(JSON.parse(readFileSync(ARQ_SENHAS, 'utf8')))) if (!CONTAS.some((x) => x.email === e)) falso.definirSenha(e, sn); } catch { /* primeira vez */ }
+let ultimo = '';
+setInterval(() => { const t = JSON.stringify(Object.fromEntries(falso.estado.senhas)); if (t !== ultimo) { ultimo = t; writeFileSync(ARQ_SENHAS, t); } }, 1500).unref();
 
 const env = {
   ...process.env, PORT: String(PORTA), NEXT_PUBLIC_SUPABASE_URL: falso.url, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: CHAVE_PUBLICA, SUPABASE_SERVICE_ROLE_KEY: CHAVE_SERVICO,
