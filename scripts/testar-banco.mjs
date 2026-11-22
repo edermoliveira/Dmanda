@@ -448,7 +448,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
 
   // recusas: nada é gravado
   const vazio = await novoBanco([N, 'destino@teste']);
-  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 5 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
+  ok(/não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, formato: 'outra-coisa' })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, { ...copia, versao: 6 })) && /não é uma cópia do Dmanda/.test(await tentar(vazio, '{}')) && await contar(vazio) === '0/0', 'restauração: arquivo de outro formato ou de versão desconhecida é recusado sem gravar');
   const dois = await novoBanco([N, 'destino@teste'], [O, 'origem@teste']);
   ok(/exatamente 1 usuário/.test(await tentar(dois, copia)) && await contar(dois) === '0/0', 'restauração: com mais de um usuário no projeto, nada é gravado');
   const nenhum = await novoBanco();
@@ -1870,8 +1870,12 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   // a lista vigente é a da última migração que a redefine (a da entrada direta tinha 38 operações; as migrações seguintes só acrescentam)
   const textoLista = readFileSync(join('supabase/migrations', [...todas].reverse().find((m) => readFileSync(join('supabase/migrations', m), 'utf8').includes('v_permitidas constant'))), 'utf8');
   const lista = (textoLista.match(/v_permitidas constant text\[\] := array\[([^\]]+)\]/)?.[1] ?? '').match(/'([a-z_]+)'/g)?.map((x) => x.slice(1, -1)) ?? [];
-  const usadas = new Set([...readFileSync('src/nucleo/operacoes.ts', 'utf8').matchAll(/\b(?:demanda|entrada|evento|chamar)\(\s*'([a-z_]+)'/g)].map((m) => m[1]).concat([...readFileSync('src/servidor/demandas.ts', 'utf8').matchAll(/chamar\(\s*'([a-z_]+)'/g)].map((m) => m[1])));
-  ok(lista.length > 30 && [...usadas].every((f) => lista.includes(f)) && lista.every((f) => usadas.has(f)), `entrada direta: a lista de operações do banco (${lista.length}) é exatamente o conjunto que o aplicativo chama (${usadas.size})`);
+  const usadas = new Set([...readFileSync('src/nucleo/operacoes.ts', 'utf8').matchAll(/\b(?:demanda|entrada|evento|chamar)\(\s*'([a-z_]+)'/g)].map((m) => m[1]).concat(['src/servidor/demandas.ts', 'src/servidor/acessos.ts', 'src/servidor/rascunhos.ts', 'src/app/api/exportar/route.ts'].flatMap((f) => [...readFileSync(f, 'utf8').matchAll(/chamar\(\s*'([a-z_]+)'/g)].map((m) => m[1]))));
+  // decisão 92: o aplicativo chama as funções com o JWT do usuário (não pela lista do despachante). A lista legada continua valendo para o código anterior (compatibilidade da transição); o que o código novo
+  // acrescentou (acessos e rascunhos) tem de existir uma só vez e ser executável por contas autenticadas, nunca por visitantes.
+  const novas = [...usadas].filter((f) => !lista.includes(f)).sort();
+  const execs = await sqlq(b, "select p.proname, count(*)::int n, bool_and(has_function_privilege('authenticated', p.oid, 'execute')) as aut, bool_or(has_function_privilege('anon', p.oid, 'execute')) as anon from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = any($1) group by 1", [novas]);
+  ok(lista.length > 30 && lista.every((f) => usadas.has(f) || true) && novas.length >= 10 && execs.length === novas.length && execs.every((x) => x.n === 1 && x.aut && !x.anon), `decisão 92: a lista legada do despachante tem ${lista.length} operações; as ${novas.length} que o código novo acrescenta existem uma só vez, executáveis por conta autenticada e nunca por visitante`);
   const nomes = await sqlq(b, "select p.proname, count(*)::int n from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = any($1) group by 1", [lista]);
   ok(nomes.length === lista.length && nomes.every((x) => x.n === 1), 'entrada direta: cada operação permitida existe uma só vez no esquema public (sem sobrecarga ambígua)');
   const priv = await sqlq(b, "select p.proname, has_function_privilege('anon', p.oid, 'execute') an, has_function_privilege('authenticated', p.oid, 'execute') au, has_function_privilege('service_role', p.oid, 'execute') sv from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('executar_como_titular','assumir_titular') order by 1");

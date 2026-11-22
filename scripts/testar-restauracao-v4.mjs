@@ -9,7 +9,7 @@ import { criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 // Nunca toca o Supabase real nem as cópias privadas: o banco de origem fica em .dados-teste/restauracao-v4 e o destino é em memória.
 // Uso: node scripts/testar-restauracao-v4.mjs
 import { readFileSync, rmSync, mkdirSync } from 'node:fs';
-import { abrirBancoTeste, chamarComoUsuario } from '../src/servidor/banco-teste-base.mjs';
+import { abrirBancoTeste, chamarComoUsuario, prepararAdminDeTeste } from '../src/servidor/banco-teste-base.mjs';
 import { ajustarPrazo } from '../src/lib/prazos.ts';
 
 const PORTA = process.env.PORTA_TESTE_RESTAURACAO || '7142', BASE = `http://localhost:${PORTA}`, PASTA = '.dados-teste/restauracao-v4';
@@ -65,19 +65,19 @@ const { parar } = await iniciarServidor({ porta: PORTA, pasta: PASTA });
 const resp = await fetch(BASE + '/api/exportar'); const textoCopia = await resp.text(); parar();
 const copia = JSON.parse(textoCopia);
 ok(resp.status === 200 && /attachment; filename="dmanda-copia-\d{4}-\d{2}-\d{2}\.json"/.test(resp.headers.get('content-disposition') ?? '') && resp.headers.get('cache-control') === 'no-store', 'exportação: a rota real responde 200 como arquivo para baixar, sem cache');
-ok(copia.formato === 'dmanda-exportacao' && copia.versao === 4 && copia.fuso === 'America/Sao_Paulo' && Object.keys(copia).join() === 'formato,versao,exportado_em,fuso,demandas,arquivadas,dias_indisponiveis,entradas,entradas_arquivadas,eventos', 'contrato v4: formato, versão, fuso e exatamente estas seções: demandas (com as tarefas), arquivadas, dias_indisponiveis, entradas, entradas_arquivadas, eventos');
+ok(copia.formato === 'dmanda-exportacao' && copia.versao === 5 && copia.fuso === 'America/Sao_Paulo' && Object.keys(copia).join() === 'formato,versao,exportado_em,fuso,demandas,arquivadas,dias_indisponiveis,entradas,entradas_arquivadas,eventos,rascunhos,rascunhos_de' && copia.rascunhos.length === 0 && copia.rascunhos_de === null, 'contrato v5 (a rota agora gera a versão 5; a v4 segue restaurável, ver testar:restauracao-v5): formato, versão, fuso e exatamente estas seções: demandas (com as tarefas), arquivadas, dias_indisponiveis, entradas, entradas_arquivadas, eventos');
 ok(JSON.stringify(Object.fromEntries(Object.keys(esperado).map((k) => [k, copia[k]]))) === JSON.stringify(esperado), 'exportação: cada seção do arquivo é exatamente o que as funções de leitura devolvem ao titular (mesmos campos, mesma ordem)');
 ok(!chaves(copia).includes('user_id') && !textoCopia.includes(ORIGEM) && !textoCopia.includes(EMAIL_ORIGEM), 'contrato v4: o arquivo não traz a identidade da conta (nem user_id, nem o identificador, nem o e-mail)');
 ok(copia.demandas.length === 8 && copia.arquivadas.length === 1 && copia.demandas.concat(copia.arquivadas).reduce((n, d) => n + d.tarefas.length, 0) === 7 && copia.entradas.length === 1 && copia.entradas_arquivadas.length === 2 && copia.eventos.length === 3 && copia.dias_indisponiveis.length === 5, 'exportação: 8 demandas ativas e 1 arquivada (7 tarefas), 1 anotação ativa e 2 no Arquivo, 3 eventos e 5 dias indisponíveis (2 avulsos e um período de 3 dias)');
 ok(copia.dias_indisponiveis.filter((x) => x.periodo_id === periodo.periodo_id).length === 3 && copia.dias_indisponiveis.filter((x) => 'periodo_id' in x).length === 3 && copia.dias_indisponiveis.filter((x) => !('periodo_id' in x)).every((x) => Object.keys(x).sort().join() === 'categoria,criado_em,data,descricao,id'), 'contrato v4: os dias de um período saem com o periodo_id (chave opcional nova) e os dias avulsos mantêm exatamente as cinco chaves de sempre');
 
 // ---------- (3) destino isolado: banco novo, outra conta ----------
-const DESTINO = '00000000-0000-4000-8000-0000000000b2', EMAIL_DESTINO = 'destino.ficticio@dmanda.local';
+const DESTINO = '00000000-0000-4000-8000-0000000000b2';
 const SQL = readFileSync('supabase/restaurar-copia.sql', 'utf8');
 const restaurar = (db, json) => db.exec(SQL.replace('__COLE_AQUI_O_JSON__', () => (typeof json === 'string' ? json : JSON.stringify(json))));
 const dest = await abrirBancoTeste();
-await dest.query('insert into auth.users (id, email) values ($1, $2)', [DESTINO, EMAIL_DESTINO]);
-await dest.query('insert into dmanda_privado.acesso_autorizado (email) values ($1)', [EMAIL_DESTINO]);
+await prepararAdminDeTeste(dest, DESTINO);   // decisão 92: sem autoria (cópia anterior), tudo volta para a conta administradora do projeto de destino
+const EMAIL_DESTINO = (await dest.query('select dmanda_privado.email_admin() as e')).rows[0].e;
 const t0 = (await dest.query('select now() as t')).rows[0].t;
 ok(await erroDe(restaurar(dest, textoCopia)) === null, 'restauração: o SQL real roda sem erro com o arquivo que a rota gerou (o texto exato do download, colado como o procedimento manda)');
 // o caminho real da entrada direta: o servidor chama executar_como_titular com a chave de serviço
@@ -100,7 +100,7 @@ ok(tar.n === 7 && new Date(tar.c) >= new Date(t0), 'fora do contrato: a data de 
 const fora = { registros_dia: await contar(dest, 'registros_dia'), para_hoje: await contar(dest, 'para_hoje'), execucoes_rotina: await contar(dest, 'execucoes_rotina'), opcoesComTexto: (await dest.query("select count(*)::int n from public.opcoes where nome like 'Origem só nas opções%'")).rows[0].n };
 ok(fora.registros_dia === 0 && fora.para_hoje === 0 && fora.execucoes_rotina === 0 && fora.opcoesComTexto === 0, 'fora do contrato (documentado): o humor do dia, as vagas do Para hoje, a opção cadastrada sem uso e o registro da rotina NÃO voltam (privado, recomposto ou derivado)');
 ok(porId(r.demandas, d1.id).origem === 'TCE-RS' && porId(r.demandas, d1.id).tipo === 'Processo', 'fora do contrato (documentado): a origem e o tipo de cada demanda restaurada continuam no texto da própria demanda');
-const resumo = (await dest.query('select origem, dados from public.resumos_operacionais where user_id = $1', [DESTINO])).rows;
+const resumo = (await dest.query('select origem, dados from public.resumos_operacionais where data_ref = public.hoje()')).rows;
 ok(resumo.length === 1 && resumo[0].origem === 'alteracao' && resumo[0].dados.abertas >= 1, 'derivado: o resumo do dia é recalculado sozinho pelo banco ao restaurar as demandas (não vem na cópia)');
 
 // ---------- (5) o restaurado é usado pelas operações, pelo caminho real ----------
@@ -140,7 +140,7 @@ const vagas = await via('atualizar_para_hoje', { p_candidatas: [d1.id, d2.id, d3
 ok(vagas.length === 4, 'uso: as vagas do Para hoje, que a cópia não leva, são recompostas a partir das demandas restauradas (as quatro vagas)');
 const rot = await dest.transaction(async (tx) => { await tx.exec('set local role service_role'); return (await tx.query('select public.rotina_diaria() as r')).rows[0].r; });
 const ativas = await via('listar_demandas', { p_arquivadas: false });
-const sr = (await dest.query('select dados from public.resumos_operacionais where user_id = $1 and data_ref = $2', [DESTINO, hojeDest])).rows[0].dados;
+const sr = (await dest.query('select dados from public.resumos_operacionais where data_ref = $1', [hojeDest])).rows[0].dados;
 const abertas = ativas.filter((d) => d.etapa !== 'Finalizado'), finais = ativas.filter((d) => d.etapa === 'Finalizado');
 ok(rot.usuarios === 1 && sr.abertas === abertas.length && sr.finalizadas === finais.length && sr.aguardando_retorno === abertas.filter((d) => d.etapa === 'Aguardando retorno').length && sr.aguardando_prefeita === abertas.filter((d) => d.etapa === 'Aguardando Prefeita').length && sr.sem_prazo === abertas.filter((d) => d.etapa !== 'Aguardando retorno' && d.prazo === null).length, `uso: a rotina diária roda sobre os dados restaurados e o resumo bate com as demandas (${sr.abertas} abertas, ${sr.finalizadas} finalizada(s), ${sr.aguardando_retorno} aguardando retorno, ${sr.sem_prazo} sem prazo)`);
 // segunda restauração por cima: nada do que mudou é sobrescrito, nada duplica

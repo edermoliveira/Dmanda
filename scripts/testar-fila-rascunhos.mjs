@@ -129,6 +129,7 @@ const limpar = async () => { rede.chamadas.length = 0; rede.cai = false; rede.pe
   await limpar(); const arm = armazemDe(); const t1 = motor(A, arm), t2 = motor(A, arm);
   await t1.iniciar(); await t2.iniciar();
   t1.guardar('e:nova', { dados: { texto: 'aba 1' } }); await t1.enviarAgora();
+  await t2.sincronizar();   // a aba 2 volta ao primeiro plano: relê o banco e adota a instância que a aba 1 já confirmou
   t2.guardar('e:nova', { dados: { texto: 'aba 2 sobre a mesma fila' } }); await t2.enviarAgora();
   const b = await noBanco(A, 'e:nova');
   ok(b.dados.dados.texto === 'aba 2 sobre a mesma fila' && b.conflitos.length === 0 && (await sql("select count(*)::int n from public.rascunhos where user_id = $1 and chave = 'e:nova' and estado = 'aberto'", [A]))[0].n === 1, 'duas abas: compartilham a fila e a instância (mesmo id), a segunda grava em cima da primeira na versão certa, sem duplicar rascunho');
@@ -149,8 +150,9 @@ const limpar = async () => { rede.chamadas.length = 0; rede.cai = false; rede.pe
 {
   await limpar(); const arm = armazemDe(); const m = motor(A, arm); await m.iniciar();
   m.guardar('nova', { dados: { assunto: 'vai virar demanda' } }); await m.enviarAgora();
-  const copiaDaFila = arm.ler(CHAVE_FILA(A));   // uma "fila antiga" que ainda tem o rascunho pendente (outra aba ou cópia que ficou para trás)
-  const antigo = armazemDe(); antigo.gravar(CHAVE_FILA(A), JSON.stringify({ ...JSON.parse(copiaDaFila), itens: { nova: { ...JSON.parse(copiaDaFila).itens.nova, pendente: true, valor: { dados: { assunto: 'fila antiga' } } } } }));
+  const idInstancia = (await noBanco(A, 'nova')).id;
+  ok(!(arm.ler(CHAVE_FILA(A)) ?? '').includes('vai virar demanda'), 'fila: o que o banco já confirmou NÃO fica no armazenamento do navegador (só o pendente)');
+  const antigo = armazemDe(); antigo.gravar(CHAVE_FILA(A), JSON.stringify({ v: 1, lapides: [], itens: { nova: { id: idInstancia, chave: 'nova', valor: { dados: { assunto: 'fila antiga' } }, versao: 1, op: randomUUID(), pendente: true, conflito: null } } }));   // uma "fila antiga" (outra aba ou cópia que ficou para trás) que ainda reenvia o rascunho
   m.consumir('nova'); await m.enviarAgora();
   ok(!(await noBanco(A, 'nova')) && m.pendentes() === 0 && !m.rascunhos().nova && (await sql("select estado from public.rascunhos where user_id = $1 and chave = 'nova'", [A]))[0].estado === 'consumido', 'consumir: confirmado o registro, o rascunho vira lápide no banco e sai da fila');
   const velha = motor(A, antigo); await velha.iniciar(); await velha.enviarAgora();
@@ -175,7 +177,7 @@ const limpar = async () => { rede.chamadas.length = 0; rede.cai = false; rede.pe
   const mb = motor(B, arm); await mb.iniciar();
   ok(Object.keys(mb.rascunhos()).length === 0 && mb.pendentes() === 0 && !(arm.ler(CHAVE_FILA(B)) ?? '').includes('segredo da A'), 'isolamento: ao trocar de conta no mesmo navegador a fila e os rascunhos da outra conta NÃO aparecem');
   mb.guardar('nova', { dados: { assunto: 'da B' } }); await mb.enviarAgora();
-  ok(JSON.parse(arm.ler(CHAVE_FILA(A))).itens.nova.valor.dados.assunto === 'segredo da A' && JSON.parse(arm.ler(CHAVE_FILA(B))).itens.nova.valor.dados.assunto === 'da B' && (await noBanco(A, 'nova')).dados.dados.assunto === 'segredo da A' && (await noBanco(B, 'nova')).dados.dados.assunto === 'da B', 'isolamento: cada conta tem a sua fila (chave por usuário) e o seu rascunho no banco, sem mistura de conteúdo');
+  ok(!(arm.ler(CHAVE_FILA(A)) ?? '').includes('segredo da A') && !(arm.ler(CHAVE_FILA(B)) ?? '').includes('da B') && mb.rascunhos().nova.dados.assunto === 'da B' && (await noBanco(A, 'nova')).dados.dados.assunto === 'segredo da A' && (await noBanco(B, 'nova')).dados.dados.assunto === 'da B', 'isolamento: cada conta tem a sua fila (chave por usuário) e o seu rascunho no banco, sem mistura de conteúdo');
   mb.parar();
 }
 

@@ -2,7 +2,8 @@
 // Exige a sessão (decisão 92): lê pelas funções de sempre com o JWT de quem pediu (RLS e conta autorizada no banco); sem sessão é 401.
 // Nada é gravado, copiado para o Git nem para outro serviço: o arquivo vai só para quem pediu.
 import { connection } from 'next/server';
-import { operacoes } from '@/servidor/banco';
+import { chamar, operacoes } from '@/servidor/banco';
+import { montarCopia, type Autoria } from '@/nucleo/copia';
 import { ErroDmanda } from '@/nucleo/operacoes';
 import { hojeISO } from '@/lib/demandas';
 
@@ -11,9 +12,15 @@ export async function GET() {
   const cabecalhos = { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' };
   try {
     const op = operacoes();
-    const [ativas, arquivadas, dias, entradas, entradasArquivadas, eventos] = await Promise.all([op.listar(false), op.listar(true), op.listarDias(), op.listarEntradas(false), op.listarEntradas(true), op.listarEventos()]);
+    const [ativas, arquivadas, dias, entradas, entradasArquivadas, eventos, rascunhos, acesso] = await Promise.all([
+      op.listar(false), op.listar(true), op.listarDias(), op.listarEntradas(false), op.listarEntradas(true), op.listarEventos(),
+      chamar('listar_rascunhos', {}) as Promise<{ id: string; chave: string; dados: Record<string, unknown>; versao: number }[]>,
+      chamar('estado_acesso', {}) as Promise<{ admin?: boolean; email?: string | null }>,
+    ]);
+    // a autoria e a situação dos acessos só vão na cópia da administradora (a função do banco recusa qualquer outra conta)
+    const autoria = acesso.admin ? ((await chamar('exportar_autoria', {})) as Autoria) : null;
     const agora = new Date();
-    const corpo = { formato: 'dmanda-exportacao', versao: 4, exportado_em: agora.toISOString(), fuso: 'America/Sao_Paulo', demandas: ativas, arquivadas, dias_indisponiveis: dias, entradas, entradas_arquivadas: entradasArquivadas, eventos };
+    const corpo = montarCopia({ agora, ativas, arquivadas, dias, entradas, entradasArquivadas, eventos, rascunhos: rascunhos.map((r) => ({ id: r.id, chave: r.chave, dados: r.dados, versao: r.versao })), rascunhosDe: acesso.email ?? null, autoria });
     return new Response(JSON.stringify(corpo, null, 2), { headers: { ...cabecalhos, 'content-disposition': `attachment; filename="dmanda-copia-${hojeISO(agora)}.json"` } });
   } catch (e) {
     // sem sessão (o transporte redireciona ao login nas páginas): na API é 401, sem arquivo e sem dado

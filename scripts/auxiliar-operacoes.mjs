@@ -16,7 +16,7 @@ export function operacoesPermitidasNoBanco() {
 
 /** Os nomes que o código passa para executar_como_titular (primeiro argumento de chamar/demanda/entrada/evento). */
 export function operacoesChamadasPeloCodigo() {
-  const arquivos = ['src/nucleo/operacoes.ts', ...readdirSync('src/servidor').filter((f) => f.endsWith('.ts')).map((f) => `src/servidor/${f}`)];
+  const arquivos = ['src/nucleo/operacoes.ts', 'src/app/api/exportar/route.ts', ...readdirSync('src/servidor').filter((f) => f.endsWith('.ts')).map((f) => `src/servidor/${f}`)];
   const nomes = new Set();
   for (const f of arquivos) for (const m of readFileSync(f, 'utf8').matchAll(/\b(?:chamar|demanda|entrada|evento)\(\s*'([a-z_]+)'/g)) nomes.add(m[1]);
   return [...nomes].sort();

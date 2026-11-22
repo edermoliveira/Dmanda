@@ -13,6 +13,7 @@ import { Busca } from './busca';
 import { Lembretes } from './lembretes';
 import { PerfilGaveta } from './perfil';
 import { AvisosGlobais, PainelAvisos, textoAvisoEvento } from './avisos';
+import { EstadoRascunhos } from './estado-rascunhos';
 
 const NAV: [string, string, string, string][] = [
   ['/', 'Início', 'nav-inicio', 'inicio'], ['/entradas', 'Entradas', 'nav-entradas', 'entradas'], ['/demandas', 'Demandas', 'nav-demandas', 'demandas'],
@@ -132,6 +133,7 @@ function Interior({ children }: { children: ReactNode }) {
             </div>
           ) : null}
           <AvisosGlobais />
+          <EstadoRascunhos />
           {children}
         </main>
         <nav className="bar glass" aria-label="Navegação">

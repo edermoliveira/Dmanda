@@ -19,6 +19,7 @@
     "testar:acesso": "node scripts/testar-acesso.mjs",
     "testar:rascunhos-banco": "node scripts/testar-rascunhos-banco.mjs",
     "testar:fila-rascunhos": "node scripts/testar-fila-rascunhos.mjs",
+    "testar:restauracao-v5": "node scripts/testar-restauracao-v5.mjs",
     "testar:regras": "node scripts/testar-regras.mjs",
     "testar:app": "node scripts/testar-app.mjs",
     "testar:interface": "node scripts/testar-interface.mjs",

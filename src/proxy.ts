@@ -13,7 +13,7 @@ export async function proxy(request: NextRequest) {
   const api = pathname.startsWith('/api/');
   const acao = request.headers.has('next-action');   // ação do servidor: ela mesma exige a identidade e responde ao cliente
   let resposta = NextResponse.next({ request });
-  resposta.headers.set('cache-control', 'private, no-store');
+  if (!api) resposta.headers.set('cache-control', 'private, no-store');   // as rotas de API definem o próprio cabeçalho (no-store)
   let autenticado = false, incerto = false;
 
   if (emTeste()) {
@@ -27,7 +27,7 @@ export async function proxy(request: NextRequest) {
           setAll: (lista) => {
             for (const { name, value } of lista) request.cookies.set(name, value);
             resposta = NextResponse.next({ request });
-            resposta.headers.set('cache-control', 'private, no-store');
+            if (!api) resposta.headers.set('cache-control', 'private, no-store');
             for (const { name, value, options } of lista) resposta.cookies.set(name, value, { ...options, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/' });
           },
         },

@@ -79,15 +79,27 @@ export class MotorRascunhos {
     } catch { return filaVazia(); }
   }
   private gravar(f: Fila) { try { this.o.armazem.gravar(CHAVE_FILA(this.o.usuarioId), JSON.stringify(f)); } catch { /* sem armazenamento: a fila vale só nesta visita */ } }
-  private mutar(f: (fila: Fila) => void) { const fila = this.ler(); f(fila); this.gravar(fila); this.o.aoMudar(); }
+  /** O que já foi CONFIRMADO pelo banco fica só na memória desta aba (nunca no armazenamento do navegador): o armazenamento guarda apenas o que ainda não chegou ao banco. */
+  private cache: Record<string, Item> = {};
+  private mutar(f: (fila: Fila) => void) {
+    const fila = this.ler();
+    fila.itens = { ...this.cache, ...fila.itens };
+    f(fila);
+    const novo: Record<string, Item> = {};
+    for (const [k, i] of Object.entries(fila.itens)) if (!i.pendente && !i.conflito) { novo[k] = i; delete fila.itens[k]; }
+    this.cache = novo;
+    this.gravar(fila);
+    this.o.aoMudar();
+  }
+  private todos(): Record<string, Item> { return { ...this.cache, ...this.ler().itens }; }
 
   // ---------- leitura para a interface ----------
   /** O que as janelas leem: o conteúdo de cada chave com rascunho aberto. */
-  rascunhos(): Record<string, Dados> { const r: Record<string, Dados> = {}; for (const [k, i] of Object.entries(this.ler().itens)) r[k] = i.valor; return r; }
-  conflitos(): { chave: string; versao: number; outras: number }[] { return Object.values(this.ler().itens).filter((i) => i.conflito).map((i) => ({ chave: i.chave, versao: i.conflito!.versao, outras: i.conflito!.outras })); }
+  rascunhos(): Record<string, Dados> { const r: Record<string, Dados> = {}; for (const [k, i] of Object.entries(this.todos())) r[k] = i.valor; return r; }
+  conflitos(): { chave: string; versao: number; outras: number }[] { return Object.values(this.todos()).filter((i) => i.conflito).map((i) => ({ chave: i.chave, versao: i.conflito!.versao, outras: i.conflito!.outras })); }
   estado(): EstadoRascunhos {
     const f = this.ler();
-    const itens = Object.values(f.itens);
+    const itens = Object.values(this.todos());
     if (this.emVoo > 0 || this.timer) return 'salvando';
     if (this.falhou) return 'falha';
     if (itens.some((i) => i.pendente) || f.lapides.length || itens.some((i) => i.conflito)) return 'pendente';

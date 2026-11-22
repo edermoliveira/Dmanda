@@ -9,7 +9,9 @@ import * as srvA from '@/servidor/agenda';
 import * as srvP from '@/servidor/perfil';
 import { cargaInicial } from '@/servidor/carga';
 import { APARENCIA_PADRAO, aparenciaGuardada, CHAVE_TEMA, CONJUNTOS, PALETAS, temaDoModo, type Aparencia, type Modo } from '@/lib/aparencia';
-import { eObjeto, gruposGuardados, ordemGuardada, rascunhosGuardados, textosGuardados, visaoGuardada, guardarNoNavegador as gravarLS, lerGuardado as lerLS } from '@/lib/armazenamento';
+import { useRascunhosOnline } from './rascunhos-online';
+import type { EstadoRascunhos } from '@/lib/fila-rascunhos';
+import { gruposGuardados, ordemGuardada, textosGuardados, visaoGuardada, guardarNoNavegador as gravarLS, lerGuardado as lerLS } from '@/lib/armazenamento';
 import { avisosDeHoje, compararEventos, minutosAgora, type AvisoEvento, type DadosEvento, type Evento } from '@/lib/eventos';
 import type { Entrada } from '@/lib/entradas';
 import type { Opcao } from '@/lib/documentos';
@@ -132,7 +134,7 @@ type Ctx = {
   fecharCompletar: () => void;
   aviso: Aviso;
   avisar: (msg: string, erro?: boolean) => void;
-  ambiente: { teste: boolean; nome: string; email?: string | null; admin?: boolean; semLembretes?: boolean } | null;
+  ambiente: { teste: boolean; nome: string; id?: string | null; email?: string | null; admin?: boolean; semLembretes?: boolean } | null;
   rotina: EstadoRotina | null;
   tema: 'claro' | 'escuro';
   alternarTema: () => void;
@@ -161,6 +163,13 @@ type Ctx = {
   fecharMenuMover: () => void;
   rascunhos: Record<string, Rascunho>;
   guardarRascunho: (chave: string, r: Rascunho | null) => void;
+  /** Estado verdadeiro dos rascunhos online (decisão 92): Salvando, Salvo online (só após a confirmação do banco), pendente de envio, falha. */
+  estadoRascunhos: EstadoRascunhos;
+  pendentesRascunhos: number;
+  conflitosRascunhos: { chave: string; versao: number; outras: number }[];
+  tentarRascunhosDeNovo: () => void;
+  resolverRascunho: (chave: string, escolha: 'meu' | 'outro') => void;
+  sincronizarRascunhos: () => Promise<void>;
   // operações (devolvem a demanda gravada, ou null se falhou; o erro já foi avisado)
   /** Com entradaId (Virar demanda), a demanda e o vínculo com a anotação são gravados juntos; a anotação sai de Entradas. */
   criar: (dados: DadosDemanda & { id?: string }, msg?: string, entradaId?: string) => Promise<Demanda | null>;
@@ -250,7 +259,9 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [gruposFechados, setGrupos] = useState<Record<string, boolean>>({});
   const [janela, setJanela] = useState<Janela>(null);
   const [menuMover, setMenuMover] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [rascunhos, setRascunhos] = useState<Record<string, Rascunho>>({});
+  // rascunhos online (decisão 92): o banco é a fonte; o navegador guarda só a fila de pendências deste usuário
+  const ro = useRascunhosOnline(ambiente?.id ?? null);
+  const rascunhos = ro.rascunhos as unknown as Record<string, Rascunho>;
   // só depois de ler as preferências do navegador é que elas podem ser gravadas (senão os padrões sobrescrevem o que estava salvo)
   const [pronto, setPronto] = useState(false);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -282,7 +293,6 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     if (visaoUi) setVisaoE(visaoUi);
     if (ordemUi) setOrdem(ordemUi);
     setGrupos(gruposGuardados(ui.grupos));
-    setRascunhos(rascunhosGuardados<Rascunho>(lerLS<unknown>(CHAVE.rascunhos, null)));
     setDispensados(textosGuardados(lerLS<unknown>(CHAVE.avisosVistos, null)));
     const guardadas = lerLS<unknown>(CHAVE.periodosIncertos, []);   // só entra o que tem a forma esperada (o que está guardado pode estar corrompido)
     if (Array.isArray(guardadas)) { const ok = guardadas.filter((x): x is PeriodoIncerto => !!x && typeof x === 'object' && typeof (x as PeriodoIncerto).operacao_id === 'string' && /^[0-9a-f-]{36}$/i.test((x as PeriodoIncerto).operacao_id) && typeof (x as PeriodoIncerto).resumo === 'string').map((x) => ({ operacao_id: x.operacao_id, resumo: x.resumo.slice(0, 220) })); incertosRef.current = ok; setIncertos(ok); }
@@ -439,7 +449,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
 
   // estável (identidade fixa): as janelas a usam em efeitos que gravam o rascunho sozinhos
   // parte do que está guardado no navegador, não só da memória desta aba: outra aba ou a PWA do mesmo aparelho pode ter guardado um rascunho que esta não conhece, e gravar o mapa da memória o apagaria
-  const guardarRascunho = useCallback((chave: string, r: Rascunho | null) => setRascunhos((m) => { const guardado = lerLS<unknown>(CHAVE.rascunhos, null); const n = { ...(eObjeto(guardado) ? rascunhosGuardados<Rascunho>(guardado) : m) }; if (r) n[chave] = r; else delete n[chave]; gravarLS(CHAVE.rascunhos, n); return n; }), []);
+  const guardarRascunho = ro.guardar as (chave: string, r: Rascunho | null) => void;
 
   const gravando = useCallback(async <T,>(f: () => Promise<T>): Promise<T> => {
     gravacoes.current++; pendentes.current++;
@@ -606,6 +616,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     fecharMenuMover: () => setMenuMover(null),
     rascunhos,
     guardarRascunho,
+    estadoRascunhos: ro.estado, pendentesRascunhos: ro.pendentes, conflitosRascunhos: ro.conflitos, tentarRascunhosDeNovo: ro.tentarDeNovo, resolverRascunho: ro.resolver, sincronizarRascunhos: ro.sincronizar,
     salvarDia: async (dia, rotulo) => {
       const r = await gravando(() => protegido(() => srv.salvarDia(dia)));
       if (!r.ok) { avisar(r.erro, true); return { ok: false, erro: r.erro }; }
@@ -686,7 +697,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, erroDias, recarregarDias, avisosSistema, marcarAvisoLido, marcarAvisosLidos, recarregarFonte, aplicarEvento, incertos, conferirPeriodo, conferirPendentes, executarAcaoAviso, definirIncertos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar]);
+  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, erroDias, recarregarDias, avisosSistema, marcarAvisoLido, marcarAvisosLidos, recarregarFonte, aplicarEvento, incertos, conferirPeriodo, conferirPendentes, executarAcaoAviso, definirIncertos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar, ro.estado, ro.pendentes, ro.conflitos, ro.tentarDeNovo, ro.resolver, ro.sincronizar]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

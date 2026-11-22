@@ -436,3 +436,10 @@ body { font-family: var(--f-inter), system-ui, sans-serif; min-height: 100dvh; }
 .avisos-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .avisos-rodape { justify-content: flex-end; padding-top: 2px; }
 .avisos-vazio { margin: 4px 8px; }
+
+/* Estado dos rascunhos online (decisão 92): faixa discreta no canto, sempre com texto (nunca só cor), alvo de toque de 44 px nos botões. Só tokens do Catalyst. */
+.app .estado-rascunhos { position: fixed; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: min(92vw, 520px); padding: 6px 12px; border-radius: var(--r-field); background: var(--solido); border: 1px solid var(--brd); color: var(--text); box-shadow: var(--shadow); }
+.app .estado-rascunhos[data-estado-rascunhos="falha"] { border-color: var(--perigo); }
+.app .estado-rascunhos .btn { min-height: 44px; }
+.app .estado-rascunhos-conflito { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+@media (max-width: 760px) { .app .estado-rascunhos { bottom: calc(72px + env(safe-area-inset-bottom)); } }

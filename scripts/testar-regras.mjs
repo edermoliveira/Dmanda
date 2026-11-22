@@ -574,7 +574,9 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
 {
   const banco = operacoesPermitidasNoBanco(), codigo = operacoesChamadasPeloCodigo();
   const soNoCodigo = codigo.filter((n) => !banco.nomes.includes(n)), soNoBanco = banco.nomes.filter((n) => !codigo.includes(n));
-  ok(codigo.length > 30 && soNoCodigo.length === 0, `operações: tudo que o código pede ao banco está liberado em executar_como_titular (${banco.arquivo}); faltam no SQL: ${soNoCodigo.join(', ') || 'nenhuma'}`);
+  // decisão 92: o aplicativo chama as funções com o JWT do usuário; a lista do despachante (legada, removida na ativação) só cobre as operações anteriores. As NOVAS têm de ser exatamente estas:
+  const NOVAS_92 = ['autorizar_acesso', 'encerrar_rascunho', 'estado_acesso', 'exportar_autoria', 'importar_rascunho_legado', 'listar_acessos', 'listar_rascunhos', 'registrar_convite_enviado', 'resolver_rascunho', 'restabelecer_acesso', 'revogar_acesso', 'salvar_rascunho'];
+  ok(codigo.length > 30 && soNoCodigo.join() === NOVAS_92.join(), `operações: tudo que o código pedia ao banco continua liberado (${banco.arquivo}) e as novas operações são exatamente as da decisão 92 (acessos e rascunhos); diferença: ${soNoCodigo.filter((n) => !NOVAS_92.includes(n)).join(', ') || 'nenhuma'}`);
   ok(soNoBanco.length === 0, `operações: o banco não libera nada que o código não use (a lista não acumula operações mortas); sobram no SQL: ${soNoBanco.join(', ') || 'nenhuma'}`);
 }
 // as portas das suítes de navegador: cada uma tem a sua (duas suítes na mesma porta se atrapalham quando alguém as roda juntas); a convenção só existia nos números escritos em cada arquivo

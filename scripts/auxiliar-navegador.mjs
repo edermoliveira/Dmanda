@@ -71,7 +71,7 @@ const encerrar = (processo) => {
  * `env` acrescenta ou troca variáveis (um valor `undefined` remove a variável). `comando` ([executável, argumentos]) troca o servidor: só o teste do próprio auxiliar o usa.
  */
 export async function iniciarServidor({ porta, pasta, lembretes = false, cron = false, env = {}, tentativas = 4, estabilizar = 6000, esperaMax = 240_000, comando = null }) {
-  const completo = { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: pasta, ...(cron ? { CRON_SECRET: SEGREDO_CRON_TESTE } : {}), ...(lembretes ? {} : { DMANDA_SEM_LEMBRETES: 'sim' }), ...env };
+  const completo = { ...process.env, DMANDA_BANCO: 'teste', DMANDA_PASTA_TESTE: pasta, DMANDA_USUARIO_TESTE: USUARIO_TESTE, ...(cron ? { CRON_SECRET: SEGREDO_CRON_TESTE } : {}), ...(lembretes ? {} : { DMANDA_SEM_LEMBRETES: 'sim' }), ...env };
   for (const k of Object.keys(completo)) if (completo[k] === undefined) delete completo[k];
   if (!ganchoDeSaida) {
     ganchoDeSaida = true;

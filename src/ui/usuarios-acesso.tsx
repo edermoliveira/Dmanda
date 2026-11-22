@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useApp } from './contexto';
 import { FormAlterarSenha } from './acesso';
 import { sair } from '@/servidor/autenticacao';
+import { importarRascunhoLegado } from '@/servidor/rascunhos';
 import { convidar, listarAcessos, reenviarConvite, restabelecerAcesso, revogarAcesso, type Acesso } from '@/servidor/acessos';
 
 const ROTULO: Record<Acesso['estado'], string> = { autorizado: 'Autorizado', convite_pendente: 'Convite pendente', ativo: 'Ativo', revogado: 'Revogado' };
@@ -75,6 +76,57 @@ export function SecaoUsuarios() {
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+// ---------- recuperação controlada dos rascunhos antigos deste aparelho (só a administradora) ----------
+// Antes das contas, os rascunhos ficavam numa chave do navegador SEM autor (dmanda:rascunhos). Eles NÃO são atribuídos a quem entrar: só a administradora os recupera, por ação explícita, e a cópia local só é
+// removida depois que o banco confirma cada um (identificador estável derivado do conteúdo: repetir não duplica).
+const CHAVE_ANTIGA = 'dmanda:rascunhos';
+const CHAVE_VALIDA = /^(nova|tarefa|dia:nova|(d|e|ev):(nova|[0-9a-fA-F-]{36}))$/;
+function lerAntigos(): Record<string, Record<string, unknown>> {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(CHAVE_ANTIGA) ?? 'null');
+    const r: Record<string, Record<string, unknown>> = {};
+    if (v && typeof v === 'object' && !Array.isArray(v)) for (const [k, x] of Object.entries(v)) if (x && typeof x === 'object' && !Array.isArray(x) && (x as { dados?: unknown }).dados && typeof (x as { dados?: unknown }).dados === 'object') r[k] = x as Record<string, unknown>;
+    return r;
+  } catch { return {}; }
+}
+async function idEstavel(chave: string, valor: unknown): Promise<string> {
+  const b = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${chave}|${JSON.stringify(valor)}`)));
+  const h = Array.from(b.slice(0, 16), (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
+export function SecaoRascunhosAntigos() {
+  const { ambiente, avisar, sincronizarRascunhos } = useApp();
+  const [n, setN] = useState(0), [ocupado, setOcupado] = useState(false), [erro, setErro] = useState('');
+  const admin = ambiente?.admin;
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => { if (admin) setN(Object.keys(lerAntigos()).length); }, [admin]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+  if (!admin || n === 0) return null;
+  const recuperar = async () => {
+    if (ocupado) return; setOcupado(true); setErro('');
+    const todos = lerAntigos(); let falhou = 0;
+    for (const [chave, valor] of Object.entries(todos)) {
+      const id = await idEstavel(chave, valor);
+      let r = await importarRascunhoLegado(id, CHAVE_VALIDA.test(chave) ? chave : `legado:${chave.replace(/[^A-Za-z0-9:._-]/g, '_').slice(0, 80)}`, valor);
+      if (r.ok && r.dados.status === 'ocupado') r = await importarRascunhoLegado(id, `legado:${chave.replace(/[^A-Za-z0-9:._-]/g, '_').slice(0, 80)}:${id.slice(0, 8)}`, valor);
+      if (r.ok && (r.dados.status === 'ok' || r.dados.status === 'repetido')) { delete todos[chave]; try { if (Object.keys(todos).length) localStorage.setItem(CHAVE_ANTIGA, JSON.stringify(todos)); else localStorage.removeItem(CHAVE_ANTIGA); } catch { /* sem armazenamento */ } }
+      else falhou++;
+    }
+    await sincronizarRascunhos();
+    setN(Object.keys(lerAntigos()).length); setOcupado(false);
+    if (falhou) setErro(`${falhou} rascunho(s) não foram confirmados pelo banco e continuam neste aparelho. Tente de novo.`); else avisar('Rascunhos antigos recuperados na sua conta.');
+  };
+  return (
+    <section className="cfg-bloco painel" aria-labelledby="cfg-rasc-t" data-secao="rascunhos-antigos">
+      <h2 id="cfg-rasc-t" style={{ fontSize: 'calc(17px * var(--esc))', margin: '0 0 6px' }}>Rascunhos antigos deste aparelho</h2>
+      <p className="data">Há {n} rascunho(s) guardado(s) neste navegador de antes das contas, sem dono identificado. Eles não vão para ninguém automaticamente. Recupere-os na sua conta: cada cópia local só é removida depois que o banco confirmar.</p>
+      {erro ? <p className="data" role="alert" style={{ color: 'var(--perigo)' }}>{erro}</p> : null}
+      <div className="acoes"><button type="button" className="btn pri" disabled={ocupado} data-recuperar-antigos onClick={() => void recuperar()}>{ocupado ? 'Recuperando...' : 'Recuperar na minha conta'}</button></div>
     </section>
   );
 }

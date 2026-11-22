@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { FormEntrar } from '@/ui/acesso';
 import { destinoSeguro } from '@/servidor/autenticacao';
 
@@ -11,7 +10,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
       <h1>Dmanda</h1>
       <p>Entre com o seu e-mail e a sua senha.</p>
       <FormEntrar proximo={await destinoSeguro(proximo)} aviso={motivo ? AVISOS[motivo] : undefined} />
-      <div className="acesso-links"><Link href="/recuperar">Esqueci a senha</Link></div>
+      <div className="acesso-links"><a href="/recuperar">Esqueci a senha</a></div>
     </>
   );
 }

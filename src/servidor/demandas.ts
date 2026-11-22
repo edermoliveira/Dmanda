@@ -15,7 +15,7 @@ export async function ambiente() {
   const u = await usuarioAtual();
   let admin = false;
   if (u) { try { admin = ((await chamar('estado_acesso', {})) as { admin?: boolean }).admin === true; } catch { admin = false; } }
-  return { teste: modoTeste(), nome: u?.email ?? (modoTeste() ? 'Teste' : ''), email: u?.email ?? null, admin, semLembretes: semLembretes() };
+  return { teste: modoTeste(), nome: u?.email ?? (modoTeste() ? 'Teste' : ''), id: u?.id ?? null, email: u?.email ?? null, admin, semLembretes: semLembretes() };
 }
 export async function listarDemandas(arquivadas = false) {
   return executar(() => op().listar(arquivadas));
