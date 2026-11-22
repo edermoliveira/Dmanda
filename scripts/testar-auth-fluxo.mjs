@@ -212,6 +212,21 @@ let estadoAdmin;
   await c2.pg.waitForTimeout(2500);
   await c2.pg.click('.toolbar .btn.escuro'); await c2.pg.waitForSelector('#n-assunto');
   ok((await c2.pg.inputValue('#n-assunto')) === TEXTO && /Rascunho recuperado/.test(await c2.pg.textContent('.modal')), 'rascunhos: em OUTRO contexto de navegador a mesma conta recupera o rascunho');
+  // primeira leitura ATRASADA além do limite (4 s): a janela abre sem o rascunho, a tela diz que a leitura não foi confirmada, Cancelar não o descarta e reabrir o recupera
+  const c3 = await novoCtx(); await entrar(c3.pg, 'ana@exemplo.invalid', 'senha-da-ana-123');
+  let atrasou = false;
+  await c3.pg.route('**/api/rascunhos', async (r) => { if (!atrasou && /"acao":"listar"/.test(r.request().postData() ?? '')) { atrasou = true; await esperar(9000); } await r.continue().catch(() => {}); });
+  await c3.pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await c3.pg.waitForSelector('.app');
+  await c3.pg.click('.toolbar .btn.escuro'); await c3.pg.waitForSelector('#n-assunto', { timeout: 15000 });
+  const vazioAntes = await c3.pg.inputValue('#n-assunto');
+  ok(vazioAntes === '' && !!(await c3.pg.$('[data-leitura-pendente]')) && !/Salvo online/.test((await c3.pg.textContent('[data-estado-rascunhos]').catch(() => '')) ?? ''), 'leitura atrasada (navegador): depois do limite a janela abre vazia, a tela avisa que os rascunhos online ainda não foram lidos e não diz "Salvo online"');
+  await c3.pg.click('.modal .btn:has-text("Cancelar")');
+  await c3.pg.waitForSelector('[data-nao-visto]', { timeout: 20000 });   // a leitura atrasada chegou depois do Cancelar
+  await esperar(1500);
+  ok((await db.query("select dados::text d from public.rascunhos where user_id = $1 and chave = 'nova' and estado = 'aberto'", [A])).rows[0]?.d.includes(TEXTO), 'leitura atrasada (navegador): Cancelar antes da resposta não descartou o rascunho online, e a tela avisa que ele foi preservado');
+  await c3.pg.click('.toolbar .btn.escuro'); await c3.pg.waitForSelector('#n-assunto');
+  ok((await c3.pg.inputValue('#n-assunto')) === TEXTO && /Rascunho recuperado/.test(await c3.pg.textContent('.modal')), 'leitura atrasada (navegador): reabrir a janela recupera o rascunho online');
+  await c3.ctx.close();
   await biaUI.pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await biaUI.pg.waitForSelector('.app'); await esperar(2500);
   await biaUI.pg.click('.toolbar .btn.escuro'); await biaUI.pg.waitForSelector('#n-assunto');
   ok((await biaUI.pg.inputValue('#n-assunto')) === '' && !(await biaUI.pg.textContent('.modal')).includes('recuperado'), 'rascunhos: a Bia NÃO vê o rascunho da Ana (o cadastro dela abre vazio)');

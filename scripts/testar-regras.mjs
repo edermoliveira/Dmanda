@@ -579,6 +579,24 @@ ok(titulo({ tipo: 'Processo', numero: '' }) === 'Processo' && titulo({ tipo: 'Me
   ok(codigo.length > 30 && soNoCodigo.join() === NOVAS_92.join(), `operações: tudo que o código pedia ao banco continua liberado (${banco.arquivo}) e as novas operações são exatamente as da decisão 92 (acessos e rascunhos); diferença: ${soNoCodigo.filter((n) => !NOVAS_92.includes(n)).join(', ') || 'nenhuma'}`);
   ok(soNoBanco.length === 0, `operações: o banco não libera nada que o código não use (a lista não acumula operações mortas); sobram no SQL: ${soNoBanco.join(', ') || 'nenhuma'}`);
 }
+// os links de convite e de recuperação (decisão 92): o plano de ativação, os modelos de e-mail e o código têm de compor o MESMO endereço, sem caminho repetido e com o tipo certo de cada fluxo
+{
+  const plano = readFileSync('docs/plano-ativacao-autenticacao.md', 'utf8');
+  const celula = (rotulo) => (plano.split('\n').find((l) => l.startsWith(`| ${rotulo}`))?.match(/`(https?:\/\/[^`]+)`/) ?? [])[1];
+  const site = celula('Site URL'), redirect = celula('Redirect URLs'), publica = celula('`DMANDA_URL_PUBLICA`');
+  const modelo = (tipo) => (plano.match(new RegExp('`(\\{\\{ \\.SiteURL \\}\\}/auth/confirmar\\?token_hash=\\{\\{ \\.TokenHash \\}\\}&type=' + tipo + ')`')) ?? [])[1];
+  const compor = (m) => m?.replace('{{ .SiteURL }}', site).replace('{{ .TokenHash }}', 'CODIGO');
+  const convite = compor(modelo('invite')), recuperacao = compor(modelo('recovery'));
+  ok(site === 'https://dmanda-adm.vercel.app' && publica === site && redirect === `${site}/auth/confirmar`, `links: o plano distingue Site URL (${site}), Redirect URL (${redirect}) e DMANDA_URL_PUBLICA (${publica}), e os três batem`);
+  ok(convite === 'https://dmanda-adm.vercel.app/auth/confirmar?token_hash=CODIGO&type=invite' && recuperacao === 'https://dmanda-adm.vercel.app/auth/confirmar?token_hash=CODIGO&type=recovery' && ![convite, recuperacao].some((u) => /\/\/auth|\/auth\/confirmar\/auth/.test(u)), 'links: os modelos de convite e de recuperação compõem o endereço completo, sem barra dupla nem caminho repetido, cada um com o seu tipo');
+  const acessos = readFileSync('src/servidor/acessos.ts', 'utf8');
+  const regex = acessos.match(/if \(!(\/\^https\?:\\\/\\\/\[\^\\s\/\]\+\$\/)\.test\(u\)\)/)?.[1];
+  const valida = regex ? new Function(`return ${regex}`)() : null;
+  const normaliza = (v) => v.trim().replace(/\/+$/, '');
+  ok(!!valida && acessos.includes(".replace(/\\/+$/, '')") && acessos.includes('redirectTo: `${urlPublica()}/auth/confirmar`') && valida.test(normaliza('https://dmanda-adm.vercel.app/')) && !valida.test(normaliza('https://dmanda-adm.vercel.app/auth/confirmar')) && `${normaliza('https://dmanda-adm.vercel.app/')}/auth/confirmar` === redirect, 'links: o código aceita em DMANDA_URL_PUBLICA só a origem (barra final é tirada; um caminho é recusado) e o redirectTo do convite é exatamente a Redirect URL do plano');
+  const pagina = readFileSync('src/app/(app)/(publico)/auth/confirmar/page.tsx', 'utf8'), acao = readFileSync('src/servidor/confirmar.ts', 'utf8');
+  ok(pagina.includes("type !== 'invite' && type !== 'recovery'") && acao.includes("tipo !== 'invite' && tipo !== 'recovery'") && pagina.includes('<ConfirmarLink') && acao.includes('verifyOtp({ type: tipo, token_hash: tokenHash })'), 'links: /auth/confirmar aceita só convite e recuperação, e o link só é verificado pela ação do botão Continuar');
+}
 // as portas das suítes de navegador: cada uma tem a sua (duas suítes na mesma porta se atrapalham quando alguém as roda juntas); a convenção só existia nos números escritos em cada arquivo
 {
   const usos = new Map();

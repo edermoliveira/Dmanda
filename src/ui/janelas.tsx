@@ -56,7 +56,10 @@ function JanelaNovaDeEntrada({ entradaId }: { entradaId: string }) {
 }
 
 export function Janelas() {
-  const { janela, carregando, carregandoEntradas, rascunhosProntos } = useApp();
+  const { janela, carregando, carregandoEntradas, rascunhosProntos, marcarRascunhosVistos } = useApp();
+  const aberta = !!janela && rascunhosProntos;
+  // a janela leu os rascunhos ao montar (neste mesmo desenho): o que chegar do banco depois disso é "não visto" e fica protegido contra descarte e sobrescrita
+  useEffect(() => { if (aberta) marcarRascunhosVistos(); }, [aberta, janela, marcarRascunhosVistos]);
   // a janela só abre depois da primeira leitura dos rascunhos online: aberta antes, ela começaria sem o rascunho que já existe e a próxima digitação o sobrescreveria
   if (!janela || !rascunhosProntos) return null;
   if (janela.t === 'editar') return <JanelaDemanda id={janela.id} />;

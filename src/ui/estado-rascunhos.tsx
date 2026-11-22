@@ -14,13 +14,15 @@ export const textoRascunho = (e: EstadoRascunho | null): string =>
   e === 'salvo' ? 'rascunho salvo online' : e === 'salvando' || e === null ? 'salvando o rascunho' : e === 'pendente' ? 'alterações pendentes neste aparelho' : e === 'conflito' ? 'conflito com outro aparelho' : 'erro de sincronização do rascunho';
 
 export function EstadoRascunhos() {
-  const { estadoRascunhos, pendentesRascunhos, conflitosRascunhos, tentarRascunhosDeNovo, resolverRascunho, bloqueioRascunhos, donoRascunhos } = useApp();
-  if (estadoRascunhos === 'nenhum' && !conflitosRascunhos.length) return null;
+  const { estadoRascunhos, pendentesRascunhos, conflitosRascunhos, tentarRascunhosDeNovo, resolverRascunho, bloqueioRascunhos, donoRascunhos, leituraRascunhosPendente, rascunhosNaoVistos } = useApp();
+  if (estadoRascunhos === 'nenhum' && !conflitosRascunhos.length && !leituraRascunhosPendente && !rascunhosNaoVistos.length) return null;
   const estado = estadoRascunhos === 'nenhum' ? 'pendente' : estadoRascunhos;
   return (
     <div className="estado-rascunhos" role="status" aria-live="polite" data-estado-rascunhos={estado}>
       <span className="data" data-texto-estado>{estado === 'bloqueado' && bloqueioRascunhos === 'outraConta' ? `Envio parado: este navegador agora está com outra conta. As alterações de ${donoRascunhos?.email ?? 'quem as digitou'} continuam guardadas e não vão em nome de outra pessoa` : conflitosRascunhos.length && estado !== 'salvando' ? 'Conflito de sincronização' : TEXTO[estado]}{pendentesRascunhos && estado !== 'salvando' && estado !== 'salvo' ? ` (${pendentesRascunhos})` : ''}</span>
-      {estado === 'falha' || estado === 'pendente' ? <button type="button" className="btn mini" data-tentar-de-novo onClick={tentarRascunhosDeNovo}>Tentar de novo</button> : null}
+      {leituraRascunhosPendente ? <span className="data" data-leitura-pendente>Os rascunhos online ainda não foram lidos (a conexão demorou ou falhou). Nada foi descartado e o que você digitar fica guardado.</span> : null}
+      {rascunhosNaoVistos.length ? <span className="data" data-nao-visto>Um rascunho online chegou depois de a janela abrir e foi preservado. Feche e abra a janela de novo para recuperá-lo.</span> : null}
+      {estado === 'falha' || estado === 'pendente' || leituraRascunhosPendente ? <button type="button" className="btn mini" data-tentar-de-novo onClick={tentarRascunhosDeNovo}>Tentar de novo</button> : null}
       {conflitosRascunhos.map((c) => (
         <span key={c.chave} className="estado-rascunhos-conflito" data-conflito={c.chave}>
           <span className="data">Há outra versão deste rascunho em outro aparelho. As duas estão guardadas.</span>

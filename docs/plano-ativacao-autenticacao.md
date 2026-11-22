@@ -25,14 +25,21 @@ Os nomes são os do painel em novembro de 2026; se algum rótulo mudar, vale a f
 - "Email OTP Expiration": **86400** segundos (24 h), que é a validade do link de convite e de recuperação (o mesmo ajuste vale para os dois).
 - **Google e todos os outros provedores: desligados.**
 
-**Authentication > URL Configuration**
-- Site URL: o endereço público do painel (o mesmo de `DMANDA_URL_PUBLICA`, sem barra no fim).
-- Redirect URLs: `<endereço público>/auth/confirmar`.
+**Authentication > URL Configuration** e variável `DMANDA_URL_PUBLICA` (três valores diferentes, que precisam bater)
 
-**Authentication > Emails > Templates** (só estes dois são usados)
-- **Invite user**: o link do corpo deve ser `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=invite`.
-- **Reset password**: `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=recovery`.
-- O aplicativo só consome o link quando a pessoa toca em Continuar (um leitor automático de e-mail que abre o endereço não gasta o link de uso único).
+| Onde | Valor exato | Para que serve |
+|---|---|---|
+| Site URL (painel do Auth) | `https://dmanda-adm.vercel.app` | é o `{{ .SiteURL }}` dos modelos de e-mail: a base dos links de convite e de recuperação. **Sem barra no fim** (com barra, o link sairia `…app//auth/confirmar`) |
+| Redirect URLs (painel do Auth, lista de permitidos) | `https://dmanda-adm.vercel.app/auth/confirmar` | o endereço que o código manda como `redirectTo` no convite (`src/servidor/acessos.ts`) e no bootstrap; o Auth só aceita destinos desta lista |
+| `DMANDA_URL_PUBLICA` (Vercel e `.env.local`) | `https://dmanda-adm.vercel.app` | só a ORIGEM, sem caminho e sem barra: o código valida (`^https?://host$`), tira barras finais e acrescenta `/auth/confirmar`, então não há caminho repetido |
+
+**Authentication > Emails > Templates** (só estes dois são usados; os demais ficam como estão)
+- **Invite user**: trocar o link padrão `{{ .ConfirmationURL }}` por `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=invite`.
+- **Reset password**: trocar `{{ .ConfirmationURL }}` por `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=recovery`.
+- Links completos que chegam por e-mail, com esses valores: convite `https://dmanda-adm.vercel.app/auth/confirmar?token_hash=<código>&type=invite`; recuperação `https://dmanda-adm.vercel.app/auth/confirmar?token_hash=<código>&type=recovery`.
+- **Não manter `{{ .ConfirmationURL }}`**: o padrão passa pelo endereço do Auth e devolve a sessão no fragmento da URL, um caminho que o aplicativo não aceita (ele exige `token_hash` e confirma no servidor).
+- O tipo de cada modelo é fixo (`invite` no convite, `recovery` na recuperação): a tela `/auth/confirmar` só aceita esses dois, e o Auth recusa um `token_hash` apresentado com o tipo trocado. O link só é consumido quando a pessoa toca em **Continuar** (um leitor automático de e-mail que abre o endereço não gasta o link de uso único).
+- A recuperação pedida pela tela "Esqueci a senha" não envia `redirectTo` (o link vem só do modelo, pela Site URL); o convite e o bootstrap enviam `https://dmanda-adm.vercel.app/auth/confirmar`, que está na lista de permitidos. Nos dois casos o endereço final é o mesmo.
 
 **Authentication > Emails > SMTP Settings** (dependência externa; nada foi contratado)
 - O serviço de e-mail padrão do Supabase só entrega a quem é membro da organização do projeto e tem limite muito baixo: para convidar outras pessoas é preciso um **SMTP próprio**: host, porta 587 (STARTTLS) ou 465 (SSL), usuário, senha de aplicativo, remetente (ex.: `dmanda@<seu domínio>`) e nome do remetente "Dmanda".
@@ -53,7 +60,7 @@ Os nomes são os do painel em novembro de 2026; se algum rótulo mudar, vale a f
 | `SUPABASE_SERVICE_ROLE_KEY` | já existe | inalterada (só servidor) |
 | `CRON_SECRET` | já existe | inalterada |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | **nova** | a chave publicável do projeto (Project Settings > API Keys; começa com `sb_publishable_`) |
-| `DMANDA_URL_PUBLICA` | **nova** | o endereço público do painel, sem barra final |
+| `DMANDA_URL_PUBLICA` | **nova** | `https://dmanda-adm.vercel.app` (só a origem: sem caminho e sem barra final) |
 | `DMANDA_SEGREDO_FLUXO` | **nova** | 32 caracteres ou mais, aleatórios, só do servidor (assina a etapa de definição de senha). Gere no PowerShell: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` e cole só nas variáveis, nunca no Git |
 
 Sem `DMANDA_SEGREDO_FLUXO` a definição de senha por convite ou recuperação **recusa** (falha fechada) e o resto do painel funciona.

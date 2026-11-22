@@ -18,10 +18,10 @@ const armazem = {
 };
 export type Instantaneo = {
   rascunhos: Record<string, Dados>; estado: EstadoRascunhos; porChave: Record<string, EstadoRascunho>; conflitos: { chave: string; versao: number; outras: number }[];
-  pendentes: number; bloqueio: Bloqueio | null; pronto: boolean; dono: { id: string; email: string | null } | null;
+  pendentes: number; bloqueio: Bloqueio | null; pronto: boolean; dono: { id: string; email: string | null } | null; leituraPendente: boolean; naoVistos: string[];
 };
-const VAZIO: Instantaneo = { rascunhos: {}, estado: 'nenhum', porChave: {}, conflitos: [], pendentes: 0, bloqueio: null, pronto: false, dono: null };
-const foto = (m: MotorRascunhos): Instantaneo => ({ rascunhos: m.rascunhos(), estado: m.estado(), porChave: m.porChave(), conflitos: m.conflitos(), pendentes: m.pendentes(), bloqueio: m.bloqueio, pronto: m.pronto, dono: m.dono() });
+const VAZIO: Instantaneo = { rascunhos: {}, estado: 'nenhum', porChave: {}, conflitos: [], pendentes: 0, bloqueio: null, pronto: false, dono: null, leituraPendente: false, naoVistos: [] };
+const foto = (m: MotorRascunhos): Instantaneo => ({ rascunhos: m.rascunhos(), estado: m.estado(), porChave: m.porChave(), conflitos: m.conflitos(), pendentes: m.pendentes(), bloqueio: m.bloqueio, pronto: m.pronto, dono: m.dono(), leituraPendente: m.leituraPendente, naoVistos: m.naoVistos() });
 
 /** Avisa o aplicativo de que o banco recusou a identidade (acesso revogado): a tela de acesso revogado assume. */
 export const avisarRevogado = () => { try { window.dispatchEvent(new CustomEvent('dmanda:revogado')); } catch { /* fora do navegador */ } };
@@ -57,6 +57,7 @@ export function useRascunhosOnline(usuarioId: string | null, email: string | nul
   const guardar = useCallback((chave: string, r: Dados | null) => { motor.current?.guardar(chave, r); }, []);
   const tentarDeNovo = useCallback(() => { void motor.current?.tentarDeNovo(); }, []);
   const resolver = useCallback((chave: string, escolha: 'meu' | 'outro') => { void motor.current?.resolver(chave, escolha); }, []);
+  const marcarVistos = useCallback(() => { motor.current?.marcarVistos(); }, []);
   const sincronizar = useCallback(async () => { await motor.current?.sincronizar(); await motor.current?.enviarAgora(); }, []);
-  return { ...snap, guardar, tentarDeNovo, resolver, sincronizar };
+  return { ...snap, guardar, tentarDeNovo, resolver, sincronizar, marcarVistos };
 }

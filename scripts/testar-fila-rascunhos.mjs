@@ -21,11 +21,13 @@ const esperarMicro = () => new Promise((r) => setTimeout(r, 15));
 const armazemDe = () => { const m = new Map(); return { m, ler: (k) => m.get(k) ?? null, gravar: (k, x) => m.set(k, x) }; };
 
 // a "rede": toda chamada passa por aqui, onde se injeta queda, resposta perdida e atraso
-const rede = { chamadas: [], cai: false, perdeResposta: 0, segura: null };
+const rede = { chamadas: [], cai: false, perdeResposta: 0, segura: null, seguraListar: null, listarCai: false };
 const apiDe = (usuario) => {
   const chamar = async (fn, args) => {
     rede.chamadas.push(fn);
     if (rede.cai) throw new Error('sem rede');
+    if (fn === 'listar_rascunhos' && rede.listarCai) throw new Error('leitura falhou');
+    if (fn === 'listar_rascunhos' && rede.seguraListar) await rede.seguraListar;
     if (rede.segura) await rede.segura;
     const r = await chamarComoUsuario(db, usuario, fn, args);
     if (rede.perdeResposta > 0) { rede.perdeResposta--; throw new Error('resposta perdida'); }
@@ -41,7 +43,7 @@ const apiDe = (usuario) => {
 const motor = (usuario, armazem = armazemDe(), extra = {}) => new MotorRascunhos({ usuarioId: usuario, api: apiDe(usuario), armazem, agendar, cancelar, agora: () => relogio.agora, online: () => true, ...extra });
 const noBanco = async (u, chave) => (await sql("select * from public.rascunhos where user_id = $1 and chave = $2 and estado = 'aberto'", [u, chave]))[0];
 const conta = (fn) => rede.chamadas.filter((x) => x === fn).length;
-const limpar = async () => { rede.chamadas.length = 0; rede.cai = false; rede.perdeResposta = 0; rede.segura = null; await db.query('delete from public.rascunhos'); };
+const limpar = async () => { rede.chamadas.length = 0; rede.cai = false; rede.perdeResposta = 0; rede.segura = null; rede.seguraListar = null; rede.listarCai = false; await db.query('delete from public.rascunhos'); };
 
 // ---------- 1) agrupamento e estados verdadeiros ----------
 {
@@ -113,7 +115,7 @@ const limpar = async () => { rede.chamadas.length = 0; rede.cai = false; rede.pe
   await limpar(); const m1 = motor(A), m2 = motor(A);   // armazéns separados = aparelhos diferentes
   await m1.iniciar(); await m2.iniciar();
   const chave = 'd:' + randomUUID(); m1.guardar(chave, { dados: { assunto: 'no aparelho 1' } }); await m1.enviarAgora();
-  await m2.sincronizar();
+  await m2.sincronizar(); m2.marcarVistos();   // o aparelho 2 abre a janela depois de o rascunho chegar (a janela o lê ao abrir)
   ok(m2.rascunhos()[chave]?.dados.assunto === 'no aparelho 1', 'outro aparelho: a mesma conta, em outro navegador, recupera o rascunho do banco');
   m2.guardar(chave, { dados: { assunto: 'continuado no aparelho 2' } }); await m2.enviarAgora();
   m1.guardar(chave, { dados: { assunto: 'editado no aparelho 1 sem saber do 2' } }); await m1.enviarAgora();
@@ -131,7 +133,7 @@ const limpar = async () => { rede.chamadas.length = 0; rede.cai = false; rede.pe
   await limpar(); const arm = armazemDe(); const t1 = motor(A, arm), t2 = motor(A, arm);
   await t1.iniciar(); await t2.iniciar();
   t1.guardar('e:nova', { dados: { texto: 'aba 1' } }); await t1.enviarAgora();
-  await t2.sincronizar();   // a aba 2 volta ao primeiro plano: relê o banco e adota a instância que a aba 1 já confirmou
+  await t2.sincronizar(); t2.marcarVistos();   // a aba 2 volta ao primeiro plano, relê o banco e abre a janela já com a instância que a aba 1 confirmou
   t2.guardar('e:nova', { dados: { texto: 'aba 2 sobre a mesma fila' } }); await t2.enviarAgora();
   const b = await noBanco(A, 'e:nova');
   ok(b.dados.dados.texto === 'aba 2 sobre a mesma fila' && b.conflitos.length === 0 && (await sql("select count(*)::int n from public.rascunhos where user_id = $1 and chave = 'e:nova' and estado = 'aberto'", [A]))[0].n === 1, 'duas abas: compartilham a fila e a instância (mesmo id), a segunda grava em cima da primeira na versão certa, sem duplicar rascunho');
@@ -189,6 +191,48 @@ const limpar = async () => { rede.chamadas.length = 0; rede.cai = false; rede.pe
   m.guardar('tarefa', { dados: { x: 'y'.repeat(300_000) } }); await m.enviarAgora();
   ok(m.pendentes() === 1 && m.estado() === 'falha' && m.rascunhos().tarefa, 'recusa: se o banco recusa (tamanho), o conteúdo continua na fila e a falha é mostrada; nada é descartado');
   m.parar();
+}
+
+// ---------- 11) primeira leitura atrasada além do limite: a janela abre sem o rascunho online, e ele não pode ser descartado nem sobrescrito ----------
+{
+  await limpar(); const outro = motor(A); await outro.iniciar();
+  outro.guardar('nova', { dados: { assunto: 'rascunho online que já existia' } }); await outro.enviarAgora(); outro.parar();
+  let soltar; rede.seguraListar = new Promise((r) => { soltar = r; });
+  const m = motor(A); const partida = m.iniciar();
+  await esperarMicro(); m.forcarPronto();   // o limite de 4 s estourou (a interface libera as janelas)
+  ok(m.pronto && m.leituraPendente && !m.rascunhos().nova && m.estado() !== 'salvo', 'leitura atrasada: estourado o limite, as janelas abrem, a leitura fica marcada como NÃO confirmada (não é "não existe rascunho") e nada aparece como "Salvo online"');
+  m.guardar('nova', null);   // a janela aberta sem o rascunho é cancelada antes de a leitura chegar
+  rede.seguraListar = null; soltar(); await partida; await m.enviarAgora();
+  ok(m.naoVistos().includes('nova') && !m.leituraPendente && (await noBanco(A, 'nova'))?.dados.dados.assunto === 'rascunho online que já existia', 'leitura atrasada: quando a resposta chega, o rascunho online entra marcado como "não visto" e continua no banco (o cancelamento anterior não o tocou)');
+  m.guardar('nova', null); await m.enviarAgora();   // fechar a janela depois de a leitura chegar
+  ok((await noBanco(A, 'nova'))?.dados.dados.assunto === 'rascunho online que já existia' && conta('encerrar_rascunho') === 0, 'leitura atrasada: fechar ou cancelar a janela que não carregou o rascunho NÃO o descarta');
+  m.guardar('nova', { dados: { assunto: 'digitado na janela que abriu sem o rascunho' } }); await m.enviarAgora();
+  const b = await noBanco(A, 'nova');
+  ok(b.dados.dados.assunto === 'rascunho online que já existia' && b.conflitos.some((c) => c.dados.dados.assunto === 'digitado na janela que abriu sem o rascunho') && m.conflitos().length === 1 && m.estado() !== 'salvo', 'leitura atrasada: digitar nessa janela NÃO sobrescreve o rascunho online: o banco guarda o novo ao lado (conflito, as duas versões) e o estado não diz "Salvo online"');
+  m.parar();
+}
+
+// ---------- 12) primeira leitura que FALHA, e resposta que só chega depois do erro ----------
+{
+  await limpar(); const outro = motor(A); await outro.iniciar();
+  outro.guardar('tarefa', { dados: { assunto: '' }, nt: 'tarefa online que já existia' }); await outro.enviarAgora(); outro.parar();
+  rede.listarCai = true;
+  const m = motor(A); await m.iniciar();
+  ok(m.pronto && m.leituraPendente && !m.rascunhos().tarefa, 'leitura que falha: a falha não vira "não existe rascunho": a leitura fica pendente e a tela avisa (com Tentar de novo)');
+  m.guardar('tarefa', { dados: { assunto: '' }, nt: 'digitado enquanto a leitura falhava' });
+  rede.listarCai = false; await m.tentarDeNovo();   // Tentar de novo refaz a leitura e então envia
+  const b = await noBanco(A, 'tarefa');
+  ok(b.nt === undefined && b.dados.nt === 'tarefa online que já existia' && b.conflitos.some((c) => c.dados.nt === 'digitado enquanto a leitura falhava') && !m.leituraPendente && m.rascunhos().tarefa.nt === 'digitado enquanto a leitura falhava', 'leitura que falha: depois de voltar, o online é preservado e o que foi digitado também (guardado ao lado como conflito), nada sobrescrito');
+  m.parar();
+  // a resposta chega depois de a tela já mostrar o erro: uma sincronização posterior traz o rascunho, e ele fica protegido
+  await limpar(); const o2 = motor(A); await o2.iniciar(); o2.guardar('e:nova', { dados: { texto: 'entrada online existente' } }); await o2.enviarAgora(); o2.parar();
+  rede.listarCai = true; const m2 = motor(A); await m2.iniciar(); rede.listarCai = false;
+  await m2.sincronizar();   // por exemplo, a aba voltou ao primeiro plano
+  m2.guardar('e:nova', null); await m2.enviarAgora();
+  ok(m2.naoVistos().includes('e:nova') && (await noBanco(A, 'e:nova'))?.dados.dados.texto === 'entrada online existente', 'resposta depois do erro: o rascunho que chega numa sincronização posterior fica como "não visto" e o descarte da janela já aberta não o apaga');
+  m2.marcarVistos();
+  ok(m2.naoVistos().length === 0 && m2.rascunhos()['e:nova'].dados.texto === 'entrada online existente', 'resposta depois do erro: ao abrir a janela de novo (marcarVistos), ela recebe o rascunho online');
+  m2.parar();
 }
 
 await db.close();

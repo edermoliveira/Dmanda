@@ -25,7 +25,8 @@ export type Api = {
   encerrar(id: string, chave: string, estado: 'consumido' | 'descartado'): Promise<Resultado<unknown>>;
 };
 export type Armazem = { ler(chave: string): string | null; gravar(chave: string, valor: string): void };
-export type Item = { id: string; chave: string; valor: Dados; versao: number; op: string; pendente: boolean; conflito: { versao: number; dados: Dados; outras: number } | null };
+/** `naoVisto`: chegou do banco DEPOIS de as janelas serem liberadas (leitura atrasada ou que falhou e voltou): a janela aberta pode não tê-lo carregado, então nem um descarte nem uma digitação dela podem atingi-lo. */
+export type Item = { id: string; chave: string; valor: Dados; versao: number; op: string; pendente: boolean; conflito: { versao: number; dados: Dados; outras: number } | null; naoVisto?: boolean };
 export type Lapide = { id: string; chave: string; estado: 'consumido' | 'descartado' };
 /** `dono`: de quem é esta fila (identificação estável, mostrada se o acesso for revogado com alterações ainda não enviadas). */
 type Fila = { v: 1; itens: Record<string, Item>; lapides: Lapide[]; dono?: { id: string; email: string | null } };
@@ -66,6 +67,8 @@ export class MotorRascunhos {
   bloqueio: Bloqueio | null = null;
   /** true depois da primeira leitura do banco (com ou sem sucesso): as janelas só abrem depois, para não começarem sem o rascunho que já existe online. */
   pronto = false;
+  /** A primeira leitura do banco ainda não foi confirmada (demorou além do limite ou falhou): nada foi dado como inexistente; a tela avisa e oferece tentar de novo. */
+  leituraPendente = false;
 
   constructor(o: Opcoes) {
     this.o = {
@@ -138,20 +141,22 @@ export class MotorRascunhos {
   /** Lê os rascunhos abertos do banco e os junta à fila (a fila local pendente sempre vence o que o banco tem, e o conflito é tratado no envio). */
   async sincronizar(): Promise<boolean> {
     let r: Resultado<RascunhoNoBanco[]>;
-    try { r = await this.o.api.listar(); } catch { this.marcarPronto(); return false; }
-    if (!r.ok) { if (r.revogado || r.outraConta) this.bloquear(r.revogado ? 'revogado' : 'outraConta'); this.marcarPronto(); return false; }
+    try { r = await this.o.api.listar(); } catch { this.leituraFalhou(); return false; }
+    if (!r.ok) { if (r.revogado || r.outraConta) this.bloquear(r.revogado ? 'revogado' : 'outraConta'); this.leituraFalhou(); return false; }
+    const tarde = this.pronto;   // as janelas já foram liberadas: o que chega agora pode não ter sido visto por uma janela aberta
     this.mutar((fila) => {
       const encerrando = new Set(fila.lapides.map((l) => l.id));
       for (const d of r.dados) {
         if (encerrando.has(d.id)) continue;
         const atual = fila.itens[d.chave];
         const conflito = d.conflitos.length ? { versao: d.versao, dados: d.dados, outras: d.conflitos.length } : null;
-        if (!atual) { fila.itens[d.chave] = { id: d.id, chave: d.chave, valor: d.dados, versao: d.versao, op: this.o.novoId(), pendente: false, conflito }; continue; }
+        if (!atual) { fila.itens[d.chave] = { id: d.id, chave: d.chave, valor: d.dados, versao: d.versao, op: this.o.novoId(), pendente: false, conflito, naoVisto: tarde }; continue; }
         if (atual.pendente) continue;   // o que a pessoa digitou aqui e ainda não foi confirmado vale; o envio decide (conflito, se houver)
-        if (atual.id !== d.id || d.versao > atual.versao) fila.itens[d.chave] = { id: d.id, chave: d.chave, valor: d.dados, versao: d.versao, op: this.o.novoId(), pendente: false, conflito };
+        if (atual.id !== d.id || d.versao > atual.versao) fila.itens[d.chave] = { id: d.id, chave: d.chave, valor: d.dados, versao: d.versao, op: this.o.novoId(), pendente: false, conflito, naoVisto: tarde };
         else if (conflito && !atual.conflito) atual.conflito = conflito;
       }
     });
+    this.leituraPendente = false;
     this.marcarPronto();
     return true;
   }
@@ -159,7 +164,12 @@ export class MotorRascunhos {
   /** O e-mail do dono chega depois (a identidade vem do servidor): só serve para identificar a fila guardada. */
   definirEmail(e: string | null) { this.email = e; }
   /** A primeira leitura demorou demais (rede presa): as janelas abrem com o que há na fila local, e o que estiver no banco chega pela sincronização seguinte. */
-  forcarPronto() { this.marcarPronto(); }
+  forcarPronto() { if (!this.pronto) { this.leituraPendente = true; this.marcarPronto(); } }
+  private leituraFalhou() { if (!this.pronto) this.leituraPendente = true; this.marcarPronto(); }
+  /** Uma janela acabou de abrir lendo `rascunhos()`: o que está na memória agora foi visto por ela. */
+  marcarVistos() { this.mutar((fila) => { for (const i of Object.values(fila.itens)) delete i.naoVisto; }); }
+  /** Chaves com rascunho online que chegou depois de a janela abrir (preservado; reabrir a janela o recupera). */
+  naoVistos(): string[] { return Object.values(this.todos()).filter((i) => i.naoVisto).map((i) => i.chave); }
   private marcarPronto() { if (!this.pronto) { this.pronto = true; this.o.aoMudar(); } }
   private bloquear(b: Bloqueio) {
     this.bloqueio = b;
@@ -175,9 +185,13 @@ export class MotorRascunhos {
     this.mutar((fila) => {
       const atual = fila.itens[chave];
       if (valor === null) {
+        // descartar o que a janela não carregou apagaria um rascunho online que a pessoa nem viu: fica como está
+        if (atual?.naoVisto) { mudou = false; return; }
         if (atual) { fila.lapides.push({ id: atual.id, chave, estado: 'descartado' }); delete fila.itens[chave]; }
         return;
       }
+      // digitar numa janela que não carregou o rascunho online: vira OUTRA instância; o banco mantém a online e guarda esta ao lado (conflito, as duas preservadas), nunca sobrescreve
+      if (atual?.naoVisto) { fila.itens[chave] = { id: this.o.novoId(), chave, valor, versao: 0, op: this.o.novoId(), pendente: true, conflito: null }; return; }
       if (atual && JSON.stringify(atual.valor) === JSON.stringify(valor)) { mudou = false; return; }   // nada mudou: não gasta envio
       if (atual) { atual.valor = valor; atual.op = this.o.novoId(); atual.pendente = true; }
       else fila.itens[chave] = { id: this.o.novoId(), chave, valor, versao: 0, op: this.o.novoId(), pendente: true, conflito: null };
@@ -207,7 +221,7 @@ export class MotorRascunhos {
     if (this.timerRetentativa) { this.o.cancelar(this.timerRetentativa); this.timerRetentativa = null; }
     await this.enviar();
   }
-  tentarDeNovo(): Promise<void> { this.tentativas = 0; return this.enviarAgora(); }
+  tentarDeNovo(): Promise<void> { this.tentativas = 0; return (this.leituraPendente ? this.sincronizar().then(() => undefined) : Promise.resolve()).then(() => this.enviarAgora()); }
 
   // ---------- envio serial ----------
   private enviar(): Promise<void> {

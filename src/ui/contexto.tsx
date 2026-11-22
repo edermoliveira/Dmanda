@@ -142,6 +142,12 @@ type Ctx = {
   estadoRascunhoDe: (chave: string) => EstadoRascunho | null;
   donoRascunhos: { id: string; email: string | null } | null;
   bloqueioRascunhos: 'revogado' | 'outraConta' | null;
+  /** A primeira leitura dos rascunhos online não foi confirmada (demorou ou falhou): nada foi dado como inexistente. */
+  leituraRascunhosPendente: boolean;
+  /** Rascunhos online que chegaram depois de a janela abrir (preservados; reabrir recupera). */
+  rascunhosNaoVistos: string[];
+  /** A janela que acabou de abrir leu os rascunhos da memória: o que há agora foi visto. */
+  marcarRascunhosVistos: () => void;
   rotina: EstadoRotina | null;
   tema: 'claro' | 'escuro';
   alternarTema: () => void;
@@ -643,7 +649,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     fecharMenuMover: () => setMenuMover(null),
     rascunhos,
     guardarRascunho,
-    acessoRevogado, rascunhosProntos, estadoRascunhoDe, donoRascunhos: ro.dono, bloqueioRascunhos: ro.bloqueio,
+    acessoRevogado, rascunhosProntos, estadoRascunhoDe, donoRascunhos: ro.dono, bloqueioRascunhos: ro.bloqueio, leituraRascunhosPendente: ro.leituraPendente, rascunhosNaoVistos: ro.naoVistos, marcarRascunhosVistos: ro.marcarVistos,
     estadoRascunhos: ro.estado, pendentesRascunhos: ro.pendentes, conflitosRascunhos: ro.conflitos, tentarRascunhosDeNovo: ro.tentarDeNovo, resolverRascunho: ro.resolver, sincronizarRascunhos: ro.sincronizar,
     salvarDia: async (dia, rotulo) => {
       const r = await gravando(() => protegido(() => srv.salvarDia(dia)));
@@ -725,7 +731,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, erroDias, recarregarDias, avisosSistema, marcarAvisoLido, marcarAvisosLidos, recarregarFonte, aplicarEvento, incertos, conferirPeriodo, conferirPendentes, executarAcaoAviso, definirIncertos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar, ro.estado, ro.pendentes, ro.conflitos, ro.tentarDeNovo, ro.resolver, ro.sincronizar, acessoRevogado, rascunhosProntos, estadoRascunhoDe, ro.dono, ro.bloqueio]);
+  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, erroDias, recarregarDias, avisosSistema, marcarAvisoLido, marcarAvisosLidos, recarregarFonte, aplicarEvento, incertos, conferirPeriodo, conferirPendentes, executarAcaoAviso, definirIncertos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar, ro.estado, ro.pendentes, ro.conflitos, ro.tentarDeNovo, ro.resolver, ro.sincronizar, acessoRevogado, rascunhosProntos, estadoRascunhoDe, ro.dono, ro.bloqueio, ro.leituraPendente, ro.naoVistos, ro.marcarVistos]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }
