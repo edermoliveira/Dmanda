@@ -34,6 +34,7 @@
     "testar:restauracao-v4": "node scripts/testar-restauracao-v4.mjs",
     "testar:baralho": "node scripts/testar-baralho.mjs",
     "testar:cards-inicio": "node scripts/testar-cards-inicio.mjs",
+    "testar:recorte-inicio": "node scripts/testar-recorte-inicio.mjs",
     "comparar:prazos-legados": "node scripts/comparar-prazos-legados.mjs",
     "testar:prazo-chegada": "node scripts/testar-prazo-chegada.mjs",
     "testar:vagas-carrosseis": "node scripts/testar-vagas-carrosseis.mjs",

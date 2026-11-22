@@ -89,6 +89,11 @@
 .app[data-dir="d"] .ph > .cards { flex: 1 1 100%; min-width: 0; }
 .app[data-dir="d"] .ph > h3 { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; margin-bottom: 10px; flex: 1 1 100%; min-width: 0; }
 .app[data-dir="d"] .ph > h3 > span { white-space: nowrap; }
+/* Recorte por prazo do Início (22/11/2026): cabeçalho com o nome, a quantidade e o botão Limpar filtro; os cards usam a mesma grade (ou a mesma pilha) do Para hoje */
+.app[data-dir="d"] .ph > .recorte-cab { flex: 1 1 100%; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; }
+.app[data-dir="d"] .recorte-cab h3 { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.app[data-dir="d"] .recorte-cab h3 small { font-size: var(--t-rotulo); font-weight: 600; color: var(--text2); }
+.app[data-dir="d"] .ph > .vazio-c { flex: 1 1 100%; min-width: 0; }
 .app[data-dir="d"] .ajuda { position: relative; display: inline-flex; }
 .app[data-dir="d"] .ajuda-b { position: relative; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--text2); cursor: pointer; transition: color .15s ease-out, background-color .15s ease-out; }
 .app[data-dir="d"] .ajuda-b::after { content: ""; position: absolute; inset: -10px; } /* área de toque de 44 px */

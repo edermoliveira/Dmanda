@@ -130,8 +130,10 @@ await subir(A.pasta);
   await s1.pg.locator(`${URG} .ajuda-b`).click(); await esperar(300);
   ok((await s1.pg.$eval(`${URG} .ajuda-balao`, (e) => e.textContent)).startsWith('Pedidos da Prefeita e do Gabinete'), 'a ajuda da Urgência explica o critério');
   await s1.pg.keyboard.press('Escape');
-  await s1.pg.click('.stat.st-atrasadas'); await s1.pg.waitForURL('**/demandas', { timeout: 20000 }); await s1.pg.waitForSelector('[data-secao="urgentes"]', { timeout: 60000 });
-  ok(/Filtros 1/.test((await s1.pg.textContent('[data-filtros]')) ?? ''), 'o contador Atrasadas abre Demandas já com o filtro de prazo aplicado');
+  // ajuste de 22/11/2026: o contador filtra dentro do Início (a cobertura detalhada está em testar:recorte-inicio) e não aplica filtro em Demandas
+  await s1.pg.click('.stat.st-atrasadas'); await s1.pg.waitForSelector('[data-painel="recorte-inicio"]', { timeout: 20000 });
+  ok(new URL(s1.pg.url()).pathname === '/' && (await s1.pg.getAttribute('.stat.st-atrasadas', 'aria-pressed')) === 'true', 'o contador Atrasadas filtra dentro do Início, sem trocar de página');
+  await s1.pg.click('[data-limpar-recorte]'); await s1.pg.waitForSelector('[data-painel="para-hoje"]', { state: 'visible' });
   await s1.ctx.close(); await s2.ctx.close();
   // ---- 2) virada do dia: as vagas não são reescolhidas
   const instante = new Date(`${A.HOJE}T23:50:00-03:00`);
@@ -396,7 +398,12 @@ await subir(D.pasta);
     for (const g of ['atrasadas', 'hoje', 'sete']) {
       await ir(pg, '/', '.stat.st-hoje');
       const n = Number((await pg.textContent(`.stat.st-${g} .n`)).trim());
-      await pg.click(`.stat.st-${g}`); await pg.waitForURL('**/demandas', { timeout: 20000 }); await pg.waitForSelector('[data-secao="urgentes"]', { timeout: 60000 }); await esperar(600);
+      // o recorte do Início mostra as mesmas demandas do contador; depois o filtro de prazo do próprio Demandas (painel de filtros) confere os mesmos ids no Cards e no Quadro
+      await pg.click(`.stat.st-${g}`); await pg.waitForSelector('[data-painel="recorte-inicio"]', { timeout: 20000 }); await esperar(600);
+      const noInicio = [...new Set(await pg.$$eval('[data-painel="recorte-inicio"] .dcard', (l) => l.map((e) => e.dataset.id)))];
+      ok(noInicio.length > 0 ? noInicio.length === n : n === 0, `${rot}, recorte ${g} no Início: ${noInicio.length} demandas, ${n} no contador`);
+      await ir(pg, '/demandas', '[data-secao="urgentes"]');
+      await pg.click('[data-filtros]'); await pg.selectOption('#f-prazo', g); await pg.keyboard.press('Escape'); await pg.waitForSelector('[data-secao="urgentes"]'); await esperar(600);
       const nomes = (ids) => [...new Set(ids)].map(nD).sort().join(',');
       const cards = await pg.$$eval('.grupo-cards .dcard', (l) => l.map((e) => e.dataset.id));
       await pg.click('button[data-v="quadro"]'); await esperar(800);

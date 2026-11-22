@@ -26,7 +26,8 @@ export function useModo(ref: RefObject<HTMLElement | null>): Modo {
   const [modo, setModo] = useState<Modo>('grade');
   useLayoutEffect(() => {
     const el = ref.current; if (!el) return;
-    const medir = () => setModo(modoDaLargura(el.getBoundingClientRect().width));
+    // largura 0 = painel escondido (por exemplo, o Para hoje enquanto há um recorte no Início): mantém o modo, para não piscar a pilha ao voltar
+    const medir = () => { const w = el.getBoundingClientRect().width; if (w > 0) setModo(modoDaLargura(w)); };
     medir();
     const ro = new ResizeObserver(medir); ro.observe(el);
     return () => ro.disconnect();

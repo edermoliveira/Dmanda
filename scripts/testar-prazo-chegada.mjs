@@ -98,7 +98,10 @@ const somaIso = (iso, n) => prazoPorDias(n, iso);
   // filas: atrasada (hoje é depois de 30/10): contador Atrasadas, Urgentes e Prazos da Secretaria
   await ir(pg, '/', '.stat.st-atrasadas');
   const nAtr = Number((await pg.textContent('.stat.st-atrasadas .n')).trim());
-  await pg.click('.stat.st-atrasadas'); await pg.waitForURL('**/demandas'); await pg.waitForSelector('[data-secao="urgentes"]', { timeout: 60000 }); await esperar(600);
+  // ajuste de 22/11/2026: o contador filtra no próprio Início; depois a página Demandas confere as filas
+  await pg.click('.stat.st-atrasadas'); await pg.waitForSelector('[data-painel="recorte-inicio"]', { timeout: 20000 });
+  ok((await texto(pg, '[data-painel="recorte-inicio"]')).includes(NOME), 'o recorte Atrasadas do Início mostra a demanda');
+  await ir(pg, '/demandas', '[data-secao="urgentes"]'); await esperar(600);
   const nasFilas = await pg.$$eval('.grupo-cards', (l, nome) => l.filter((g) => [...g.querySelectorAll('.dcard')].some((c) => c.textContent.includes(nome))).map((g) => g.dataset.secao), NOME);
   ok(nAtr >= 1 && nasFilas.includes('urgentes') && nasFilas.includes('prazos'), `o contador Atrasadas (${nAtr}) abre a demanda, e ela está em ${nasFilas.join(', ')}`);
   await ctx.close();

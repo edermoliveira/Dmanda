@@ -11,15 +11,16 @@ import { Lista, Quadro, Tabela, useAjustar, Vazio } from './visoes';
 import { ListaEntradasArquivadas } from './entradas';
 import { RegistroNoInicio } from './perfil';
 import { ParaHoje } from './para-hoje';
+import { RECORTES_INICIO, RecorteInicio } from './recorte-inicio';
 import { SecoesCards } from './baralho';
-import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, VISOES, type Demanda, type Visao } from '@/lib/demandas';
+import { filtrar, FILTRO_VAZIO, grupoFiltro, plural, porGrupo, titulo, VISOES, type Demanda, type GrupoInicio, type Visao } from '@/lib/demandas';
 import { anoDoDocumento, chaveOpcao } from '@/lib/documentos';
 
 function CabecaPagina({ titulo, sub }: { titulo: string; sub: string }) { return <div className="pagehead"><h1>{titulo}</h1><p>{sub}</p></div>; }
 function Carregando() { return <div className="vazio-c" role="status">Carregando as demandas...</div>; }
 
 // ---------- Início ----------
-const GRUPOS_INICIO = [['atrasadas', 'Atrasadas', 'clock', true], ['hoje', 'Vencem hoje', 'target', false], ['sete', 'Próximos 7 dias', 'calendar', false]] as const;
+const GRUPOS_INICIO = [['atrasadas', 'clock', true], ['hoje', 'target', false], ['sete', 'calendar', false]] as const;   // o nome de cada botão é o do recorte (RECORTES_INICIO)
 const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 // Os prazos da tela vêm sempre das datas das demandas; esta linha só informa a rotina diária na nuvem.
 function textoRotina(r: EstadoRotina | null) {
@@ -30,9 +31,16 @@ function textoRotina(r: EstadoRotina | null) {
 }
 
 export function PaginaInicio() {
-  const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina, setFiltro } = useApp();
-  const router = useRouter();
+  const { demandas, carregando, erroCarga, abrirJanela, hoje, rotina } = useApp();
+  // O recorte por prazo vive só nesta página (ajuste de 22/11/2026): um por vez, começa desligado, não é o filtro de Demandas e nunca é gravado nem consultado.
+  const [recorte, setRecorte] = useState<GrupoInicio | null>(null);
+  const [aviso, setAviso] = useState('');
+  const botoes = useRef<Partial<Record<GrupoInicio, HTMLButtonElement | null>>>({});
   useAjustar(`${demandas.length}`);
+  // O Next (cacheComponents) guarda o estado de uma página que o usuário deixou: sem isto o recorte voltaria ligado ao reentrar no Início. A limpeza roda quando a página sai de cena.
+  useEffect(() => () => { setRecorte(null); setAviso(''); }, []);
+  const alternar = (g: GrupoInicio) => { const novo = recorte === g ? null : g; setRecorte(novo); setAviso(novo ? '' : 'Filtro removido.'); };
+  const limpar = () => { const antes = recorte; setRecorte(null); setAviso('Filtro removido.'); if (antes) botoes.current[antes]?.focus(); };
   return (
     <>
       <CabecaPagina titulo="Início" sub="Seu dia em um só lugar." />
@@ -44,18 +52,21 @@ export function PaginaInicio() {
       {demandas.length ? (
         <>
           <section className="sec">
-            <div className="stats tres" role="group" aria-label="Ver as demandas por prazo em Demandas">
-              {GRUPOS_INICIO.map(([g, nome, icone, alerta]) => {
+            <div className="stats tres" role="group" aria-label="Filtrar as demandas do Início por prazo">
+              {GRUPOS_INICIO.map(([g, icone, alerta]) => {
                 const n = porGrupo(demandas, g, hoje).length;
                 return (
-                  <button key={g} className={`stat st-${g}${alerta && n ? ' alerta' : ''}`} onClick={() => { setFiltro({ ...FILTRO_VAZIO, prazo: g }); router.push('/demandas'); }}>
-                    <span className="st-ic"><Icone nome={icone} /></span><span className="n">{n}</span><span className="r">{nome}</span>
+                  <button key={g} ref={(el) => { botoes.current[g] = el; }} type="button" className={`stat st-${g}${alerta && n ? ' alerta' : ''}`} aria-pressed={recorte === g} data-recorte-botao={g} onClick={() => alternar(g)}>
+                    <span className="st-ic"><Icone nome={icone} /></span><span className="n">{n}</span><span className="r">{RECORTES_INICIO[g].nome}</span>
                   </button>
                 );
               })}
             </div>
+            <p className="sr-only" role="status">{aviso}</p>
           </section>
-          <ParaHoje />
+          {recorte ? <RecorteInicio grupo={recorte} limpar={limpar} /> : null}
+          {/* O Para hoje continua montado (só escondido) enquanto há recorte: as vagas, a ordem da pilha e a reposição de uma vaga liberada seguem o seu curso e, ao limpar, a visualização volta como estava. */}
+          <div hidden={recorte !== null} data-inicio-classico><ParaHoje /></div>
         </>
       ) : null}
       <p className="rotina-estado">{textoRotina(rotina)}</p>
