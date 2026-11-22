@@ -103,6 +103,13 @@ const SEMENTE_VAGAS = {};
     ok(!(await visivel(pg, PH)) && await visivel(pg, '.pagehead h1') && (await visivel(pg, '[data-quadro="humor"]')) === humorAntes, `recorte ${g}: o Para hoje e a Urgência saem, o cabeçalho e o Humor ficam`);
     ok(await semRolagemLateral(pg), `recorte ${g}: sem rolagem lateral em 1440 px`);
   }
+  // o Para hoje escondido não recebe foco nem é exposto a leitores de tela: display none no contêiner (fora da ordem de Tab e da árvore de acessibilidade)
+  const oculto = await pg.$eval('[data-inicio-classico]', (e) => ({ hidden: e.hidden, display: getComputedStyle(e).display, focaveis: [...e.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')].filter((x) => x.getClientRects().length > 0).length }));
+  ok(oculto.hidden && oculto.display === 'none' && oculto.focaveis === 0, 'recorte ativo: o Para hoje escondido está com display none e nenhum controle dele é focável (nem exposto à acessibilidade)');
+  await pg.focus(BOTAO('sete')); let entrou = false;
+  for (let i = 0; i < 40 && !entrou; i++) { await pg.keyboard.press('Tab'); entrou = await pg.evaluate(() => !!document.activeElement?.closest('[data-inicio-classico]')); }
+  ok(!entrou, 'recorte ativo: 40 toques de Tab nunca param num controle do Para hoje escondido');
+  await pg.focus(BOTAO('sete'));
   ok((await idsDoRecorte(pg)).length === 5 && (await pg.$$(`${RC} .cards > .vaga`)).length === 5, 'mais de quatro resultados: os cinco de Próximos 7 dias aparecem todos, sem limite de vagas');
   // trocar substitui; tocar de novo no ativo remove
   await pg.click(BOTAO('hoje')); await pg.waitForSelector(`${RC}[data-recorte="hoje"]`); await esperar(200);

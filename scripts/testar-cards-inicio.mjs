@@ -19,24 +19,30 @@ const PH = '[data-painel="para-hoje"]', PILHA = `${PH} > .ph-pilha`, ARRASTO = `
 // ---------- dados: quatro vagas (texto curto, longo, curto e curto) e cinco urgências fora delas, criadas fora de ordem (a etapa 3 passou o Para hoje a quatro vagas) ----------
 const LONGO = 'Contratação emergencial de empresa especializada para manutenção preventiva e corretiva dos equipamentos de climatização de todos os prédios públicos municipais';
 const ESPERADA = ['U10', 'U6 longa', 'U3', 'U1 longa', 'Uhoje'];   // atrasadas da mais antiga para a mais nova, depois a que vence hoje
-let HOJE;
+// Dia de referência FIXO (quinta-feira 03/12/2026, 12h em Brasília): o navegador vive nele (relógio do Playwright) e os vencimentos são datas conhecidas, todas em dias úteis, então a antecipação por fim de semana
+// não entra na conta e a ordem esperada vale em qualquer dia em que a suíte rode (antes dependia do dia real: num domingo, ontem e hoje caíam na mesma sexta e empatavam).
+const HOJE = '2026-12-03', INSTANTE = new Date(`${HOJE}T12:00:00-03:00`);
+const VENCIMENTOS = { 'Curta': 0, 'Eco': 1, 'Quarta': 4, 'U3': -3, 'Uhoje': 0, 'U10': -10 };   // deslocamentos esperados (conferidos no banco logo após a semente)
 {
   const db = await abrirBancoTeste({ pasta: PASTA });
   await prepararTitularDeTeste(db, USUARIO);
-  HOJE = (await db.query('select public.hoje()::text as h')).rows[0].h;
   const c = (f, a) => chamarComoUsuario(db, USUARIO, f, a);
   const mk = async (assunto, o, textos = ['t1']) => { const d = await c('criar_demanda', { p: { assunto, tipo: 'Memorando', numero: '', ...o } }); for (const t of textos) await c('adicionar_tarefa', { p_demanda: d.id, p_texto: t }); return d; };
   const ids = [];
   const A = await mk('Curta', { prazo_original: HOJE }, ['a1']); await c('mover_etapa', { p_id: A.id, p_etapa: 'Cadastro' }); ids.push(A.id);
   ids.push((await mk(LONGO, { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -2), descricao: LONGO + '. ' + LONGO }, ['uma tarefa com texto bem comprido para forçar a quebra de linha dentro do card ativo', 'dois', 'três', 'quatro', 'cinco', 'seis'])).id);
   ids.push((await mk('Eco', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, 1) })).id);
-  ids.push((await mk('Quarta', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, 3) })).id);
+  ids.push((await mk('Quarta', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, 4) })).id);
   await mk('U3', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -3) });
   await mk('Uhoje', { etapa: 'Fazendo', prazo_original: HOJE });
   await mk('U10', { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -10) });
   await mk('U1 longa ' + LONGO, { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -1) });
   await mk('U6 longa ' + LONGO, { etapa: 'Fazendo', prazo_original: somarDias(HOJE, -6) });
   for (const [i, id] of ids.entries()) await db.query('insert into public.para_hoje (user_id, posicao, demanda_id) values ($1, $2, $3)', [USUARIO, i + 1, id]);
+  // os vencimentos efetivos (já com a regra de antecipação do banco) são exatamente os planejados: nenhum caiu em fim de semana ou dia indisponível
+  const efetivos = Object.fromEntries((await db.query('select assunto, prazo::text as p from public.demandas')).rows.map((r) => [r.assunto.startsWith('U1 ') ? 'U1' : r.assunto.startsWith('U6 ') ? 'U6' : r.assunto, r.p]));
+  const plano = { ...VENCIMENTOS, U1: -1, U6: -6 };
+  ok(Object.entries(plano).every(([k, n]) => efetivos[k] === somarDias(HOJE, n)) && efetivos[LONGO] === somarDias(HOJE, -2), `semente: os vencimentos efetivos são os planejados em ${HOJE} (${Object.keys(plano).map((k) => `${k} ${efetivos[k]}`).join(', ')})`);
   await db.close();
 }
 
@@ -54,6 +60,7 @@ const PERFIS = {
 const abrir = async (perfil, { motor = nav, tema = 'claro', texto = 100, extra = {} } = {}) => {
   const ctx = await motor.newContext({ ...PERFIS[perfil], ...extra });
   await ctx.addInitScript(([t, p]) => { if (!localStorage.getItem('feito')) { localStorage.setItem('feito', '1'); localStorage.setItem('dmanda-tema', JSON.stringify(t)); localStorage.setItem('dmanda:aparencia', JSON.stringify({ textoPct: p })); } }, [tema, texto]);
+  await ctx.clock.install({ time: INSTANTE });   // o navegador vive no dia de referência (o tempo segue correndo)
   const pg = await ctx.newPage();
   pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
   pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::ERR|offline|Failed to fetch|Load failed/i.test(m.text())) erros.push('console: ' + m.text().slice(0, 300)); });
