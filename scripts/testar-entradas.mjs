@@ -1,7 +1,7 @@
 // Entradas (decisões 37 a 39) no navegador (Edge) com o banco local de TESTE (PGlite, mesmas migrações do Supabase): criar, editar, recarregar, cor, tags, busca, fixar, arquivar e recuperar;
 // salvamento automático, rascunho e falha de rede; sem duplicar; edição simultânea; Virar demanda (cancelar, concluir com tarefa, pular, recarregar, repetir); atalho N; cópia dos dados;
 // computador, iPad e iPhone emulados, claro e escuro. Sobe o próprio servidor numa porta separada, com pasta de dados nova. NÃO valida o Supabase real. Uso: node scripts/testar-entradas.mjs
-import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
+import { rascunhosDaConta, CHAVE_FILA_TESTE, abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
 
@@ -27,7 +27,8 @@ const ir = async (pg, rota = '/entradas') => {
   await pg.waitForFunction(() => { const a = document.querySelector('.app'); return !!a && Object.keys(a).some((k) => k.startsWith('__reactFiber') || k.startsWith('__reactProps')); }, null, { timeout: 120000 });
   await pg.waitForTimeout(1200);
 };
-const rascunhos = (pg) => pg.evaluate(() => { try { return JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}'); } catch { return {}; } });
+const rascunhos = (pg) => rascunhosDaConta(pg);
+const OUTRA_ABA = 'e:aaaaaaaa-0000-4000-8000-0000000000e1';
 const estado = (pg) => pg.getAttribute('.modal .estado-entrada', 'data-estado');
 const esperaEstado = (pg, e, ms = 15000) => pg.waitForFunction((x) => document.querySelector('.modal .estado-entrada')?.getAttribute('data-estado') === x, e, { timeout: ms });
 const janelaFechada = (pg) => pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 15000 });
@@ -42,7 +43,7 @@ const criar = async (pg, { titulo = '', texto, cor = null, fixar = false }) => {
   await esperaEstado(pg, 'salvo');
   await pg.click('.modal .btn.pri'); await janelaFechada(pg);
 };
-const limparTudo = async (pg) => { await pg.evaluate(() => localStorage.removeItem('dmanda:rascunhos')); };
+const limparTudo = async (pg) => { await pg.evaluate((k) => localStorage.removeItem(k), CHAVE_FILA_TESTE); };
 
 // ================= 1) criar, editar, recarregar =================
 const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
@@ -116,7 +117,9 @@ const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
   const rdSair = await rascunhos(pg);
   ok(Object.values(rdSair).some((x) => /extra$/.test(x.dados?.texto ?? '')), 'sair de cena com texto ainda não salvo grava o rascunho na hora (e tenta salvar no banco)');
   await pg.unroute('**/*'); await mostrar();
-  await pg.click('.modal .estado-entrada .btn.mini'); await esperaEstado(pg, 'salvo');
+  // ao voltar ao primeiro plano a janela já pode ter reenviado sozinha (corrida legítima): se o botão ainda está lá, toca; senão o estado já é "salvo"
+  const tentar = await pg.waitForSelector('.modal .estado-entrada .btn.mini', { timeout: 2500 }).catch(() => null); if (tentar) await tentar.click({ timeout: 2500 }).catch(() => {});   // o botão pode sumir no meio do toque (a janela reenviou sozinha)
+  await esperaEstado(pg, 'salvo');
   await pg.click('.modal .btn.pri'); await janelaFechada(pg);
   await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#e-texto');
   await esconder(); await pg.waitForTimeout(700);
@@ -220,13 +223,13 @@ const t1 = await novoContexto({ viewport: { width: 1360, height: 800 } });
 {
   const { pg } = t1;
   await ir(pg);
-  await pg.evaluate(() => { const m = JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}'); m['e:de-outra-aba'] = { dados: { titulo: '', texto: 'escrito em outra aba', cor: -1, fixada: false } }; localStorage.setItem('dmanda:rascunhos', JSON.stringify(m)); });
+  await pg.evaluate(([k, item]) => { const f = JSON.parse(localStorage.getItem(k) || 'null') ?? { v: 1, itens: {}, lapides: [] }; f.itens[item.chave] = item; localStorage.setItem(k, JSON.stringify(f)); }, [CHAVE_FILA_TESTE, { id: 'aaaaaaaa-0000-4000-8000-0000000000a1', chave: OUTRA_ABA, valor: { dados: { titulo: '', texto: 'escrito em outra aba', cor: -1, fixada: false } }, versao: 0, op: 'bbbbbbbb-0000-4000-8000-0000000000b1', pendente: true, conflito: null }]);   // como se outra aba do mesmo aparelho tivesse deixado esta alteração pendente na fila
   await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#e-texto'); await pg.fill('#e-texto', 'rascunho desta aba'); await pg.waitForTimeout(600);
   let r = await rascunhos(pg);
-  ok(!!r['e:nova'] && !!r['e:de-outra-aba'], 'rascunhos: guardar o rascunho desta aba preserva o que outra aba do mesmo aparelho guardou');
+  ok(!!r['e:nova'] && !!r[OUTRA_ABA], 'rascunhos: guardar o rascunho desta aba preserva o que outra aba do mesmo aparelho guardou');
   await pg.click('.modal .btn:has-text("Cancelar")'); await janelaFechada(pg);
   r = await rascunhos(pg);
-  ok(!r['e:nova'] && !!r['e:de-outra-aba'], 'rascunhos: cancelar esta entrada descarta só o rascunho dela');
+  ok(!r['e:nova'] && !!r[OUTRA_ABA], 'rascunhos: cancelar esta entrada descarta só o rascunho dela');
   await limparTudo(pg);
 }
 
@@ -275,7 +278,7 @@ const passoAtual = (pg) => pg.$$eval('.modal .passos li', (e) => e.findIndex((x)
   ok((await pg.inputValue('#e-texto')) === 'Escrita sem rede #offline' && /Rascunho recuperado/.test(await pg.textContent('.modal')), 'Continuar devolve o texto exato, com aviso de rascunho recuperado');
   await esperaEstado(pg, 'salvo');
   await pg.click('.modal .btn.pri'); await janelaFechada(pg);
-  ok(await contar(pg, 'sem rede') === 1 && Object.keys(await rascunhos(pg)).length === 0, 'com a rede de volta a entrada é salva uma vez e o rascunho some');
+  ok(await contar(pg, 'sem rede') === 1 && !('e:nova' in await rascunhos(pg)), 'com a rede de volta a entrada é salva uma vez e o rascunho some');
 
   // conexão do navegador caída: o estado é "sem conexão" e salva sozinho quando volta
   await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#e-texto');
@@ -378,8 +381,10 @@ const passoAtual = (pg) => pg.$$eval('.modal .passos li', (e) => e.findIndex((x)
   await A.waitForSelector('.modal .aviso-conflito', { timeout: 15000 });
   ok(await estado(A) === 'conflito' && (await A.inputValue('#e-texto')) === 'A depois' && /o texto/.test(await A.textContent('.aviso-conflito')), 'mesmo campo: aparece o aviso de conflito e o que foi digitado continua na tela');
   await ir(B);
+  // decisão 92: a mesma conta em outro aparelho recupera o rascunho pendente do A (esperado); o registro SALVO é o que prova que o lado em conflito não gravou nada
+  const salvaNoBanco = (await B.evaluate(async () => (await (await fetch('/api/exportar')).json()).entradas)).find((x) => x.titulo === 'Concorrente');
+  ok(salvaNoBanco?.texto === 'B primeiro', 'nada foi gravado pelo lado em conflito: o banco continua com a versão do outro aparelho');
   await abrirConc(B);
-  ok((await B.inputValue('#e-texto')) === 'B primeiro', 'nada foi gravado pelo lado em conflito: o banco continua com a versão do outro aparelho');
   await B.click('.modal .btn.pri'); await janelaFechada(B);
   await A.dblclick('.aviso-conflito .btn:has-text("Guardar a minha como nova")'); // toque duplo: não pode gerar duas entradas
   await A.waitForFunction(() => !document.querySelector('.aviso-conflito'), null, { timeout: 15000 });
@@ -532,7 +537,7 @@ const aviso = (pg) => pg.waitForFunction(() => document.querySelector('#toast')?
   ok((await pg.inputValue('#n-assunto')) === 'Virar pela janela com alteração recente' && !(await pg.$('#toast.on.erro')), 'Virar demanda pela janela da entrada, com texto ainda pendente: salva antes e o cadastro abre com o texto novo (sem recusar por rascunho que já foi salvo)');
   await pg.click('.modal .btn:has-text("Cancelar")'); await janelaFechada(pg);
   await ir(pg);
-  ok(await contar(pg, 'Virar pela janela com alteração recente') === 1 && Object.keys(await rascunhos(pg)).length === 0, 'cancelar o cadastro deixa a entrada em Entradas, com o texto novo já salvo e sem rascunho');
+  ok(await contar(pg, 'Virar pela janela com alteração recente') === 1 && !('e:nova' in await rascunhos(pg)), 'cancelar o cadastro deixa a entrada em Entradas, com o texto novo já salvo e sem rascunho');
 
   // a tag de uma entrada convertida sai da barra
   await ir(pg);
@@ -560,7 +565,7 @@ const aviso = (pg) => pg.waitForFunction(() => document.querySelector('#toast')?
   const j = await pg.evaluate(async () => (await fetch('/api/exportar')).json());
   const conv = j.entradas_arquivadas.filter((e) => e.demanda_id);
   const todasDem = [...j.demandas, ...j.arquivadas];
-  ok(j.formato === 'dmanda-exportacao' && j.versao === 4 && Array.isArray(j.eventos) && Array.isArray(j.entradas) && Array.isArray(j.entradas_arquivadas), 'a cópia dos dados é a versão 3 e traz as entradas ativas e as arquivadas');
+  ok(j.formato === 'dmanda-exportacao' && j.versao === 5 && Array.isArray(j.eventos) && Array.isArray(j.entradas) && Array.isArray(j.entradas_arquivadas), 'a cópia dos dados é a versão 5 e traz as entradas ativas e as arquivadas');
   ok(j.entradas.length > 5 && j.entradas.every((e) => !e.demanda_id && !e.arquivada_em) && conv.length >= 4 && conv.every((e) => todasDem.some((d) => d.id === e.demanda_id && d.entrada_id === e.id)), 'a cópia leva as entradas convertidas com o vínculo, e cada demanda de origem aponta de volta para a sua entrada');
   ok(j.entradas.every((e) => e.titulo !== undefined && e.texto !== undefined && Number.isInteger(e.cor) && typeof e.fixada === 'boolean' && Number.isInteger(e.versao) && !('user_id' in e)), 'cada entrada da cópia traz título, texto, cor, fixação e versão, sem identificador de usuário');
 }

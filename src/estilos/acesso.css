@@ -8,7 +8,7 @@
 .acesso p { margin: 0; font-size: calc(16px * var(--esc)); line-height: 1.45; color: var(--a-text2); }
 .acesso form { display: grid; gap: 12px; }
 .acesso label { display: grid; gap: 4px; font-size: calc(15px * var(--esc)); }
-.acesso input { min-height: 44px; font-size: 16px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--a-brd); background: var(--a-bg); color: var(--a-text); }
+.acesso input { min-height: 44px; font-size: 1rem; padding: 0 12px; border-radius: 14px; border: 1px solid var(--a-brd); background: var(--a-bg); color: var(--a-text); }
 .acesso input:focus-visible, .acesso button:focus-visible, .acesso a:focus-visible { outline: 2px solid var(--a-acc); outline-offset: 2px; }
 .acesso button { min-height: 44px; border: 0; border-radius: 999px; padding: 0 18px; font-size: calc(16px * var(--esc)); font-weight: 600; background: var(--a-acc); color: var(--a-acc-ink); cursor: pointer; }
 .acesso button[disabled] { opacity: .6; cursor: default; }

@@ -1,5 +1,4 @@
-'use server';
-// Rascunhos online (decisão 92): ações do servidor sobre as funções do banco. O rascunho é INDIVIDUAL (RLS por autor): nenhuma ação recebe nem aceita um usuário. Cada uma devolve { ok, dados | erro }.
+// Rascunhos online (decisão 92): operações sobre as funções do banco, expostas SÓ pela rota /api/rascunhos (não são ações do servidor: o envio dos rascunhos não entra na fila das ações de dados). O rascunho é INDIVIDUAL (RLS por autor): nenhuma ação recebe nem aceita um usuário. Cada uma devolve { ok, dados | erro }.
 // O conteúdo é privado: o log de falha leva só o código do erro. Senhas e credenciais não são rascunhos (o banco só aceita as chaves de rascunho conhecidas).
 import { chamar } from './banco';
 import { executar, ErroDmanda } from '@/nucleo/operacoes';

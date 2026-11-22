@@ -2,7 +2,7 @@
 // Cobre: rede lenta com latência alta, desconexão e volta, resposta perdida DEPOIS da gravação, falha 500 do servidor, cliques repetidos, recarga no meio do salvamento,
 // abas simultâneas (mesmo navegador) e volume crescente (banco com ~100 demandas, ~160 entradas e ~150 eventos). A verdade vem sempre da cópia dos dados (/api/exportar), nunca só da tela.
 // Sobe o próprio servidor numa porta separada. NÃO valida o Supabase real. Uso: node scripts/testar-resistencia.mjs
-import { abrirEdge, criarVerificador, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
+import { rascunhosDaConta, CHAVE_FILA_TESTE, filaComPendentes, abrirEdge, criarVerificador, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { semearVolume } from './semear-volume.mjs';
 
@@ -28,7 +28,7 @@ const ir = async (pg, rota) => {
   await pg.waitForFunction(() => { const a = document.querySelector('.app'); return !!a && Object.keys(a).some((k) => k.startsWith('__reactFiber') || k.startsWith('__reactProps')); }, null, { timeout: 120000 });
   await pg.waitForTimeout(1000);
 };
-const rascunhos = (pg) => pg.evaluate(() => { try { return JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}'); } catch { return {}; } });
+const rascunhos = (pg) => rascunhosDaConta(pg);
 const estado = (pg) => pg.getAttribute('.modal .estado-entrada', 'data-estado');
 const esperaEstado = (pg, e, ms = 30000) => pg.waitForFunction((x) => document.querySelector('.modal .estado-entrada')?.getAttribute('data-estado') === x, e, { timeout: ms });
 const janelaFechada = (pg, ms = 20000) => pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: ms });
@@ -337,7 +337,7 @@ await subir(PASTA_A);
 // lista vazia "carregada com sucesso"), "Tentar de novo" recupera só ela e o rascunho guardado no aparelho continua intacto. A proteção de sessão da mesma ação é provada em testar:sessao.
 {
   const MARCA = 'PARCIAL rascunho que não pode sumir';
-  const rascunho = JSON.stringify({ 'e:nova': { dados: { titulo: '', texto: MARCA, cor: null, fixada: false }, tocados: ['texto'], base: {} } });
+  const rascunho = filaComPendentes({ 'e:nova': { dados: { titulo: '', texto: MARCA, cor: null, fixada: false }, tocados: ['texto'], base: {} } });
   const mesAgora = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
   const falharParte = async (pg, parte) => {
     let n = 0, ativa = true;
@@ -365,7 +365,7 @@ await subir(PASTA_A);
   };
   for (const parte of ['eventos', 'entradas', 'demandas']) {
     const { ctx, pg } = await novoContexto();
-    await ctx.addInitScript((r) => { try { if (!sessionStorage.getItem('rasc-inicial')) { sessionStorage.setItem('rasc-inicial', '1'); localStorage.setItem('dmanda:rascunhos', r); } } catch { /* sem armazenamento */ } }, rascunho);
+    await ctx.addInitScript(([k, r]) => { try { if (!sessionStorage.getItem('rasc-inicial')) { sessionStorage.setItem('rasc-inicial', '1'); localStorage.setItem(k, r); } } catch { /* sem armazenamento */ } }, [CHAVE_FILA_TESTE, rascunho]);
     const certo = await dados();
     const esperado = { entradas: certo.entradas.length, demandas: certo.demandas.length, eventos: certo.eventos.filter((e) => e.data.startsWith(mesAgora)).length };
     const f = await falharParte(pg, parte);
@@ -419,11 +419,11 @@ await subir(PASTA_A);
 // ================= 7c) armazenamento do navegador corrompido ou bloqueado, textos grandes e Unicode =================
 {
   const formatos = {
-    'JSON inválido': { 'dmanda:rascunhos': '{nao e json', 'dmanda:ui': '[[[', 'dmanda-tema': '"azul"', 'dmanda:avisos-vistos': '{' },
-    'formato errado': { 'dmanda:rascunhos': JSON.stringify({ 'e:nova': {}, 'e:xyz': null, 'n:nova': { dados: null }, 'ev:nova': { dados: { ev: null } }, d1: 5 }), 'dmanda:ui': JSON.stringify({ visao: 'zzz', ordem: { coluna: 'nada', sentido: 5 }, grupos: 5 }), 'dmanda:avisos-vistos': '"texto"' },
-    'null e valores inválidos': { 'dmanda:rascunhos': 'null', 'dmanda:ui': 'null', 'dmanda:avisos-vistos': 'null', 'dmanda:menu-aberto': '"sim"', 'dmanda:agenda': 'null' },
+    'JSON inválido': { [CHAVE_FILA_TESTE]: '{nao e json', 'dmanda:ui': '[[[', 'dmanda-tema': '"azul"', 'dmanda:avisos-vistos': '{' },
+    'formato errado': { [CHAVE_FILA_TESTE]: JSON.stringify({ 'e:nova': {}, 'e:xyz': null, 'n:nova': { dados: null }, 'ev:nova': { dados: { ev: null } }, d1: 5 }), 'dmanda:ui': JSON.stringify({ visao: 'zzz', ordem: { coluna: 'nada', sentido: 5 }, grupos: 5 }), 'dmanda:avisos-vistos': '"texto"' },
+    'null e valores inválidos': { [CHAVE_FILA_TESTE]: 'null', 'dmanda:ui': 'null', 'dmanda:avisos-vistos': 'null', 'dmanda:menu-aberto': '"sim"', 'dmanda:agenda': 'null' },
     'Agenda com modo inválido': { 'dmanda:agenda': JSON.stringify({ modo: 'xyz', cat: 5, concluidas: 'sim' }), 'dmanda:ui': JSON.stringify({ visao: 7, ordem: [], grupos: [1] }) },
-    'lista no lugar de objeto': { 'dmanda:rascunhos': '[]', 'dmanda:ui': '[]', 'dmanda:avisos-vistos': '{}' },
+    'lista no lugar de objeto': { [CHAVE_FILA_TESTE]: '[]', 'dmanda:ui': '[]', 'dmanda:avisos-vistos': '{}' },
   };
   for (const [nome, itens] of Object.entries(formatos)) {
     const { ctx, pg } = await novoContexto();

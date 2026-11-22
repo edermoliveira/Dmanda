@@ -1,6 +1,6 @@
 'use client';
 // Formulários das telas de acesso (decisão 92). As senhas ficam só nos campos: nunca vão para rascunho, armazenamento do navegador, URL ou log. Cada ação do servidor devolve { erro } ou redireciona.
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { entrar, pedirRecuperacao, definirSenha, alterarSenha, type RespostaForm } from '@/servidor/autenticacao';
 import { confirmarLink } from '@/servidor/confirmar';
 
@@ -76,4 +76,10 @@ export function ConfirmarLink({ tokenHash, tipo }: { tokenHash: string; tipo: st
       <button type="submit" disabled={ocupado}>{ocupado ? 'Verificando...' : 'Continuar'}</button>
     </form>
   );
+}
+
+/** As telas de entrada e de convite apagam o lembrete do último usuário: outra conta nunca herda a fila local de pendências da anterior. */
+export function EsquecerUsuario() {
+  useEffect(() => { try { localStorage.removeItem('dmanda:usuario'); } catch { /* sem armazenamento */ } }, []);
+  return null;
 }

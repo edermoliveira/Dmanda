@@ -28,6 +28,9 @@ function traduzir(e: { message?: string; code?: string }): Error {
   return Object.assign(new Error(e.message ?? 'erro de banco'), { code: e.code });
 }
 
+/** Só para a rota de limpeza das suítes (modo de teste): o banco descartável. */
+export async function clienteBancoTeste() { if (!modoTeste()) throw new Error('somente no modo de teste'); return (await bancoTeste()).db; }
+
 const chamarTeste: Chamar = async (funcao, args) => {
   const { chamarComoUsuario } = await import('./banco-teste-base.mjs');
   const { db } = await bancoTeste();
@@ -63,6 +66,7 @@ const chamarSupabase: Chamar = async (funcao, args) => {
   const { data, error, status } = await sb.rpc(funcao, args);
   if (error) {
     if (status === 401 || error.code === 'PGRST301' || error.code === 'PGRST303') redirect('/login?motivo=sessao');
+    if (error.code === '42501') redirect('/login?motivo=sem-acesso');   // o banco recusou a identidade (acesso revogado ou fora da lista)
     throw traduzir(error);
   }
   return data;

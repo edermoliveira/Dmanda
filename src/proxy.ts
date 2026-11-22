@@ -42,6 +42,8 @@ export async function proxy(request: NextRequest) {
     const destino = request.nextUrl.clone();
     destino.pathname = '/login'; destino.search = '';
     if (request.method === 'GET' && pathname !== '/') destino.searchParams.set('proximo', pathname + search);
+    // havia sessão e ela deixou de valer (revogada, banida, expirada): o login explica, em vez de parecer que nada aconteceu
+    if (request.cookies.getAll().some((c) => /^sb-.*-auth-token/.test(c.name))) destino.searchParams.set('motivo', 'sessao');
     const r = NextResponse.redirect(destino);
     r.headers.set('cache-control', 'private, no-store');
     return r;

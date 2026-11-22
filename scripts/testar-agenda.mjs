@@ -2,7 +2,7 @@
 // retorno do setor); Aguardando Prefeita; eventos (criar, editar, excluir com confirmação, rascunho, sobreposição, clique repetido, falha de rede, edição simultânea); avisos; filtros; teclado;
 // computador, iPad e iPhone emulados, claro e escuro. Sobe o próprio servidor numa porta separada, com dados semeados relativos a hoje. NÃO valida o Supabase real nem aparelho físico.
 // Uso: node scripts/testar-agenda.mjs
-import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
+import { rascunhosDaConta, abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { semearAgenda } from './semear-agenda.mjs';
 import { gradeMes, anoMes, diasNoMes, colunaNaSemana } from '../src/lib/agenda.ts';
@@ -484,7 +484,8 @@ const t5 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   const grupos = await pg.$$eval('.stats.tres .stat', (b) => b.map((x) => Number(x.querySelector('.n').textContent)));
   ok(grupos[0] === 1, 'Início: Atrasadas conta só o Relatório atrasado (a Prefeita com 12 dias de espera não é atrasada)');
   // o Início não tem mais as listas (decisão 80): o contador abre Demandas já filtrada, e o Quadro mostra o conjunto
-  const abrirContador = async (g) => { await pg.click(`.stats.tres .st-${g}`); await pg.waitForURL('**/demandas', { timeout: 20000 }); await pg.click('.toolbar .tabs button[data-v="quadro"]'); await pg.waitForTimeout(500); return pg.$$eval('.quadro .mini-card .assunto', (c) => c.map((x) => x.textContent)); };
+  // decisão 91: o contador filtra DENTRO do Início (o recorte mostra as demandas do grupo); ligar o mesmo botão de novo desliga o filtro
+  const abrirContador = async (g) => { await pg.click(`.stats.tres .st-${g}`); await pg.waitForSelector('[data-painel="recorte-inicio"]', { timeout: 20000 }); await pg.waitForTimeout(500); const r = await pg.$$eval('[data-painel="recorte-inicio"] .dcard .assunto', (c) => c.map((x) => x.textContent.trim())); await pg.click(`.stats.tres .st-${g}`); await pg.waitForSelector('[data-painel="recorte-inicio"]', { state: 'detached' }); return r; };
   const naoAtrasadas = await abrirContador('atrasadas');
   ok(naoAtrasadas.join() === 'Relatório atrasado', 'Início: a lista de atrasadas traz só quem tem data aplicável vencida');
   await ir(pg, '/');
@@ -532,7 +533,7 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   await pg.fill('#ev-fim', '09:45');
   // rascunho: Esc guarda, reabrir recupera, Cancelar descarta
   await pg.keyboard.press('Escape'); await janelaFechada(pg);
-  const rd = await pg.evaluate(() => JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}'));
+  const rd = await rascunhosDaConta(pg);
   ok(!!rd['ev:nova'] && rd['ev:nova'].dados.ev.titulo === 'Reunião de teste', 'Esc guarda o rascunho do evento no aparelho');
   await pg.click('.fab'); await pg.click('.menuplus [role="menuitem"]:has-text("Evento")'); await pg.waitForSelector('#ev-titulo');
   ok((await pg.inputValue('#ev-titulo')) === 'Reunião de teste' && /Rascunho recuperado/.test(await pg.textContent('.modal')), 'ao reabrir, o rascunho é recuperado');
@@ -546,7 +547,7 @@ const t2 = await novo({ viewport: { width: 1360, height: 900 } }, { prefs: { mod
   await abrirDia(pg, HOJE);
   const noDia = await pg.$$eval(`.agd-detalhe .agd-evento .agd-tit`, (t) => t.map((x) => x.textContent));
   ok(noDia.filter((x) => x === 'Reunião de teste').length === 1, 'clique repetido (três cliques seguidos) cria um único evento');
-  const rd2 = await pg.evaluate(() => JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}'));
+  const rd2 = await rascunhosDaConta(pg);
   ok(!rd2['ev:nova'], 'depois de criado, não sobra rascunho');
   ok((await pg.$$eval('.agd-detalhe .agd-evento .agd-hora', (h) => h.map((x) => x.textContent.trim()))).join() === '09:00 às 10:00,09:15 às 09:45,09:30 às 11:00,12:30', 'o novo evento entra na ordem cronológica do dia');
   await pg.reload({ waitUntil: 'load' }); await ir(pg); await abrirDia(pg, HOJE);

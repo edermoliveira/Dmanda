@@ -6,6 +6,27 @@ import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TES
 
 export { prepararTitularDeTeste, USUARIO_TESTE };
 
+/** A chave da fila local de rascunhos do usuário de teste (decisão 92): só guarda o que o banco ainda não confirmou. */
+export const CHAVE_FILA_TESTE = `dmanda:fila:${USUARIO_TESTE}`;
+/** Uma fila local com rascunhos PENDENTES (como se fossem digitados sem rede), no formato do motor: `{ chave: conteúdo }`. */
+export const filaComPendentes = (mapa) => JSON.stringify({ v: 1, lapides: [], itens: Object.fromEntries(Object.entries(mapa).map(([chave, valor], i) => [chave, { id: `0000000${i}-0000-4000-8000-00000000000${i}`, chave, valor, versao: 0, op: `1111111${i}-0000-4000-8000-00000000000${i}`, pendente: true, conflito: null }])) });
+/** Apaga os rascunhos da conta de teste no banco (rota só do modo de teste): cada cenário começa sem os rascunhos online do anterior. */
+export const limparRascunhos = (base) => fetch(`${base}/api/teste/rascunhos`, { method: 'DELETE' }).then((r) => r.status === 204);
+/**
+ * Os rascunhos da conta vistos de uma página (decisão 92): `{ chave: conteúdo }`, com o que o BANCO confirmou (lido pela rota de exportação, que leva os rascunhos da própria conta) somado ao que está
+ * pendente na fila local deste navegador. Antes de ler, espera o indicador de estado sair de "Salvando" (o envio agrupado e a confirmação do banco).
+ */
+export async function rascunhosDaConta(pg) {
+  await pg.waitForFunction(() => document.querySelector('[data-estado-rascunhos="salvando"]') === null, null, { timeout: 8000 }).catch(() => {});
+  await pg.waitForTimeout(150);
+  return pg.evaluate(async (chaveFila) => {
+    const mapa = {};
+    try { const c = await (await fetch('/api/exportar', { cache: 'no-store' })).json(); for (const r of c.rascunhos ?? []) mapa[r.chave] = r.dados; } catch { /* sem rede: só a fila local */ }
+    try { const f = JSON.parse(localStorage.getItem(chaveFila) || 'null'); for (const i of Object.values(f?.itens ?? {})) mapa[i.chave] = i.valor; } catch { /* fila ausente ou corrompida */ }
+    return mapa;
+  }, CHAVE_FILA_TESTE);
+}
+
 /** O segredo da rotina diária nos servidores de teste (só existe aqui; as suítes que chamam a rota importam esta constante). */
 export const SEGREDO_CRON_TESTE = 'segredo-de-teste-1234567890';
 
@@ -105,7 +126,8 @@ export async function iniciarServidor({ porta, pasta, lembretes = false, cron = 
         : `O servidor de teste saiu (código ${codigo}) antes de responder na porta ${porta}${portaOcupada(saida) ? ': a porta já está em uso' : ''}. Últimas linhas: ${saida.trim().slice(-600) || '(sem saída)'}`);
     }
     await esperar(estabilizar);
-    if (processo.exitCode === null) return { base, processo, parar: () => encerrar(processo) };
+    // os rascunhos moram no banco (decisão 92): um servidor novo começa sem os de uma execução anterior da suíte (rota só do modo de teste; falha em silêncio fora dele)
+    if (processo.exitCode === null) { await fetch(`${base}/api/teste/rascunhos`, { method: 'DELETE' }).catch(() => {}); return { base, processo, parar: () => encerrar(processo) }; }
     await esperar(200);
     encerrar(processo);
     if (portaOcupada(saida)) throw new Error(`O servidor de teste não subiu: a porta ${porta} já está em uso por outro processo (quem respondeu não foi este servidor).`);

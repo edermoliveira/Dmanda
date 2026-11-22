@@ -260,7 +260,10 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   const [janela, setJanela] = useState<Janela>(null);
   const [menuMover, setMenuMover] = useState<{ id: string; x: number; y: number } | null>(null);
   // rascunhos online (decisão 92): o banco é a fonte; o navegador guarda só a fila de pendências deste usuário
-  const ro = useRascunhosOnline(ambiente?.id ?? null);
+  // O último usuário identificado fica lembrado só para a fila local de pendências aparecer mesmo com o servidor fora do ar na abertura (o servidor continua sendo quem identifica; as telas de entrada e
+  // de convite apagam este lembrete, então outra conta nunca herda a fila da anterior). Só o identificador, nunca e-mail, senha ou token.
+  const [idLembrado, setIdLembrado] = useState<string | null>(null);
+  const ro = useRascunhosOnline(ambiente?.id ?? idLembrado);
   const rascunhos = ro.rascunhos as unknown as Record<string, Rascunho>;
   // só depois de ler as preferências do navegador é que elas podem ser gravadas (senão os padrões sobrescrevem o que estava salvo)
   const [pronto, setPronto] = useState(false);
@@ -296,6 +299,8 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     setDispensados(textosGuardados(lerLS<unknown>(CHAVE.avisosVistos, null)));
     const guardadas = lerLS<unknown>(CHAVE.periodosIncertos, []);   // só entra o que tem a forma esperada (o que está guardado pode estar corrompido)
     if (Array.isArray(guardadas)) { const ok = guardadas.filter((x): x is PeriodoIncerto => !!x && typeof x === 'object' && typeof (x as PeriodoIncerto).operacao_id === 'string' && /^[0-9a-f-]{36}$/i.test((x as PeriodoIncerto).operacao_id) && typeof (x as PeriodoIncerto).resumo === 'string').map((x) => ({ operacao_id: x.operacao_id, resumo: x.resumo.slice(0, 220) })); incertosRef.current = ok; setIncertos(ok); }
+    const lembrado = lerLS<unknown>('dmanda:usuario', null);
+    if (typeof lembrado === 'string' && /^[0-9a-f-]{36}$/i.test(lembrado)) setIdLembrado(lembrado);
     setPronto(true);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -411,7 +416,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       if (c.opcoes.ok) setOpcoes(agruparOpcoes(c.opcoes.dados));
       if (c.paraHoje.ok) setParaHoje(c.paraHoje.dados);
       if (c.rotina?.ok) setRotina(c.rotina.dados);
-      if (c.ambiente) setAmbiente(c.ambiente);
+      if (c.ambiente) { setAmbiente(c.ambiente); if (c.ambiente.id) gravarLS('dmanda:usuario', c.ambiente.id); }
     });
     // um só relógio para o dia e para a hora (os dois lidos do MESMO instante, em America/Sao_Paulo), senão na virada do dia o aviso pode juntar a data de ontem com a hora de hoje
     const tique = () => { const a = new Date(); setHoje(hojeISO(a)); setAgoraMin(minutosAgora(a)); };

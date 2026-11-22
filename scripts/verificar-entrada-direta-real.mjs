@@ -1,3 +1,4 @@
+// OBSOLETO desde a decisão 92 (22/11/2026): confere a entrada aberta (executar_como_titular com a chave de serviço), que o fechamento do acesso aberto remove. Fica só como registro da verificação de 17 a 21/11/2026.
 // Verificação MÍNIMA e SÓ DE LEITURA da entrada direta no ambiente real (nada é gravado, nada é apagado). Nunca imprime chave, e-mail nem conteúdo: só estados HTTP e contagens.
 // Rodar somente com autorização específica, nas fases do plano (docs/plano-retirada-aparelhos.md):
 //   fase 1, depois de aplicar a migração 20261119000000, ANTES de publicar o código:

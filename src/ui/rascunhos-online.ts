@@ -3,14 +3,13 @@
 // e o navegador guarda só a fila temporária de alterações pendentes, separada por usuário. Sem usuário identificado (antes da carga) nada é lido nem gravado.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MotorRascunhos, CHAVE_FILA, type Api, type Dados, type EstadoRascunhos } from '@/lib/fila-rascunhos';
-import { listarRascunhos, salvarRascunho, resolverRascunho, encerrarRascunho } from '@/servidor/rascunhos';
+import { chamarRascunhos } from './rascunhos-api';
 
-type Resultado<T> = { ok: true; dados: T } | { ok: false; erro: string };
 const api: Api = {
-  listar: () => listarRascunhos() as Promise<Resultado<never>> as ReturnType<Api['listar']>,
-  salvar: (id, chave, dados, base, op) => salvarRascunho(id, chave, dados, base, op) as ReturnType<Api['salvar']>,
-  resolver: (id, dados, base, op) => resolverRascunho(id, dados, base, op) as ReturnType<Api['resolver']>,
-  encerrar: (id, chave, estado) => encerrarRascunho(id, chave, estado),
+  listar: () => chamarRascunhos({ acao: 'listar' }) as ReturnType<Api['listar']>,
+  salvar: (id, chave, dados, base, op) => chamarRascunhos({ acao: 'salvar', id, chave, dados, base, op }) as ReturnType<Api['salvar']>,
+  resolver: (id, dados, base, op) => chamarRascunhos({ acao: 'resolver', id, dados, base, op }) as ReturnType<Api['resolver']>,
+  encerrar: (id, chave, estado) => chamarRascunhos({ acao: 'encerrar', id, chave, estado }),
 };
 const armazem = {
   ler: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } },

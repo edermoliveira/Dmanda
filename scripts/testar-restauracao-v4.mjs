@@ -77,7 +77,7 @@ const SQL = readFileSync('supabase/restaurar-copia.sql', 'utf8');
 const restaurar = (db, json) => db.exec(SQL.replace('__COLE_AQUI_O_JSON__', () => (typeof json === 'string' ? json : JSON.stringify(json))));
 const dest = await abrirBancoTeste();
 await prepararAdminDeTeste(dest, DESTINO);   // decisão 92: sem autoria (cópia anterior), tudo volta para a conta administradora do projeto de destino
-const EMAIL_DESTINO = (await dest.query('select dmanda_privado.email_admin() as e')).rows[0].e;
+
 const t0 = (await dest.query('select now() as t')).rows[0].t;
 ok(await erroDe(restaurar(dest, textoCopia)) === null, 'restauração: o SQL real roda sem erro com o arquivo que a rota gerou (o texto exato do download, colado como o procedimento manda)');
 // o caminho real da entrada direta: o servidor chama executar_como_titular com a chave de serviço

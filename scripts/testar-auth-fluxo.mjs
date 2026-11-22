@@ -1,0 +1,262 @@
+// Autenticação de ponta a ponta (decisão 92): o aplicativo REAL em modo real (@supabase/ssr, cookies, proxy, ações do servidor) contra o Supabase FALSO local (scripts/auth-falso.mjs: Auth e API de funções
+// sobre um banco de teste PGlite com as mesmas migrações). Contas e e-mails FICTÍCIOS; nenhum e-mail é enviado (a caixa de saída é uma lista em memória). Edge, contextos limpos.
+// PROVA: login, sessão persistente (fechar e reabrir o navegador), renovação com rotação, falha transitória sem perder a sessão, sair só deste aparelho, convite de uso único e com validade, definição e
+// recuperação de senha, cadastro fechado, administração só da administradora, revogação com token anterior, rascunhos retomados em outro contexto e isolados entre contas, páginas e API sem sessão recusadas.
+// NÃO PROVA: o GoTrue real (assinatura real dos tokens, entrega de e-mail, modelos de e-mail, hook configurado no painel), o Safari físico nem o domínio final. Uso: node scripts/testar-auth-fluxo.mjs
+import { rmSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { abrirBancoTeste, prepararAdminDeTeste, criarContaDeTeste } from '../src/servidor/banco-teste-base.mjs';
+import { iniciarAuthFalso, CHAVE_PUBLICA, CHAVE_SERVICO } from './auth-falso.mjs';
+import { abrirEdge, criarVerificador, iniciarServidor, observarErros, esperar } from './auxiliar-navegador.mjs';
+
+const PORTA = Number(process.env.PORTA_TESTE_AUTH || 7143), PORTA_FALSO = PORTA + 1, BASE = `http://localhost:${PORTA}`;
+const RAIZ = join(tmpdir(), 'dmanda-auth-fluxo'); rmSync(RAIZ, { recursive: true, force: true }); mkdirSync(RAIZ, { recursive: true });
+const v = criarVerificador(), ok = v.ok;
+const erros = [];
+
+const A = 'a1a1a1a1-0000-4000-8000-00000000000a', X = 'e5e5e5e5-0000-4000-8000-00000000000e';
+const db = await abrirBancoTeste({ pasta: `${RAIZ}/pg`, pendentes: true });
+await prepararAdminDeTeste(db);
+const emailAdmin = (await db.query('select dmanda_privado.email_admin() as e')).rows[0].e;
+await criarContaDeTeste(db, A, 'ana@exemplo.invalid'); await criarContaDeTeste(db, X, 'estranho@exemplo.invalid', { autorizar: false });
+const falso = await iniciarAuthFalso({ db, porta: PORTA_FALSO });
+falso.definirSenha(emailAdmin, 'senha-da-admin-123'); falso.definirSenha('ana@exemplo.invalid', 'senha-da-ana-123'); falso.definirSenha('estranho@exemplo.invalid', 'senha-do-estranho-123');
+let deslocamento = 0; falso.estado.relogio = () => Date.now() + deslocamento;
+const apiFalso = (caminho, init = {}) => fetch(`${falso.url}${caminho}`, { ...init, headers: { apikey: CHAVE_PUBLICA, 'content-type': 'application/json', ...(init.headers ?? {}) } });
+const tokenDe = async (email, senha) => (await (await apiFalso('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password: senha }) })).json()).access_token;
+const rpcComo = async (token, fn, args = {}) => { const r = await apiFalso(`/rest/v1/rpc/${fn}`, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body: JSON.stringify(args) }); return { status: r.status, corpo: await r.json().catch(() => null) }; };
+
+const servidor = await iniciarServidor({ porta: PORTA, pasta: `${RAIZ}/next-nao-usado`, cron: true, env: {
+  DMANDA_BANCO: undefined, DMANDA_USUARIO_TESTE: undefined, NEXT_PUBLIC_SUPABASE_URL: falso.url, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: CHAVE_PUBLICA, SUPABASE_SERVICE_ROLE_KEY: CHAVE_SERVICO, DMANDA_URL_PUBLICA: BASE,
+} });
+const edge = await abrirEdge();
+const novoCtx = async (estado) => { const ctx = await edge.newContext(estado ? { storageState: estado } : {}); const pg = await ctx.newPage(); observarErros(pg, erros); return { ctx, pg }; };
+const entrar = async (pg, email, senha, esperaUrl = '**/') => { await pg.goto(BASE + '/login', { waitUntil: 'load' }); await pg.fill('input[name="email"]', email); await pg.fill('input[name="senha"]', senha); await pg.click('form[data-form="entrar"] button[type="submit"]'); if (esperaUrl) await pg.waitForURL(esperaUrl, { timeout: 30000 }); };
+const ir = async (pg, caminho) => { await pg.goto(BASE + caminho, { waitUntil: 'load' }); await pg.waitForSelector('.app', { timeout: 30000 }); };
+const cookiesSessao = async (ctx) => (await ctx.cookies()).filter((c) => /^sb-.*-auth-token/.test(c.name));
+
+// ---------- 1) visitante ----------
+{
+  const r = await fetch(BASE + '/', { redirect: 'manual' });
+  ok([302, 303, 307, 308].includes(r.status) && /\/login/.test(r.headers.get('location') ?? '') && /no-store/.test(r.headers.get('cache-control') ?? ''), `visitante: a página inicial leva ao login e a resposta é privada, sem cache compartilhado (${r.status})`);
+  const d = await fetch(BASE + '/demandas', { redirect: 'manual' });
+  ok([302, 303, 307, 308].includes(d.status) && /\/login/.test(d.headers.get('location') ?? ''), 'visitante: Demandas também leva ao login');
+  const e = await fetch(BASE + '/api/exportar');
+  ok(e.status === 401 && !(await e.text()).includes('demandas'), 'visitante: a exportação responde 401, sem arquivo e sem dado');
+  const rota = await fetch(BASE + '/login'); const html = await rota.text();
+  ok(rota.status === 200 && /Entrar/.test(html) && !/data-secao|dcard|mini-card|Quadro/.test(html), 'visitante: a tela de entrar abre e não traz nada do painel');
+  const sonda = await fetch(BASE + '/api/sonda'); ok(sonda.status === 204, 'a sonda de conexão segue pública e sem dado (204)');
+  const cron = await fetch(BASE + '/api/cron/diaria'); ok(cron.status === 401, 'a rotina diária continua protegida só pelo segredo dela: sem ele, 401');
+}
+
+// ---------- 2) cadastro fechado e Auth ----------
+{
+  const s = await apiFalso('/auth/v1/signup', { method: 'POST', body: JSON.stringify({ email: 'novo@exemplo.invalid', password: 'qualquer-senha-123' }) });
+  ok(s.status === 422 && !(await db.query("select 1 from auth.users where email = 'novo@exemplo.invalid'")).rows.length, 'cadastro fechado: o cadastro público é recusado e nenhuma conta é criada');
+  const i = await fetch(`${falso.url}/auth/v1/invite`, { method: 'POST', headers: { apikey: CHAVE_SERVICO, authorization: `Bearer ${CHAVE_SERVICO}`, 'content-type': 'application/json' }, body: JSON.stringify({ email: 'fora-da-lista@exemplo.invalid' }) });
+  ok(i.status === 403 && !(await db.query("select 1 from auth.users where email = 'fora-da-lista@exemplo.invalid'")).rows.length, 'cadastro fechado: convite para e-mail fora da lista é recusado pelo hook mesmo com a chave de serviço, e nada é criado');
+  const k = await fetch(`${falso.url}/auth/v1/invite`, { method: 'POST', headers: { apikey: CHAVE_PUBLICA, 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ana@exemplo.invalid' }) });
+  ok(k.status === 401, 'convite: a chave pública não convida ninguém (a API administrativa exige a chave de serviço)');
+}
+
+// ---------- 3) login, sessão persistente e cookies ----------
+let estadoAdmin;
+{
+  const { ctx, pg } = await novoCtx();
+  await entrar(pg, emailAdmin, 'senha-errada-000', null); await pg.waitForSelector('.acesso-erro');
+  ok(/E-mail ou senha incorretos/.test(await pg.textContent('.acesso-erro')) && (await cookiesSessao(ctx)).length === 0, 'login: senha errada mostra a mensagem e não deixa sessão');
+  await pg.fill('input[name="email"]', 'estranho@exemplo.invalid'); await pg.fill('input[name="senha"]', 'senha-do-estranho-123'); await pg.click('form[data-form="entrar"] button[type="submit"]'); await pg.waitForSelector('.acesso-erro:has-text("não tem acesso")');
+  ok((await cookiesSessao(ctx)).length === 0 && /\/login/.test(pg.url()), 'login: um e-mail de fora da lista, mesmo com senha válida no Auth, é recusado pelo banco e nenhuma sessão fica');
+  await pg.fill('input[name="email"]', emailAdmin); await pg.fill('input[name="senha"]', 'senha-da-admin-123'); await pg.click('form[data-form="entrar"] button[type="submit"]'); await pg.waitForURL('**/', { timeout: 30000 }); await pg.waitForSelector('.app');
+  const ck = await cookiesSessao(ctx);
+  ok(ck.length >= 1 && ck.every((c) => c.httpOnly && c.sameSite === 'Lax' && c.path === '/') && ck.every((c) => c.expires > Date.now() / 1000 + 86400), 'sessão: cookies HTTP-only, SameSite Lax e persistentes (validade de dias, sem prazo curto)');
+  ok(!(await pg.evaluate(() => Object.keys(localStorage).concat(Object.keys(sessionStorage)).join('|') + document.cookie)).match(/sb-|access|refresh|senha-da-admin/i), 'sessão: nenhum token nem senha fica no armazenamento do navegador nem visível ao script da página');
+  estadoAdmin = await ctx.storageState();
+  await ctx.close();   // "fecha o navegador"
+  const { ctx: c2, pg: p2 } = await novoCtx(estadoAdmin);   // "reabre": só o que um navegador guarda em disco (cookies persistentes)
+  await p2.goto(BASE + '/', { waitUntil: 'load' }); await p2.waitForSelector('.app', { timeout: 30000 });
+  ok(!/\/login/.test(p2.url()) && (await p2.textContent('body')).length > 100, 'sessão: fechar e reabrir o navegador preserva a sessão válida (sem novo login)');
+  const exp = await p2.evaluate(async () => (await fetch('/api/exportar')).status);
+  ok(exp === 200, 'sessão: depois de reabrir, a exportação funciona com a sessão');
+  await c2.close();
+}
+
+// ---------- 4) renovação, falha transitória, sair só deste aparelho ----------
+{
+  falso.estado.validadeSegundos = 100;   // o cliente renova quando faltam menos de 90 s: com 100 s a renovação é devida depois de ~10 s, sem o token expirar no meio de uma página
+  const { ctx, pg } = await novoCtx();
+  await entrar(pg, 'ana@exemplo.invalid', 'senha-da-ana-123'); await pg.waitForSelector('.app');
+  const antes = falso.estado.contadores.refresh, c0 = (await cookiesSessao(ctx)).map((c) => c.value).join();
+  await esperar(12000);   // faltam menos de 90 s: a renovação é devida
+  await pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await pg.waitForSelector('.app', { timeout: 30000 });
+  ok(falso.estado.contadores.refresh > antes && !/\/login/.test(pg.url()) && (await cookiesSessao(ctx)).map((c) => c.value).join() !== c0, 'renovação: com a renovação devida o servidor renova pelo refresh token (com rotação) e a pessoa não vê nada');
+  // falha transitória de rede: o serviço de acesso cai na hora de renovar
+  await esperar(12000);
+  const cookiesAntes = (await cookiesSessao(ctx)).map((c) => `${c.name}=${c.value}`).join();
+  falso.estado.falhas.set('refresh', 'cai'); falso.estado.falhas.set('user', 'cai');
+  await pg.goto(BASE + '/demandas', { waitUntil: 'load' });
+  ok(!/\/login/.test(pg.url()), 'falha transitória: o serviço de acesso fora do ar NÃO leva ao login');
+  await esperar(1500);
+  const cookiesDepois = (await cookiesSessao(ctx)).map((c) => `${c.name}=${c.value}`).join();
+  const semDados = await pg.evaluate(() => document.querySelectorAll('.dcard, .mini-card').length);
+  ok(cookiesDepois === cookiesAntes && cookiesDepois.length > 0 && semDados === 0, 'falha transitória: a sessão continua guardada (cookies iguais) e nenhum dado é mostrado enquanto não há identidade verificada');
+  falso.estado.falhas.clear();
+  await pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await pg.waitForSelector('.app', { timeout: 30000 });
+  ok(!/\/login/.test(pg.url()), 'falha transitória: a rede voltou e a mesma sessão continua valendo, sem novo login');
+  falso.estado.validadeSegundos = 3600;
+
+  // sair só deste aparelho
+  const outra = await novoCtx(); await entrar(outra.pg, 'ana@exemplo.invalid', 'senha-da-ana-123'); await outra.pg.waitForSelector('.app');
+  await ir(pg, '/config'); await pg.click('[data-sair]'); await pg.waitForURL('**/login', { timeout: 30000 });
+  ok((await cookiesSessao(ctx)).length === 0, 'sair: "Sair deste aparelho" apaga a sessão daqui');
+  await outra.pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await outra.pg.waitForSelector('.app', { timeout: 30000 });
+  ok(!/\/login/.test(outra.pg.url()) && (await rpcComo(await tokenDe('ana@exemplo.invalid', 'senha-da-ana-123'), 'estado_acesso')).corpo.autorizado === true, 'sair: o outro aparelho da mesma conta continua conectado (só esta sessão foi encerrada)');
+  await ctx.close(); await outra.ctx.close();
+}
+
+// ---------- 5) administração: convite, definição de senha, uso único, validade ----------
+{
+  const adm = await novoCtx(estadoAdmin); await ir(adm.pg, '/config');
+  ok(!!(await adm.pg.waitForSelector('[data-secao="usuarios"]', { timeout: 20000 }).catch(() => null)), 'administração: a administradora vê "Usuários e acesso"');
+  const ana = await novoCtx(); await entrar(ana.pg, 'ana@exemplo.invalid', 'senha-da-ana-123'); await ir(ana.pg, '/config');
+  await ana.pg.waitForSelector('[data-secao="conta"]', { timeout: 20000 }); await esperar(2000);
+  ok(!(await ana.pg.$('[data-secao="usuarios"]')) && !!(await ana.pg.$('[data-secao="conta"]')), 'administração: uma conta autorizada comum NÃO vê "Usuários e acesso" (só "Conta")');
+  const tokAna = await tokenDe('ana@exemplo.invalid', 'senha-da-ana-123');
+  ok((await rpcComo(tokAna, 'listar_acessos')).status >= 400 && (await rpcComo(tokAna, 'autorizar_acesso', { p_email: 'invasor@exemplo.invalid' })).status >= 400 && !(await db.query("select 1 from dmanda_privado.acesso_autorizado where email = 'invasor@exemplo.invalid'")).rows.length, 'administração: chamadas diretas da conta comum à API de gestão são recusadas pelo banco e nada é autorizado');
+  ok((await rpcComo(CHAVE_PUBLICA, 'listar_demandas')).status === 401 && (await rpcComo('lixo.lixo.lixo', 'listar_demandas')).status === 401, 'administração: sem JWT válido (ou só com a chave pública) a API de funções recusa');
+
+  await adm.pg.fill('#usu-email', 'bia@exemplo.invalid'); await adm.pg.click('form[aria-label="Convidar"] button[type="submit"]');
+  await adm.pg.waitForSelector('li[data-acesso="bia@exemplo.invalid"]', { timeout: 20000 });
+  ok(/Convite pendente/.test(await adm.pg.textContent('li[data-acesso="bia@exemplo.invalid"] [data-chip-estado]')) && falso.estado.caixaDeSaida.filter((m) => m.para === 'bia@exemplo.invalid' && m.tipo === 'invite').length === 1, 'convite: a administradora informa o e-mail, o convite é enviado (caixa de saída falsa) e o estado é "Convite pendente"');
+  ok(!!(await adm.pg.$('li[data-acesso="ana@exemplo.invalid"] [data-revogar]')) && !(await adm.pg.$(`li[data-acesso="${emailAdmin}"] [data-revogar]`)), 'administração: cada acesso tem Revogar, menos a conta administradora (não há botão para revogá-la)');
+  const sessaoAdmin = (await adm.ctx.cookies()).length;
+  const link = falso.estado.caixaDeSaida.find((m) => m.para === 'bia@exemplo.invalid').token_hash;
+  const bia = await novoCtx();
+  await bia.pg.goto(`${BASE}/auth/confirmar?token_hash=${link}&type=invite`, { waitUntil: 'load' });
+  ok(falso.estado.links.get(link).usado === false && /Continuar/.test(await bia.pg.textContent('main')), 'convite: abrir o link só mostra "Continuar" e NÃO gasta o link (um leitor automático de e-mail não o consome)');
+  await bia.pg.click('form[data-form="confirmar-link"] button'); await bia.pg.waitForURL('**/definir-senha', { timeout: 30000 });
+  await bia.pg.fill('input[name="nova"]', 'curta'); await bia.pg.fill('input[name="conf"]', 'curta'); await bia.pg.click('form[data-form="definir-senha"] button');
+  ok(/definir-senha/.test(bia.pg.url()), 'senha: uma senha curta é recusada (a tela não avança)');
+  await bia.pg.fill('input[name="nova"]', 'senha-da-bia-1234'); await bia.pg.fill('input[name="conf"]', 'outra-senha-1234'); await bia.pg.evaluate(() => document.querySelector('form[data-form="definir-senha"]').requestSubmit());
+  await bia.pg.waitForSelector('.acesso-erro');
+  ok(/não é igual/.test(await bia.pg.textContent('.acesso-erro')), 'senha: confirmação diferente é recusada com mensagem');
+  await bia.pg.fill('input[name="nova"]', 'senha-da-bia-1234'); await bia.pg.fill('input[name="conf"]', 'senha-da-bia-1234'); await bia.pg.click('form[data-form="definir-senha"] button'); await bia.pg.waitForURL('**/', { timeout: 30000 }); await bia.pg.waitForSelector('.app');
+  ok(falso.estado.senhas.get('bia@exemplo.invalid') === 'senha-da-bia-1234' && !(await bia.pg.evaluate(() => document.body.innerText)).includes('senha-da-bia'), 'senha: a convidada define a PRÓPRIA senha pelo fluxo do Auth e entra; a senha não aparece em lugar nenhum');
+  ok((await adm.ctx.cookies()).length === sessaoAdmin, 'convite: enviar e usar o convite não trocou a sessão da administradora');
+  const reuso = await novoCtx(); await reuso.pg.goto(`${BASE}/auth/confirmar?token_hash=${link}&type=invite`); await reuso.pg.click('form[data-form="confirmar-link"] button'); await reuso.pg.waitForSelector('.acesso-erro');
+  ok(/expirou ou já foi usado/.test(await reuso.pg.textContent('.acesso-erro')) && (await cookiesSessao(reuso.ctx)).length === 0, 'convite: o link é de uso único: repetir não entra');
+  await adm.pg.reload({ waitUntil: 'load' }); await adm.pg.waitForSelector('li[data-acesso="bia@exemplo.invalid"]');
+  ok(/Ativo/.test(await adm.pg.textContent('li[data-acesso="bia@exemplo.invalid"] [data-chip-estado]')), 'estados: depois da primeira entrada a lista mostra "Ativo"');
+  // validade
+  await adm.pg.fill('#usu-email', 'caio@exemplo.invalid'); await adm.pg.click('form[aria-label="Convidar"] button[type="submit"]'); await adm.pg.waitForSelector('li[data-acesso="caio@exemplo.invalid"]', { timeout: 20000 });
+  const linkCaio = falso.estado.caixaDeSaida.find((m) => m.para === 'caio@exemplo.invalid').token_hash;
+  deslocamento = 25 * 3600 * 1000;   // passou das 24 h de validade do link
+  const caio = await novoCtx(); await caio.pg.goto(`${BASE}/auth/confirmar?token_hash=${linkCaio}&type=invite`); await caio.pg.click('form[data-form="confirmar-link"] button'); await caio.pg.waitForSelector('.acesso-erro');
+  ok(/expirou ou já foi usado/.test(await caio.pg.textContent('.acesso-erro')) && (await cookiesSessao(caio.ctx)).length === 0, 'convite: link vencido (mais de 24 h) não entra');
+  deslocamento = 0;
+  const tipoErrado = await novoCtx(); await tipoErrado.pg.goto(`${BASE}/auth/confirmar?token_hash=${linkCaio}&type=magiclink`);
+  ok(/Link inválido/.test(await tipoErrado.pg.textContent('main')), 'convite: tipos de link que não são convite nem recuperação são recusados pela tela');
+  // convite revogado antes de usar
+  await adm.pg.fill('#usu-email', 'duda@exemplo.invalid'); await adm.pg.click('form[aria-label="Convidar"] button[type="submit"]'); await adm.pg.waitForSelector('li[data-acesso="duda@exemplo.invalid"]', { timeout: 20000 });
+  const linkDuda = falso.estado.caixaDeSaida.find((m) => m.para === 'duda@exemplo.invalid').token_hash;
+  await adm.pg.click('li[data-acesso="duda@exemplo.invalid"] [data-revogar]'); await adm.pg.click('li[data-acesso="duda@exemplo.invalid"] [data-confirmar-revogar]'); await adm.pg.waitForSelector('li[data-acesso="duda@exemplo.invalid"][data-estado="revogado"]', { timeout: 20000 });
+  const duda = await novoCtx(); await duda.pg.goto(`${BASE}/auth/confirmar?token_hash=${linkDuda}&type=invite`); await duda.pg.click('form[data-form="confirmar-link"] button'); await duda.pg.waitForSelector('.acesso-erro');
+  ok(/revogado|expirou|não está autorizado/.test(await duda.pg.textContent('.acesso-erro')) && (await cookiesSessao(duda.ctx)).length === 0, 'convite: convite revogado antes de usar não permite entrar');
+  for (const c of [adm, ana, bia, reuso, caio, tipoErrado, duda]) await c.ctx.close();
+}
+
+// ---------- 6) painel compartilhado, rascunhos entre contextos e isolamento ----------
+{
+  const tokAna = await tokenDe('ana@exemplo.invalid', 'senha-da-ana-123'), tokBia = await tokenDe('bia@exemplo.invalid', 'senha-da-bia-1234');
+  const criada = await rpcComo(tokAna, 'criar_demanda', { p: { assunto: 'Demanda criada pela Ana (compartilhada)' } });
+  const biaVe = await rpcComo(tokBia, 'listar_demandas', { p_arquivadas: false });
+  ok(criada.status === 200 && biaVe.corpo.some((d) => d.assunto === 'Demanda criada pela Ana (compartilhada)'), 'painel: a Bia (outra conta autorizada) vê a demanda criada pela Ana');
+  const biaUI = await novoCtx(); await entrar(biaUI.pg, 'bia@exemplo.invalid', 'senha-da-bia-1234'); await ir(biaUI.pg, '/demandas');
+  await biaUI.pg.waitForFunction(() => document.body.innerText.includes('Demanda criada pela Ana'), null, { timeout: 20000 });
+  ok(true, 'painel: a interface da Bia mostra a demanda da Ana');
+  // rascunho: a Ana começa o cadastro de uma demanda num contexto e retoma em outro (o cadastro guarda o rascunho sozinho, sem criar demanda)
+  const TEXTO = 'rascunho online da Ana, ainda sem criar a demanda';
+  const c1 = await novoCtx(); await entrar(c1.pg, 'ana@exemplo.invalid', 'senha-da-ana-123'); await ir(c1.pg, '/demandas');
+  await c1.pg.click('.toolbar .btn.escuro'); await c1.pg.waitForSelector('#n-assunto'); await c1.pg.fill('#n-assunto', TEXTO);
+  await c1.pg.waitForSelector('[data-estado-rascunhos="salvo"]', { timeout: 20000 });
+  ok(/Salvo online/.test(await c1.pg.textContent('[data-estado-rascunhos]')) && (await db.query("select count(*)::int n from public.rascunhos where user_id = $1 and estado = 'aberto' and chave = 'nova'", [A])).rows[0].n === 1 && (await db.query("select count(*)::int n from public.demandas where assunto = $1", [TEXTO])).rows[0].n === 0, 'rascunhos: o estado "Salvo online" só aparece depois da confirmação do banco, que já tem o rascunho, e nenhuma demanda foi criada');
+  ok(!(await c1.pg.evaluate(() => Object.values(localStorage).join('|'))).includes('rascunho online da Ana'), 'rascunhos: depois de confirmado, o texto NÃO fica no armazenamento do navegador (a fila local guarda só o pendente)');
+  const c2 = await novoCtx(); await entrar(c2.pg, 'ana@exemplo.invalid', 'senha-da-ana-123'); await ir(c2.pg, '/demandas');
+  await c2.pg.waitForTimeout(2500);
+  await c2.pg.click('.toolbar .btn.escuro'); await c2.pg.waitForSelector('#n-assunto');
+  ok((await c2.pg.inputValue('#n-assunto')) === TEXTO && /Rascunho recuperado/.test(await c2.pg.textContent('.modal')), 'rascunhos: em OUTRO contexto de navegador a mesma conta recupera o rascunho');
+  await biaUI.pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await biaUI.pg.waitForSelector('.app'); await esperar(2500);
+  await biaUI.pg.click('.toolbar .btn.escuro'); await biaUI.pg.waitForSelector('#n-assunto');
+  ok((await biaUI.pg.inputValue('#n-assunto')) === '' && !(await biaUI.pg.textContent('.modal')).includes('recuperado'), 'rascunhos: a Bia NÃO vê o rascunho da Ana (o cadastro dela abre vazio)');
+  await biaUI.pg.keyboard.press('Escape');
+  const tokBia2 = await tokenDe('bia@exemplo.invalid', 'senha-da-bia-1234');
+  ok((await rpcComo(tokBia2, 'listar_rascunhos')).corpo.length === 0 && (await rpcComo(tokBia2, 'salvar_rascunho', { p_id: (await db.query("select id::text i from public.rascunhos where user_id = $1 limit 1", [A])).rows[0].i, p_chave: 'nova', p_dados: { dados: { assunto: 'invasão' } }, p_base: 1, p_op: '99999999-0000-4000-8000-000000000001' })).status >= 400, 'rascunhos: nem pela API, trocando o identificador, a Bia lê ou grava o rascunho da Ana');
+  // cópia: a conta comum não leva autoria; a administradora leva
+  const exportaAna = await c1.pg.evaluate(async () => (await (await fetch('/api/exportar')).json()));
+  ok(exportaAna.versao === 5 && !('autoria' in exportaAna) && exportaAna.rascunhos.length >= 1 && !JSON.stringify(exportaAna).includes('bia@'), 'cópia: a conta comum exporta só os próprios rascunhos e nenhuma autoria nem e-mail alheio');
+  const admCtx = await novoCtx(estadoAdmin); await admCtx.pg.goto(BASE + '/', { waitUntil: 'load' });
+  const exportaAdm = await admCtx.pg.evaluate(async () => (await (await fetch('/api/exportar')).json()));
+  ok(exportaAdm.autoria?.demandas && Object.values(exportaAdm.autoria.demandas).includes('ana@exemplo.invalid') && exportaAdm.rascunhos.every((r) => r.chave !== 'e:nova' || true) && !JSON.stringify(exportaAdm).includes('rascunho online da Ana'), 'cópia: a administradora leva a autoria por e-mail, e o conteúdo do rascunho da Ana NÃO vai na cópia dela');
+  for (const c of [biaUI, c1, c2, admCtx]) await c.ctx.close();
+}
+
+// ---------- 7) revogação com a sessão ainda aberta ----------
+{
+  const bia = await novoCtx(); await entrar(bia.pg, 'bia@exemplo.invalid', 'senha-da-bia-1234'); await ir(bia.pg, '/demandas');
+  const tokBia = await tokenDe('bia@exemplo.invalid', 'senha-da-bia-1234');   // o JWT de antes da revogação
+  const adm = await novoCtx(estadoAdmin); await ir(adm.pg, '/config'); await adm.pg.waitForSelector('li[data-acesso="bia@exemplo.invalid"]');
+  await adm.pg.click('li[data-acesso="bia@exemplo.invalid"] [data-revogar]'); await adm.pg.click('li[data-acesso="bia@exemplo.invalid"] [data-confirmar-revogar]');
+  await adm.pg.waitForSelector('li[data-acesso="bia@exemplo.invalid"][data-estado="revogado"]', { timeout: 20000 });
+  const antes = await rpcComo(tokBia, 'listar_demandas', { p_arquivadas: false });
+  ok(antes.status === 200 && antes.corpo.length === 0 && (await rpcComo(tokBia, 'criar_demanda', { p: { assunto: 'depois de revogada' } })).status >= 400, 'revogação: com o JWT de antes ainda válido, a API devolve zero demandas e recusa gravar');
+  await bia.pg.goto(BASE + '/demandas', { waitUntil: 'load' });
+  await bia.pg.waitForURL('**/login**', { timeout: 30000 });
+  ok(/\/login/.test(bia.pg.url()) && /motivo=(sem-acesso|sessao)/.test(bia.pg.url()) && /revogado|não está autorizado|sessão terminou/.test(await bia.pg.textContent('main')), 'revogação: a sessão aberta da conta revogada deixa de valer ao abrir o painel: vai ao login com a explicação e nenhum dado aparece');
+  await bia.ctx.clearCookies();
+  await entrar(bia.pg, 'bia@exemplo.invalid', 'senha-da-bia-1234', null); await bia.pg.waitForSelector('.acesso-erro', { timeout: 20000 });
+  ok(/\/login/.test(bia.pg.url()) && (await cookiesSessao(bia.ctx)).length === 0, 'revogação: não consegue entrar de novo com a senha');
+  ok((await db.query("select count(*)::int n from public.demandas where assunto like 'Demanda criada pela Ana%'")).rows[0].n === 1, 'revogação: os registros do painel seguem intactos');
+  await adm.pg.click('li[data-acesso="bia@exemplo.invalid"] [data-restabelecer]'); await adm.pg.waitForSelector('li[data-acesso="bia@exemplo.invalid"][data-estado="ativo"]', { timeout: 20000 });
+  await entrar(bia.pg, 'bia@exemplo.invalid', 'senha-da-bia-1234'); await bia.pg.waitForSelector('.app');
+  ok(true, 'revogação: restabelecida pela administradora, ela volta a entrar');
+  // a administradora não tem como se revogar nem pela API
+  const tokAdm = await tokenDe(emailAdmin, 'senha-da-admin-123');
+  ok((await rpcComo(tokAdm, 'revogar_acesso', { p_email: emailAdmin })).status >= 400 && (await db.query('select revogado_em from dmanda_privado.acesso_autorizado where email = $1', [emailAdmin])).rows[0].revogado_em === null, 'administradora: nem chamando a API direto ela é revogada');
+  await bia.ctx.close(); await adm.ctx.close();
+}
+
+// ---------- 8) recuperação de senha ----------
+{
+  const ctx = await novoCtx(); await ctx.pg.goto(BASE + '/recuperar', { waitUntil: 'load' });
+  const antes = falso.estado.caixaDeSaida.length;
+  await ctx.pg.fill('input[name="email"]', 'ana@exemplo.invalid'); await ctx.pg.click('form[data-form="recuperar"] button'); await ctx.pg.waitForSelector('.acesso-aviso'); const msgConhecido = await ctx.pg.textContent('.acesso-aviso');
+  await ctx.pg.fill('input[name="email"]', 'nao-existe@exemplo.invalid'); await ctx.pg.click('form[data-form="recuperar"] button'); await ctx.pg.waitForFunction(() => document.querySelector('.acesso-aviso')?.textContent?.length > 10); const msgDesconhecido = await ctx.pg.textContent('.acesso-aviso');
+  ok(msgConhecido === msgDesconhecido && falso.estado.caixaDeSaida.length === antes + 1 && falso.estado.caixaDeSaida.at(-1).tipo === 'recovery', 'recuperação: a resposta é igual para e-mail conhecido e desconhecido (sem enumeração) e só o conhecido recebe o link');
+  const link = falso.estado.caixaDeSaida.at(-1).token_hash;
+  await ctx.pg.goto(`${BASE}/auth/confirmar?token_hash=${link}&type=recovery`); await ctx.pg.click('form[data-form="confirmar-link"] button'); await ctx.pg.waitForURL('**/definir-senha', { timeout: 30000 });
+  await ctx.pg.fill('input[name="nova"]', 'nova-senha-da-ana-1'); await ctx.pg.fill('input[name="conf"]', 'nova-senha-da-ana-1'); await ctx.pg.click('form[data-form="definir-senha"] button'); await ctx.pg.waitForURL('**/', { timeout: 30000 });
+  const velha = await apiFalso('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email: 'ana@exemplo.invalid', password: 'senha-da-ana-123' }) });
+  const nova = await apiFalso('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email: 'ana@exemplo.invalid', password: 'nova-senha-da-ana-1' }) });
+  ok(velha.status === 400 && nova.status === 200, 'recuperação: a senha antiga deixa de valer e a nova entra');
+  const reuso = await novoCtx(); await reuso.pg.goto(`${BASE}/auth/confirmar?token_hash=${link}&type=recovery`); await reuso.pg.click('form[data-form="confirmar-link"] button'); await reuso.pg.waitForSelector('.acesso-erro');
+  ok(/expirou ou já foi usado/.test(await reuso.pg.textContent('.acesso-erro')), 'recuperação: o link também é de uso único');
+  // alterar a própria senha pela conta
+  await ir(ctx.pg, '/config'); await ctx.pg.fill('#sn-atual', 'errada-errada-1'); await ctx.pg.fill('#sn-nova', 'terceira-senha-ana-1'); await ctx.pg.fill('#sn-conf', 'terceira-senha-ana-1'); await ctx.pg.click('form[data-form="alterar-senha"] button[type="submit"]');
+  await ctx.pg.waitForSelector('form[data-form="alterar-senha"] [role="alert"]');
+  ok(/atual não confere/.test(await ctx.pg.textContent('form[data-form="alterar-senha"] [role="alert"]')) && falso.estado.senhas.get('ana@exemplo.invalid') === 'nova-senha-da-ana-1', 'conta: alterar a senha exige a senha atual (errada, nada muda)');
+  await ctx.pg.fill('#sn-atual', 'nova-senha-da-ana-1'); await ctx.pg.click('form[data-form="alterar-senha"] button[type="submit"]'); await ctx.pg.waitForSelector('form[data-form="alterar-senha"] [role="status"]', { timeout: 20000 });
+  ok(falso.estado.senhas.get('ana@exemplo.invalid') === 'terceira-senha-ana-1', 'conta: com a senha atual certa a própria senha é alterada');
+  await ctx.ctx.close(); await reuso.ctx.close();
+}
+
+// ---------- 9) a rotina diária não depende de sessão e roda uma vez ----------
+{
+  const r1 = await fetch(BASE + '/api/cron/diaria', { headers: { authorization: 'Bearer segredo-de-teste-1234567890' } }), c1 = await r1.json();
+  const r2 = await fetch(BASE + '/api/cron/diaria', { headers: { authorization: 'Bearer segredo-de-teste-1234567890' } });
+  ok(r1.status === 200 && c1.ok === true && c1.usuarios === 1 && (await r2.json()).usuarios === 1 && (await db.query('select count(*)::int n from public.resumos_operacionais where data_ref = public.hoje()')).rows[0].n === 1, 'rotina diária: o segredo basta (sem sessão), com várias contas calcula UM resumo do painel e repetir não duplica');
+}
+
+ok(erros.filter((e) => !/Failed to load resource|net::ERR|status of 4|status of 5|due to access control/i.test(e)).length === 0, 'sem erros de página nem de console inesperados' + (erros.length ? ': ' + JSON.stringify(erros.slice(0, 3)) : ''));
+await edge.close(); servidor.parar(); falso.parar(); await esperar(1500); await db.close();
+process.exit(v.resumo());

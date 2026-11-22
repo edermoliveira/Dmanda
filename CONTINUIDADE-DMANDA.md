@@ -1184,3 +1184,22 @@ Legenda de implementação: **P** publicada em `origin/main` e na Vercel; **T** 
 **Planejamento dos widgets (conferido):** a coluna da direita (Humor, Clima, mini calendário), a decisão 64, o painel Widgets de Configurações e o liga e desliga por widget (decisões de 22 a 24/10) estão no Bloco 3B desta seção BA; o controle de visibilidade **não estava registrado** e foi acrescentado lá, sem tarefa duplicada. Nenhum widget foi implementado nem arquivado. Pagamentos, histórico operacional e cobertura da cópia seguem preservados nas pendências 1 a 3.
 
 **Pendente do Éder:** avaliar o recorte na prévia local; autorizar o push dos 3 commits de registro mais este; decisões da seção BA. **Andamento inalterado:** 67% demonstrado, 45% confirmado.
+
+
+## Seção BC: autenticação por e-mail e senha, acessos e rascunhos online (22/11/2026, decisão 92)
+
+**Estado de partida:** `NOTE-EDER`, `main`, HEAD `6f386f0` (5 commits locais sobre `origin/main` = `085c03c8`, fetch conferido, 0 atrás); stash, 14 tags `arquivo/*` e cópias privadas preservados. Trabalho só local, dados fictícios; **nada publicado, nenhuma operação no Supabase real, `.env.local` não lido**. Dependência acrescentada: `@supabase/ssr@0.12.7` (lockfile atualizado).
+
+**O que existe (local):**
+- **Banco** (3 migrações aditivas + 1 pendente): `20261122000000_painel_compartilhado_e_acessos` (administradora única, `conta_autorizada()` por `auth.uid()`, RLS do painel, autoria por gatilho, hook, gestão dos acessos, resumo e rotina do painel), `20261122000100_rascunhos_online`, `20261122000150_exportacao_autoria`; **pendente** `supabase/pendentes/20261122000200_fechar_acesso_aberto.sql` (remove `executar_como_titular` e `assumir_titular`).
+- **Servidor:** `src/servidor/sessao.ts` (cliente por requisição, getClaims, falha transitória sem perder a sessão), `autenticacao.ts`, `confirmar.ts`, `acessos.ts` (única porta da chave de serviço, depois do banco confirmar a administradora), `rascunhos.ts` + `src/app/api/rascunhos/route.ts`, `src/proxy.ts`, exportação v5 (`src/nucleo/copia.ts`).
+- **Interface:** `/login`, `/recuperar`, `/auth/confirmar` (link só consumido no toque), `/definir-senha`, Configurações > Conta e Usuários e acesso, indicador do estado dos rascunhos (`estado-rascunhos.tsx`), recuperação dos rascunhos antigos (só a administradora).
+- **Rascunhos:** `src/lib/fila-rascunhos.ts` (motor puro) + `src/ui/rascunhos-online.ts`; fila local `dmanda:fila:<usuário>` só do pendente.
+- **Restauração:** `supabase/restaurar-copia.sql` lê as versões 1 a 5, mapeia autores por e-mail, nunca cria contas nem concede acessos.
+- **Ativação:** `docs/plano-ativacao-autenticacao.md` (etapas A a E, pré-requisitos, recuperação). `scripts/bootstrap-admin.mjs` (privado, ensaio por padrão; **não executado**).
+
+**Verificações (banco de teste e Auth falso, nada real):** `testar:banco` 626, `testar:acesso` 51, `testar:rascunhos-banco` 36, `testar:fila-rascunhos` 29, `testar:restauracao-v5` 16, `testar:restauracao-v4` 31, `testar:regras` 260, `testar:auth-fluxo` 59; suítes de navegador adaptadas ao novo armazenamento dos rascunhos (ver `docs/testes.md`).
+
+**Limites:** o GoTrue real, o envio de e-mail (SMTP, modelos, limites), o hook configurado no painel, o Safari físico e a PWA instalada **não foram provados**; sem Docker nesta máquina não há Supabase local oficial. O texto "Só neste aparelho" da janela de Entradas continua com a redação antiga (o rascunho agora também está online): decisão de redação pendente.
+
+**Pendente do Éder (agrupado no relatório do bloco):** avaliar a interface; autorizar a ativação (ou partes dela); e-mail de envio e modelos; decidir a redação de "Só neste aparelho"; confirmar o desligamento do Google e do cadastro público no painel. **Andamento inalterado:** 67% demonstrado, 45% confirmado.

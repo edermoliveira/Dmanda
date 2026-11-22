@@ -5,7 +5,8 @@ import { executar, type TarefaEdicao } from '@/nucleo/operacoes';
 import type { DadosDemanda, Etapa } from '@/lib/demandas';
 import type { CategoriaDia } from '@/lib/prazos';
 import { modoTeste } from '@/lib/supabase/config';
-import { usuarioAtual } from './sessao';
+import { redirect } from 'next/navigation';
+import { clienteDaSessao, usuarioAtual } from './sessao';
 
 // Só para os testes automatizados: sem lembretes de humor (o convite da entrada é uma janela e atrapalharia os testes de outras telas). Nunca vale em produção.
 const semLembretes = () => process.env.DMANDA_SEM_LEMBRETES === 'sim' && (modoTeste() || process.env.NODE_ENV !== 'production');
@@ -14,7 +15,13 @@ export async function ambiente() {
   // a identidade vem da sessão verificada no servidor; a condição de administradora vem do banco (estado_acesso), nunca do navegador
   const u = await usuarioAtual();
   let admin = false;
-  if (u) { try { admin = ((await chamar('estado_acesso', {})) as { admin?: boolean }).admin === true; } catch { admin = false; } }
+  if (u) {
+    let estado: { admin?: boolean; autorizado?: boolean } | null = null;
+    try { estado = (await chamar('estado_acesso', {})) as { admin?: boolean; autorizado?: boolean }; } catch (e) { if (typeof (e as { digest?: unknown })?.digest === 'string') throw e; estado = null; }
+    // conta com sessão válida mas SEM autorização (revogada, ou removida da lista): sai deste aparelho e volta ao login, em vez de mostrar um painel vazio
+    if (estado && estado.autorizado === false && !modoTeste()) { await (await clienteDaSessao()).auth.signOut({ scope: 'local' }); redirect('/login?motivo=sem-acesso'); }
+    admin = estado?.admin === true;
+  }
   return { teste: modoTeste(), nome: u?.email ?? (modoTeste() ? 'Teste' : ''), id: u?.id ?? null, email: u?.email ?? null, admin, semLembretes: semLembretes() };
 }
 export async function listarDemandas(arquivadas = false) {

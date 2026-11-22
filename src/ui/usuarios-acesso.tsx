@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useApp } from './contexto';
 import { FormAlterarSenha } from './acesso';
 import { sair } from '@/servidor/autenticacao';
-import { importarRascunhoLegado } from '@/servidor/rascunhos';
+import { chamarRascunhos } from './rascunhos-api';
+const importarRascunhoLegado = (id: string, chave: string, dados: Record<string, unknown>) => chamarRascunhos<{ status: 'ok' | 'repetido' | 'ocupado' }>({ acao: 'importarLegado', id, chave, dados });
 import { convidar, listarAcessos, reenviarConvite, restabelecerAcesso, revogarAcesso, type Acesso } from '@/servidor/acessos';
 
 const ROTULO: Record<Acesso['estado'], string> = { autorizado: 'Autorizado', convite_pendente: 'Convite pendente', ativo: 'Ativo', revogado: 'Revogado' };
@@ -19,7 +20,7 @@ export function SecaoConta() {
       <h2 id="cfg-conta-t" style={{ fontSize: 'calc(17px * var(--esc))', margin: '0 0 6px' }}>Conta</h2>
       <p className="data">{ambiente?.email ? `Você entrou como ${ambiente.email}.` : 'Você está em modo de teste, sem conta.'} {ambiente?.admin ? 'Esta é a conta administradora.' : ''}</p>
       {ambiente?.teste ? null : <FormAlterarSenha />}
-      <div className="acoes"><button type="button" className="btn" disabled={saindo} data-sair onClick={() => { setSaindo(true); void sair(); }}>{saindo ? 'Saindo...' : 'Sair deste aparelho'}</button></div>
+      <div className="acoes"><button type="button" className="btn" disabled={saindo} data-sair onClick={() => { setSaindo(true); try { localStorage.removeItem('dmanda:usuario'); } catch { /* sem armazenamento */ } void sair(); }}>{saindo ? 'Saindo...' : 'Sair deste aparelho'}</button></div>
       <p className="data">Sair aqui não desconecta os seus outros aparelhos.</p>
     </section>
   );

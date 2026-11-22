@@ -1,7 +1,7 @@
 // Teste de ponta a ponta da aplicação funcional, no navegador (Edge), com o banco local de TESTE (PGlite, mesmas migrações do Supabase).
 // Sobe o próprio servidor numa porta separada, com uma pasta de dados nova, e no fim lê direto do banco o que foi gravado.
 // NÃO valida o Supabase real nem o login Google (ainda sem projeto e credenciais). Uso: node scripts/testar-app.mjs
-import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
+import { rascunhosDaConta, abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { escolherOpcao } from './auxiliar-origem.mjs';
 import { rmSync, mkdirSync, readFileSync } from 'node:fs';
 import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
@@ -97,7 +97,7 @@ await pg.click('.modal [aria-label="Fechar"]'); await pg.waitForSelector('.confi
 ok(/ainda sem salvar/.test(await pg.textContent('.confirma-fechar')) && (await pg.$$eval('.confirma-fechar .btn', (b) => b.map((x) => x.textContent))).join('|') === 'Continuar editando|Descartar e fechar|Guardar rascunho e fechar', 'fechar com tarefas não salvas apresenta uma escolha clara (continuar, descartar ou guardar como rascunho)');
 await pg.click('.confirma-fechar .btn:has-text("Guardar rascunho")'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 5000 });
 await pg.waitForTimeout(400);
-ok(/Cadastro/.test(await pg.textContent('[data-secao="aguardando"] .dcard .tags .chip')) && (await pg.evaluate(() => localStorage.getItem('dmanda:rascunhos') ?? '')).includes('Levantar diárias de 2025'), 'fechar sem concluir mantém a demanda em Cadastro e guarda as tarefas como rascunho nela');
+ok(/Cadastro/.test(await pg.textContent('[data-secao="aguardando"] .dcard .tags .chip')) && JSON.stringify(await rascunhosDaConta(pg)).includes('Levantar diárias de 2025'), 'fechar sem concluir mantém a demanda em Cadastro e guarda as tarefas como rascunho nela');
 await pg.click('[data-secao="aguardando"] .dcard .assunto'); await pg.waitForSelector('.modal .ler');
 ok(!!(await pg.$('.modal .rec')) && (await pg.$$eval('.modal .t-campo', (e) => e.map((x) => x.value))).join('|') === 'Levantar diárias de 2025|Conferir com a Contabilidade', 'ao abrir a demanda o rascunho de tarefas é recuperado na seção Tarefas, pronto para salvar');
 await pg.click('.modal [data-salvar="tarefas"]'); ok(await avisoRe(/alterações salvas/), 'salvar o rascunho de tarefas grava e avisa só depois do banco');
@@ -242,7 +242,7 @@ ok(await reab.count() === 1 && /3\/3 · 100%/.test(await reab.locator('.prog b')
 // 7) cancelar, Esc (rascunho) e validações da edição por seção
 await pg.click('.mini-card:has-text("Resposta ao TCE") .assunto'); await pg.waitForSelector('.modal .ler');
 await pg.click('[data-lapis="identificacao"]'); await pg.fill('#d-assunto', 'ALTERAÇÃO CANCELADA'); await pg.click('.modal [data-secao="identificacao"] .btn:has-text("Cancelar")'); await pg.click('.modal .m-f .btn:has-text("Fechar")'); await pg.waitForTimeout(300);
-ok(!(await pg.textContent('#vista')).includes('ALTERAÇÃO CANCELADA') && !(await pg.evaluate(() => localStorage.getItem('dmanda:rascunhos') ?? '')).includes('ALTERAÇÃO CANCELADA'), 'Cancelar descarta a alteração (nem rascunho fica)');
+ok(!(await pg.textContent('#vista')).includes('ALTERAÇÃO CANCELADA') && !JSON.stringify(await rascunhosDaConta(pg)).includes('ALTERAÇÃO CANCELADA'), 'Cancelar descarta a alteração (nem rascunho fica)');
 await pg.click('.mini-card:has-text("Resposta ao TCE") .assunto'); await pg.waitForSelector('.modal .ler'); await pg.click('[data-lapis="identificacao"]'); await pg.fill('#d-assunto', 'Rascunho guardado com Esc'); await pg.keyboard.press('Escape'); await pg.waitForTimeout(300);
 await pg.click('.mini-card:has-text("Resposta ao TCE") .assunto'); await pg.waitForSelector('.modal .ler');
 ok((await pg.inputValue('#d-assunto')) === 'Rascunho guardado com Esc' && !!(await pg.$('.modal .rec')), 'Esc guarda o rascunho e a próxima abertura o recupera, com a seção já aberta');
@@ -439,7 +439,7 @@ await pg.setViewportSize({ width: 1360, height: 780 });
   const r = await pg.context().request.get(BASE + '/api/exportar');
   const j = await r.json().catch(() => null);
   ok(r.status() === 200 && /attachment; filename="dmanda-copia-\d{4}-\d{2}-\d{2}\.json"/.test(r.headers()['content-disposition'] ?? '') && r.headers()['cache-control'] === 'no-store', 'cópia dos dados: a rota entrega um arquivo JSON para baixar, sem cache');
-  ok(j?.formato === 'dmanda-exportacao' && j.versao === 4 && Array.isArray(j.eventos) && Array.isArray(j.entradas) && Array.isArray(j.entradas_arquivadas) && Array.isArray(j.demandas) && Array.isArray(j.arquivadas) && Array.isArray(j.dias_indisponiveis) && j.demandas.length > 0 && j.demandas.every((d) => Array.isArray(d.tarefas) && d.id && !('user_id' in d)), 'cópia dos dados: formato versionado, demandas com tarefas, sem o identificador interno do usuário');
+  ok(j?.formato === 'dmanda-exportacao' && j.versao === 5 && Array.isArray(j.rascunhos) && Array.isArray(j.eventos) && Array.isArray(j.entradas) && Array.isArray(j.entradas_arquivadas) && Array.isArray(j.demandas) && Array.isArray(j.arquivadas) && Array.isArray(j.dias_indisponiveis) && j.demandas.length > 0 && j.demandas.every((d) => Array.isArray(d.tarefas) && d.id && !('user_id' in d)), 'cópia dos dados: formato versionado, demandas com tarefas, sem o identificador interno do usuário');
   // a cópia que a rota real entrega é aceita pelo SQL de restauração documentado (supabase/restaurar-copia.sql), num banco novo em memória
   {
     const dr = await abrirBancoTeste();

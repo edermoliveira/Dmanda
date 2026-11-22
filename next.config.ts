@@ -20,9 +20,9 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: cabecalhosSeguranca }];
   },
-  // As antigas telas de entrada (/acesso, por código, e /login, por e-mail e senha) deixaram de existir: favoritos e atalhos instalados caem no painel.
+  // A antiga tela de entrada por código (/acesso) deixou de existir: favoritos e atalhos instalados caem no painel. /login voltou na decisão 92 (e-mail e senha pelo Supabase Auth).
   async redirects() {
-    return [{ source: '/acesso/:path*', destination: '/', permanent: false }, { source: '/login/:path*', destination: '/', permanent: false }];
+    return [{ source: '/acesso/:path*', destination: '/', permanent: false }];
   },
   /* config options here */
   // Postgres local de teste (só em desenvolvimento) fica fora do pacote do servidor

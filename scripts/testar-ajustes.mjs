@@ -7,7 +7,7 @@
 // Roda no Edge (Chromium) e, quando o WebKit do Playwright abre, também nele (o motor do Safari; NÃO é o Safari do iPhone). Sobe o próprio servidor numa porta separada. NÃO valida o Supabase real.
 // Uso: node scripts/testar-ajustes.mjs   (CAPTURAS=pasta grava imagens para conferência visual)
 import { webkit, devices } from 'playwright-core';
-import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
+import { rascunhosDaConta, abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { escolherOpcao } from './auxiliar-origem.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 
@@ -312,7 +312,7 @@ if (wk) await leitura('WebKit iPhone 13', wk, { ...devices['iPhone 13'] }, 'clar
   await pg.click(`${alvo} .p-abrir`); await pg.waitForSelector('[data-leitura]'); await pg.click('.modal [aria-label="Editar a entrada"]'); await pg.waitForSelector('#e-texto');
   await pg.fill('#e-texto', 'Ligar para a gráfica e confirmar a entrega dos formulários #compras\nTEXTO SÓ NO APARELHO'); await pg.waitForTimeout(800);
   await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  const rascunhosAntes = await pg.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}')));
+  const rascunhosAntes = Object.keys(await rascunhosDaConta(pg));
   ok(rascunhosAntes.some((k) => k.startsWith('e:') && k !== 'e:nova'), 'rascunho: o texto alterado ficou guardado neste aparelho (rede derrubada)');
   await pg.unroute('**/*'); await pg.goto(BASE + '/entradas'); await ir(pg, '/entradas');
   await pg.waitForFunction(() => /Só neste aparelho/.test(document.querySelector('.postits')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => {});
@@ -325,7 +325,7 @@ if (wk) await leitura('WebKit iPhone 13', wk, { ...devices['iPhone 13'] }, 'clar
   await pg.waitForTimeout(3000); // mais que o salvamento automático (1,2 s): nada pode ter sido enviado
   ok(/Só neste aparelho/.test(await pg.textContent('.modal .estado-entrada')), 'rascunho: passados 3 s, continua "só neste aparelho" (nada foi enviado em silêncio)');
   await pg.click('.modal .btn:has-text("Fechar")'); await janelaFechada(pg);
-  ok(await pg.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}')).some((k) => k.startsWith('e:') && k !== 'e:nova')), 'rascunho: fechar a leitura mantém o rascunho no aparelho');
+  ok(Object.keys(await rascunhosDaConta(pg)).some((k) => k.startsWith('e:') && k !== 'e:nova'), 'rascunho: fechar a leitura mantém o rascunho no aparelho');
   await ir(pg, '/entradas'); await pg.click(`${alvo} .p-abrir`); await pg.waitForSelector('[data-leitura]');
   ok(!/TEXTO SÓ NO APARELHO/.test(await pg.textContent('[data-leitura]')), 'rascunho: depois de recarregar, o banco ainda tem a versão antiga');
   await pg.click('.modal .btn:has-text("Retomar edição")'); await pg.waitForSelector('#e-texto');

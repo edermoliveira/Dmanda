@@ -4,7 +4,7 @@
 //   3) cards: o título tem prioridade sobre a descrição em vários tamanhos de janela, zooms e aparelhos emulados, nunca fica cortado ao meio e a descrição volta quando há espaço;
 //   4) tipografia: escala única de 85% (--esc) aplicada uma só vez, sem zoom nem transform, com as exceções documentadas (piso de 10 px e campos de 16 px no toque).
 // Sobe o próprio servidor numa porta separada, com pasta de dados nova. NÃO valida o Supabase real. Uso: node scripts/testar-interface.mjs
-import { abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
+import { rascunhosDaConta, abrirEdge, criarVerificador, iniciarServidor } from './auxiliar-navegador.mjs';
 import { escolherOpcao } from './auxiliar-origem.mjs';
 import { rmSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { abrirBancoTeste } from '../src/servidor/banco-teste-base.mjs';
@@ -44,7 +44,7 @@ const ir = async (pg, rota = '/demandas') => {
 };
 const fecharJanela = async (pg) => { await pg.click('.modal [aria-label="Fechar"]'); await pg.waitForFunction(() => !document.querySelector('.modal'), null, { timeout: 8000 }); };
 const passoAtual = (pg) => pg.$$eval('.modal .passos li', (e) => e.findIndex((x) => x.getAttribute('aria-current') === 'step') + 1);
-const rascunhos = (pg) => pg.evaluate(() => { try { return JSON.parse(localStorage.getItem('dmanda:rascunhos') || '{}'); } catch { return {}; } });
+const rascunhos = (pg) => rascunhosDaConta(pg);
 const colunas = async (pg) => { await pg.waitForSelector('.coluna', { timeout: 15000 }); await pg.waitForTimeout(250); return pg.$$eval('.coluna', (cs) => Object.fromEntries(cs.map((c) => [c.getAttribute('aria-label'), [...c.querySelectorAll('.assunto')].map((x) => x.textContent.trim())]))) };
 // cria pelo botão da barra de ferramentas (Cards, Tabela, Lista) ou pelo "+" do menu, sempre pelo caminho curto
 const cadastrar = async (pg, c, { botao = '.toolbar .btn.escuro' } = {}) => {
@@ -128,9 +128,10 @@ const cadastrar = async (pg, c, { botao = '.toolbar .btn.escuro' } = {}) => {
   // 2c) a lista não carregou (rede ruim ao reabrir a PWA) com o cadastro parado no passo 3: o aplicativo não enxerga a demanda que já existe, mas não pode criar uma cópia
   await pg.click('.coluna[aria-label="Cadastro"] button.nova'); await pg.waitForSelector('#n-assunto');
   await pg.fill('#n-assunto', 'Carga falhou'); await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-chegou'); await pg.click('.modal .btn.pri'); await pg.waitForSelector('#n-nt');
-  await pg.fill('#n-nt', 'Tarefa guardada'); await pg.press('#n-nt', 'Enter'); await pg.waitForTimeout(900);
+  // decisão 92: o que o banco já confirmou NÃO fica no navegador (só o pendente). O servidor cai ANTES da última alteração, que então fica pendente na fila local e sobrevive à recarga sem rede
   const semLista = async (route) => { const r = route.request(); if (r.method() === 'POST' && r.headers()['next-action']) await route.abort('failed'); else await route.continue(); };
   await pg.route('**/*', semLista);
+  await pg.fill('#n-nt', 'Tarefa guardada'); await pg.press('#n-nt', 'Enter'); await pg.waitForTimeout(900);
   await pg.goto(BASE + '/demandas', { waitUntil: 'load' }); await pg.waitForSelector('.erro-carga', { timeout: 20000 });
   await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#n-chegou', { timeout: 8000 });
   const noPasso2 = await passoAtual(pg) === 2;
