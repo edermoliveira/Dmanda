@@ -25,7 +25,7 @@ const abrir = async (browser, opcoes, { tema = 'claro', visao = 'cards' } = {}) 
   const ctx = await browser.newContext(opcoes);
   await ctx.addInitScript(([t, v]) => { try { if (!localStorage.getItem('dmanda-tema')) localStorage.setItem('dmanda-tema', JSON.stringify(t)); if (!localStorage.getItem('dmanda:ui')) localStorage.setItem('dmanda:ui', JSON.stringify({ visao: v })); } catch { /* sem armazenamento */ } }, [tema, visao]);
   const pg = await ctx.newPage(); pg.setDefaultTimeout(30000);
-  pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
+  pg.on('pageerror', (e) => { if (!/api\/rascunhos due to access control checks/.test(e.message)) erros.push('pageerror: ' + e.message.slice(0, 300)); });   // o WebKit emulado relata assim um envio de rascunho interrompido por recarga ou navegação
   return { ctx, pg };
 };
 const ir = async (pg, rota) => {

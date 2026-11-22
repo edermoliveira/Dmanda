@@ -46,6 +46,10 @@ const cookiesSessao = async (ctx) => (await ctx.cookies()).filter((c) => /^sb-.*
   ok(e.status === 401 && !(await e.text()).includes('demandas'), 'visitante: a exportação responde 401, sem arquivo e sem dado');
   const rota = await fetch(BASE + '/login'); const html = await rota.text();
   ok(rota.status === 200 && /Entrar/.test(html) && !/data-secao|dcard|mini-card|Quadro/.test(html), 'visitante: a tela de entrar abre e não traz nada do painel');
+  const semSessao = await fetch(BASE + '/api/rascunhos', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ acao: 'listar' }) });
+  const texto = await fetch(BASE + '/api/rascunhos', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ acao: 'listar' }) });
+  const outroSite = await fetch(BASE + '/api/rascunhos', { method: 'POST', headers: { 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' }, body: JSON.stringify({ acao: 'listar' }) });
+  ok(semSessao.status === 401 && texto.status === 403 && outroSite.status === 403, 'rascunhos: a rota recusa quem não tem sessão (401), corpo que não é JSON (403) e pedido de outro site (403)');
   const sonda = await fetch(BASE + '/api/sonda'); ok(sonda.status === 204, 'a sonda de conexão segue pública e sem dado (204)');
   const cron = await fetch(BASE + '/api/cron/diaria'); ok(cron.status === 401, 'a rotina diária continua protegida só pelo segredo dela: sem ele, 401');
 }

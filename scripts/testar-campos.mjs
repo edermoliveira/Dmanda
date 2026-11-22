@@ -41,7 +41,7 @@ const novo = async (nav, { largura = 390, esquema = 'light', toque = true, ios =
   if (toque && ios) await ctx.addInitScript(camadaIOS);
   await ctx.addInitScript((t) => { try { localStorage.setItem('dmanda-tema', JSON.stringify(t)); } catch { /* sem armazenamento */ } }, esquema === 'dark' ? 'escuro' : 'claro');
   const pg = await ctx.newPage();
-  pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
+  pg.on('pageerror', (e) => { if (!/api\/rascunhos due to access control checks/.test(e.message)) erros.push('pageerror: ' + e.message.slice(0, 300)); });   // o WebKit emulado relata assim um envio de rascunho interrompido por recarga ou navegação
   pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) erros.push('console: ' + m.text().slice(0, 300)); });
   return { ctx, pg };
 };

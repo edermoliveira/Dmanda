@@ -136,17 +136,18 @@ export class MotorRascunhos {
   // ---------- edição ----------
   /** Guarda (ou, com null, encerra) o rascunho da chave. Nunca espera a rede: grava na fila e agenda o envio agrupado. */
   guardar(chave: string, valor: Dados | null): void {
+    let mudou = true;
     this.mutar((fila) => {
       const atual = fila.itens[chave];
       if (valor === null) {
         if (atual) { fila.lapides.push({ id: atual.id, chave, estado: 'descartado' }); delete fila.itens[chave]; }
         return;
       }
-      if (atual && JSON.stringify(atual.valor) === JSON.stringify(valor)) return;   // nada mudou: não gasta envio
+      if (atual && JSON.stringify(atual.valor) === JSON.stringify(valor)) { mudou = false; return; }   // nada mudou: não gasta envio
       if (atual) { atual.valor = valor; atual.op = this.o.novoId(); atual.pendente = true; }
       else fila.itens[chave] = { id: this.o.novoId(), chave, valor, versao: 0, op: this.o.novoId(), pendente: true, conflito: null };
     });
-    this.agendarEnvio(valor !== null);
+    if (mudou) this.agendarEnvio(valor !== null);
   }
   /** O registro definitivo foi confirmado: o rascunho é CONSUMIDO (a lápide impede que uma fila antiga o recrie). */
   consumir(chave: string): void {
@@ -184,7 +185,8 @@ export class MotorRascunhos {
           this.denovo = false;
           await this.o.exclusivo(() => this.enviarTudo());   // em falha a retentativa já foi agendada; um pedido explícito feito durante o envio ainda gera uma passada
         } while (this.denovo && !this.parado);
-      } finally { this.corrente = null; this.o.aoMudar(); }
+      } catch { this.falhar(); }   // nada aqui pode virar rejeição sem dono (a fila continua guardada e a retentativa já está agendada)
+      finally { this.corrente = null; this.o.aoMudar(); }
     })();
     return this.corrente;
   }

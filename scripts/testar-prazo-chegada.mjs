@@ -4,7 +4,7 @@
 // legado da regra anterior e finalizada preservados; sem chegada o botão diz o que falta. Claro e Escuro, iPhone, iPad e computador (emulados), texto a 125%.
 // O WebKit do Playwright NÃO é o Safari do aparelho. Nunca toca o Supabase real. Uso: node scripts/testar-prazo-chegada.mjs
 import { devices } from 'playwright-core';
-import { abrirEdge, abrirWebkit, criarVerificador, esperar, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
+import { limparRascunhos, abrirEdge, abrirWebkit, criarVerificador, esperar, iniciarServidor, pararServidores as parar } from './auxiliar-navegador.mjs';
 import { rmSync, mkdirSync } from 'node:fs';
 import { abrirBancoTeste, chamarComoUsuario, prepararTitularDeTeste, USUARIO_TESTE as USUARIO } from '../src/servidor/banco-teste-base.mjs';
 import { ajustarPrazo, dataComSemana, prazoPorDias } from '../src/lib/prazos.ts';
@@ -335,6 +335,7 @@ const itensSino = async (pg) => { await pg.click('.sino'); await pg.waitForSelec
 // 4) a tela renderizada: Claro e Escuro, iPhone, iPad e computador, texto a 125%
 // =============================================================================================================================================
 for (const [rot, perfil, tema, texto125, motor] of [['computador Escuro', 'desktop', 'escuro', 100, edge], ['iPad Claro', 'ipad', 'claro', 100, edge], ['iPhone Claro', 'celular', 'claro', 100, edge], ['iPhone Escuro 125%', 'celular', 'escuro', 125, edge], ...(wk ? [['WebKit emulado iPhone Claro', 'celular', 'claro', 100, wk], ['WebKit emulado iPhone Escuro', 'celular', 'escuro', 100, wk]] : [])]) {
+  await limparRascunhos(BASE);   // os rascunhos moram no banco (decisão 92): cada perfil começa sem o cadastro parado do anterior
   const { ctx, pg } = await novoCtx(perfil, { motor, tema, texto: texto125 });
   await ir(pg, '/demandas', '.grupo-cards, .vazio');
   await pg.click('.toolbar .btn.escuro'); await pg.waitForSelector('#n-assunto');

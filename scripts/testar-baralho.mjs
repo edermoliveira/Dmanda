@@ -46,7 +46,7 @@ const PERFIS = { desktop: { viewport: { width: 1440, height: 900 } }, ipad: { vi
 const abrir = async (perfil, { extra = {}, antes, motor = nav } = {}) => {
   const ctx = await motor.newContext({ ...PERFIS[perfil], ...extra });
   const pg = await ctx.newPage();
-  pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
+  pg.on('pageerror', (e) => { if (!/api\/rascunhos due to access control checks/.test(e.message)) erros.push('pageerror: ' + e.message.slice(0, 300)); });   // o WebKit emulado relata assim um envio de rascunho interrompido por recarga ou navegação
   pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::ERR|offline|Failed to fetch|Load failed/i.test(m.text())) erros.push('console: ' + m.text().slice(0, 300)); });
   if (antes) await antes(pg, ctx);
   await pg.goto(BASE + '/', { waitUntil: 'load', timeout: 120000 });

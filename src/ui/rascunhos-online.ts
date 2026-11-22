@@ -32,10 +32,10 @@ export function useRascunhosOnline(usuarioId: string | null) {
     });
     motor.current = m;
     setSnap({ rascunhos: m.rascunhos(), estado: m.estado(), conflitos: m.conflitos(), pendentes: m.pendentes() });   // o que estava na fila deste usuário aparece já, antes de falar com o banco
-    void m.iniciar();
+    void m.iniciar().catch(() => {});
     // reconexão e saída de cena: envia o que estiver pendente; outra aba do mesmo aparelho mexendo na fila: atualiza o que se vê
-    const aoVoltar = () => { void m.sincronizar().then(() => m.enviarAgora()); };
-    const aoSair = () => { if (document.visibilityState === 'hidden') void m.enviarAgora(); else void m.sincronizar(); };
+    const aoVoltar = () => { void m.sincronizar().then(() => m.enviarAgora()).catch(() => {}); };
+    const aoSair = () => { if (document.visibilityState === 'hidden') void m.enviarAgora().catch(() => {}); else void m.sincronizar().catch(() => {}); };
     const aoOutraAba = (e: StorageEvent) => { if (e.key === CHAVE_FILA(usuarioId)) setSnap({ rascunhos: m.rascunhos(), estado: m.estado(), conflitos: m.conflitos(), pendentes: m.pendentes() }); };
     window.addEventListener('online', aoVoltar); document.addEventListener('visibilitychange', aoSair); window.addEventListener('pagehide', aoSair); window.addEventListener('storage', aoOutraAba);
     return () => { m.parar(); motor.current = null; window.removeEventListener('online', aoVoltar); document.removeEventListener('visibilitychange', aoSair); window.removeEventListener('pagehide', aoSair); window.removeEventListener('storage', aoOutraAba); };

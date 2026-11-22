@@ -146,7 +146,7 @@ export async function abrirWebkit() {
 }
 
 /** Ruído de rede esperado nos testes de falha: não conta como erro de console. */
-export const RUIDO_ESPERADO = /Failed to load resource|net::ERR|offline|Failed to fetch/i;
+export const RUIDO_ESPERADO = /Failed to load resource|net::ERR|offline|Failed to fetch|due to access control checks/i;   // o WebKit emulado relata assim um fetch interrompido (recarga ou navegação com o envio de rascunho em andamento)
 /** Junta em `erros` os erros de página e de console (menos o ruído esperado) de uma página. */
 export function observarErros(pg, erros, ruido = RUIDO_ESPERADO) {
   pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));

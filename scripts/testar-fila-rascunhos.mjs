@@ -57,6 +57,8 @@ const limpar = async () => { rede.chamadas.length = 0; rede.cai = false; rede.pe
   ok(conta('salvar_rascunho') >= 1 && conta('salvar_rascunho') <= 3, `agrupamento: digitando sem parar, o envio acontece pelo limite máximo (${conta('salvar_rascunho')} gravações em 12 alterações)`);
   await avancar(1000);
   ok((await noBanco(A, 'e:nova')).dados.dados.texto === 'contínuo 11' && m.estado() === 'salvo', 'agrupamento: ao final o banco tem a última alteração');
+  rede.chamadas.length = 0; m.guardar('e:nova', { dados: { texto: 'contínuo 11' } }); await avancar(3000);
+  ok(conta('salvar_rascunho') === 0 && m.estado() === 'salvo', 'agrupamento: guardar o mesmo conteúdo de novo não agenda nem envia nada');
   m.parar();
 }
 

@@ -81,7 +81,7 @@ const abrir = async (perfil, { motor = edge, tema = 'claro', texto = 100, rota =
   await ctx.addInitScript(([t, p]) => { if (!localStorage.getItem('feito')) { localStorage.setItem('feito', '1'); localStorage.setItem('dmanda-tema', JSON.stringify(t)); localStorage.setItem('dmanda:aparencia', JSON.stringify({ textoPct: p })); } }, [tema, texto]);
   if (antes) await antes(ctx);
   const pg = await ctx.newPage();
-  pg.on('pageerror', (e) => erros.push('pageerror: ' + e.message.slice(0, 300)));
+  pg.on('pageerror', (e) => { if (!/api\/rascunhos due to access control checks/.test(e.message)) erros.push('pageerror: ' + e.message.slice(0, 300)); });   // o WebKit emulado relata assim um envio de rascunho interrompido por recarga ou navegação
   pg.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|net::ERR|offline|Failed to fetch|Load failed/i.test(m.text())) erros.push('console: ' + m.text().slice(0, 300)); });
   await ir(pg, rota, esperarSel);
   return { ctx, pg };
