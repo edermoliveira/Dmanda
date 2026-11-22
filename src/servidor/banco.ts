@@ -1,17 +1,20 @@
 // Transporte das operações para o banco. Há dois: o Supabase real (padrão) e, só em desenvolvimento e sob DMANDA_BANCO=teste,
 // um Postgres local descartável com as mesmas migrações. Os dois executam exatamente as mesmas funções SQL.
 import { createClient } from '@supabase/supabase-js';
+import { redirect } from 'next/navigation';
+import { clienteDaSessao, exigirUsuario } from './sessao';
 import { modoTeste } from '@/lib/supabase/config';
-import { criarOperacoes, ErroConflito, ErroDmanda, type Chamar } from '@/nucleo/operacoes';
+import { criarOperacoes, ErroConflito, ErroDmanda, ErroSessao, type Chamar } from '@/nucleo/operacoes';
 
 type Banco = { db: import('@electric-sql/pglite').PGlite };
 const g = globalThis as unknown as { __dmandaBancoTeste?: Promise<Banco> };
 
 async function bancoTeste(): Promise<Banco> {
   g.__dmandaBancoTeste ??= (async () => {
-    const { abrirBancoTeste, prepararTitularDeTeste } = await import('./banco-teste-base.mjs');
-    const db = await abrirBancoTeste({ pasta: process.env.DMANDA_PASTA_TESTE ?? './.dados-teste/pg' });
+    const { abrirBancoTeste, prepararTitularDeTeste, prepararAdminDeTeste } = await import('./banco-teste-base.mjs');
+    const db = await abrirBancoTeste({ pasta: process.env.DMANDA_PASTA_TESTE ?? './.dados-teste/pg', pendentes: true });
     await prepararTitularDeTeste(db);
+    await prepararAdminDeTeste(db);
     return { db };
   })();
   return g.__dmandaBancoTeste;
@@ -26,16 +29,23 @@ function traduzir(e: { message?: string; code?: string }): Error {
 }
 
 const chamarTeste: Chamar = async (funcao, args) => {
-  const { chamarComoUsuario, USUARIO_TESTE } = await import('./banco-teste-base.mjs');
+  const { chamarComoUsuario } = await import('./banco-teste-base.mjs');
   const { db } = await bancoTeste();
+  const u = await identidade();
   try {
-    return await chamarComoUsuario(db, USUARIO_TESTE, funcao, args);
+    return await chamarComoUsuario(db, u.id, funcao, args);
   } catch (e) {
     throw traduzir(e as { message?: string; code?: string });
   }
 };
 
-/** Cliente com a chave de serviço (só no servidor, nunca em NEXT_PUBLIC): uso da rotina diária e das operações do titular. */
+/** Sem sessão válida a operação não roda: a interface é levada ao login (redirect do Next; as ações e o cliente tratam). */
+async function identidade() {
+  try { return await exigirUsuario(); }
+  catch (e) { if (e instanceof ErroSessao) redirect('/login?motivo=sessao'); throw e; }
+}
+
+/** Cliente com a chave de serviço (só no servidor, nunca em NEXT_PUBLIC): uso EXCLUSIVO da rotina diária e da administração dos acessos no Auth (src/servidor/acessos.ts). Não lê nem altera o painel. */
 export function clienteServico() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const chaveServico = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -44,13 +54,17 @@ export function clienteServico() {
 }
 
 /**
- * Entrada direta (sem sessão do usuário): o servidor chama UMA função do banco, executar_como_titular, com a chave de serviço. Ela só aceita as operações da lista fixa do banco, assume o
- * titular único da lista protegida (nunca vem do pedido) e executa sob a RLS do papel authenticated. O navegador nunca recebe credencial nem escolhe usuário,
- * tabela ou função: quem chega aqui são as ações do servidor, com nomes e argumentos fixados em src/nucleo/operacoes.ts.
+ * Operações do painel com a IDENTIDADE do usuário (decisão 92): a função do banco é chamada com o JWT da sessão (papel authenticated), então a RLS e conta_autorizada() decidem a cada chamada.
+ * Não existe caminho que use a chave de serviço para ler ou alterar o painel. Token vencido é renovado por exigirUsuario(); o JWT recusado pelo banco (401) é sessão encerrada.
  */
 const chamarSupabase: Chamar = async (funcao, args) => {
-  const { data, error } = await clienteServico().rpc('executar_como_titular', { p_funcao: funcao, p_args: args });
-  if (error) throw traduzir(error);
+  await identidade();
+  const sb = await clienteDaSessao();
+  const { data, error, status } = await sb.rpc(funcao, args);
+  if (error) {
+    if (status === 401 || error.code === 'PGRST301' || error.code === 'PGRST303') redirect('/login?motivo=sessao');
+    throw traduzir(error);
+  }
   return data;
 };
 

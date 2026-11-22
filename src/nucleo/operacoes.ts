@@ -8,8 +8,8 @@ import type { DadosEvento, Evento } from '@/lib/eventos';
 import { registrosValidos, type RegistroDia } from '@/lib/registros';
 import type { Opcao } from '@/lib/documentos';
 import type { Vaga } from '@/lib/para-hoje';
-import { ErroConflito, ErroDmanda, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPeriodo, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
-export { ErroConflito, ErroDmanda, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPeriodo, validarRegistros };
+import { ErroConflito, ErroDmanda, ErroSessao, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPeriodo, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
+export { ErroConflito, ErroDmanda, ErroSessao, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPeriodo, validarRegistros };
 export type { TarefaEdicao };
 
 export type Chamar = (funcao: string, args: Record<string, unknown>) => Promise<unknown>;
@@ -103,6 +103,8 @@ export type Operacoes = ReturnType<typeof criarOperacoes>;
 export async function executar<T>(f: () => Promise<T>, { privado = false }: { privado?: boolean } = {}): Promise<Resultado<T>> {
   try { return { ok: true, dados: await f() }; }
   catch (e) {
+    // redirecionamento do Next (sessão encerrada, vai ao login) não é falha: sobe como está
+    if (typeof (e as { digest?: unknown })?.digest === 'string' && (e as { digest: string }).digest.startsWith('NEXT_REDIRECT')) throw e;
     if (e instanceof ErroConflito) return { ok: false, erro: e.message, conflito: true };
     if (e instanceof ErroDmanda) return { ok: false, erro: e.message };
     // dado privado (humor): o log leva só o código do erro, nunca a mensagem nem o objeto, que podem repetir o que foi enviado

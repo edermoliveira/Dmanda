@@ -2,6 +2,7 @@
 // Menu do avatar do topo (computador e celular): Perfil e cópia dos dados. Mesmo desenho e teclado do menu "Mover para".
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useApp } from './contexto';
+import { sair } from '@/servidor/autenticacao';
 
 export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; fechar: () => void }) {
   const { ambiente, avisar, abrirPerfil } = useApp();
@@ -55,6 +56,7 @@ export function MenuConta({ ponto, fechar }: { ponto: { x: number; y: number }; 
       <button type="button" role="menuitem" aria-disabled={baixando || undefined} onClick={() => void baixar()}>
         <span>{baixando ? 'Gerando...' : 'Baixar cópia dos dados'}</span><small>arquivo JSON</small>
       </button>
+      {ambiente?.teste ? null : <button type="button" role="menuitem" data-item="sair" onClick={() => { fechar(); void sair(); }}><span>Sair deste aparelho</span><small>os outros continuam</small></button>}
     </div>
   );
 }

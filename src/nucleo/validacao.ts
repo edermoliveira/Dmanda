@@ -12,6 +12,8 @@ import { DIAS_CORRECAO, NIVEIS, type Nivel } from '../lib/registros.ts';
 export class ErroDmanda extends Error {}
 /** A demanda mudou depois que a janela de edição foi aberta (outro aparelho ou janela): nada foi gravado e a tela precisa avisar sem apagar o que foi digitado. */
 export class ErroConflito extends ErroDmanda {}
+/** Não há sessão válida (nunca logou, saiu, a sessão foi revogada): a operação não roda e a interface vai ao login. Falha de rede NÃO é este erro. */
+export class ErroSessao extends Error { constructor() { super('Sessão encerrada.'); } }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const id = (v: unknown, nome: string) => { if (typeof v !== 'string' || !UUID.test(v)) throw new ErroDmanda(`${nome} inválido.`); return v; };

@@ -7,6 +7,7 @@ import { Icone } from './Icone';
 import { useApp } from './contexto';
 import { SecoesAparencia } from './config-aparencia';
 import { SecaoPerfilConfig } from './perfil';
+import { SecaoConta, SecaoUsuarios } from './usuarios-acesso';
 import { CamposDiaIndisponivel, DIA_VAZIO, ePeriodo, useGravarDia, type CamposDia } from './dia-indisponivel';
 import { dataBR } from '@/lib/demandas';
 import { agruparDias, dataComSemana, ROTULO_CATEGORIA, type ItemDia } from '@/lib/prazos';
@@ -26,10 +27,12 @@ export function PaginaConfig() {
 
   return (
     <>
-      <div className="pagehead"><h1>Configurações</h1><p>Aparência, Perfil e dias indisponíveis para prazos. Ícones, widgets e dados ainda estão em construção.</p></div>
+      <div className="pagehead"><h1>Configurações</h1><p>Aparência, Perfil, Conta e dias indisponíveis para prazos. Ícones, widgets e dados ainda estão em construção.</p></div>
       <div className="cfg">
       <SecoesAparencia />
       <SecaoPerfilConfig />
+      <SecaoConta />
+      <SecaoUsuarios />
       <section className="cfg-bloco painel cfg-dias" aria-labelledby="cfg-dias-t">
         <h2 id="cfg-dias-t" style={{ fontSize: 'calc(17px * var(--esc))', margin: '0 0 6px' }}>Dias indisponíveis</h2>
         <p className="data">Feriados e eventos externos de dia inteiro, de um dia ou de um período (curso de vários dias, semana, recesso, inclusive passando de um ano para o outro). Sábados e domingos já são considerados. Quando o prazo de uma demanda cai em um desses dias, o vencimento é antecipado para o dia disponível anterior, e é recalculado sozinho (nos dois sentidos) quando você cadastra, altera ou exclui um dia ou um período aqui. Nada é importado nem presumido.</p>

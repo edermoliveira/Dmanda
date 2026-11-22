@@ -1,8 +1,11 @@
 import type { PGlite } from '@electric-sql/pglite';
-export function abrirBancoTeste(opcoes?: { pasta?: string; raizMigracoes?: string }): Promise<PGlite>;
+export function abrirBancoTeste(opcoes?: { pasta?: string; raizMigracoes?: string; pendentes?: boolean }): Promise<PGlite>;
 export const USUARIO_TESTE: string;
+export const ADMIN_TESTE: string;
 export function prepararTitularDeTeste(db: PGlite, usuario?: string): Promise<void>;
-export type OpcoesJwt = { email?: string | null; provedor?: string; sessaoId?: string };
+export function prepararAdminDeTeste(db: PGlite, usuario?: string): Promise<void>;
+export function criarContaDeTeste(db: PGlite, id: string, email: string, opcoes?: { autorizar?: boolean; ativa?: boolean }): Promise<void>;
+export type OpcoesJwt = { email?: string | null; provedor?: string; sessaoId?: string; extras?: Record<string, unknown> };
 export function entrarComo(tx: { query: PGlite['query']; exec: PGlite['exec'] }, usuarioId: string, opcoes?: OpcoesJwt): Promise<void>;
 export function chamarComoUsuario(db: PGlite, usuarioId: string, funcao: string, args?: Record<string, unknown>, opcoes?: OpcoesJwt): Promise<unknown>;
 export function chamarComoServico(db: PGlite, funcao: string, args?: Record<string, unknown>): Promise<unknown>;

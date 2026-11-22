@@ -132,7 +132,7 @@ type Ctx = {
   fecharCompletar: () => void;
   aviso: Aviso;
   avisar: (msg: string, erro?: boolean) => void;
-  ambiente: { teste: boolean; nome: string; semLembretes?: boolean } | null;
+  ambiente: { teste: boolean; nome: string; email?: string | null; admin?: boolean; semLembretes?: boolean } | null;
   rotina: EstadoRotina | null;
   tema: 'claro' | 'escuro';
   alternarTema: () => void;

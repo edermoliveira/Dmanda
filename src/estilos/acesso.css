@@ -1,0 +1,18 @@
+/* Telas de acesso (decisão 92): entrar, recuperar e definir senha. Ficam fora da casca do painel (sem .app), então trazem os mesmos tokens do Catalyst para os dois modos (o modo vem do
+   <html data-tema>, definido antes da pintura pelo script do layout). Alvos de 44 px, campos de 16 px, foco visível. */
+.acesso { --a-bg: #F2F2F7; --a-card: #FCFCFC; --a-text: #0A0A0A; --a-text2: #5F5F66; --a-brd: rgba(60,60,67,.6); --a-acc: #0071E3; --a-acc-ink: #FCFCFC; --a-perigo: #C4001A; }
+:root[data-tema="escuro"] .acesso { --a-bg: #0A0A0A; --a-card: #1C1C1E; --a-text: #FCFCFC; --a-text2: #A1A1A8; --a-brd: rgba(235,235,245,.4); --a-acc: #3D9BFF; --a-acc-ink: #04152B; --a-perigo: #FF6961; }
+.acesso { --esc: .85; min-height: 100dvh; display: grid; place-items: center; padding: 16px; background: var(--a-bg); color: var(--a-text); font-family: var(--f-inter, system-ui, sans-serif); }
+.acesso-cartao { width: min(100%, 420px); display: grid; gap: 14px; padding: 24px; border-radius: 22px; background: var(--a-card); }
+.acesso h1 { margin: 0; font-size: calc(26px * var(--esc)); }
+.acesso p { margin: 0; font-size: calc(16px * var(--esc)); line-height: 1.45; color: var(--a-text2); }
+.acesso form { display: grid; gap: 12px; }
+.acesso label { display: grid; gap: 4px; font-size: calc(15px * var(--esc)); }
+.acesso input { min-height: 44px; font-size: 16px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--a-brd); background: var(--a-bg); color: var(--a-text); }
+.acesso input:focus-visible, .acesso button:focus-visible, .acesso a:focus-visible { outline: 2px solid var(--a-acc); outline-offset: 2px; }
+.acesso button { min-height: 44px; border: 0; border-radius: 999px; padding: 0 18px; font-size: calc(16px * var(--esc)); font-weight: 600; background: var(--a-acc); color: var(--a-acc-ink); cursor: pointer; }
+.acesso button[disabled] { opacity: .6; cursor: default; }
+.acesso .acesso-erro { color: var(--a-perigo); font-weight: 600; }
+.acesso .acesso-aviso { color: var(--a-text); font-weight: 600; }
+.acesso .acesso-links { display: flex; flex-wrap: wrap; gap: 0 16px; font-size: calc(15px * var(--esc)); }
+.acesso a { color: var(--a-text); text-decoration: underline; min-height: 44px; display: inline-flex; align-items: center; }

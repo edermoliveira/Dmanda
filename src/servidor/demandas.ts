@@ -5,13 +5,17 @@ import { executar, type TarefaEdicao } from '@/nucleo/operacoes';
 import type { DadosDemanda, Etapa } from '@/lib/demandas';
 import type { CategoriaDia } from '@/lib/prazos';
 import { modoTeste } from '@/lib/supabase/config';
+import { usuarioAtual } from './sessao';
 
 // Só para os testes automatizados: sem lembretes de humor (o convite da entrada é uma janela e atrapalharia os testes de outras telas). Nunca vale em produção.
 const semLembretes = () => process.env.DMANDA_SEM_LEMBRETES === 'sim' && (modoTeste() || process.env.NODE_ENV !== 'production');
 
 export async function ambiente() {
-  // sem entrada por conta, não há nome de usuário a mostrar (o menu da conta cai no rótulo "Conta")
-  return { teste: modoTeste(), nome: modoTeste() ? 'Teste' : '', semLembretes: semLembretes() };
+  // a identidade vem da sessão verificada no servidor; a condição de administradora vem do banco (estado_acesso), nunca do navegador
+  const u = await usuarioAtual();
+  let admin = false;
+  if (u) { try { admin = ((await chamar('estado_acesso', {})) as { admin?: boolean }).admin === true; } catch { admin = false; } }
+  return { teste: modoTeste(), nome: u?.email ?? (modoTeste() ? 'Teste' : ''), email: u?.email ?? null, admin, semLembretes: semLembretes() };
 }
 export async function listarDemandas(arquivadas = false) {
   return executar(() => op().listar(arquivadas));
