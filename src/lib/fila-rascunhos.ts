@@ -17,7 +17,7 @@ export type RespostaBanco =
   | { status: 'conflito'; id: string; versao: number; dados: Dados; conflitos: { op: string; dados: Dados; em?: string; instancia?: string }[] }
   | { status: 'encerrado'; id: string; estado: string };
 export type RascunhoNoBanco = { id: string; chave: string; dados: Dados; versao: number; conflitos: { op: string; dados: Dados }[] };
-export type Resultado<T> = { ok: true; dados: T } | { ok: false; erro: string };
+export type Resultado<T> = { ok: true; dados: T } | { ok: false; erro: string; revogado?: boolean; outraConta?: boolean };
 export type Api = {
   listar(): Promise<Resultado<RascunhoNoBanco[]>>;
   salvar(id: string, chave: string, dados: Dados, base: number, op: string): Promise<Resultado<RespostaBanco>>;
@@ -27,14 +27,19 @@ export type Api = {
 export type Armazem = { ler(chave: string): string | null; gravar(chave: string, valor: string): void };
 export type Item = { id: string; chave: string; valor: Dados; versao: number; op: string; pendente: boolean; conflito: { versao: number; dados: Dados; outras: number } | null };
 export type Lapide = { id: string; chave: string; estado: 'consumido' | 'descartado' };
-type Fila = { v: 1; itens: Record<string, Item>; lapides: Lapide[] };
-export type EstadoRascunhos = 'nenhum' | 'salvando' | 'salvo' | 'pendente' | 'falha';
+/** `dono`: de quem é esta fila (identificação estável, mostrada se o acesso for revogado com alterações ainda não enviadas). */
+type Fila = { v: 1; itens: Record<string, Item>; lapides: Lapide[]; dono?: { id: string; email: string | null } };
+export type EstadoRascunhos = 'nenhum' | 'salvando' | 'salvo' | 'pendente' | 'falha' | 'bloqueado';
+/** O estado de UM rascunho: salvo online (confirmado), salvando, pendente neste aparelho, erro de sincronização ou conflito entre aparelhos. */
+export type EstadoRascunho = 'salvo' | 'salvando' | 'pendente' | 'falha' | 'conflito';
+/** Por que o envio parou de vez: o acesso foi revogado, ou a sessão deste navegador agora é de outra conta (a fila não é enviada em nome dela). */
+export type Bloqueio = 'revogado' | 'outraConta';
 
 export const CHAVE_FILA = (usuarioId: string) => `dmanda:fila:${usuarioId}`;
 const ATRASOS_RETENTATIVA = [2000, 5000, 15_000, 30_000, 60_000];
 
 export type Opcoes = {
-  usuarioId: string; api: Api; armazem: Armazem; aoMudar?: () => void;
+  usuarioId: string; email?: string | null; api: Api; armazem: Armazem; aoMudar?: () => void;
   novoId?: () => string; agendar?: (f: () => void, ms: number) => unknown; cancelar?: (t: unknown) => void;
   esperaMs?: number; esperaMaxMs?: number; agora?: () => number; online?: () => boolean;
   /** Serializa o envio entre abas do mesmo aparelho (Web Locks no navegador). */
@@ -56,6 +61,11 @@ export class MotorRascunhos {
   private denovo = false;
   private parado = false;
   private ultimaEdicao = 0;
+  private email: string | null = null;
+  /** Envio parado por revogação ou troca de conta: nada mais é enviado nem tentado; a fila fica guardada, com o dono. */
+  bloqueio: Bloqueio | null = null;
+  /** true depois da primeira leitura do banco (com ou sem sucesso): as janelas só abrem depois, para não começarem sem o rascunho que já existe online. */
+  pronto = false;
 
   constructor(o: Opcoes) {
     this.o = {
@@ -64,6 +74,7 @@ export class MotorRascunhos {
       esperaMs: o.esperaMs ?? 400, esperaMaxMs: o.esperaMaxMs ?? 2000, agora: o.agora ?? (() => Date.now()),
       online: o.online ?? (() => (typeof navigator === 'undefined' ? true : navigator.onLine !== false)), exclusivo: o.exclusivo ?? (async (f) => f()),
     };
+    this.email = o.email ?? null;
   }
 
   // ---------- armazenamento (sempre lido na hora: outra aba pode ter mexido) ----------
@@ -75,7 +86,8 @@ export class MotorRascunhos {
       const itens: Record<string, Item> = {};
       for (const [k, x] of Object.entries(v.itens)) if (eObjeto(x) && typeof x.id === 'string' && eObjeto(x.valor) && typeof x.versao === 'number' && typeof x.op === 'string') itens[k] = { id: x.id, chave: k, valor: x.valor as Dados, versao: x.versao, op: x.op, pendente: x.pendente === true, conflito: eObjeto(x.conflito) ? (x.conflito as Item['conflito']) : null };
       const lapides = Array.isArray(v.lapides) ? v.lapides.filter((l): l is Lapide => eObjeto(l) && typeof l.id === 'string' && typeof l.chave === 'string' && (l.estado === 'consumido' || l.estado === 'descartado')) : [];
-      return { v: 1, itens, lapides };
+      const dono = eObjeto(v.dono) && typeof v.dono.id === 'string' ? { id: v.dono.id, email: typeof v.dono.email === 'string' ? v.dono.email : null } : undefined;
+      return { v: 1, itens, lapides, dono };
     } catch { return filaVazia(); }
   }
   private gravar(f: Fila) { try { this.o.armazem.gravar(CHAVE_FILA(this.o.usuarioId), JSON.stringify(f)); } catch { /* sem armazenamento: a fila vale só nesta visita */ } }
@@ -88,6 +100,7 @@ export class MotorRascunhos {
     const novo: Record<string, Item> = {};
     for (const [k, i] of Object.entries(fila.itens)) if (!i.pendente && !i.conflito) { novo[k] = i; delete fila.itens[k]; }
     this.cache = novo;
+    fila.dono = { id: this.o.usuarioId, email: this.email ?? fila.dono?.email ?? null };
     this.gravar(fila);
     this.o.aoMudar();
   }
@@ -100,11 +113,20 @@ export class MotorRascunhos {
   estado(): EstadoRascunhos {
     const f = this.ler();
     const itens = Object.values(this.todos());
+    if (this.bloqueio) return 'bloqueado';
     if (this.emVoo > 0 || this.timer) return 'salvando';
     if (this.falhou) return 'falha';
     if (itens.some((i) => i.pendente) || f.lapides.length || itens.some((i) => i.conflito)) return 'pendente';
     return itens.length ? 'salvo' : 'nenhum';
   }
+  /** O estado de cada rascunho aberto (o texto de cada janela vem daqui). */
+  porChave(): Record<string, EstadoRascunho> {
+    const r: Record<string, EstadoRascunho> = {};
+    for (const [k, i] of Object.entries(this.todos())) r[k] = i.conflito ? 'conflito' : !i.pendente ? 'salvo' : this.bloqueio || this.falhou ? 'falha' : this.emVoo > 0 || this.timer ? 'salvando' : 'pendente';
+    return r;
+  }
+  /** De quem é a fila guardada neste navegador para este usuário (identificação mostrada se o acesso for revogado). */
+  dono(): { id: string; email: string | null } { return this.ler().dono ?? { id: this.o.usuarioId, email: this.email }; }
   /** Quantas alterações ainda não foram confirmadas pelo banco. */
   pendentes(): number { const f = this.ler(); return Object.values(f.itens).filter((i) => i.pendente).length + f.lapides.length; }
 
@@ -116,8 +138,8 @@ export class MotorRascunhos {
   /** Lê os rascunhos abertos do banco e os junta à fila (a fila local pendente sempre vence o que o banco tem, e o conflito é tratado no envio). */
   async sincronizar(): Promise<boolean> {
     let r: Resultado<RascunhoNoBanco[]>;
-    try { r = await this.o.api.listar(); } catch { return false; }
-    if (!r.ok) return false;
+    try { r = await this.o.api.listar(); } catch { this.marcarPronto(); return false; }
+    if (!r.ok) { if (r.revogado || r.outraConta) this.bloquear(r.revogado ? 'revogado' : 'outraConta'); this.marcarPronto(); return false; }
     this.mutar((fila) => {
       const encerrando = new Set(fila.lapides.map((l) => l.id));
       for (const d of r.dados) {
@@ -130,7 +152,20 @@ export class MotorRascunhos {
         else if (conflito && !atual.conflito) atual.conflito = conflito;
       }
     });
+    this.marcarPronto();
     return true;
+  }
+
+  /** O e-mail do dono chega depois (a identidade vem do servidor): só serve para identificar a fila guardada. */
+  definirEmail(e: string | null) { this.email = e; }
+  /** A primeira leitura demorou demais (rede presa): as janelas abrem com o que há na fila local, e o que estiver no banco chega pela sincronização seguinte. */
+  forcarPronto() { this.marcarPronto(); }
+  private marcarPronto() { if (!this.pronto) { this.pronto = true; this.o.aoMudar(); } }
+  private bloquear(b: Bloqueio) {
+    this.bloqueio = b;
+    for (const t of [this.timer, this.timerRetentativa]) if (t) this.o.cancelar(t);
+    this.timer = this.timerRetentativa = null;
+    this.o.aoMudar();
   }
 
   // ---------- edição ----------
@@ -156,7 +191,7 @@ export class MotorRascunhos {
   }
 
   private agendarEnvio(edicao: boolean) {
-    if (this.parado) return;
+    if (this.parado || this.bloqueio) { this.o.aoMudar(); return; }
     const agora = this.o.agora();
     if (edicao && !this.ultimaEdicao) this.ultimaEdicao = agora;
     if (this.timer) this.o.cancelar(this.timer);
@@ -176,7 +211,7 @@ export class MotorRascunhos {
 
   // ---------- envio serial ----------
   private enviar(): Promise<void> {
-    if (this.parado) return Promise.resolve();
+    if (this.parado || this.bloqueio) return Promise.resolve();
     // já há envio em andamento: quem pediu espera ESSE envio (que inclui uma nova passada, se pediram durante ele); nunca devolve antes de a fila ter sido atendida
     if (this.corrente) { this.denovo = true; return this.corrente; }
     this.corrente = (async () => {
@@ -184,7 +219,7 @@ export class MotorRascunhos {
         do {
           this.denovo = false;
           await this.o.exclusivo(() => this.enviarTudo());   // em falha a retentativa já foi agendada; um pedido explícito feito durante o envio ainda gera uma passada
-        } while (this.denovo && !this.parado);
+        } while (this.denovo && !this.parado && !this.bloqueio);
       } catch { this.falhar(); }   // nada aqui pode virar rejeição sem dono (a fila continua guardada e a retentativa já está agendada)
       finally { this.corrente = null; this.o.aoMudar(); }
     })();
@@ -249,6 +284,7 @@ export class MotorRascunhos {
     try {
       const r = await f();
       if (r.ok) return r.dados;
+      if (r.revogado || r.outraConta) { this.bloquear(r.revogado ? 'revogado' : 'outraConta'); return null; }   // não é falha passageira: nada de retentativa, e a fila fica guardada
       this.falhar();
       return null;
     } catch { this.falhar(); return null; }
@@ -256,7 +292,7 @@ export class MotorRascunhos {
   }
   private falhar() {
     this.falhou = true;
-    if (this.parado || this.timerRetentativa) return;
+    if (this.parado || this.bloqueio || this.timerRetentativa) return;
     const atraso = ATRASOS_RETENTATIVA[Math.min(this.tentativas, ATRASOS_RETENTATIVA.length - 1)];
     this.tentativas++;
     this.timerRetentativa = this.o.agendar(() => { this.timerRetentativa = null; void this.enviar(); }, atraso);

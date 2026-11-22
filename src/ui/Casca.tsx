@@ -13,7 +13,7 @@ import { Busca } from './busca';
 import { Lembretes } from './lembretes';
 import { PerfilGaveta } from './perfil';
 import { AvisosGlobais, PainelAvisos, textoAvisoEvento } from './avisos';
-import { EstadoRascunhos } from './estado-rascunhos';
+import { AcessoRevogado, EstadoRascunhos } from './estado-rascunhos';
 
 const NAV: [string, string, string, string][] = [
   ['/', 'Início', 'nav-inicio', 'inicio'], ['/entradas', 'Entradas', 'nav-entradas', 'entradas'], ['/demandas', 'Demandas', 'nav-demandas', 'demandas'],
@@ -29,7 +29,7 @@ function useToque() {
 }
 
 function Interior({ children }: { children: ReactNode }) {
-  const { tema, aparencia, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, fecharMenuMover, avisosEventos, avisosSistema, dispensarAviso, perfilAberto } = useApp();
+  const { acessoRevogado, tema, aparencia, menuAberto, alternarMenu, alternarTema, ambiente, aviso, avisar, janela, abrirJanela, fecharMenuMover, avisosEventos, avisosSistema, dispensarAviso, perfilAberto } = useApp();
   const caminho = usePathname();
   const router = useRouter();
   const toque = useToque();
@@ -96,6 +96,8 @@ function Interior({ children }: { children: ReactNode }) {
   const tbtn = (n: [string, string, string, string]) => (
     <button key={n[0]} className="navi" data-nav={n[3]} aria-current={ativo(caminho, n[0]) ? 'page' : undefined} title={n[1]} aria-label={n[1]} onClick={ir(n[0])}><span className="ico"><Icone nome={n[2]} extra="duo" /></span><span className="tx">{n[1]}</span></button>
   );
+  // acesso revogado: nada do painel é desenhado (nem menu, nem listas, nem janelas); só a explicação e a saída
+  if (acessoRevogado) return (<div className="frame real" id="frame"><div className="app" data-dir="d" data-tema={tema} data-ico="fino"><div className="bg"><i className="bg-img" /></div><AcessoRevogado /></div></div>);
   return (
     <div className="frame real" id="frame">
       <div ref={appRef} className="app" data-dir="d" data-tema={tema} data-ico="fino" data-dev={toque ? 'toque' : 'desktop'} data-col="true" data-aberto={menuAberto} data-paleta={aparencia.paleta ?? undefined} data-reduzir={aparencia.movimento === 'reduzido'} data-fundo={aparencia.fundo === 'animado' ? 'animado' : undefined}

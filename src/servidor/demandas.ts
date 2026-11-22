@@ -1,28 +1,29 @@
 'use server';
 // Ações do servidor chamadas pela interface. Cada uma devolve { ok, dados | erro }: a tela só mostra sucesso quando o banco confirmou.
 import { chamar, operacoes as op } from './banco';
-import { executar, type TarefaEdicao } from '@/nucleo/operacoes';
+import { executar, ErroRevogado, type TarefaEdicao } from '@/nucleo/operacoes';
 import type { DadosDemanda, Etapa } from '@/lib/demandas';
 import type { CategoriaDia } from '@/lib/prazos';
 import { modoTeste } from '@/lib/supabase/config';
-import { redirect } from 'next/navigation';
-import { clienteDaSessao, usuarioAtual } from './sessao';
+import { usuarioAtual } from './sessao';
 
 // Só para os testes automatizados: sem lembretes de humor (o convite da entrada é uma janela e atrapalharia os testes de outras telas). Nunca vale em produção.
 const semLembretes = () => process.env.DMANDA_SEM_LEMBRETES === 'sim' && (modoTeste() || process.env.NODE_ENV !== 'production');
 
 export async function ambiente() {
   // a identidade vem da sessão verificada no servidor; a condição de administradora vem do banco (estado_acesso), nunca do navegador
-  const u = await usuarioAtual();
+  let u: Awaited<ReturnType<typeof usuarioAtual>> = null;
+  try { u = await usuarioAtual(); } catch (e) { if (e instanceof ErroRevogado) return { teste: modoTeste(), nome: '', id: null, email: null, admin: false, revogado: true, semLembretes: semLembretes() }; throw e; }
   let admin = false;
+  let revogado = false;
   if (u) {
     let estado: { admin?: boolean; autorizado?: boolean } | null = null;
     try { estado = (await chamar('estado_acesso', {})) as { admin?: boolean; autorizado?: boolean }; } catch (e) { if (typeof (e as { digest?: unknown })?.digest === 'string') throw e; estado = null; }
-    // conta com sessão válida mas SEM autorização (revogada, ou removida da lista): sai deste aparelho e volta ao login, em vez de mostrar um painel vazio
-    if (estado && estado.autorizado === false && !modoTeste()) { await (await clienteDaSessao()).auth.signOut({ scope: 'local' }); redirect('/login?motivo=sem-acesso'); }
+    // conta com sessão válida mas SEM autorização (revogada, ou fora da lista): a interface mostra "acesso revogado" e bloqueia o painel (a sessão não é apagada à revelia: sair é escolha da pessoa)
+    revogado = !!estado && estado.autorizado === false && !modoTeste();
     admin = estado?.admin === true;
   }
-  return { teste: modoTeste(), nome: u?.email ?? (modoTeste() ? 'Teste' : ''), id: u?.id ?? null, email: u?.email ?? null, admin, semLembretes: semLembretes() };
+  return { teste: modoTeste(), nome: u?.email ?? (modoTeste() ? 'Teste' : ''), id: u?.id ?? null, email: u?.email ?? null, admin, revogado, semLembretes: semLembretes() };
 }
 export async function listarDemandas(arquivadas = false) {
   return executar(() => op().listar(arquivadas));

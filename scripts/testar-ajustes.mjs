@@ -314,16 +314,21 @@ if (wk) await leitura('WebKit iPhone 13', wk, { ...devices['iPhone 13'] }, 'clar
   await pg.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   const rascunhosAntes = Object.keys(await rascunhosDaConta(pg));
   ok(rascunhosAntes.some((k) => k.startsWith('e:') && k !== 'e:nova'), 'rascunho: o texto alterado ficou guardado neste aparelho (rede derrubada)');
+  // Fecha a janela AINDA SEM REDE, guardando no rascunho (decisão 92): antes, a recarga acontecia com a janela aberta e a rede já de volta, e o salvamento "ao sair de cena" (pagehide) às vezes
+  // chegava ao banco durante a navegação. Era uma corrida da própria sequência do teste (o aplicativo estava certo em salvar), que deixava o resultado depender do tempo (falha intermitente de 22/11).
+  await pg.click('.modal .btn:has-text("Fechar")');
+  await pg.waitForSelector('.modal [role="alertdialog"] .btn:has-text("Fechar e manter no rascunho")', { timeout: 15000 });
+  await pg.click('.modal [role="alertdialog"] .btn:has-text("Fechar e manter no rascunho")'); await janelaFechada(pg);
   await pg.unroute('**/*'); await pg.goto(BASE + '/entradas'); await ir(pg, '/entradas');
-  await pg.waitForFunction(() => /Só neste aparelho/.test(document.querySelector('.postits')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => {});
-  ok(await pg.evaluate(() => /Só neste aparelho/.test(document.querySelector('.postits')?.textContent ?? '')), 'rascunho: a grade marca a entrada como "Só neste aparelho"');
+  await pg.waitForFunction(() => /Rascunho não salvo/.test(document.querySelector('.postits')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => {});
+  ok(await pg.evaluate(() => /Rascunho não salvo/.test(document.querySelector('.postits')?.textContent ?? '')), 'rascunho: a grade marca a entrada como "Rascunho não salvo"');
   await pg.click(`${alvo} .p-abrir`); await pg.waitForSelector('[data-leitura]');
   const texto = await pg.textContent('.modal');
-  ok(/Há alterações só neste aparelho/.test(texto) && /Retomar edição/.test(texto), 'rascunho: a leitura informa que há alterações só neste aparelho e oferece retomar');
+  ok(/Há alterações em rascunho, ainda não salvas na entrada/.test(texto) && /Retomar edição/.test(texto), 'rascunho: a leitura informa que há alterações em rascunho, ainda não salvas na entrada, e oferece retomar');
   ok(!(await pg.$('#e-texto')) && !/TEXTO SÓ NO APARELHO/.test(await pg.textContent('[data-leitura]')), 'rascunho: não entra em edição sozinha e a leitura mostra a versão salva');
   ok(await pg.evaluate(() => { const bs = [...document.querySelectorAll('.modal .acoes-entrada button')]; return bs.length > 0 && bs.every((b) => b.disabled); }), 'rascunho: as ações da janela ficam desativadas enquanto o rascunho espera');
   await pg.waitForTimeout(3000); // mais que o salvamento automático (1,2 s): nada pode ter sido enviado
-  ok(/Só neste aparelho/.test(await pg.textContent('.modal .estado-entrada')), 'rascunho: passados 3 s, continua "só neste aparelho" (nada foi enviado em silêncio)');
+  ok(/Ainda não salvo na entrada/.test(await pg.textContent('.modal .estado-entrada')), 'rascunho: passados 3 s, continua "ainda não salvo na entrada" (nada foi salvo na entrada em silêncio)');
   await pg.click('.modal .btn:has-text("Fechar")'); await janelaFechada(pg);
   ok(Object.keys(await rascunhosDaConta(pg)).some((k) => k.startsWith('e:') && k !== 'e:nova'), 'rascunho: fechar a leitura mantém o rascunho no aparelho');
   await ir(pg, '/entradas'); await pg.click(`${alvo} .p-abrir`); await pg.waitForSelector('[data-leitura]');

@@ -8,7 +8,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient, isAuthRetryableFetchError, type SupabaseClient } from '@supabase/supabase-js';
 import { modoTeste } from '@/lib/supabase/config';
-import { ErroSessao, ErroDmanda } from '@/nucleo/validacao';
+import { ErroSessao, ErroDmanda, ErroRevogado } from '@/nucleo/validacao';
 
 export type Usuario = { id: string; email: string | null };
 
@@ -55,6 +55,8 @@ export async function usuarioAtual(): Promise<Usuario | null> {
   const { data, error } = await sb.auth.getClaims();
   if (error) {
     if (isAuthRetryableFetchError(error)) throw new ErroDmanda('Sem conexão com o serviço de acesso. Nada foi perdido: tente de novo em instantes.');
+    // a revogação bloqueia a conta também no Auth: o código oficial user_banned é revogação, não sessão vencida (a tela mostra "acesso revogado" em vez de mandar ao login em silêncio)
+    if ((error as { code?: string }).code === 'user_banned') throw new ErroRevogado('Seu acesso ao Dmanda foi revogado.');
     return null;
   }
   const claims = data?.claims;

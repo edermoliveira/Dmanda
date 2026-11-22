@@ -2,6 +2,8 @@
 // (RLS por autor): nenhum campo aceita usuário. Usar uma rota (e não ações do servidor) tira o envio dos rascunhos da fila das ações de dados, que esperam umas às outras. Resposta sempre { ok, dados | erro } e nunca em cache.
 // Proteção contra pedido de outro site: só JSON do mesmo site (Sec-Fetch-Site) e Content-Type application/json (um formulário de outro site não consegue enviá-lo).
 import { connection } from 'next/server';
+import { usuarioAtual } from '@/servidor/sessao';
+import { ErroRevogado } from '@/nucleo/operacoes';
 import { importarRascunhoLegado, listarRascunhos, resolverRascunho, salvarRascunho, encerrarRascunho } from '@/servidor/rascunhos';
 
 const cab = { 'cache-control': 'no-store', 'content-type': 'application/json; charset=utf-8' };
@@ -14,6 +16,10 @@ export async function POST(request: Request) {
   try { b = (await request.json()) as Record<string, unknown>; } catch { return Response.json({ ok: false, erro: 'Pedido inválido.' }, { status: 400, headers: cab }); }
   const s = (x: unknown) => String(x ?? ''), n = (x: unknown) => (typeof x === 'number' ? x : 0), o = (x: unknown) => (x && typeof x === 'object' && !Array.isArray(x) ? (x as Record<string, unknown>) : ({} as Record<string, unknown>));
   try {
+    // a fila é de UMA conta (dono): se a sessão deste navegador agora é de outra pessoa, nada é gravado em nome dela e a fila continua guardada para a dona
+    const u = await usuarioAtual();
+    if (!u) return Response.json({ ok: false, erro: 'Sessão encerrada.' }, { status: 401, headers: cab });
+    if (b.dono !== undefined && b.dono !== u.id) return Response.json({ ok: false, erro: 'Estas alterações são de outra conta e não foram enviadas.', outraConta: true }, { status: 409, headers: cab });
     let r;
     switch (b.acao) {
       case 'listar': r = await listarRascunhos(); break;
@@ -23,10 +29,11 @@ export async function POST(request: Request) {
       case 'importarLegado': r = await importarRascunhoLegado(s(b.id), s(b.chave), o(b.dados)); break;
       default: return Response.json({ ok: false, erro: 'Operação desconhecida.' }, { status: 400, headers: cab });
     }
-    return Response.json(r, { headers: cab });
+    return Response.json(r, { status: !r.ok && r.revogado ? 403 : 200, headers: cab });
   } catch (e) {
     // sem sessão (o transporte redireciona ao login nas páginas): na rota é 401, para o motor guardar a fila e tentar depois
     if (typeof (e as { digest?: unknown })?.digest === 'string' && (e as { digest: string }).digest.startsWith('NEXT_REDIRECT')) return Response.json({ ok: false, erro: 'Sessão encerrada.' }, { status: 401, headers: cab });
+    if (e instanceof ErroRevogado) return Response.json({ ok: false, erro: e.message, revogado: true }, { status: 403, headers: cab });
     console.error('[rascunhos] falhou:', (e as { code?: string })?.code ?? 'sem código');
     return Response.json({ ok: false, erro: 'Não foi possível concluir a operação. Nada foi perdido.' }, { status: 500, headers: cab });
   }

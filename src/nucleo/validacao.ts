@@ -13,6 +13,8 @@ export class ErroDmanda extends Error {}
 /** A demanda mudou depois que a janela de edição foi aberta (outro aparelho ou janela): nada foi gravado e a tela precisa avisar sem apagar o que foi digitado. */
 export class ErroConflito extends ErroDmanda {}
 /** Não há sessão válida (nunca logou, saiu, a sessão foi revogada): a operação não roda e a interface vai ao login. Falha de rede NÃO é este erro. */
+/** O banco recusou a identidade desta chamada (acesso revogado ou conta fora da lista, código DM403). Não é falha de rede nem sessão vencida: a interface mostra "acesso revogado" e bloqueia o painel. */
+export class ErroRevogado extends Error {}
 export class ErroSessao extends Error { constructor() { super('Sessão encerrada.'); } }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

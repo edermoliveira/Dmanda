@@ -24,9 +24,9 @@ ok(/Protocolo só pode/.test(await erro(A, 'criar_demanda', { p: { assunto: 'x',
 ok(/não nasce finalizada/.test(await erro(A, 'criar_demanda', { p: { assunto: 'x', etapa: 'Finalizado' } })), 'demanda nova não nasce finalizada');
 
 // isolamento (RLS) entre usuários
-ok((await c(B, 'listar_demandas', {})).length === 0 && (await c(A, 'listar_demandas', {})).length === 2, 'RLS: uma conta sem autorização não vê as demandas de A');
-ok(/não encontrada/.test(await erro(B, 'buscar_demanda', { p_id: d1.id })) && /não encontrada/.test(await erro(B, 'arquivar_demanda', { p_id: d1.id })) && /não encontrada/.test(await erro(B, 'mover_etapa', { p_id: d1.id, p_etapa: 'Vistos' })), 'RLS: B não lê, arquiva nem move a demanda de A');
-ok(/não encontrada/.test(await erro(B, 'adicionar_tarefa', { p_demanda: d1.id, p_texto: 'invasão' })), 'RLS: a conta sem autorização não adiciona tarefa na demanda de A');
+ok(/não tem acesso/.test(await erro(B, 'listar_demandas', {})) && (await c(A, 'listar_demandas', {})).length === 2, 'RLS: uma conta sem autorização não vê as demandas de A');
+ok(/não tem acesso/.test(await erro(B, 'buscar_demanda', { p_id: d1.id })) && /não tem acesso/.test(await erro(B, 'arquivar_demanda', { p_id: d1.id })) && /não tem acesso/.test(await erro(B, 'mover_etapa', { p_id: d1.id, p_etapa: 'Vistos' })), 'RLS: B não lê, arquiva nem move a demanda de A');
+ok(/não tem acesso/.test(await erro(B, 'adicionar_tarefa', { p_demanda: d1.id, p_texto: 'invasão' })), 'RLS: a conta sem autorização não adiciona tarefa na demanda de A');
 const anon = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_demandas()'); return null; } catch (e) { return e.message; } });
 ok(/permission denied/i.test(anon || ''), 'sem login (papel anon) não executa nenhuma função');
 
@@ -57,7 +57,7 @@ ok(t.tarefas.filter((x) => x.concluida).length === 2 && t.etapa === 'Vistos', 'm
 t = await c(A, 'marcar_tarefa', { p_id: t3.id, p_concluida: true }); ok(t.etapa === 'Vistos' && t.tarefas.every((x) => x.concluida), 'marcar todas não conclui a demanda sozinho');
 t = await c(A, 'marcar_tarefa', { p_id: t2.id, p_concluida: false }); ok(!t.tarefas[1].concluida, 'desmarcar funciona');
 t = await c(A, 'excluir_tarefa', { p_id: t1.id }); ok(t.tarefas.length === 2 && t.tarefas.map((x) => x.posicao).join() === '1,2' && t.tarefas[0].texto === 'Conferir com a Contabilidade', 'excluir tarefa fecha o buraco e mantém a ordem');
-ok(/não encontrada/.test(await erro(B, 'marcar_tarefa', { p_id: t2.id, p_concluida: true })), 'RLS: a conta sem autorização não marca tarefa de A');
+ok(/não tem acesso/.test(await erro(B, 'marcar_tarefa', { p_id: t2.id, p_concluida: true })), 'RLS: a conta sem autorização não marca tarefa de A');
 
 // etapas
 let m = await c(A, 'mover_etapa', { p_id: d1.id, p_etapa: 'Aguardando retorno' });
@@ -81,7 +81,7 @@ ok(u.assunto === 'Novo assunto' && u.origem === '' && u.prazo === null && u.praz
 u = await c(A, 'atualizar_demanda', { p_id: d1.id, p: { prazo_original: '2026-11-05', prazo_tipo: 'Próprio', setor: ' PGM ', acompanhar_em: '2026-10-28' } });
 ok(u.prazo === '2026-11-05' && u.prazo_tipo === 'Próprio' && u.setor === 'PGM' && u.acompanhar_em === '2026-10-28', 'atualizar prazo, tipo de prazo, setor e acompanhamento');
 ok(/assunto não pode/.test(await erro(A, 'atualizar_demanda', { p_id: d1.id, p: { assunto: '' } })) && /Protocolo só pode/.test(await erro(A, 'atualizar_demanda', { p_id: d1.id, p: { tipo: 'Protocolo', area: 'Compras' } })), 'atualizar valida assunto vazio e Protocolo de Compras');
-ok(/não encontrada/.test(await erro(B, 'atualizar_demanda', { p_id: d1.id, p: { assunto: 'sequestro' } })), 'RLS: a conta sem autorização não altera a demanda de A');
+ok(/não tem acesso/.test(await erro(B, 'atualizar_demanda', { p_id: d1.id, p: { assunto: 'sequestro' } })), 'RLS: a conta sem autorização não altera a demanda de A');
 
 // arquivar, desarquivar, excluir
 let r = await c(A, 'arquivar_demanda', { p_id: d2.id }); ok(r.arquivada_em !== null, 'arquivar marca a data de arquivamento');
@@ -89,7 +89,7 @@ ok((await c(A, 'listar_demandas', { p_arquivadas: false })).length === 1 && (awa
 ok(/arquivada/.test(await erro(A, 'mover_etapa', { p_id: d2.id, p_etapa: 'Vistos' })), 'demanda arquivada não se move até desarquivar');
 r = await c(A, 'desarquivar_demanda', { p_id: d2.id }); ok(r.arquivada_em === null, 'desarquivar limpa o arquivamento');
 ok(/confirmação/.test(await erro(A, 'excluir_demanda', { p_id: d1.id })) && /confirmação/.test(await erro(A, 'excluir_demanda', { p_id: d1.id, p_confirmado: false })), 'excluir sem confirmação é recusado');
-ok(/não encontrada/.test(await erro(B, 'excluir_demanda', { p_id: d1.id, p_confirmado: true })), 'RLS: a conta sem autorização não exclui a demanda de A');
+ok(/não tem acesso/.test(await erro(B, 'excluir_demanda', { p_id: d1.id, p_confirmado: true })), 'RLS: a conta sem autorização não exclui a demanda de A');
 r = await c(A, 'excluir_demanda', { p_id: d1.id, p_confirmado: true });
 const resto = await db.query('select count(*)::int as n from public.tarefas where demanda_id = $1', [d1.id]);
 ok(r.excluida === true && resto.rows[0].n === 0 && (await c(A, 'listar_demandas', {})).length === 1, 'excluir com confirmação remove a demanda e as tarefas dela');
@@ -110,7 +110,7 @@ sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: 
 ok(sv.etapa === 'Finalizado' && sv.tarefas.every((x) => x.concluida) && sv.assunto === 'Concluída pela janela' && sv.concluida_em !== null, 'salvar com etapa Finalizado conclui: marca todas as tarefas e registra a data');
 sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { etapa: 'Fazendo' }, p_tarefas: null });
 ok(sv.etapa === 'Fazendo' && sv.concluida_em === null && sv.tarefas.length === 2 && sv.tarefas.every((x) => x.concluida), 'salvar com outra etapa reabre mantendo as tarefas');
-ok(/não encontrada/.test(await erro(B, 'salvar_demanda', { p_id: e1.id, p: { assunto: 'x' }, p_tarefas: [], p_versao: 1 })), 'RLS: a conta sem autorização não salva a demanda de A');
+ok(/não tem acesso/.test(await erro(B, 'salvar_demanda', { p_id: e1.id, p: { assunto: 'x' }, p_tarefas: [], p_versao: 1 })), 'RLS: a conta sem autorização não salva a demanda de A');
 ok(/Etapa desconhecida|check/i.test(await erro(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { etapa: 'Voando' }, p_tarefas: null })), 'etapa inválida no salvar é recusada');
 sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { tipo: 'Processo', area: 'Compras' }, p_tarefas: null });
 ok(sv.tipo === 'Processo' && sv.area === 'Compras' && sv.tarefas.length === 2, 'salvar sem lista de tarefas não mexe nas tarefas');
@@ -160,7 +160,7 @@ ok(/permission denied/i.test(await erro(R, 'calcular_resumo', { p_user: R, p_dat
 const comoAnon = async (q) => db.transaction(async (tx) => { await tx.exec('set local role anon'); try { await tx.query(q); return null; } catch (e) { return e.message; } });
 ok(/permission denied/i.test(await comoAnon('select public.rotina_diaria()')) && /permission denied/i.test(await comoAnon('select * from public.resumos_operacionais')) && /permission denied/i.test(await comoAnon('select * from public.execucoes_rotina')), 'rotina: visitante sem login não executa nem lê nada');
 const comoUsuarioSql = async (q) => db.transaction(async (tx) => { await entrarComo(tx, R); try { await tx.query(q); return null; } catch (e) { return e.message; } });
-ok(/permission denied|row-level/i.test(await comoUsuarioSql("insert into public.execucoes_rotina (data_ref, ok) values (public.hoje(), true)")) && /permission denied|row-level/i.test(await comoUsuarioSql("update public.resumos_operacionais set dados = '{}'")) && /permission denied|row-level/i.test(await comoUsuarioSql('delete from public.execucoes_rotina')), 'rotina: usuário logado não escreve nos resumos nem no registro de execuções');
+ok(/permission denied|row-level|não tem acesso/i.test(await comoUsuarioSql("insert into public.execucoes_rotina (data_ref, ok) values (public.hoje(), true)")) && /permission denied|row-level|não tem acesso/i.test(await comoUsuarioSql("update public.resumos_operacionais set dados = '{}'")) && /permission denied|row-level|não tem acesso/i.test(await comoUsuarioSql('delete from public.execucoes_rotina')), 'rotina: usuário logado não escreve nos resumos nem no registro de execuções');
 
 // execução pelo papel de serviço: não altera demandas, é repetível e registra
 const antes = await instantaneo();
@@ -180,7 +180,7 @@ await c(S, 'criar_demanda', { p: { assunto: 'Outro usuário', prazo_original: aw
 await serv('rotina_diaria', {});
 await sql("delete from public.demandas where assunto = 'Outro usuário'");   // o resumo é do painel: a demanda de S entrou na conta e sai para o que vem a seguir partir dos mesmos números
 const veDe = (u) => db.transaction(async (tx) => { await entrarComo(tx, u); return (await tx.query('select user_id, data_ref::text from public.resumos_operacionais where data_ref = public.hoje()')).rows; });
-ok((await veDe(R)).length === 1 && (await veDe(S)).length === 1 && (await veDe(R))[0].user_id === null && (await veDe(B)).length === 0, 'rotina: RLS, o resumo é do painel: duas contas autorizadas veem o mesmo (uma linha por data, sem usuário) e a conta sem autorização não vê nada');
+ok((await veDe(R)).length === 1 && (await veDe(S)).length === 1 && (await veDe(R))[0].user_id === null && /não tem acesso/.test(await veDe(B).then(() => 'leu', (e) => e.message)), 'rotina: RLS, o resumo é do painel: duas contas autorizadas veem o mesmo (uma linha por data, sem usuário) e a conta sem autorização não vê nada');
 
 // dias restantes derivados das datas: mudar o prazo muda o resumo na hora, sem esperar o dia seguinte
 await fixarPrazo(em9.id, await mais(-1));
@@ -229,21 +229,21 @@ const X = '55555555-5555-4555-8555-555555555555', Z = '6e6e6e6e-6666-4666-8666-6
 await db.exec(`insert into auth.users (id, email) values ('${X}', 'intruso@teste'), ('${Z}', null)`);   // usuários que NÃO estão na lista (e um sem e-mail)
 const doUsuario = async (id, opcoes, q, p = []) => db.transaction(async (tx) => { await entrarComo(tx, id, opcoes); try { return { rows: (await tx.query(q, p)).rows }; } catch (e) { return { erro: e.message }; } });
 // RLS: um usuário fora da lista não lê, não grava e não executa nada, mesmo com sessão válida e user_id dele
-ok((await doUsuario(X, {}, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: usuário fora da lista autorizada não enxerga nenhuma demanda (RLS)');
-ok(/row-level security/i.test((await doUsuario(X, {}, "insert into public.demandas (assunto) values ('invasão')")).erro || ''), 'acesso: usuário fora da lista não consegue gravar demanda (RLS recusa)');
-ok(/row-level/i.test(await erro(X, 'criar_demanda', { p: { assunto: 'invasão' } })), 'acesso: usuário fora da lista não cria demanda pelas funções');
-ok((await doUsuario(X, {}, 'select count(*)::int as n from public.execucoes_rotina')).rows?.[0].n === 0, 'acesso: usuário fora da lista não lê nem o registro de execuções da rotina');
+ok(/não tem acesso/.test((await doUsuario(X, {}, 'select count(*)::int as n from public.demandas')).erro || ''), 'acesso: usuário fora da lista autorizada não enxerga nenhuma demanda (RLS)');
+ok(/row-level security|não tem acesso|revogado/i.test((await doUsuario(X, {}, "insert into public.demandas (assunto) values ('invasão')")).erro || ''), 'acesso: usuário fora da lista não consegue gravar demanda (RLS recusa)');
+ok(/row-level|não tem acesso|revogado/i.test(await erro(X, 'criar_demanda', { p: { assunto: 'invasão' } })), 'acesso: usuário fora da lista não cria demanda pelas funções');
+ok(/não tem acesso/.test((await doUsuario(X, {}, 'select count(*)::int as n from public.execucoes_rotina')).erro || ''), 'acesso: usuário fora da lista não lê nem o registro de execuções da rotina');
 // a terceira camada (conta autorizada na RLS) vale também para Entradas e dias indisponíveis (migração 12)
-ok(/row-level security/i.test((await doUsuario(X, {}, "insert into public.entradas (titulo, texto) values ('', 'invasão')")).erro || '') && /row-level/i.test(await erro(X, 'criar_entrada', { p: { texto: 'invasão' } })), 'acesso: usuário fora da lista não grava entradas (RLS, nem pelas funções)');
-ok(/row-level security/i.test((await doUsuario(X, {}, "insert into public.dias_indisponiveis (data, descricao, categoria) values ('2027-01-01', 'invasão', 'Feriado')")).erro || '') && /row-level/i.test(await erro(X, 'salvar_dia_indisponivel', { p: { data: '2027-01-01', descricao: 'invasão', categoria: 'Feriado' } })), 'acesso: usuário fora da lista não grava dias indisponíveis (RLS, nem pelas funções)');
+ok(/row-level security|não tem acesso|revogado/i.test((await doUsuario(X, {}, "insert into public.entradas (titulo, texto) values ('', 'invasão')")).erro || '') && /row-level|não tem acesso|revogado/i.test(await erro(X, 'criar_entrada', { p: { texto: 'invasão' } })), 'acesso: usuário fora da lista não grava entradas (RLS, nem pelas funções)');
+ok(/row-level security|não tem acesso|revogado/i.test((await doUsuario(X, {}, "insert into public.dias_indisponiveis (data, descricao, categoria) values ('2027-01-01', 'invasão', 'Feriado')")).erro || '') && /row-level|não tem acesso|revogado/i.test(await erro(X, 'salvar_dia_indisponivel', { p: { data: '2027-01-01', descricao: 'invasão', categoria: 'Feriado' } })), 'acesso: usuário fora da lista não grava dias indisponíveis (RLS, nem pelas funções)');
 // provedor e e-mail vêm do JWT assinado: Google ou e-mail e senha, sempre com e-mail da lista
 ok((await doUsuario(A, { provedor: 'email' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0, 'acesso: conta da lista entrando por e-mail e senha lê e grava como no Google (mesmo usuário e mesmos dados)');
-ok((await doUsuario(A, { provedor: 'github' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0 && (await doUsuario(X, { provedor: 'github' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: a identidade vem de auth.uid() e de auth.users, não do provedor da claim (o Google fica desligado no painel do Auth); quem não está na lista não lê nada, qualquer que seja a claim');
-ok((await doUsuario(X, { provedor: 'email' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0 && /row-level security/i.test((await doUsuario(X, { provedor: 'email' }, "insert into public.demandas (assunto) values ('invasão')")).erro || ''), 'acesso: usuário fora da lista não entra pela senha: não lê nem grava, como no Google');
-ok((await doUsuario(A, { email: 'outro@teste' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0 && (await doUsuario(X, { email: 'a@teste' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: a claim de e-mail do JWT não concede nem retira nada: valem o auth.uid() e o e-mail confirmado em auth.users (uma claim com o e-mail autorizado, numa conta de fora, não lê nada)');
+ok((await doUsuario(A, { provedor: 'github' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0 && /não tem acesso/.test((await doUsuario(X, { provedor: 'github' }, 'select count(*)::int as n from public.demandas')).erro || ''), 'acesso: a identidade vem de auth.uid() e de auth.users, não do provedor da claim (o Google fica desligado no painel do Auth); quem não está na lista não lê nada, qualquer que seja a claim');
+ok(/não tem acesso/.test((await doUsuario(X, { provedor: 'email' }, 'select count(*)::int as n from public.demandas')).erro || '') && /row-level security|não tem acesso|revogado/i.test((await doUsuario(X, { provedor: 'email' }, "insert into public.demandas (assunto) values ('invasão')")).erro || ''), 'acesso: usuário fora da lista não entra pela senha: não lê nem grava, como no Google');
+ok((await doUsuario(A, { email: 'outro@teste' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0 && /não tem acesso/.test((await doUsuario(X, { email: 'a@teste' }, 'select count(*)::int as n from public.demandas')).erro || ''), 'acesso: a claim de e-mail do JWT não concede nem retira nada: valem o auth.uid() e o e-mail confirmado em auth.users (uma claim com o e-mail autorizado, numa conta de fora, não lê nada)');
 ok((await doUsuario(A, { email: '  A@Teste ' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0, 'acesso: o e-mail é comparado sem diferenciar maiúsculas nem espaços');
-ok((await doUsuario(Z, { email: null }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: JWT sem e-mail não lê nada');
-ok((await doUsuario(A, { email: '' }, 'select dmanda_privado.conta_autorizada() as r')).rows?.[0].r === true && (await doUsuario(X, {}, 'select dmanda_privado.conta_autorizada() as r')).rows?.[0].r === false, 'acesso: conta_autorizada() é verdadeira para a conta da lista e falsa para a de fora, sem depender das claims de e-mail');
+ok(/não tem acesso/.test((await doUsuario(Z, { email: null }, 'select count(*)::int as n from public.demandas')).erro || ''), 'acesso: JWT sem e-mail não lê nada');
+ok((await doUsuario(A, { email: '' }, 'select dmanda_privado.conta_autorizada() as r')).rows?.[0].r === true && (await doUsuario(X, {}, 'select dmanda_privado.acesso_vigente() as r')).rows?.[0].r === false && /não tem acesso/.test((await doUsuario(X, {}, 'select dmanda_privado.conta_autorizada() as r')).erro || ''), 'acesso: conta_autorizada() é verdadeira para a conta da lista e falsa para a de fora, sem depender das claims de e-mail');
 // a lista é protegida
 ok(/permission denied/i.test((await doUsuario(A, {}, 'select * from dmanda_privado.acesso_autorizado')).erro || '') && /permission denied/i.test((await doUsuario(A, {}, "insert into dmanda_privado.acesso_autorizado (email) values ('x@y.z')")).erro || ''), 'acesso: usuário logado, mesmo autorizado, não lê nem grava a lista protegida');
 ok(/permission denied/i.test(await comoAnon('select * from dmanda_privado.acesso_autorizado')) && /permission denied/i.test(await comoAnon('select dmanda_privado.conta_autorizada()')), 'acesso: visitante sem login não lê a lista nem consulta a função');
@@ -269,12 +269,14 @@ const vazia = await db.transaction(async (tx) => {
   const h = (await tx.query("select public.hook_antes_criar_usuario('{\"user\":{\"email\":\"a@teste\",\"app_metadata\":{\"provider\":\"email\"}}}'::jsonb) as r")).rows[0].r;
   await tx.exec('reset role');
   await entrarComo(tx, A);
-  const n = (await tx.query('select count(*)::int as n from public.demandas')).rows[0].n;
+  await tx.query('savepoint antes_da_leitura');
+  const n = await tx.query('select count(*)::int as n from public.demandas').then((r) => r.rows[0].n, (e) => (/revogado|não tem acesso/.test(e.message) ? 'recusado' : e.message));
+  await tx.query('rollback to savepoint antes_da_leitura');
   throw Object.assign(new Error('desfazer'), { r: { h, n } });
 
 }).catch((e) => e.r ?? null);
 const nAposVazia = (await sql('select count(*)::int as n from dmanda_privado.acesso_autorizado'))[0].n;
-ok(vazia && vazia.h.error?.http_code === 403 && vazia.n === 0 && guardada === 4 && nAposVazia === 4, 'acesso: com todos os acessos revogados ninguém (além do administrador) entra, nem no cadastro nem no banco; a lista volta intacta');
+ok(vazia && vazia.h.error?.http_code === 403 && vazia.n === 'recusado' && guardada === 4 && nAposVazia === 4, 'acesso: com todos os acessos revogados ninguém (além do administrador) entra, nem no cadastro nem no banco; a lista volta intacta');
 
 // privilégios do Supabase com a exposição automática desligada: o que as migrações não declaram não existe
 const privTab = await sql("select has_table_privilege('authenticated', 'public.demandas', 'select, insert, update, delete') as crud, has_table_privilege('authenticated', 'public.demandas', 'truncate') as trunc, has_table_privilege('anon', 'public.demandas', 'select') as anon_sel, has_table_privilege('service_role', 'public.demandas', 'select') as svc_sel");
@@ -359,7 +361,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   }
 
   // outra conta não troca a versão nem enxerga a demanda (a RLS continua valendo)
-  ok(/não encontrada/.test(await erro(B, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'x' }, p_tarefas: [], p_versao: 1 })), 'RLS: uma conta sem autorização não salva a demanda mesmo informando uma versão');
+  ok(/não tem acesso/.test(await erro(B, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'x' }, p_tarefas: [], p_versao: 1 })), 'RLS: uma conta sem autorização não salva a demanda mesmo informando uma versão');
   const dx = await c(A, 'excluir_demanda', { p_id: dl.id, p_confirmado: true });
   ok(dx.excluida === true && (await db.query('select count(*)::int as n from public.tarefas where demanda_id = $1', [dl.id])).rows[0].n === 0, 'os gatilhos de versão não atrapalham a exclusão da demanda com suas tarefas');
 }
@@ -956,9 +958,9 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   ok((await gc(H, 'listar_eventos', {})).map((x) => x.id).join() === lista.map((x) => x.id).join() && (await gc(H, 'buscar_evento', { p_id: E1 })).id === E1, 'eventos: a agenda é do painel, a outra conta autorizada vê os mesmos eventos');
   ok((await db.query('select user_id::text u from public.eventos where id = $1', [E1])).rows[0].u === G, 'eventos: a autoria continua sendo de quem criou');
   const naoAut = await db.transaction(async (tx) => { await entrarComo(tx, X); try { return (await tx.query('select count(*)::int as n from public.eventos')).rows[0].n; } catch (e) { return e.message; } });
-  ok(naoAut === 0, 'eventos: conta não autorizada (fora da lista) não lê nenhum evento');
+  ok(/não tem acesso/.test(String(naoAut)), 'eventos: conta não autorizada (fora da lista) é recusada ao ler eventos');
   const naoAut2 = await db.transaction(async (tx) => { await entrarComo(tx, X); try { await tx.query("insert into public.eventos (user_id, titulo, tipo, data, inicio) values ($1, 'x', 'Reunião', '2027-01-01', '10:00')", [X]); return null; } catch (e) { return e.message; } });
-  ok(/row-level|policy/i.test(naoAut2 || ''), 'eventos: conta não autorizada não grava evento (RLS com conta autorizada)');
+  ok(/row-level|policy|não tem acesso|revogado/i.test(naoAut2 || ''), 'eventos: conta não autorizada não grava evento (RLS com conta autorizada)');
   const anon2 = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_eventos()'); return null; } catch (e) { return e.message; } });
   ok(/permission denied/i.test(anon2 || ''), 'eventos: sem login (papel anon) não executa as funções de eventos');
 
@@ -1085,7 +1087,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   ok(q1[0].humor === 1 && (await pc(P, 'listar_registros_dia', {})).find((x) => x.dia === hoje).humor !== 1 && await linhas(Q) === 1, 'perfil: o mesmo dia de outro usuário é outra linha e não mexe nos registros do primeiro');
   const naoAut = await db.transaction(async (tx) => { await entrarComo(tx, R); try { return (await tx.query('select count(*)::int as n from public.registros_dia')).rows[0].n; } catch (e) { return e.message; } });
   ok(naoAut === 0, 'perfil: conta não autorizada (fora da lista) não lê registro nenhum');
-  ok((await pc(R, 'listar_registros_dia', {})).length === 0 && /row-level|policy/i.test(await pm(R, 'registrar_dias', { p: [{ dia: hoje, humor: 3 }] }) || ''), 'perfil: conta não autorizada não grava (RLS com conta autorizada) e a listagem vem vazia');
+  ok((await pc(R, 'listar_registros_dia', {})).length === 0 && /row-level|policy|não tem acesso|revogado/i.test(await pm(R, 'registrar_dias', { p: [{ dia: hoje, humor: 3 }] }) || ''), 'perfil: conta não autorizada não grava (RLS com conta autorizada) e a listagem vem vazia');
   const anonP = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_registros_dia()'); return null; } catch (e) { return e.message; } });
   const anonG = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query("select public.registrar_dias('[]'::jsonb)"); return null; } catch (e) { return e.message; } });
   const anonT = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select count(*) from public.registros_dia'); return null; } catch (e) { return e.message; } });
@@ -1117,8 +1119,8 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const novaP = todas.find((f) => f.includes('periodos_indisponiveis'));
   const novaR = todas.find((f) => f.includes('retorno_do_servidor'));   // depende da demanda_json atual (entradas) e de ajustar_prazo: também não entra no banco antigo   // depende da 8 (tabela dias_indisponiveis): não entra no banco antigo
   const novaC = todas.find((f) => f.includes('prazo_pela_chegada'));   // depende da 8 (ajustar_prazo): entra depois dela, não no banco antigo
-  const novaS = todas.find((f) => f.includes('painel_compartilhado_e_acessos'));   // depende de todas as tabelas: entra por último, não no banco antigo
-  for (const f of todas.filter((f) => f !== novaS && f !== nova20 && f !== novaQ && f !== novaC && f !== novaP && f !== novaR && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const novaS = todas.find((f) => f.includes('painel_compartilhado_e_acessos')), novaT = todas.find((f) => f.includes('recusa_explicita'));   // depende de todas as tabelas: entra por último, não no banco antigo
+  for (const f of todas.filter((f) => f !== novaS && f !== novaT && f !== nova20 && f !== novaQ && f !== novaC && f !== novaP && f !== novaR && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -1228,7 +1230,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   ok(iHoje.erro === null && iHoje.n === 1 && iQuinto.erro === null && iQuinto.n === 1, 'janela 17: a escrita direta de hoje e do quinto dia anterior funciona');
   const antesRecusas = await estado(S);
   const rFut = await direto(S, ...ins(dia(1))), rSexto = await direto(S, ...ins(dia(-6))), rMuito = await direto(S, ...ins(dia(-400))), rAno = await direto(S, ...ins(dia(365)));
-  ok([rFut, rSexto, rMuito, rAno].every((r) => /row-level|policy/i.test(r.erro || '') && r.n === 0) && await estado(S) === antesRecusas, 'janela 17: a escrita direta de dia futuro, do sexto dia anterior ou de dia muito antigo é recusada e nada é gravado');
+  ok([rFut, rSexto, rMuito, rAno].every((r) => /row-level|policy|não tem acesso|revogado/i.test(r.erro || '') && r.n === 0) && await estado(S) === antesRecusas, 'janela 17: a escrita direta de dia futuro, do sexto dia anterior ou de dia muito antigo é recusada e nada é gravado');
   ok([rFut, rSexto, rMuito].every((r) => r.erro && !r.erro.includes(dia(1)) && !r.erro.includes(dia(-6)) && !r.erro.includes(dia(-400))), 'janela 17: a mensagem de recusa não repete a data informada');
 
   // atualização: dentro da janela vale; levar a linha para fora da janela (inclusive alterando a data) é recusado
@@ -1260,7 +1262,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const up2 = await direto(S, 'insert into public.registros_dia (dia, humor) values ($1, 2) on conflict (user_id, dia) do update set humor = excluded.humor', [dia(-6)]);
   const up3 = await direto(S, 'insert into public.registros_dia (dia, humor) values ($1, 5) on conflict (user_id, dia) do update set humor = excluded.humor', [dia(-40)]);
   const lidos = JSON.parse(await estado(S));
-  ok(up1.erro === null && lidos.find((x) => x.dia === hoje).humor === 2 && /row-level|policy/i.test(up2.erro || '') && /row-level|policy/i.test(up3.erro || '') && lidos.find((x) => x.dia === dia(-6)).humor === 1 && lidos.find((x) => x.dia === dia(-40)).humor === 2, 'janela 17: o upsert direto regrava hoje, mas não regrava o sexto dia anterior nem o histórico');
+  ok(up1.erro === null && lidos.find((x) => x.dia === hoje).humor === 2 && /row-level|policy|não tem acesso|revogado/i.test(up2.erro || '') && /row-level|policy|não tem acesso|revogado/i.test(up3.erro || '') && lidos.find((x) => x.dia === dia(-6)).humor === 1 && lidos.find((x) => x.dia === dia(-40)).humor === 2, 'janela 17: o upsert direto regrava hoje, mas não regrava o sexto dia anterior nem o histórico');
 
   // lote inválido não grava nada (a função continua tudo ou nada)
   const antesLote = await estado(S);
@@ -1275,7 +1277,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const nA = await direto(V, ...ins(hoje));
   const outro = await direto(S, 'insert into public.registros_dia (user_id, dia, humor) values ($1, $2, 3)', [W, hoje]);
   const alheio = await direto(W, 'update public.registros_dia set humor = 1 where user_id = $1', [S]);
-  ok(/row-level|policy/i.test(nA.erro || '') && /row-level|policy/i.test(outro.erro || '') && alheio.n === 0, 'janela 17: conta não autorizada não grava, e ninguém grava ou altera registro de outro usuário');
+  ok(/row-level|policy|não tem acesso|revogado/i.test(nA.erro || '') && /row-level|policy|não tem acesso|revogado/i.test(outro.erro || '') && alheio.n === 0, 'janela 17: conta não autorizada não grava, e ninguém grava ou altera registro de outro usuário');
   const wLeitura = await direto(W, 'select 1 from public.registros_dia');
   ok(wLeitura.n === 0 && (await direto(W, ...ins(hoje))).erro === null, 'janela 17: outro usuário autorizado grava o próprio hoje e não enxerga os registros do primeiro');
 
@@ -1338,7 +1340,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   ok(JSON.stringify(listaDepois) === listaAntes && listaDepois.some((x) => x.dia === dia(-40)) && listaDepois.some((x) => x.dia === dia(-6)) && listaDepois.some((x) => x.dia === dia(2)), 'migração 17: a leitura histórica devolve o mesmo, incluindo o registro antigo, o do sexto dia e a linha futura que a falha deixou');
 
   const depoisFut = await direto(...ins(dia(3))), depoisSexto = await direto(...ins(dia(-7))), depoisHoje = await direto('insert into public.registros_dia (dia, humor, energia) values ($1, 5, 5) on conflict (user_id, dia) do update set humor = excluded.humor', [hoje]);
-  ok(/row-level|policy/i.test(depoisFut.erro || '') && /row-level|policy/i.test(depoisSexto.erro || '') && depoisHoje.erro === null, 'migração 17 (depois): futuro e além do quinto dia anterior passam a ser recusados na escrita direta; hoje continua regravável');
+  ok(/row-level|policy|não tem acesso|revogado/i.test(depoisFut.erro || '') && /row-level|policy|não tem acesso|revogado/i.test(depoisSexto.erro || '') && depoisHoje.erro === null, 'migração 17 (depois): futuro e além do quinto dia anterior passam a ser recusados na escrita direta; hoje continua regravável');
   const reg = await cx('registrar_dias', { p: [{ dia: hoje, humor: 2, energia: 2 }, { dia: dia(-5), humor: 3, energia: 3 }] });
   let loteRuim = null;
   try { await cx('registrar_dias', { p: [{ dia: dia(-1), humor: 3, energia: 3 }, { dia: dia(-6), humor: 3, energia: 3 }] }); } catch (e) { loteRuim = e.message; }
@@ -1418,7 +1420,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const fora = await cx('registrar_dias', { p: [{ dia: dia(-6), humor: 3, energia: 3 }] }).then(() => null, (e) => e.message);
   ok(/5 dias/.test(fora || ''), 'migração 18: a janela de hoje e 5 dias continua valendo em registrar_dias');
   const fut = await direto('insert into public.registros_dia (dia, humor, energia) values ($1, 3, 3)', [dia(2)]);
-  ok(/row-level|policy/i.test(fut.erro || ''), 'migração 18: a política de janela da migração 17 segue valendo na escrita direta');
+  ok(/row-level|policy|não tem acesso|revogado/i.test(fut.erro || ''), 'migração 18: a política de janela da migração 17 segue valendo na escrita direta');
 
   const fotoMeio = await foto();
   await a17.exec(readFileSync(join('supabase/migrations', m18), 'utf8'));
@@ -1472,7 +1474,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const dono = await direto(L, 'update public.registros_dia set user_id = $1 where dia = $2', [M, hoje]);
   const hum = await direto(L, 'update public.registros_dia set humor = 3 where dia = $1', [hoje]);
   ok(/permission denied/i.test(mover.erro || '') && /permission denied/i.test(dono.erro || '') && hum.erro === null && (await lc('listar_registros_dia', {})).find((x) => x.dia === hoje).humor === 3, 'migração 19: mover a linha ou trocar o dono é recusado; corrigir o humor direto continua permitido');
-  ok((await lc('listar_registros_dia', {})).length === 3 && (await direto(M, 'select 1 from public.registros_dia')).n === 0 && /row-level|policy/i.test((await direto(M, 'insert into public.registros_dia (dia, humor) values ($1, 3)', [hoje])).erro || ''), 'migração 19: o histórico continua legível e a conta não autorizada nem lê nem grava');
+  ok((await lc('listar_registros_dia', {})).length === 3 && (await direto(M, 'select 1 from public.registros_dia')).n === 0 && /row-level|policy|não tem acesso|revogado/i.test((await direto(M, 'insert into public.registros_dia (dia, humor) values ($1, 3)', [hoje])).erro || ''), 'migração 19: o histórico continua legível e a conta não autorizada nem lê nem grava');
 
   // ---- upgrade: banco com as migrações 1 a 18, dados fictícios com energia, aplica a 19
   const pasta = mkdtempSync(join(tmpdir(), 'dmanda-mig19-'));
@@ -1568,7 +1570,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   ok(/nome da origem/.test(vazio || '') && /nome do tipo/.test(vazioT || '') && /80/.test(longo || '') && /inválido/.test(campo || '') && (await ua('listar_opcoes', {})).length === nOpc + 2, 'opções: nome vazio, longo demais e campo inválido são recusados sem gravar nada');
   ok((await chamarComoUsuario(a19, V, 'listar_opcoes', {})).every((x) => x.nome !== 'Certidão' && x.nome !== 'Secretaria de Obras'), 'opções: outro usuário autorizado não vê as opções do primeiro');
   const naoAut = await chamarComoUsuario(a19, N, 'criar_opcao', { p_campo: 'origem', p_nome: 'Qualquer' }).then(() => null, (e) => e.message);
-  ok(/row-level|policy/i.test(naoAut || ''), 'opções: conta não autorizada não grava');
+  ok(/row-level|policy|não tem acesso|revogado/i.test(naoAut || ''), 'opções: conta não autorizada não grava');
 
   // ---- demanda sem documento, com origem de reunião, e o documento chegando depois
   const r1 = await ua('criar_demanda', { p: { id: '10000000-0000-4000-8000-000000000001', assunto: 'Pedido verbal', origem: 'Reunião', rapida: true } });
@@ -1910,7 +1912,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   ok((await svc('listar_demandas', { p_arquivadas: 'false' })).length === 1, 'entrada direta: o valor chega como o tipo do parâmetro (booleano vindo do JSON como texto continua funcionando)');
   // a RLS segue valendo: o papel authenticated sem as claims do titular (ou de outro usuário) não lê nada; as tabelas não estão abertas ao anon
   ok((await b.transaction(async (tx) => { await tx.exec('set local role authenticated'); return (await tx.query('select count(*)::int n from public.demandas')).rows[0].n; })) === 0, 'RLS: o papel authenticated sem claims do titular não lê nenhuma demanda');
-  ok((await chamarComoUsuario(b, O, 'listar_demandas', { p_arquivadas: false }, { provedor: 'email' })).length === 0, 'RLS: um usuário fora da lista protegida continua sem ler nada');
+  ok(/não tem acesso/.test(await chamarComoUsuario(b, O, 'listar_demandas', { p_arquivadas: false }, { provedor: 'email' }).then(() => 'leu', (e) => e.message)), 'RLS: um usuário fora da lista protegida é recusado (DM403) e não lê nada');
   ok(!!(await erroCod(b.transaction(async (tx) => { await tx.exec('set local role anon'); await tx.query('select count(*) from public.demandas'); }))), 'RLS: o papel anônimo não lê tabela alguma');
   // ---- papéis EFETIVOS durante a execução, pelo caminho do PostgREST: conexão como authenticator (sessão sem poder próprio), SET LOCAL ROLE service_role (a chave de serviço),
   // e só então a função, que troca para authenticated. O PGlite é um Postgres de verdade, mas esta prova NÃO substitui a do Supabase hospedado (ver o procedimento da etapa 3 do plano).
@@ -1956,10 +1958,10 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
     await tx.exec('set local session authorization authenticator'); await tx.exec('set local role service_role');
     await tx.exec(`select set_config('request.jwt.claims', '{"sub":"${O}","role":"authenticated","email":"intruso@teste","app_metadata":{"provider":"email"}}', true), set_config('request.jwt.claim.sub', '${O}', true)`);
     await tx.exec('set local role authenticated');
-    return (await tx.query('select count(*)::int n from public.opcoes')).rows[0].n;
+    return tx.query('select count(*)::int n from public.opcoes').then((r) => r.rows[0].n, (e) => (/não tem acesso/.test(e.message) ? 'recusado' : e.message));
   }).finally(voltar);
   const visto = await sqlq(b, 'select count(*)::int n from public.opcoes');
-  ok(cego === 0 && visto[0].n >= 1, 'papéis: sob authenticated com as claims de outro usuário a linha do titular fica invisível (a RLS decide, não o papel de serviço)');
+  ok(cego === 'recusado' && visto[0].n >= 1, 'papéis: sob authenticated com as claims de outro usuário (fora da lista) a leitura é recusada pela RLS (a RLS decide, não o papel de serviço)');
   // a permissão exigida: o SET ROLE é checado contra a SESSÃO (session_user), não contra o papel corrente. Sem vínculo com authenticated, a troca é negada
   const semVinculo = await erroCod(comoPostgrest('sem_vinculo', 'listar_opcoes', {}));
   ok(semVinculo?.cod === '42501', `papéis: se o papel da sessão não for membro de authenticated, a troca é negada (${semVinculo?.cod}: ${semVinculo?.msg}); no Supabase, authenticator é membro de anon, authenticated e service_role`);

@@ -88,21 +88,24 @@ await c(R, 'registrar_dias', { p: [{ dia: hojeS, humor: 2 }] });
 const antes = (await c(R, 'listar_demandas', {})).length;
 const jwtAnterior = { email: 'r@exemplo.invalid' };   // as mesmas claims, usadas de novo DEPOIS da revogação: o banco não espera o token vencer
 await c(ADMIN_TESTE, 'revogar_acesso', { p_email: 'r@exemplo.invalid' });
-ok(antes > 1 && (await c(R, 'listar_demandas', {}, jwtAnterior)).length === 0 && (await c(R, 'listar_entradas', {}, jwtAnterior)).length === 0 && (await c(R, 'listar_eventos', {}, jwtAnterior)).length === 0 && (await c(R, 'estado_acesso', {}, jwtAnterior)).autorizado === false, 'revogação: com o JWT de antes ainda válido, a conta revogada não lê demanda, entrada nem evento (a decisão é do banco, a cada consulta)');
-ok(/row-level|violates/i.test((await msg(R, 'criar_demanda', { p: { assunto: 'depois de revogada' } }, jwtAnterior)) || '') && /não encontrada/.test((await msg(R, 'salvar_demanda', { p_id: dA.id, p: { assunto: 'x' }, p_tarefas: null, p_versao: 1 }, jwtAnterior)) || '') && (await sql("select count(*)::int n from public.demandas where assunto = 'depois de revogada'"))[0].n === 0, 'revogação: a conta revogada não cria nem altera nada, mesmo com o token anterior');
-ok((await c(R, 'listar_registros_dia', { p_dias: 62 }, jwtAnterior)).length === 0 && (await c(R, 'listar_para_hoje', {}, jwtAnterior)).length === 0, 'revogação: nem o humor nem as vagas da conta revogada são acessíveis a ela');
+const REVOGADO = /Seu acesso ao Dmanda foi revogado/;
+const est = await c(R, 'estado_acesso', {}, jwtAnterior);
+ok(antes > 1 && REVOGADO.test(await msg(R, 'listar_demandas', {}, jwtAnterior) || '') && REVOGADO.test(await msg(R, 'listar_entradas', {}, jwtAnterior) || '') && REVOGADO.test(await msg(R, 'listar_eventos', {}, jwtAnterior) || '') && est.autorizado === false && est.revogado === true, 'revogação: com o JWT de antes ainda válido, a conta revogada é RECUSADA com a mensagem de acesso revogado (DM403) ao ler demandas, entradas e eventos, em vez de receber listas vazias');
+ok(REVOGADO.test((await msg(R, 'criar_demanda', { p: { assunto: 'depois de revogada' } }, jwtAnterior)) || '') && REVOGADO.test((await msg(R, 'salvar_demanda', { p_id: dA.id, p: { assunto: 'x' }, p_tarefas: null, p_versao: 1 }, jwtAnterior)) || '') && (await sql("select count(*)::int n from public.demandas where assunto = 'depois de revogada'"))[0].n === 0, 'revogação: a conta revogada não cria nem altera nada, mesmo com o token anterior');
+const vagasR = await msg(R, 'listar_para_hoje', {}, jwtAnterior);
+ok(REVOGADO.test(await msg(R, 'listar_registros_dia', { p_dias: 62 }, jwtAnterior) || '') && (vagasR === null ? (await c(R, 'listar_para_hoje', {}, jwtAnterior)).length === 0 : REVOGADO.test(vagasR)), 'revogação: o humor da conta revogada é recusado; as vagas (tabela sem linha dela) voltam vazias, e a lista vazia só é aceita pelo servidor depois de conferir o acesso (src/servidor/banco.ts)');
 ok((await c(A, 'listar_demandas', {})).some((x) => x.id === dR.id && x.assunto === 'Trabalho da R antes da revogação') && (await sql('select count(*)::int n from public.demandas where user_id = $1', [R]))[0].n >= 1, 'revogação: o trabalho que a conta revogada registrou é preservado e continua no painel das demais');
 await c(ADMIN_TESTE, 'restabelecer_acesso', { p_email: 'r@exemplo.invalid' });
 ok((await c(R, 'listar_demandas', {})).length >= antes, 'revogação: restabelecido pela administradora, o acesso volta');
 await c(ADMIN_TESTE, 'revogar_acesso', { p_email: 'r@exemplo.invalid' });
 for (const [rot, upd] of [['banimento no Auth', "banned_until = now() + interval '1 day'"], ['e-mail não confirmado', 'email_confirmed_at = null'], ['conta apagada (soft delete)', 'deleted_at = now()']]) {
   await db.query(`update auth.users set ${upd} where id = $1`, [B]);
-  const n = (await c(B, 'listar_demandas', {})).length, a = (await c(B, 'estado_acesso', {})).autorizado;
+  const n = await msg(B, 'listar_demandas', {}), a = (await c(B, 'estado_acesso', {})).autorizado;
   await db.query('update auth.users set banned_until = null, email_confirmed_at = now(), deleted_at = null where id = $1', [B]);
-  ok(n === 0 && a === false && (await c(B, 'listar_demandas', {})).length > 0, `acesso: ${rot} fecha o acesso aos dados na mesma hora e desfazer devolve`);
+  ok(/não tem acesso/.test(n || '') && a === false && (await c(B, 'listar_demandas', {})).length > 0, `acesso: ${rot} fecha o acesso aos dados na mesma hora e desfazer devolve`);
 }
 await db.query('delete from auth.users where id = $1', [X]);
-ok((await c(X, 'listar_demandas', {})).length === 0, 'acesso: um JWT cujo usuário já não existe no Auth não lê nada');
+ok(/não tem acesso/.test(await msg(X, 'listar_demandas', {}) || ''), 'acesso: um JWT cujo usuário já não existe no Auth é recusado');
 
 // ---------- 5) visitante e conta de fora ----------
 const tabelas = ['demandas', 'tarefas', 'entradas', 'eventos', 'dias_indisponiveis', 'opcoes', 'registros_dia', 'para_hoje', 'resumos_operacionais', 'execucoes_rotina', 'periodos_operacoes'];
@@ -110,14 +113,16 @@ let anonNeg = 0, foraNeg = 0;
 await criarContaDeTeste(db, X, 'x@exemplo.invalid', { autorizar: false });
 for (const t of tabelas) {
   if (/permission denied/i.test((await comoAnon(`select * from public.${t}`)) || '')) anonNeg++;
-  if ((await direto(X, `select count(*)::int n from public.${t}`)).rows?.[0].n === 0) foraNeg++;
+  // com linhas visíveis pela primeira condição a recusa é explícita (DM403); numa tabela em que a política nem chega a ser avaliada a resposta é zero (limite do PostgreSQL: a conferência do servidor cobre)
+  const r = await direto(X, `select count(*)::int n from public.${t}`);
+  if (/não tem acesso/.test(r.erro || '') || r.rows?.[0].n === 0) foraNeg++;
 }
-ok(anonNeg === tabelas.length && foraNeg === tabelas.length, `RLS: o visitante é barrado pelo banco e a conta de fora lê zero linhas em todas as ${tabelas.length} tabelas do painel`);
-ok(/row-level/i.test((await direto(X, "insert into public.demandas (assunto) values ('invasão')")).erro || '') && /row-level/i.test((await direto(X, "insert into public.entradas (texto) values ('invasão')")).erro || ''), 'RLS: a conta de fora não grava');
+ok(anonNeg === tabelas.length && foraNeg === tabelas.length, `RLS: o visitante é barrado pelo banco e a conta de fora é RECUSADA (DM403, não lê zero linhas) em todas as ${tabelas.length} tabelas do painel`);
+ok(/não tem acesso/.test((await direto(X, "insert into public.demandas (assunto) values ('invasão')")).erro || '') && /não tem acesso/.test((await direto(X, "insert into public.entradas (texto) values ('invasão')")).erro || ''), 'RLS: a conta de fora não grava');
 const funcoes = (await sql("select p.oid::regprocedure::text as f, has_function_privilege('anon', p.oid, 'execute') as anon from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f' and has_function_privilege('authenticated', p.oid, 'execute')"));
 ok(funcoes.length > 40 && funcoes.every((f) => f.anon === false), `privilégios: das ${funcoes.length} funções do painel executáveis por contas autenticadas, nenhuma é executável pelo visitante`);
 const definers = (await sql("select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public','dmanda_privado') and p.prosecdef and has_function_privilege('authenticated', p.oid, 'execute') order by 1")).map((x) => x.proname).join();
-ok(definers === 'autorizar_acesso,conta_autorizada,e_admin,estado_acesso,listar_acessos,registrar_convite_enviado,restabelecer_acesso,revogar_acesso', `privilégios: as únicas funções SECURITY DEFINER que uma conta autenticada executa são as de acesso, e cada uma verifica o banco (${definers})`);
+ok(definers === 'acesso_vigente,autorizar_acesso,consumir_etapa_senha,conta_autorizada,e_admin,estado_acesso,exportar_autoria,listar_acessos,registrar_convite_enviado,restabelecer_acesso,revogar_acesso', `privilégios: as únicas funções SECURITY DEFINER que uma conta autenticada executa são as de acesso, e cada uma verifica o banco (${definers})`);
 
 // ---------- 6) hook de criação de usuários e fechamento do acesso aberto ----------
 const hook = async (email, provedor, papel = 'supabase_auth_admin') => db.transaction(async (tx) => { await tx.exec(`set local role ${papel}`); try { return (await tx.query('select public.hook_antes_criar_usuario($1::jsonb) as r', [JSON.stringify({ user: { email, app_metadata: { provider: provedor } } })])).rows[0].r; } catch (e) { return { falha: e.message }; } });

@@ -263,15 +263,15 @@ const passoAtual = (pg) => pg.$$eval('.modal .passos li', (e) => e.findIndex((x)
   await esperaEstado(pg, 'erro', 20000);
   const txtEstado = await pg.textContent('.estado-entrada');
   let rd = (await rascunhos(pg))['e:nova'];
-  ok(c.n >= 1 && /Não salvo no Dmanda/.test(txtEstado) && /continua neste aparelho/.test(txtEstado), 'falha de rede: o estado diz "Não salvo no Dmanda" e que o texto continua neste aparelho');
+  ok(c.n >= 1 && /Não salvo na entrada/.test(txtEstado) && /continua no rascunho/.test(txtEstado), 'falha de rede: o estado diz "Não salvo na entrada" e que o texto continua neste aparelho');
   ok((await pg.inputValue('#e-texto')) === 'Escrita sem rede #offline' && rd?.dados?.texto === 'Escrita sem rede #offline' && !!rd?.idNovo, 'falha de rede: o texto digitado continua na tela e no rascunho do aparelho, com o identificador já guardado');
   // fechar durante a falha: pergunta, e manter deixa o rascunho no aparelho
   await pg.click('.modal .btn.pri');
   await pg.waitForSelector('.modal [role="alertdialog"]');
-  ok(/Fechar e manter neste aparelho/.test(await pg.textContent('.modal [role="alertdialog"]')), 'fechar com falha não perde o texto: oferece tentar de novo, continuar editando ou manter no aparelho');
+  ok(/Fechar e manter no rascunho/.test(await pg.textContent('.modal [role="alertdialog"]')), 'fechar com falha não perde o texto: oferece tentar de novo, continuar editando ou manter no aparelho');
   await pg.click('.modal [role="alertdialog"] .btn.pri'); await janelaFechada(pg);
   ok(!!(await rascunhos(pg))['e:nova'] && !(await pg.$$eval('.postit', (p) => p.some((x) => /sem rede/.test(x.textContent)))), 'o rascunho ficou no aparelho e a entrada ainda não aparece na lista (não foi salva)');
-  ok(/só neste aparelho/.test(await pg.textContent('.aviso-rascunho')), 'a página avisa que há uma entrada só neste aparelho');
+  ok(/em rascunho, ainda não salva/.test(await pg.textContent('.aviso-rascunho')), 'a página avisa que há uma entrada nova em rascunho, ainda não salva');
   await ir(pg); await pg.unroute('**/*');
   ok(!!(await pg.$('.aviso-rascunho')), 'o aviso sobrevive à recarga (o rascunho está no navegador)');
   await pg.click('.aviso-rascunho .btn'); await pg.waitForSelector('#e-texto');
@@ -297,11 +297,11 @@ const passoAtual = (pg) => pg.$$eval('.modal .passos li', (e) => e.findIndex((x)
   await esperaEstado(pg, 'erro', 20000);
   await pg.click('.modal .btn.pri'); await pg.waitForSelector('.modal [role="alertdialog"]');
   await pg.click('.modal [role="alertdialog"] .btn.pri'); await janelaFechada(pg);
-  ok(/Só neste aparelho/.test(await pg.textContent(nota('sem rede'))), 'a grade marca a entrada que tem alterações só neste aparelho');
+  ok(/Rascunho não salvo/.test(await pg.textContent(nota('sem rede'))), 'a grade marca a entrada que tem alterações em rascunho, ainda não salvas');
   await pg.unroute('**/*');
   await ir(pg);
   await pg.click(`${nota('sem rede')} .pin-b.virar`);
-  await pg.waitForFunction(() => /alterações só neste aparelho/.test(document.querySelector('#toast')?.textContent || ''), null, { timeout: 5000 });
+  await pg.waitForFunction(() => /alterações em rascunho, ainda não salvas/.test(document.querySelector('#toast')?.textContent || ''), null, { timeout: 5000 });
   ok(!(await pg.$('.modal')), 'Virar demanda é recusado enquanto a entrada tem alterações só no aparelho (a conversão usaria o texto salvo, desatualizado)');
   await abrirNota(pg, 'sem rede');
   ok(/Linha nova só no aparelho/.test(await pg.inputValue('#e-texto')) && /recuperadas/.test(await pg.textContent('.modal')), 'reabrir a entrada recupera as alterações do aparelho');

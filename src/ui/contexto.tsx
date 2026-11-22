@@ -9,8 +9,8 @@ import * as srvA from '@/servidor/agenda';
 import * as srvP from '@/servidor/perfil';
 import { cargaInicial } from '@/servidor/carga';
 import { APARENCIA_PADRAO, aparenciaGuardada, CHAVE_TEMA, CONJUNTOS, PALETAS, temaDoModo, type Aparencia, type Modo } from '@/lib/aparencia';
-import { useRascunhosOnline } from './rascunhos-online';
-import type { EstadoRascunhos } from '@/lib/fila-rascunhos';
+import { avisarRevogado, useRascunhosOnline } from './rascunhos-online';
+import type { EstadoRascunho, EstadoRascunhos } from '@/lib/fila-rascunhos';
 import { gruposGuardados, ordemGuardada, textosGuardados, visaoGuardada, guardarNoNavegador as gravarLS, lerGuardado as lerLS } from '@/lib/armazenamento';
 import { avisosDeHoje, compararEventos, minutosAgora, type AvisoEvento, type DadosEvento, type Evento } from '@/lib/eventos';
 import type { Entrada } from '@/lib/entradas';
@@ -134,7 +134,14 @@ type Ctx = {
   fecharCompletar: () => void;
   aviso: Aviso;
   avisar: (msg: string, erro?: boolean) => void;
-  ambiente: { teste: boolean; nome: string; id?: string | null; email?: string | null; admin?: boolean; semLembretes?: boolean } | null;
+  ambiente: { teste: boolean; nome: string; id?: string | null; email?: string | null; admin?: boolean; revogado?: boolean; semLembretes?: boolean } | null;
+  /** O banco recusou esta conta (acesso revogado): o painel fica bloqueado e nenhum dado protegido é mostrado. */
+  acessoRevogado: boolean;
+  /** As janelas só abrem depois da primeira leitura dos rascunhos online (ou da falha dela), para não começarem sem o rascunho que já existe. */
+  rascunhosProntos: boolean;
+  estadoRascunhoDe: (chave: string) => EstadoRascunho | null;
+  donoRascunhos: { id: string; email: string | null } | null;
+  bloqueioRascunhos: 'revogado' | 'outraConta' | null;
   rotina: EstadoRotina | null;
   tema: 'claro' | 'escuro';
   alternarTema: () => void;
@@ -200,7 +207,12 @@ async function explicarFalha(offlineAntes: boolean): Promise<string> {
   } catch { return MSG_SEM_REDE; }
   return MSG_INCERTA;
 }
-const protegido = async <T,>(f: () => Promise<Resultado<T>>): Promise<Resultado<T>> => { const offlineAntes = typeof navigator !== 'undefined' && !navigator.onLine; try { return await f(); } catch { return { ok: false, erro: await explicarFalha(offlineAntes) }; } };
+/** O banco recusou a identidade (DM403, acesso revogado) no resultado ou numa das partes da carga: a tela de acesso revogado assume. Falha de rede NÃO passa por aqui. */
+const verRevogado = <T,>(r: Resultado<T>) => {
+  if (!r.ok) { if (r.revogado) avisarRevogado(); return; }
+  if (r.dados && typeof r.dados === 'object') for (const v of Object.values(r.dados as Record<string, unknown>)) if (v && typeof v === 'object' && (v as { revogado?: boolean }).revogado) { avisarRevogado(); return; }
+};
+const protegido = async <T,>(f: () => Promise<Resultado<T>>): Promise<Resultado<T>> => { const offlineAntes = typeof navigator !== 'undefined' && !navigator.onLine; try { const r = await f(); verRevogado(r); return r; } catch { return { ok: false, erro: await explicarFalha(offlineAntes) }; } };
 
 const assinarConexao = (aviso: () => void) => { addEventListener('online', aviso); addEventListener('offline', aviso); return () => { removeEventListener('online', aviso); removeEventListener('offline', aviso); }; };
 /** true enquanto o navegador diz que há conexão (no servidor e na hidratação vale true, para as duas telas serem iguais). */
@@ -263,7 +275,11 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   // O último usuário identificado fica lembrado só para a fila local de pendências aparecer mesmo com o servidor fora do ar na abertura (o servidor continua sendo quem identifica; as telas de entrada e
   // de convite apagam este lembrete, então outra conta nunca herda a fila da anterior). Só o identificador, nunca e-mail, senha ou token.
   const [idLembrado, setIdLembrado] = useState<string | null>(null);
-  const ro = useRascunhosOnline(ambiente?.id ?? idLembrado);
+  const ro = useRascunhosOnline(ambiente?.id ?? idLembrado, ambiente?.email ?? null);
+  const [acessoRevogado, setAcessoRevogado] = useState(false);
+  const rascunhosProntos = ro.pronto || (ambiente !== null && !ambiente.id && !idLembrado);
+  const porChave = ro.porChave;
+  const estadoRascunhoDe = useCallback((chave: string) => porChave[chave] ?? null, [porChave]);
   const rascunhos = ro.rascunhos as unknown as Record<string, Rascunho>;
   // só depois de ler as preferências do navegador é que elas podem ser gravadas (senão os padrões sobrescrevem o que estava salvo)
   const [pronto, setPronto] = useState(false);
@@ -416,7 +432,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
       if (c.opcoes.ok) setOpcoes(agruparOpcoes(c.opcoes.dados));
       if (c.paraHoje.ok) setParaHoje(c.paraHoje.dados);
       if (c.rotina?.ok) setRotina(c.rotina.dados);
-      if (c.ambiente) { setAmbiente(c.ambiente); if (c.ambiente.id) gravarLS('dmanda:usuario', c.ambiente.id); }
+      if (c.ambiente) { setAmbiente(c.ambiente); if (c.ambiente.id) gravarLS('dmanda:usuario', c.ambiente.id); if (c.ambiente.revogado) avisarRevogado(); }
     });
     // um só relógio para o dia e para a hora (os dois lidos do MESMO instante, em America/Sao_Paulo), senão na virada do dia o aviso pode juntar a data de ontem com a hora de hoje
     const tique = () => { const a = new Date(); setHoje(hojeISO(a)); setAgoraMin(minutosAgora(a)); };
@@ -427,6 +443,12 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => { janelaAberta.current = janela !== null; }, [janela]);
+  // acesso revogado: a tela muda e os dados que estavam na memória desta aba saem (o que já foi visto antes não tem como ser apagado; o que estava pendente fica na fila deste navegador, com o dono)
+  useEffect(() => {
+    const aoRevogar = () => { setAcessoRevogado(true); setJanela(null); setDemandas([]); setArquivadas(null); setEntradas([]); setEntradasArquivadas(null); setEventos([]); setDias([]); setRegistros([]); setParaHoje([]); setOpcoes({ origem: [], tipo: [] }); };
+    window.addEventListener('dmanda:revogado', aoRevogar);
+    return () => window.removeEventListener('dmanda:revogado', aoRevogar);
+  }, []);
   // Outro aparelho pode ter alterado as demandas (iPhone e computador usam o mesmo banco): ao voltar para a tela ou recuperar a conexão, relê a lista.
   // Não mexe com uma janela de edição aberta, não pisca o "carregando" e descarta a leitura se uma gravação aconteceu enquanto ela vinha.
   useEffect(() => {
@@ -621,6 +643,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     fecharMenuMover: () => setMenuMover(null),
     rascunhos,
     guardarRascunho,
+    acessoRevogado, rascunhosProntos, estadoRascunhoDe, donoRascunhos: ro.dono, bloqueioRascunhos: ro.bloqueio,
     estadoRascunhos: ro.estado, pendentesRascunhos: ro.pendentes, conflitosRascunhos: ro.conflitos, tentarRascunhosDeNovo: ro.tentarDeNovo, resolverRascunho: ro.resolver, sincronizarRascunhos: ro.sincronizar,
     salvarDia: async (dia, rotulo) => {
       const r = await gravando(() => protegido(() => srv.salvarDia(dia)));
@@ -702,7 +725,7 @@ export function ProvedorApp({ children }: { children: ReactNode }) {
     editarTarefa: (tarefaId, texto) => rodar(() => srv.editarTarefa(tarefaId, texto), 'Tarefa alterada'),
     marcarTarefa: (tarefaId, concluida) => rodar(() => srv.marcarTarefa(tarefaId, concluida)),
     excluirTarefa: (tarefaId) => rodar(() => srv.excluirTarefa(tarefaId), 'Tarefa removida'),
-  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, erroDias, recarregarDias, avisosSistema, marcarAvisoLido, marcarAvisosLidos, recarregarFonte, aplicarEvento, incertos, conferirPeriodo, conferirPendentes, executarAcaoAviso, definirIncertos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar, ro.estado, ro.pendentes, ro.conflitos, ro.tentarDeNovo, ro.resolver, ro.sincronizar]);
+  }), [opcoes, criarOpcao, paraHoje, sincronizarParaHoje, eventos, carregandoEventos, erroEventos, recarregarEventos, erroDias, recarregarDias, avisosSistema, marcarAvisoLido, marcarAvisosLidos, recarregarFonte, aplicarEvento, incertos, conferirPeriodo, conferirPendentes, executarAcaoAviso, definirIncertos, rodarEvento, avisosEventos, demandas, arquivadas, dias, hoje, carregando, erroCarga, recarregar, carregarArquivadas, entradas, entradasArquivadas, carregandoEntradas, erroEntradas, recarregarEntradas, carregarEntradasArquivadas, abaArquivo, rodarEntrada, acaoEntrada, aviso, avisar, ambiente, rotina, tema, modo, aparencia, menuAberto, visao, filtro, ordem, gruposFechados, janela, menuMover, rascunhos, guardarRascunho, gravando, rodar, aplicar, aposCalendario, registros, carregandoRegistros, erroRegistros, registrarDias, perfilAberto, abrirPerfil, fecharPerfil, recarregarRegistros, completarAberto, abrirCompletar, fecharCompletar, ro.estado, ro.pendentes, ro.conflitos, ro.tentarDeNovo, ro.resolver, ro.sincronizar, acessoRevogado, rascunhosProntos, estadoRascunhoDe, ro.dono, ro.bloqueio]);
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }

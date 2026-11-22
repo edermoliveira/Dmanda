@@ -51,7 +51,7 @@ export function SecaoUsuarios() {
     <section className="cfg-bloco painel" aria-labelledby="cfg-usu-t" data-secao="usuarios">
       <h2 id="cfg-usu-t" style={{ fontSize: 'calc(17px * var(--esc))', margin: '0 0 6px' }}>Usuários e acesso</h2>
       <p className="data">Só e-mails autorizados aqui entram no Dmanda. A pessoa define a própria senha pelo link do convite. Revogar impede o acesso aos dados na hora e preserva o que ela registrou.</p>
-      <form className="cfg-form" aria-label="Convidar" onSubmit={(e) => { e.preventDefault(); const v = email.trim(); if (!v) return; void rodar(async () => { const r = await convidar(v); if (r.ok) setEmail(''); return r; }, `Convite enviado para ${v.toLowerCase()}.`); }}>
+      <form method="post" className="cfg-form" aria-label="Convidar" onSubmit={(e) => { e.preventDefault(); const v = email.trim(); if (!v) return; void rodar(async () => { const r = await convidar(v); if (r.ok) setEmail(''); return r; }, `Convite enviado para ${v.toLowerCase()}.`); }}>
         <div className="fld"><label htmlFor="usu-email">E-mail a autorizar</label><input id="usu-email" type="email" inputMode="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@exemplo.com" /></div>
         <div className="acoes"><button type="submit" className="btn pri" disabled={ocupado || !email.trim()}>{ocupado ? 'Enviando...' : 'Autorizar e enviar convite'}</button></div>
       </form>

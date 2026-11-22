@@ -14,7 +14,7 @@ export async function proxy(request: NextRequest) {
   const acao = request.headers.has('next-action');   // ação do servidor: ela mesma exige a identidade e responde ao cliente
   let resposta = NextResponse.next({ request });
   if (!api) resposta.headers.set('cache-control', 'private, no-store');   // as rotas de API definem o próprio cabeçalho (no-store)
-  let autenticado = false, incerto = false;
+  let autenticado = false, incerto = false, banido = false;
 
   if (emTeste()) {
     autenticado = !!(request.cookies.get('dmanda-teste-usuario')?.value || process.env.DMANDA_USUARIO_TESTE);
@@ -34,6 +34,7 @@ export async function proxy(request: NextRequest) {
       });
       const { data, error } = await sb.auth.getClaims();
       autenticado = !error && !!data?.claims?.sub;
+      banido = (error as { code?: string } | null)?.code === 'user_banned';   // a revogação também bloqueia a conta no Auth
       incerto = !!error && isAuthRetryableFetchError(error);   // rede fora ao renovar: a sessão continua guardada, ninguém é mandado ao login
     }
   }
@@ -43,7 +44,8 @@ export async function proxy(request: NextRequest) {
     destino.pathname = '/login'; destino.search = '';
     if (request.method === 'GET' && pathname !== '/') destino.searchParams.set('proximo', pathname + search);
     // havia sessão e ela deixou de valer (revogada, banida, expirada): o login explica, em vez de parecer que nada aconteceu
-    if (request.cookies.getAll().some((c) => /^sb-.*-auth-token/.test(c.name))) destino.searchParams.set('motivo', 'sessao');
+    if (banido) destino.searchParams.set('motivo', 'sem-acesso');
+    else if (request.cookies.getAll().some((c) => /^sb-.*-auth-token/.test(c.name))) destino.searchParams.set('motivo', 'sessao');
     const r = NextResponse.redirect(destino);
     r.headers.set('cache-control', 'private, no-store');
     return r;

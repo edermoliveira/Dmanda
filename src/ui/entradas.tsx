@@ -14,6 +14,7 @@ import { Janela } from './janela-base';
 import { novoUuid } from './campos';
 import { emLote, epocaDoApp, pendentes, registrar, type Pedido } from './ajuste';
 import * as srvE from '@/servidor/entradas';
+import { textoRascunho } from './estado-rascunhos';
 import { useApp, useOnline } from './contexto';
 import { AvisosDaTela } from './avisos';
 import {
@@ -71,7 +72,7 @@ export function useVirarDemanda() {
   return useCallback((entradaId: string, { jaSalva = false }: { jaSalva?: boolean } = {}) => {
     const r = rascunhos['nova'];
     if (r && r.entradaId !== entradaId) { avisar('Há um cadastro de demanda em andamento. Abra Nova demanda para terminá-lo ou cancelá-lo antes de transformar esta entrada.', true); return; }
-    if (!jaSalva && rascunhos[`e:${entradaId}`]) { avisar('Esta entrada tem alterações só neste aparelho. Abra-a para salvá-las antes de virar demanda.', true); return; }
+    if (!jaSalva && rascunhos[`e:${entradaId}`]) { avisar('Esta entrada tem alterações em rascunho, ainda não salvas nela. Abra-a para salvá-las antes de virar demanda.', true); return; }
     abrirJanela({ t: 'nova', entradaId });
   }, [rascunhos, abrirJanela, avisar]);
 }
@@ -98,7 +99,7 @@ export function PaginaEntradas() {
         <button className="btn escuro" aria-label="Nova entrada" onClick={() => abrirJanela({ t: 'entrada' })}><Icone nome="plus" /><span className="tx">Nova entrada</span></button>
       </div>
       <AvisosDaTela tela="entradas" />
-      {semAlteracaoSalva ? <p className="aviso-rascunho" role="status">Há uma entrada nova que ainda não foi salva no Dmanda e está só neste aparelho. <button className="btn mini" onClick={() => abrirJanela({ t: 'entrada' })}>Continuar</button></p> : null}
+      {semAlteracaoSalva ? <p className="aviso-rascunho" role="status">Há uma entrada nova em rascunho, ainda não salva no Dmanda. <button className="btn mini" onClick={() => abrirJanela({ t: 'entrada' })}>Continuar</button></p> : null}
       {tags.length ? (
         <div className="tagbar" role="group" aria-label="Filtrar por tag">
           <button className="chip neutro" aria-pressed={!tagAtiva} onClick={() => setTag('')}>Todas {entradas.length}</button>
@@ -120,7 +121,7 @@ export function PaginaEntradas() {
                   <article className={`postit nota-fundo${e.fixada ? ' fixado' : ''}`} style={{ '--nota-i': e.cor } as CSSProperties} data-id={e.id}>
                     <button className="p-abrir" aria-label={`Abrir a entrada: ${resumoOuVazio(e)}`} onClick={() => abrirJanela({ t: 'entrada', id: e.id })} />
                     <div className="p-top">
-                      {local ? <span className="p-local" title="Há alterações só neste aparelho">Só neste aparelho</span> : null}
+                      {local ? <span className="p-local" title="Há alterações em rascunho, ainda não salvas na entrada">Rascunho não salvo</span> : null}
                       <button className="pin-b" aria-pressed={e.fixada} aria-label={e.fixada ? 'Desafixar a entrada' : 'Fixar a entrada'} title={e.fixada ? 'Desafixar' : 'Fixar'} onClick={() => void fixarEntrada(e.id, !e.fixada)}><Icone nome="pin" /></button>
                       <button className="pin-b virar" aria-label="Virar demanda" title="Virar demanda" onClick={() => virar(e.id)}><Icone nome="arrow-right" /></button>
                     </div>
@@ -143,10 +144,10 @@ type Estado = 'vazio' | 'salvo' | 'pendente' | 'salvando' | 'offline' | 'erro' |
 const TEXTO_ESTADO: Record<Estado, string> = {
   vazio: 'Escreva um título ou o texto. Nada é salvo enquanto estiver vazio.',
   salvo: 'Salvo no Dmanda',
-  pendente: 'Só neste aparelho, ainda não salvo no Dmanda',
+  pendente: 'Ainda não salvo na entrada',
   salvando: 'Salvando no Dmanda...',
-  offline: 'Sem conexão. O texto está guardado só neste aparelho e será salvo quando a conexão voltar.',
-  erro: 'Não salvo no Dmanda. O texto continua neste aparelho.',
+  offline: 'Sem conexão. As alterações ficam pendentes neste aparelho e vão para o Dmanda quando a conexão voltar.',
+  erro: 'Não salvo na entrada. O texto continua no rascunho.',
   conflito: 'Outro aparelho alterou esta entrada. Escolha como seguir.',
   'vazia-existente': 'Uma entrada não pode ficar vazia. A última versão salva continua no Dmanda.',
 };
@@ -169,7 +170,7 @@ export function JanelaEntradaRoteada({ id }: { id?: string }) {
 
 function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
   const app = useApp();
-  const { rascunhos, guardarRascunho, fecharJanela, abrirJanela, avisar, demandas } = app;
+  const { rascunhos, guardarRascunho, fecharJanela, abrirJanela, avisar, demandas, estadoRascunhoDe } = app;
   const online = useOnline();
   const virar = useVirarDemanda();
   const rasc = rascunhos[entrada ? `e:${entrada.id}` : 'e:nova'];
@@ -251,7 +252,7 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
     let r = await app.salvarEntrada(e.salva.id, p, e.salva.versao);
     if (!r.ok && r.conflito) {
       const atual = await app.buscarEntrada(e.salva.id);
-      if (!atual) { setGravando(false); setErro('Não foi possível conferir a versão salva. O texto continua neste aparelho.'); return false; }
+      if (!atual) { setGravando(false); setErro('Não foi possível conferir a versão salva. O texto continua no rascunho.'); return false; }
       const campos = camposEmConflito(e.baseDe, camposDe(atual), p);
       if (campos.length) { setGravando(false); setSalva(atual); setConflito({ atual, campos }); return false; }
       r = await app.salvarEntrada(atual.id, p, atual.versao); // os dois cabem juntos: refaz sobre a versão nova
@@ -312,14 +313,14 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
     if (gravando) return;
     if (convertida || emEspera) { fecharJanela(); return; } // em espera o rascunho do aparelho continua guardado e nada é enviado
     if (vaziaExistente) { limparRascunhos(); fecharJanela(); avisar('A entrada continua como estava salva: ela não pode ficar vazia.'); return; }
-    if (conflito) { rascunhoAgora(); fecharJanela(); avisar('Sua alteração não foi salva porque outro aparelho mudou a entrada. Ela ficou guardada neste aparelho.', true); return; }
+    if (conflito) { rascunhoAgora(); fecharJanela(); avisar('Sua alteração não foi salva porque outro aparelho mudou a entrada. Ela ficou guardada no rascunho.', true); return; }
     if (!pendente && !erro) { limparRascunhos(); fecharJanela(); return; }
     const ok = await gravar();
     if (ok) { limparRascunhos(); fecharJanela(); return; }
     if (estadoRef.current.conflito) return; // a janela mostra o aviso de conflito
     rascunhoAgora(); setFechandoFalhou(true);
   };
-  const fecharMantendo = () => { rascunhoAgora(); fecharJanela(); avisar('A entrada não chegou ao Dmanda. O texto ficou guardado neste aparelho; abra a entrada de novo para salvar.', true); };
+  const fecharMantendo = () => { rascunhoAgora(); fecharJanela(); avisar('A entrada não chegou ao Dmanda. O texto ficou no rascunho; abra a entrada de novo para salvar.', true); };
   const cancelarNova = () => { limparRascunhos(); fecharJanela(); };
 
   // resolução do conflito
@@ -355,14 +356,14 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
   const arquivada = !!salva?.arquivada_em && !convertida;
   const rodape = fechandoFalhou ? (
     <div className="confirma-fechar" role="alertdialog" aria-label="A entrada não foi salva">
-      <span className="data">{erro ?? 'A entrada não foi salva no Dmanda.'} O texto está guardado neste aparelho.</span><span className="esp" />
+      <span className="data">{erro ?? 'A entrada não foi salva no Dmanda.'} O texto está guardado no rascunho.</span><span className="esp" />
       <button className="btn" onClick={() => { setFechandoFalhou(false); void gravar(); }}>Tentar de novo</button>
       <button className="btn" onClick={() => { setFechandoFalhou(false); if (modo === 'ler') entrarEdicao(); }}>Continuar editando</button>
-      <button className="btn pri" onClick={fecharMantendo}>Fechar e manter neste aparelho</button>
+      <button className="btn pri" onClick={fecharMantendo}>Fechar e manter no rascunho</button>
     </div>
   ) : (
     <>
-      <span className="data estado-entrada" role="status" data-estado={estado}>{estado === 'salvo' && salva ? `Criada em ${carimbo(salva.criado_em)}` : <>{estado === 'erro' && erro ? `Não salvo no Dmanda: ${erro} O texto continua neste aparelho.` : TEXTO_ESTADO[estado]}{salva ? ` Criada em ${carimbo(salva.criado_em)}.` : ''}</>}{estado === 'erro' ? <> <button className="btn mini" onClick={() => void gravar()}>Tentar de novo</button></> : null}</span>
+      <span className="data estado-entrada" role="status" data-estado={estado}>{estado === 'salvo' && salva ? `Criada em ${carimbo(salva.criado_em)}` : <>{estado === 'erro' && erro ? `Não salvo na entrada: ${erro} O texto continua no rascunho (${textoRascunho(estadoRascunhoDe(chave))}).` : estado === 'pendente' || estado === 'erro' ? `${TEXTO_ESTADO[estado]} (${textoRascunho(estadoRascunhoDe(chave))})` : TEXTO_ESTADO[estado]}{salva ? ` Criada em ${carimbo(salva.criado_em)}.` : ''}</>}{estado === 'erro' ? <> <button className="btn mini" onClick={() => void gravar()}>Tentar de novo</button></> : null}</span>
       <span className="esp" />
       {!salva && !convertida ? <button className="btn" onClick={cancelarNova}>Cancelar</button> : null}
       {salva && !convertida && modo === 'editar' ? <button className="btn" onClick={voltarLeitura}>Voltar à leitura</button> : null}
@@ -377,9 +378,9 @@ function JanelaEntrada({ entrada }: { entrada: Entrada | null }) {
 
   return (
     <Janela titulo={salva ? 'Entrada' : 'Nova entrada'} foco={entrada ? 'janela' : 'campo'} extraCab={lapis} aoFechar={() => void tentarFechar()} sujo={(pendente && !emEspera) || !!erro || !!conflito || gravando} rodape={rodape}>
-      {editando && recuperado ? <p className="data rec">{salva ? 'Alterações que estavam só neste aparelho foram recuperadas.' : 'Rascunho recuperado.'}</p> : null}
+      {editando && recuperado ? <p className="data rec">{salva ? 'Alterações em rascunho foram recuperadas.' : 'Rascunho recuperado.'}</p> : null}
       {emEspera ? (
-        <p className="aviso-passo" role="status"><b>Há alterações só neste aparelho.</b> Elas ainda não foram enviadas ao Dmanda e não aparecem abaixo, que mostra a versão salva. Nada será enviado até você retomar a edição.{' '}
+        <p className="aviso-passo" role="status"><b>Há alterações em rascunho, ainda não salvas na entrada.</b> Elas não aparecem abaixo, que mostra a versão salva. Nada será salvo na entrada até você retomar a edição.{' '}
           <button className="btn mini pri" onClick={entrarEdicao}>Retomar edição</button></p>
       ) : null}
       {convertida ? (

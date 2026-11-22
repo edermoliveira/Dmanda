@@ -56,8 +56,9 @@ function JanelaNovaDeEntrada({ entradaId }: { entradaId: string }) {
 }
 
 export function Janelas() {
-  const { janela, carregando, carregandoEntradas } = useApp();
-  if (!janela) return null;
+  const { janela, carregando, carregandoEntradas, rascunhosProntos } = useApp();
+  // a janela só abre depois da primeira leitura dos rascunhos online: aberta antes, ela começaria sem o rascunho que já existe e a próxima digitação o sobrescreveria
+  if (!janela || !rascunhosProntos) return null;
   if (janela.t === 'editar') return <JanelaDemanda id={janela.id} />;
   // o cadastro retomado precisa da lista carregada para reencontrar a demanda já criada; a anotação de origem, da lista de Entradas
   if (janela.t === 'nova') return carregando || (janela.entradaId && carregandoEntradas) ? null : janela.entradaId ? <JanelaNovaDeEntrada entradaId={janela.entradaId} /> : <JanelaNova />;

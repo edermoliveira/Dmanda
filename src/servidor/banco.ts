@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import { clienteDaSessao, exigirUsuario } from './sessao';
 import { modoTeste } from '@/lib/supabase/config';
-import { criarOperacoes, ErroConflito, ErroDmanda, ErroSessao, type Chamar } from '@/nucleo/operacoes';
+import { criarOperacoes, ErroConflito, ErroDmanda, ErroRevogado, ErroSessao, type Chamar } from '@/nucleo/operacoes';
 
 type Banco = { db: import('@electric-sql/pglite').PGlite };
 const g = globalThis as unknown as { __dmandaBancoTeste?: Promise<Banco> };
@@ -22,6 +22,7 @@ async function bancoTeste(): Promise<Banco> {
 
 /** Erros de regra do banco (P0001) já vêm em português e são mostrados; o resto vira mensagem genérica (o detalhe vai para o log). */
 function traduzir(e: { message?: string; code?: string }): Error {
+  if (e.code === 'DM403') return new ErroRevogado(e.message ?? 'Seu acesso ao Dmanda foi revogado.');
   if (e.code === 'DM409') return new ErroConflito(e.message ?? 'A demanda foi alterada em outro aparelho. Nada foi gravado.');
   if (e.code === 'P0001') return new ErroDmanda(e.message ?? 'Operação recusada.');
   if (/constraint|violates/i.test(e.message ?? '')) return new ErroDmanda('Os dados não passaram na validação do banco. Confira os campos.');
@@ -66,7 +67,6 @@ const chamarSupabase: Chamar = async (funcao, args) => {
   const { data, error, status } = await sb.rpc(funcao, args);
   if (error) {
     if (status === 401 || error.code === 'PGRST301' || error.code === 'PGRST303') redirect('/login?motivo=sessao');
-    if (error.code === '42501') redirect('/login?motivo=sem-acesso');   // o banco recusou a identidade (acesso revogado ou fora da lista)
     throw traduzir(error);
   }
   return data;
@@ -87,7 +87,20 @@ export const chamarServico = async (funcao: string, args: Record<string, unknown
   return data;
 };
 
-export const chamar: Chamar = (funcao, args) => (modoTeste() ? chamarTeste(funcao, args) : chamarSupabase(funcao, args));
+const transporte: Chamar = (funcao, args) => (modoTeste() ? chamarTeste(funcao, args) : chamarSupabase(funcao, args));
+
+/**
+ * Toda operação do painel. Uma conta sem acesso é recusada pelo banco (DM403) quando a política chega a ser avaliada; numa leitura que volta VAZIA a política pode nem ter sido avaliada
+ * (nenhuma linha passou pela primeira condição), então a lista vazia só é entregue depois de conferir que o acesso está vigente: "sem acesso" nunca aparece como "nenhuma demanda".
+ */
+export const chamar: Chamar = async (funcao, args) => {
+  const r = await transporte(funcao, args);
+  if (Array.isArray(r) && r.length === 0 && funcao.startsWith('listar_')) {
+    const e = (await transporte('estado_acesso', {})) as { autorizado?: boolean; revogado?: boolean };
+    if (!e?.autorizado) throw new ErroRevogado(e?.revogado ? 'Seu acesso ao Dmanda foi revogado.' : 'Esta conta não tem acesso ao Dmanda.');
+  }
+  return r;
+};
 
 /** As operações de demandas, tarefas, entradas, agenda e perfil sobre o transporte atual: as ações do servidor e a exportação partem daqui (o transporte nunca varia entre elas). */
 export const operacoes = () => criarOperacoes(chamar);

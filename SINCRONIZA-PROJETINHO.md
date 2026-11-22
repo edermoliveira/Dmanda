@@ -6,7 +6,7 @@ Guia para continuar o Dmanda em outro computador a partir do ponto exato em que 
 **Andamento do projeto: 67% demonstrado** (confirmado pelo Éder: 45% em 04/11/2026; recontagem de 21/11/2026 com a mesma fórmula, aritmética, cenários e itens na seção "Reavaliação de 21/11/2026" de `ANDAMENTO.md`).
 **Repositório:** https://github.com/edermoliveira/Dmanda.git (privado).
 
-**Retomada mais recente (22/11/2026, decisão 92): autenticação, acessos e rascunhos online implementados só localmente; ler a seção BC de `CONTINUIDADE-DMANDA.md` e `docs/plano-ativacao-autenticacao.md`. Nada ativado.
+**Retomada mais recente (22/11/2026, decisão 92): autenticação, acessos e rascunhos online implementados só localmente; ler as seções BC e BD de `CONTINUIDADE-DMANDA.md` e `docs/plano-ativacao-autenticacao.md`. Prévia de avaliação: `npm run previa:auth`. Nada ativado.
 
 Retomada atual (21/11/2026, decisão 89):** a continuidade é **só o GitHub e o notebook de casa** (NOTE-EDER, `C:\Users\Éder\Desktop\Dmanda-release`, trabalho direto na `main`, que acompanha `origin/main`); o computador do trabalho **deixou de ser base e não exige inventário** (os blocos desta página sobre outro computador e a matriz de checkouts da seção AH ficam só como histórico). Ler primeiro a seção mais recente de `CONTINUIDADE-DMANDA.md` (seção BB, de 22/11/2026: filtros do Início dentro da página e planejamento dos widgets, decisão 91; a BA é a conciliação de requisitos; a AZ é a matriz de áreas). No início de cada sessão: `git fetch origin`, `git status -sb` e `git log --oneline -5`; nunca `git pull` sobre trabalho sem conferir. Fluxo: investigar, implementar, testar, revisar, prévia local, revisão do Éder, push autorizado, verificação do deploy.
 

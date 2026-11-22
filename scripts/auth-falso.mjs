@@ -15,7 +15,7 @@ const assinar = (payload) => { const h = b64({ alg: 'HS256', typ: 'JWT' }), p = 
 const lerCorpo = (req) => new Promise((r) => { let t = ''; req.on('data', (x) => { t += x; }); req.on('end', () => { try { r(JSON.parse(t || '{}')); } catch { r({}); } }); });
 
 /** @param {{ db: import('@electric-sql/pglite').PGlite, porta: number, validadeSegundos?: number }} o */
-export async function iniciarAuthFalso({ db, porta, validadeSegundos = 3600 }) {
+export async function iniciarAuthFalso({ db, porta, validadeSegundos = 3600, host = '127.0.0.1', urlApp = '' }) {
   const estado = {
     relogio: () => Date.now(),                       // trocável: as validades (token de acesso, convite) usam este relógio
     validadeSegundos,
@@ -28,6 +28,7 @@ export async function iniciarAuthFalso({ db, porta, validadeSegundos = 3600 }) {
     chamadas: [],                                    // "POST /auth/v1/token?grant_type=refresh_token"
     contadores: { refresh: 0, password: 0 },
     falhas: new Map(),                               // 'refresh' | 'password' | 'user' | 'rpc' -> 'cai' | '500'  (injeção de falha)
+    trocaSegura: true,                               // simula a opção "Secure password change" ligada no painel
   };
   const json = (res, status, corpo) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(corpo === undefined ? '' : JSON.stringify(corpo)); };
   const q = async (s, p = []) => (await db.query(s, p)).rows;
@@ -37,7 +38,7 @@ export async function iniciarAuthFalso({ db, porta, validadeSegundos = 3600 }) {
   const jsonUsuario = (u) => ({ id: u.id, aud: 'authenticated', role: 'authenticated', email: u.email, email_confirmed_at: u.email_confirmed_at, last_sign_in_at: u.last_sign_in_at, app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {} });
   const emitir = async (u) => {
     const sessao = randomUUID(), agora = Math.floor(estado.relogio() / 1000);
-    estado.sessoes.set(sessao, { usuario: u.id, revogada: false });
+    estado.sessoes.set(sessao, { usuario: u.id, revogada: false, criadaEm: estado.relogio() });
     const refreshToken = randomBytes(9).toString('base64url');
     estado.refresh.set(refreshToken, { sessao, usado: false });
     const exp = agora + estado.validadeSegundos;
@@ -63,6 +64,12 @@ export async function iniciarAuthFalso({ db, porta, validadeSegundos = 3600 }) {
   const srv = http.createServer(async (req, res) => {
     const u = new URL(req.url, 'http://x'), rota = `${req.method} ${u.pathname}${u.search}`;
     estado.chamadas.push(rota);
+    if (req.method === 'GET' && u.pathname === '/caixa') {
+      const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+      const itens = [...estado.caixaDeSaida].reverse().map((m) => { const l = estado.links.get(m.token_hash); const link = `${urlApp}/auth/confirmar?token_hash=${m.token_hash}&type=${m.tipo}`; return `<li><b>${m.tipo === 'invite' ? 'Convite' : 'Recuperação de senha'}</b> para <code>${esc(m.para)}</code> · ${l?.usado ? 'já usado' : l && l.expira < estado.relogio() ? 'vencido' : 'válido'}<br><a href="${esc(link)}">${esc(link)}</a></li>`; }).join('');
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+      return res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Caixa de mensagens FICTÍCIA do Dmanda</title><body style="font-family:system-ui;max-width:760px;margin:24px auto;padding:0 16px"><h1>Caixa de mensagens fictícia</h1><p>Nada aqui foi enviado por e-mail: é o Auth falso da prévia local. Recarregue para ver mensagens novas.</p><ol>${itens || '<li>Nenhuma mensagem ainda.</li>'}</ol></body>`);
+    }
     if (req.headers.apikey !== CHAVE_PUBLICA && !eServico(req)) return json(res, 401, { message: 'Invalid API key', hint: 'chave falsa inválida' });
     const falha = (nome) => { const f = estado.falhas.get(nome); if (f === 'cai') { req.socket.destroy(); return true; } if (f === '500') { json(res, 500, { msg: 'falha proposital' }); return true; } return false; };
     const corpo = req.method === 'GET' || req.method === 'DELETE' ? {} : await lerCorpo(req);
@@ -107,6 +114,10 @@ export async function iniciarAuthFalso({ db, porta, validadeSegundos = 3600 }) {
         const usr = p && (await usuarioPorId(p.sub));
         if (!p || !usr || bloqueado(usr)) return erroAuth(res, 401, 'bad_jwt', 'invalid JWT');
         if (typeof corpo.password === 'string') {
+          // "Secure password change" do Auth: sessão criada há mais de 24 h precisa do nonce de reautenticação (simulado: só a regra de idade; o envio do nonce por e-mail não existe aqui)
+          const sessao = estado.sessoes.get(p.session_id);
+          if (estado.trocaSegura && sessao && estado.relogio() - sessao.criadaEm > 24 * 3600 * 1000 && !corpo.nonce) return erroAuth(res, 401, 'reauthentication_needed', 'Password update requires reauthentication');
+          if (typeof corpo.current_password === 'string' && estado.senhas.get(usr.email.toLowerCase()) !== corpo.current_password) return erroAuth(res, 400, 'invalid_credentials', 'Current password is incorrect');
           if (corpo.password.length < 8) return erroAuth(res, 422, 'weak_password', 'Password should be at least 8 characters');
           if (estado.senhas.get(usr.email.toLowerCase()) === corpo.password) return erroAuth(res, 422, 'same_password', 'New password should be different from the old password.');
           estado.senhas.set(usr.email.toLowerCase(), corpo.password);
@@ -172,6 +183,6 @@ export async function iniciarAuthFalso({ db, porta, validadeSegundos = 3600 }) {
       return json(res, 404, { message: 'não encontrado: ' + rota });
     } catch (e) { return json(res, 500, { msg: String(e.message).slice(0, 200) }); }
   });
-  await new Promise((r) => srv.listen(porta, '127.0.0.1', r));
+  await new Promise((r) => srv.listen(porta, host, r));
   return { url: `http://127.0.0.1:${porta}`, estado, parar: () => srv.close(), definirSenha: (email, senha) => estado.senhas.set(email.toLowerCase(), senha) };
 }

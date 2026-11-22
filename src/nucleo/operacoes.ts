@@ -8,12 +8,12 @@ import type { DadosEvento, Evento } from '@/lib/eventos';
 import { registrosValidos, type RegistroDia } from '@/lib/registros';
 import type { Opcao } from '@/lib/documentos';
 import type { Vaga } from '@/lib/para-hoje';
-import { ErroConflito, ErroDmanda, ErroSessao, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPeriodo, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
-export { ErroConflito, ErroDmanda, ErroSessao, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPeriodo, validarRegistros };
+import { ErroConflito, ErroDmanda, ErroRevogado, ErroSessao, enumerado, id, texto, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPeriodo, validarRegistros, validarTarefas, versaoDe, type TarefaEdicao } from './validacao.ts';
+export { ErroConflito, ErroDmanda, ErroRevogado, ErroSessao, validarDados, validarDia, validarEntrada, validarEvento, validarOpcao, validarCandidatas, validarPeriodo, validarRegistros };
 export type { TarefaEdicao };
 
 export type Chamar = (funcao: string, args: Record<string, unknown>) => Promise<unknown>;
-export type Resultado<T> = { ok: true; dados: T } | { ok: false; erro: string; conflito?: true };
+export type Resultado<T> = { ok: true; dados: T } | { ok: false; erro: string; conflito?: true; revogado?: true };
 export type RespostaDia = { dia: DiaIndisponivel; recalculadas: number };
 /** `repetida`: a operação (mesmo `operacao_id`) já tinha sido aplicada; o resultado é o de agora, sem aplicar de novo. */
 export type RespostaPeriodo = { periodo_id: string; dias: DiaIndisponivel[]; recalculadas: number; repetida: boolean };
@@ -105,6 +105,7 @@ export async function executar<T>(f: () => Promise<T>, { privado = false }: { pr
   catch (e) {
     // redirecionamento do Next (sessão encerrada, vai ao login) não é falha: sobe como está
     if (typeof (e as { digest?: unknown })?.digest === 'string' && (e as { digest: string }).digest.startsWith('NEXT_REDIRECT')) throw e;
+    if (e instanceof ErroRevogado) return { ok: false, erro: e.message, revogado: true };
     if (e instanceof ErroConflito) return { ok: false, erro: e.message, conflito: true };
     if (e instanceof ErroDmanda) return { ok: false, erro: e.message };
     // dado privado (humor): o log leva só o código do erro, nunca a mensagem nem o objeto, que podem repetir o que foi enviado

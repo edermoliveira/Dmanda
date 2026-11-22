@@ -1203,3 +1203,12 @@ Legenda de implementação: **P** publicada em `origin/main` e na Vercel; **T** 
 **Limites:** o GoTrue real, o envio de e-mail (SMTP, modelos, limites), o hook configurado no painel, o Safari físico e a PWA instalada **não foram provados**; sem Docker nesta máquina não há Supabase local oficial. O texto "Só neste aparelho" da janela de Entradas continua com a redação antiga (o rascunho agora também está online): decisão de redação pendente.
 
 **Pendente do Éder (agrupado no relatório do bloco):** avaliar a interface; autorizar a ativação (ou partes dela); e-mail de envio e modelos; decidir a redação de "Só neste aparelho"; confirmar o desligamento do Google e do cadastro público no painel. **Andamento inalterado:** 67% demonstrado, 45% confirmado.
+
+
+## Seção BD: fechamento das pendências da autenticação (22/11/2026, complemento da decisão 92)
+
+**Partida:** `main` em `46a6ca82` (11 commits locais sobre `origin/main` = `085c03c8`, conferido por fetch, sem PR), árvore limpa; stash, 14 tags `arquivo/*` e cópias privadas preservados.
+
+**Feito (local):** migração aditiva `20261122000300_recusa_explicita_e_etapa_senha` (recusa DM403, `acesso_vigente`, `consumir_etapa_senha`); `src/servidor/etapa-senha.ts` e o novo `definirSenha` e `alterarSenha`; tela "Acesso revogado" (`estado-rascunhos.tsx`), bloqueio e dono da fila no motor (`fila-rascunhos.ts`), rota dos rascunhos recusando outra conta; textos por estado efetivo; formulários POST e sem envio antes da hidratação; janelas só depois dos rascunhos carregados; Auth fictício com idade de sessão, `current_password` e caixa de mensagens; prévia persistente `scripts/previa-auth.mjs`; plano de ativação com as configurações exatas.
+
+**Pendente do Éder:** avaliar na prévia; as configurações e autorizações do `docs/plano-ativacao-autenticacao.md` (SMTP, modelos, URLs, Secure password change, variáveis novas `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DMANDA_URL_PUBLICA`, `DMANDA_SEGREDO_FLUXO`), migração, bootstrap, conferência local contra o serviço real, push e fechamento. **Andamento inalterado:** 67% demonstrado, 45% confirmado.

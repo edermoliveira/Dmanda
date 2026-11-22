@@ -4,7 +4,7 @@
 import { connection } from 'next/server';
 import { chamar, operacoes } from '@/servidor/banco';
 import { montarCopia, type Autoria } from '@/nucleo/copia';
-import { ErroDmanda } from '@/nucleo/operacoes';
+import { ErroDmanda, ErroRevogado } from '@/nucleo/operacoes';
 import { hojeISO } from '@/lib/demandas';
 
 export async function GET() {
@@ -27,6 +27,7 @@ export async function GET() {
     if (typeof (e as { digest?: unknown })?.digest === 'string' && (e as { digest: string }).digest.startsWith('NEXT_REDIRECT')) return Response.json({ ok: false, erro: 'Entre para baixar a cópia.' }, { status: 401, headers: cabecalhos });
     // O aplicativo é aberto: nenhuma falha daqui é "falta de login". Uma regra do banco recusando a leitura (ErroDmanda: titular ausente da lista protegida, operação fora da lista) é falha do servidor,
     // como a rede caindo, a configuração ausente ou a chave de serviço recusada: sempre 500, sem arquivo e sem repetir a mensagem do banco ao navegador. O log do servidor leva só a causa.
+    if (e instanceof ErroRevogado) return Response.json({ ok: false, erro: e.message, revogado: true }, { status: 403, headers: cabecalhos });
     console.error('[exportar] falhou:', e instanceof ErroDmanda ? `regra do banco: ${e.message}` : ((e as { code?: string })?.code || 'sem código'));
     return Response.json({ ok: false, erro: 'Não foi possível gerar a cópia agora.' }, { status: 500, headers: cabecalhos });
   }

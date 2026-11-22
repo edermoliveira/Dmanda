@@ -76,11 +76,11 @@ ok(bPropria.status === 'ok' && (await abertos(B)).length === 1 && (await abertos
 ok((await sql('select count(*)::int n from public.rascunhos where user_id = $1', [A]))[0].n >= 3, 'isolamento: no banco cada rascunho tem o autor (user_id) e nada é compartilhado');
 
 // ---------- 5) conta sem acesso, revogada e visitante ----------
-ok((await abertos(X)).length === 0 && /Rascunho indisponível|row-level|violates/i.test((await msg(X, 'salvar_rascunho', { p_id: randomUUID(), p_chave: 'nova', p_dados: { a: 1 }, p_base: 0, p_op: randomUUID() })) || ''), 'acesso: a conta de fora não lê nem grava rascunhos');
+ok(((await msg(X, 'listar_rascunhos', {})) === null ? (await abertos(X)).length === 0 : true) && /Rascunho indisponível|row-level|violates|não tem acesso/i.test((await msg(X, 'salvar_rascunho', { p_id: randomUUID(), p_chave: 'nova', p_dados: { a: 1 }, p_base: 0, p_op: randomUUID() })) || ''), 'acesso: a conta de fora não lê nem grava rascunhos');
 ok(/permission denied/i.test((await comoAnon('select public.listar_rascunhos()')) || '') && /permission denied/i.test((await comoAnon('select * from public.rascunhos')) || ''), 'acesso: o visitante não executa nenhuma função de rascunho nem lê a tabela');
 await salvar(R, randomUUID(), 'ev:nova', { ev: { titulo: 'da R' } }, 0);
 await c(ADMIN_TESTE, 'revogar_acesso', { p_email: 'r@exemplo.invalid' });
-ok((await abertos(R)).length === 0 && /row-level|violates|indisponível/i.test((await msg(R, 'salvar_rascunho', { p_id: randomUUID(), p_chave: 'nova', p_dados: { a: 1 }, p_base: 0, p_op: randomUUID() })) || '') && (await sql('select count(*)::int n from public.rascunhos where user_id = $1 and estado = $2', [R, 'aberto']))[0].n === 1, 'revogação: a conta revogada não acessa os rascunhos dela (o banco recusa) e o que ela guardou é preservado');
+ok(/revogado/.test(await msg(R, 'listar_rascunhos', {}) || '') && /revogado/i.test((await msg(R, 'salvar_rascunho', { p_id: randomUUID(), p_chave: 'nova', p_dados: { a: 1 }, p_base: 0, p_op: randomUUID() })) || '') && (await sql('select count(*)::int n from public.rascunhos where user_id = $1 and estado = $2', [R, 'aberto']))[0].n === 1, 'revogação: a conta revogada não acessa os rascunhos dela (o banco recusa) e o que ela guardou é preservado');
 await c(ADMIN_TESTE, 'restabelecer_acesso', { p_email: 'r@exemplo.invalid' });
 ok((await abertos(R)).length === 1, 'revogação: restabelecida, a conta recupera os próprios rascunhos');
 
