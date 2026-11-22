@@ -9,8 +9,8 @@ let falhas = 0, total = 0;
 const ok = (c, m) => { total++; console.log((c ? 'ok     ' : 'FALHOU ') + m); if (!c) falhas++; };
 const db = await abrirBancoTeste();
 await db.exec(`insert into auth.users (id, email) values ('${A}', 'a@teste'), ('${B}', 'b@teste')`);
-// lista protegida de contas autorizadas (no Supabase real é preenchida à parte, com o e-mail do Secretário; aqui são contas de teste)
-await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('a@teste'), ('b@teste'), ('r@teste'), ('s@teste')");
+// lista protegida de contas autorizadas (no Supabase real é gerida pelo administrador; aqui são contas de teste). B existe no Auth mas NÃO está autorizada: é o estranho dos testes de RLS. O compartilhamento entre autorizados é de testar:acesso (decisão 92)
+await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('a@teste'), ('r@teste'), ('s@teste')");
 const c = (u, f, a) => chamarComoUsuario(db, u, f, a);
 const erro = async (u, f, a) => { try { await c(u, f, a); return null; } catch (e) { return e.message || String(e); } };
 
@@ -24,9 +24,9 @@ ok(/Protocolo só pode/.test(await erro(A, 'criar_demanda', { p: { assunto: 'x',
 ok(/não nasce finalizada/.test(await erro(A, 'criar_demanda', { p: { assunto: 'x', etapa: 'Finalizado' } })), 'demanda nova não nasce finalizada');
 
 // isolamento (RLS) entre usuários
-ok((await c(B, 'listar_demandas', {})).length === 0 && (await c(A, 'listar_demandas', {})).length === 2, 'RLS: o outro usuário não vê as demandas de A');
+ok((await c(B, 'listar_demandas', {})).length === 0 && (await c(A, 'listar_demandas', {})).length === 2, 'RLS: uma conta sem autorização não vê as demandas de A');
 ok(/não encontrada/.test(await erro(B, 'buscar_demanda', { p_id: d1.id })) && /não encontrada/.test(await erro(B, 'arquivar_demanda', { p_id: d1.id })) && /não encontrada/.test(await erro(B, 'mover_etapa', { p_id: d1.id, p_etapa: 'Vistos' })), 'RLS: B não lê, arquiva nem move a demanda de A');
-ok(/não encontrada/.test(await erro(B, 'adicionar_tarefa', { p_demanda: d1.id, p_texto: 'invasão' })), 'RLS: B não adiciona tarefa na demanda de A');
+ok(/não encontrada/.test(await erro(B, 'adicionar_tarefa', { p_demanda: d1.id, p_texto: 'invasão' })), 'RLS: a conta sem autorização não adiciona tarefa na demanda de A');
 const anon = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_demandas()'); return null; } catch (e) { return e.message; } });
 ok(/permission denied/i.test(anon || ''), 'sem login (papel anon) não executa nenhuma função');
 
@@ -57,7 +57,7 @@ ok(t.tarefas.filter((x) => x.concluida).length === 2 && t.etapa === 'Vistos', 'm
 t = await c(A, 'marcar_tarefa', { p_id: t3.id, p_concluida: true }); ok(t.etapa === 'Vistos' && t.tarefas.every((x) => x.concluida), 'marcar todas não conclui a demanda sozinho');
 t = await c(A, 'marcar_tarefa', { p_id: t2.id, p_concluida: false }); ok(!t.tarefas[1].concluida, 'desmarcar funciona');
 t = await c(A, 'excluir_tarefa', { p_id: t1.id }); ok(t.tarefas.length === 2 && t.tarefas.map((x) => x.posicao).join() === '1,2' && t.tarefas[0].texto === 'Conferir com a Contabilidade', 'excluir tarefa fecha o buraco e mantém a ordem');
-ok(/não encontrada/.test(await erro(B, 'marcar_tarefa', { p_id: t2.id, p_concluida: true })), 'RLS: B não marca tarefa de A');
+ok(/não encontrada/.test(await erro(B, 'marcar_tarefa', { p_id: t2.id, p_concluida: true })), 'RLS: a conta sem autorização não marca tarefa de A');
 
 // etapas
 let m = await c(A, 'mover_etapa', { p_id: d1.id, p_etapa: 'Aguardando retorno' });
@@ -81,7 +81,7 @@ ok(u.assunto === 'Novo assunto' && u.origem === '' && u.prazo === null && u.praz
 u = await c(A, 'atualizar_demanda', { p_id: d1.id, p: { prazo_original: '2026-11-05', prazo_tipo: 'Próprio', setor: ' PGM ', acompanhar_em: '2026-10-28' } });
 ok(u.prazo === '2026-11-05' && u.prazo_tipo === 'Próprio' && u.setor === 'PGM' && u.acompanhar_em === '2026-10-28', 'atualizar prazo, tipo de prazo, setor e acompanhamento');
 ok(/assunto não pode/.test(await erro(A, 'atualizar_demanda', { p_id: d1.id, p: { assunto: '' } })) && /Protocolo só pode/.test(await erro(A, 'atualizar_demanda', { p_id: d1.id, p: { tipo: 'Protocolo', area: 'Compras' } })), 'atualizar valida assunto vazio e Protocolo de Compras');
-ok(/não encontrada/.test(await erro(B, 'atualizar_demanda', { p_id: d1.id, p: { assunto: 'sequestro' } })), 'RLS: B não altera a demanda de A');
+ok(/não encontrada/.test(await erro(B, 'atualizar_demanda', { p_id: d1.id, p: { assunto: 'sequestro' } })), 'RLS: a conta sem autorização não altera a demanda de A');
 
 // arquivar, desarquivar, excluir
 let r = await c(A, 'arquivar_demanda', { p_id: d2.id }); ok(r.arquivada_em !== null, 'arquivar marca a data de arquivamento');
@@ -89,7 +89,7 @@ ok((await c(A, 'listar_demandas', { p_arquivadas: false })).length === 1 && (awa
 ok(/arquivada/.test(await erro(A, 'mover_etapa', { p_id: d2.id, p_etapa: 'Vistos' })), 'demanda arquivada não se move até desarquivar');
 r = await c(A, 'desarquivar_demanda', { p_id: d2.id }); ok(r.arquivada_em === null, 'desarquivar limpa o arquivamento');
 ok(/confirmação/.test(await erro(A, 'excluir_demanda', { p_id: d1.id })) && /confirmação/.test(await erro(A, 'excluir_demanda', { p_id: d1.id, p_confirmado: false })), 'excluir sem confirmação é recusado');
-ok(/não encontrada/.test(await erro(B, 'excluir_demanda', { p_id: d1.id, p_confirmado: true })), 'RLS: B não exclui a demanda de A');
+ok(/não encontrada/.test(await erro(B, 'excluir_demanda', { p_id: d1.id, p_confirmado: true })), 'RLS: a conta sem autorização não exclui a demanda de A');
 r = await c(A, 'excluir_demanda', { p_id: d1.id, p_confirmado: true });
 const resto = await db.query('select count(*)::int as n from public.tarefas where demanda_id = $1', [d1.id]);
 ok(r.excluida === true && resto.rows[0].n === 0 && (await c(A, 'listar_demandas', {})).length === 1, 'excluir com confirmação remove a demanda e as tarefas dela');
@@ -110,7 +110,7 @@ sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: 
 ok(sv.etapa === 'Finalizado' && sv.tarefas.every((x) => x.concluida) && sv.assunto === 'Concluída pela janela' && sv.concluida_em !== null, 'salvar com etapa Finalizado conclui: marca todas as tarefas e registra a data');
 sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { etapa: 'Fazendo' }, p_tarefas: null });
 ok(sv.etapa === 'Fazendo' && sv.concluida_em === null && sv.tarefas.length === 2 && sv.tarefas.every((x) => x.concluida), 'salvar com outra etapa reabre mantendo as tarefas');
-ok(/não encontrada/.test(await erro(B, 'salvar_demanda', { p_id: e1.id, p: { assunto: 'x' }, p_tarefas: [], p_versao: 1 })), 'RLS: B não salva a demanda de A');
+ok(/não encontrada/.test(await erro(B, 'salvar_demanda', { p_id: e1.id, p: { assunto: 'x' }, p_tarefas: [], p_versao: 1 })), 'RLS: a conta sem autorização não salva a demanda de A');
 ok(/Etapa desconhecida|check/i.test(await erro(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { etapa: 'Voando' }, p_tarefas: null })), 'etapa inválida no salvar é recusada');
 sv = await c(A, 'salvar_demanda', { p_versao: await ver(e1.id), p_id: e1.id, p: { tipo: 'Processo', area: 'Compras' }, p_tarefas: null });
 ok(sv.tipo === 'Processo' && sv.area === 'Compras' && sv.tarefas.length === 2, 'salvar sem lista de tarefas não mexe nas tarefas');
@@ -129,6 +129,7 @@ await db.exec(`insert into auth.users (id, email) values ('${R}', 'r@teste'), ('
 // Estas demandas testam a LEITURA do prazo pela rotina, com datas relativas a hoje: o prazo é fixado direto, sem o ajuste de fim de semana (que tem testes próprios mais abaixo),
 // para o resultado não depender do dia da semana em que o teste roda.
 const fixarPrazo = async (id, data) => { await sql('update public.demandas set prazo = $2::date, prazo_original = $2::date where id = $1', [id, data]); return c(R, 'buscar_demanda', { p_id: id }); };
+await sql('delete from public.demandas');   // o resumo agora é do PAINEL inteiro (decisão 92): esta seção parte de um painel limpo
 const mk = async (p) => { const { prazo, ...resto } = p; const d = await c(R, 'criar_demanda', { p: resto }); return prazo ? fixarPrazo(d.id, prazo) : d; };
 const venc = await mk({ assunto: 'Vencida', prazo: await mais(-4), prazo_tipo: 'Legal' });
 const hojeD = await mk({ assunto: 'Vence hoje', prazo: await mais(0) });
@@ -146,7 +147,7 @@ await c(R, 'arquivar_demanda', { p_id: arq.id });
 const instantaneo = async () => (await sql("select md5(string_agg(d::text, '|' order by d.id)) as h from public.demandas d"))[0].h;
 
 // o gatilho já mantém o resumo de hoje a cada alteração; confere os números esperados pela regra dos grupos do Início
-let rs = (await sql('select dados, origem from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [R]))[0];
+let rs = (await sql('select dados, origem from public.resumos_operacionais where data_ref = public.hoje()'))[0];
 ok(rs && rs.origem === 'alteracao', 'rotina: o resumo de hoje é recalculado quando uma demanda muda (gatilho)');
 ok(rs.dados.atrasadas === 1 && rs.dados.hoje === 1 && rs.dados.sete_dias === 3 && rs.dados.abertas === 7 && rs.dados.finalizadas === 1, 'rotina: contagens por data (1 atrasada, 1 hoje, 3 em até 7 dias (o vencimento de quem aguarda retorno também vale); 7 abertas, 1 finalizada; arquivada fora)');
 ok(rs.dados.sem_prazo === 1 && rs.dados.aguardando_retorno === 2 && rs.dados.prazo_vencido === 1, 'rotina: sem prazo = 1; aguardando = 2; prazo vencido = 1 (a data aplicável é a mais próxima, sem o corte antigo de 3 dias)');
@@ -164,32 +165,33 @@ ok(/permission denied|row-level/i.test(await comoUsuarioSql("insert into public.
 // execução pelo papel de serviço: não altera demandas, é repetível e registra
 const antes = await instantaneo();
 const r1 = await serv('rotina_diaria', {});
-const nUsuarios = async () => (await sql('select count(distinct user_id)::int as n from public.demandas'))[0].n;
+const nUsuarios = async () => (await sql('select (count(*) > 0)::int as n from public.demandas'))[0].n;
 const n1 = await nUsuarios();
 ok(r1.data_ref === hojeSql && r1.usuarios === n1 && Object.keys(r1).sort().join() === 'data_ref,usuarios', 'rotina: o papel de serviço executa e a resposta traz só a data e a contagem de usuários');
 const r2 = await serv('rotina_diaria', {});
 ok(await instantaneo() === antes, 'rotina: não altera demandas, prazos nem conclusões (somente leitura)');
-rs = (await sql('select count(*)::int as n, max(origem) as o from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [R]))[0];
+rs = (await sql('select count(*)::int as n, max(origem) as o from public.resumos_operacionais where data_ref = public.hoje()'))[0];
 ok(rs.n === 1 && rs.o === 'rotina', 'rotina: repetir no mesmo dia mantém um único resumo (idempotente) e marca a origem');
 let ex = await sql('select ok, usuarios, erro from public.execucoes_rotina order by iniciou_em');
 ok(ex.length === 2 && ex.every((x) => x.ok && x.usuarios === n1 && x.erro === null) && r2.usuarios === n1, 'rotina: cada execução bem-sucedida fica registrada');
 
-// RLS: cada usuário vê só o próprio resumo; o registro de execuções não tem dado pessoal
+// RLS: o resumo é do PAINEL (uma linha por data, sem usuário): todas as contas autorizadas veem a mesma; quem não é autorizado não vê nada (decisão 92)
 await c(S, 'criar_demanda', { p: { assunto: 'Outro usuário', prazo_original: await mais(-1) } });
 await serv('rotina_diaria', {});
-const veR = await db.transaction(async (tx) => { await entrarComo(tx, R); return (await tx.query('select user_id from public.resumos_operacionais')).rows; });
-ok(veR.length === 1 && veR[0].user_id === R, 'rotina: RLS, cada usuário vê só o próprio resumo');
+await sql("delete from public.demandas where assunto = 'Outro usuário'");   // o resumo é do painel: a demanda de S entrou na conta e sai para o que vem a seguir partir dos mesmos números
+const veDe = (u) => db.transaction(async (tx) => { await entrarComo(tx, u); return (await tx.query('select user_id, data_ref::text from public.resumos_operacionais where data_ref = public.hoje()')).rows; });
+ok((await veDe(R)).length === 1 && (await veDe(S)).length === 1 && (await veDe(R))[0].user_id === null && (await veDe(B)).length === 0, 'rotina: RLS, o resumo é do painel: duas contas autorizadas veem o mesmo (uma linha por data, sem usuário) e a conta sem autorização não vê nada');
 
 // dias restantes derivados das datas: mudar o prazo muda o resumo na hora, sem esperar o dia seguinte
 await fixarPrazo(em9.id, await mais(-1));
-rs = (await sql('select dados from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [R]))[0];
+rs = (await sql('select dados from public.resumos_operacionais where data_ref = public.hoje()'))[0];
 ok(rs.dados.atrasadas === 2 && rs.dados.sete_dias === 3, 'rotina: alterar um prazo recalcula o resumo de hoje (atrasadas 2)');
 await c(R, 'mover_etapa', { p_id: venc.id, p_etapa: 'Finalizado' });
-rs = (await sql('select dados from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [R]))[0];
+rs = (await sql('select dados from public.resumos_operacionais where data_ref = public.hoje()'))[0];
 ok(rs.dados.atrasadas === 1 && rs.dados.finalizadas === 2, 'rotina: concluir uma demanda recalcula o resumo');
 await c(R, 'arquivar_demanda', { p_id: em3.id });
 await c(R, 'excluir_demanda', { p_id: semPrazo.id, p_confirmado: true });
-rs = (await sql('select dados from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [R]))[0];
+rs = (await sql('select dados from public.resumos_operacionais where data_ref = public.hoje()'))[0];
 ok(rs.dados.sete_dias === 2 && rs.dados.sem_prazo === 0, 'rotina: arquivar e excluir também recalculam');
 
 // recálculo por data: o mesmo conjunto de demandas, visto de outro dia, dá outro resultado (nada depende de um contador que decai)
@@ -213,11 +215,11 @@ ok(!!eFalha && (await sql('select count(*)::int as n from public.execucoes_rotin
 
 // retenção: a rotina só apaga o que passou do limite (execuções com mais de 90 dias; resumos com data de referência mais de 60 dias atrás) e mantém o que está no limite
 await db.exec("insert into public.execucoes_rotina (data_ref, iniciou_em, terminou_em, ok, usuarios) values (public.hoje() - 100, now() - interval '100 days', now() - interval '100 days', true, 1), (public.hoje() - 89, now() - interval '89 days', now() - interval '89 days', true, 1)");
-await db.exec(`insert into public.resumos_operacionais (user_id, data_ref, origem, dados) values ('${R}', public.hoje() - 61, 'rotina', '{}'), ('${R}', public.hoje() - 60, 'rotina', '{}')`);
+await db.exec(`insert into public.resumos_operacionais (user_id, data_ref, origem, dados) values (null, public.hoje() - 61, 'rotina', '{}'), (null, public.hoje() - 60, 'rotina', '{}')`);
 const antesRet = await instantaneo();
 await serv('rotina_diaria', {});
 const velhas = await sql("select count(*) filter (where iniciou_em < now() - interval '90 days')::int as exec_velhas, count(*) filter (where iniciou_em < now() - interval '88 days' and iniciou_em >= now() - interval '90 days')::int as exec_limite from public.execucoes_rotina");
-const resVelhos = await sql('select count(*) filter (where data_ref = public.hoje() - 61)::int as r61, count(*) filter (where data_ref = public.hoje() - 60)::int as r60 from public.resumos_operacionais where user_id = $1', [R]);
+const resVelhos = await sql('select count(*) filter (where data_ref = public.hoje() - 61)::int as r61, count(*) filter (where data_ref = public.hoje() - 60)::int as r60 from public.resumos_operacionais');
 ok(velhas[0].exec_velhas === 0 && velhas[0].exec_limite === 1, 'rotina: a execução de 100 dias é apagada e a de 89 dias fica');
 ok(resVelhos[0].r61 === 0 && resVelhos[0].r60 === 1, 'rotina: o resumo de 61 dias é apagado e o de 60 dias (o limite) fica');
 ok(await instantaneo() === antesRet, 'rotina: a limpeza não toca em demanda nenhuma');
@@ -236,12 +238,12 @@ ok(/row-level security/i.test((await doUsuario(X, {}, "insert into public.entrad
 ok(/row-level security/i.test((await doUsuario(X, {}, "insert into public.dias_indisponiveis (data, descricao, categoria) values ('2027-01-01', 'invasão', 'Feriado')")).erro || '') && /row-level/i.test(await erro(X, 'salvar_dia_indisponivel', { p: { data: '2027-01-01', descricao: 'invasão', categoria: 'Feriado' } })), 'acesso: usuário fora da lista não grava dias indisponíveis (RLS, nem pelas funções)');
 // provedor e e-mail vêm do JWT assinado: Google ou e-mail e senha, sempre com e-mail da lista
 ok((await doUsuario(A, { provedor: 'email' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0, 'acesso: conta da lista entrando por e-mail e senha lê e grava como no Google (mesmo usuário e mesmos dados)');
-ok((await doUsuario(A, { provedor: 'github' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0 && (await doUsuario(A, { provedor: 'anonymous' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0 && (await doUsuario(A, { provedor: '' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: conta da lista por outro provedor (GitHub, anônimo, sem provedor) não lê nada');
+ok((await doUsuario(A, { provedor: 'github' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0 && (await doUsuario(X, { provedor: 'github' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: a identidade vem de auth.uid() e de auth.users, não do provedor da claim (o Google fica desligado no painel do Auth); quem não está na lista não lê nada, qualquer que seja a claim');
 ok((await doUsuario(X, { provedor: 'email' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0 && /row-level security/i.test((await doUsuario(X, { provedor: 'email' }, "insert into public.demandas (assunto) values ('invasão')")).erro || ''), 'acesso: usuário fora da lista não entra pela senha: não lê nem grava, como no Google');
-ok((await doUsuario(A, { email: 'outro@teste' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: JWT com e-mail diferente do autorizado não lê nada');
+ok((await doUsuario(A, { email: 'outro@teste' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0 && (await doUsuario(X, { email: 'a@teste' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: a claim de e-mail do JWT não concede nem retira nada: valem o auth.uid() e o e-mail confirmado em auth.users (uma claim com o e-mail autorizado, numa conta de fora, não lê nada)');
 ok((await doUsuario(A, { email: '  A@Teste ' }, 'select count(*)::int as n from public.demandas')).rows?.[0].n > 0, 'acesso: o e-mail é comparado sem diferenciar maiúsculas nem espaços');
 ok((await doUsuario(Z, { email: null }, 'select count(*)::int as n from public.demandas')).rows?.[0].n === 0, 'acesso: JWT sem e-mail não lê nada');
-ok((await doUsuario(A, { email: '' }, 'select dmanda_privado.conta_autorizada() as r')).rows?.[0].r === false && (await doUsuario(A, {}, 'select dmanda_privado.conta_autorizada() as r')).rows?.[0].r === true, 'acesso: conta_autorizada() é falsa sem e-mail e verdadeira para a conta da lista (Google ou e-mail e senha)');
+ok((await doUsuario(A, { email: '' }, 'select dmanda_privado.conta_autorizada() as r')).rows?.[0].r === true && (await doUsuario(X, {}, 'select dmanda_privado.conta_autorizada() as r')).rows?.[0].r === false, 'acesso: conta_autorizada() é verdadeira para a conta da lista e falsa para a de fora, sem depender das claims de e-mail');
 // a lista é protegida
 ok(/permission denied/i.test((await doUsuario(A, {}, 'select * from dmanda_privado.acesso_autorizado')).erro || '') && /permission denied/i.test((await doUsuario(A, {}, "insert into dmanda_privado.acesso_autorizado (email) values ('x@y.z')")).erro || ''), 'acesso: usuário logado, mesmo autorizado, não lê nem grava a lista protegida');
 ok(/permission denied/i.test(await comoAnon('select * from dmanda_privado.acesso_autorizado')) && /permission denied/i.test(await comoAnon('select dmanda_privado.conta_autorizada()')), 'acesso: visitante sem login não lê a lista nem consulta a função');
@@ -250,18 +252,21 @@ const hook = async (email, provedor, papel = 'supabase_auth_admin') => db.transa
   await tx.exec(`set local role ${papel}`);
   try { return (await tx.query('select public.hook_antes_criar_usuario($1::jsonb) as r', [JSON.stringify({ metadata: { name: 'before-user-created' }, user: { email, app_metadata: { provider: provedor, providers: [provedor] }, user_metadata: { email: 'a@teste' } } })])).rows[0].r; } catch (e) { return { falha: e.message }; }
 });
-ok(JSON.stringify(await hook('a@teste', 'google')) === '{}' && JSON.stringify(await hook(' A@TESTE ', 'google')) === '{}', 'hook: a conta autorizada entrando pelo Google é permitida (resposta vazia), sem diferenciar maiúsculas');
-const negado = await hook('intruso@teste', 'google');
-ok(negado.error?.http_code === 403 && /não tem acesso/.test(negado.error.message), 'hook: outra conta do Google é recusada com 403 e mensagem em português');
-ok((await hook('a@teste', 'email')).error?.http_code === 403 && (await hook('intruso@teste', 'email')).error?.http_code === 403, 'hook: ninguém cria usuário por e-mail e senha, nem com o endereço autorizado (a senha é definida no usuário que já existe; sem isso, uma conta recriada sem confirmação de e-mail entraria só pelo e-mail)');
+ok(JSON.stringify(await hook('a@teste', 'email')) === '{}' && JSON.stringify(await hook(' A@TESTE ', 'email')) === '{}', 'hook: o e-mail autorizado criando conta por e-mail e senha (convite) é permitido (resposta vazia), sem diferenciar maiúsculas');
+const negado = await hook('intruso@teste', 'email');
+ok(negado.error?.http_code === 403 && /não tem acesso/.test(negado.error.message), 'hook: outro e-mail é recusado com 403 e mensagem em português');
+ok((await hook('a@teste', 'google')).error?.http_code === 403 && (await hook('intruso@teste', 'google')).error?.http_code === 403, 'hook: o Google deixou de criar contas (decisão 92): nem o endereço autorizado entra por ele');
+await db.exec("update dmanda_privado.acesso_autorizado set revogado_em = now() where email = 'r@teste'");
+ok((await hook('r@teste', 'email')).error?.http_code === 403, 'hook: um endereço revogado não cria conta nem por convite');
+await db.exec("update dmanda_privado.acesso_autorizado set revogado_em = null where email = 'r@teste'");
 ok((await hook('a@teste', 'anonymous')).error?.http_code === 403 && (await hook('a@teste', 'github')).error?.http_code === 403 && (await hook('a@teste', 'phone')).error?.http_code === 403 && (await hook('', 'google')).error?.http_code === 403 && (await hook(null, 'email')).error?.http_code === 403, 'hook: mesmo e-mail por outro provedor (anônimo, GitHub, telefone) ou sem e-mail é recusado');
-ok((await hook('b@teste', 'google', 'postgres')).error === undefined && /permission denied/i.test((await hook('a@teste', 'google', 'authenticated')).falha || '') && /permission denied/i.test((await hook('a@teste', 'google', 'anon')).falha || ''), 'hook: só o papel do Auth (supabase_auth_admin) executa o hook; usuário logado e visitante não');
+ok((await hook('a@teste', 'email', 'postgres')).error === undefined && /permission denied/i.test((await hook('a@teste', 'email', 'authenticated')).falha || '') && /permission denied/i.test((await hook('a@teste', 'email', 'anon')).falha || ''), 'hook: só o papel do Auth (supabase_auth_admin) executa o hook; usuário logado e visitante não');
 // lista vazia fecha tudo
 const guardada = (await sql('select email from dmanda_privado.acesso_autorizado')).length;
 const vazia = await db.transaction(async (tx) => {
-  await tx.exec('delete from dmanda_privado.acesso_autorizado');
+  await tx.exec('update dmanda_privado.acesso_autorizado set revogado_em = now() where email <> dmanda_privado.email_admin()');
   await tx.exec('set local role supabase_auth_admin');
-  const h = (await tx.query("select public.hook_antes_criar_usuario('{\"user\":{\"email\":\"a@teste\",\"app_metadata\":{\"provider\":\"google\"}}}'::jsonb) as r")).rows[0].r;
+  const h = (await tx.query("select public.hook_antes_criar_usuario('{\"user\":{\"email\":\"a@teste\",\"app_metadata\":{\"provider\":\"email\"}}}'::jsonb) as r")).rows[0].r;
   await tx.exec('reset role');
   await entrarComo(tx, A);
   const n = (await tx.query('select count(*)::int as n from public.demandas')).rows[0].n;
@@ -269,7 +274,7 @@ const vazia = await db.transaction(async (tx) => {
 
 }).catch((e) => e.r ?? null);
 const nAposVazia = (await sql('select count(*)::int as n from dmanda_privado.acesso_autorizado'))[0].n;
-ok(vazia && vazia.h.error?.http_code === 403 && vazia.n === 0 && guardada === 4 && nAposVazia === 4, 'acesso: com a lista vazia ninguém entra, nem no cadastro nem no banco (o padrão é fechado); a lista volta intacta');
+ok(vazia && vazia.h.error?.http_code === 403 && vazia.n === 0 && guardada === 4 && nAposVazia === 4, 'acesso: com todos os acessos revogados ninguém (além do administrador) entra, nem no cadastro nem no banco; a lista volta intacta');
 
 // privilégios do Supabase com a exposição automática desligada: o que as migrações não declaram não existe
 const privTab = await sql("select has_table_privilege('authenticated', 'public.demandas', 'select, insert, update, delete') as crud, has_table_privilege('authenticated', 'public.demandas', 'truncate') as trunc, has_table_privilege('anon', 'public.demandas', 'select') as anon_sel, has_table_privilege('service_role', 'public.demandas', 'select') as svc_sel");
@@ -354,7 +359,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   }
 
   // outra conta não troca a versão nem enxerga a demanda (a RLS continua valendo)
-  ok(/não encontrada/.test(await erro(B, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'x' }, p_tarefas: [], p_versao: 1 })), 'RLS: outra conta não salva a demanda mesmo informando uma versão');
+  ok(/não encontrada/.test(await erro(B, 'salvar_demanda', { p_id: dl.id, p: { assunto: 'x' }, p_tarefas: [], p_versao: 1 })), 'RLS: uma conta sem autorização não salva a demanda mesmo informando uma versão');
   const dx = await c(A, 'excluir_demanda', { p_id: dl.id, p_confirmado: true });
   ok(dx.excluida === true && (await db.query('select count(*)::int as n from public.tarefas where demanda_id = $1', [dl.id])).rows[0].n === 0, 'os gatilhos de versão não atrapalham a exclusão da demanda com suas tarefas');
 }
@@ -611,12 +616,15 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   ok(await cod('salvar_demanda', { p_id: ed.id, p: { descricao: 'da janela antiga', prazo_original: '2027-03-04' }, p_tarefas: null, p_versao: janela.versao }) === 'DM409' && (await busca(ed.id)).prazo === '2027-03-03' && (await busca(ed.id)).descricao === 'original', 'concorrência: a janela aberta antes do recálculo é recusada (DM409) e não desfaz o vencimento novo');
   await cu('excluir_dia_indisponivel', { p_id: f2.dia.id });
 
-  // RLS: o calendário e o recálculo são de cada usuário
+  // painel compartilhado (decisão 92): o calendário e o recálculo são do painel
   const dV = await c(V, 'salvar_dia_indisponivel', { p: { data: '2027-03-05', descricao: 'do V', categoria: 'Feriado' } });
-  ok((await c(U, 'listar_dias_indisponiveis', {})).length === 0 && (await c(V, 'listar_dias_indisponiveis', {})).length === 1, 'RLS: cada usuário vê só os próprios dias indisponíveis');
-  ok(/não encontrado/.test(await eu('excluir_dia_indisponivel', { p_id: dV.dia.id })) && /não encontrado/.test(await eu('salvar_dia_indisponivel', { p: { id: dV.dia.id, data: '2027-03-09', descricao: 'sequestro', categoria: 'Feriado' } })) && (await c(V, 'listar_dias_indisponiveis', {}))[0].data === '2027-03-05', 'RLS: U não altera nem exclui dia de V');
+  ok((await c(U, 'listar_dias_indisponiveis', {})).length === 1 && (await c(V, 'listar_dias_indisponiveis', {})).length === 1, 'painel: o calendário é compartilhado, a outra conta autorizada vê o mesmo dia indisponível');
+  const dEd = await cu('salvar_dia_indisponivel', { p: { id: dV.dia.id, data: '2027-03-05', descricao: 'editado por U', categoria: 'Feriado' } });
+  ok(dEd.dia.descricao === 'editado por U' && (await db.query('select user_id::text u from public.dias_indisponiveis where id = $1', [dV.dia.id])).rows[0].u === V, 'painel: U edita o dia cadastrado por V e a autoria continua sendo de V');
   const sabU = await nova({ prazo_original: '2027-03-06' });
-  ok((await busca(sabU.id)).prazo === '2027-03-05', 'RLS: o feriado de V não afeta os prazos de U');
+  ok((await busca(sabU.id)).prazo === '2027-03-04', 'painel: o feriado cadastrado por V vale para os prazos de U (calendário único do painel)');
+  await cu('excluir_dia_indisponivel', { p_id: dV.dia.id });
+  ok((await c(V, 'listar_dias_indisponiveis', {})).length === 0 && (await busca(sabU.id)).prazo === '2027-03-05', 'painel: U exclui o dia de V e o prazo volta a antecipar só para a sexta-feira');
   const anonDia = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_dias_indisponiveis()'); return null; } catch (e) { return e.message; } });
   ok(/permission denied/i.test(anonDia || ''), 'sem login, nenhuma função de calendário executa');
 
@@ -753,9 +761,9 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
     s = await busca(virada.id);
     ok(s.prazo === '2026-12-31' && s.prazo_ajuste === null && s.prazo_original === '2026-12-31', 'decisão 84: removido o período, o vencimento volta ao original (o aviso depende só dos dados vigentes)');
 
-    // isolamento: o recálculo e as chegadas são de cada usuário
+    // painel compartilhado: o recálculo e as chegadas são do painel
     const deV = await c(V, 'criar_demanda', { p: { assunto: 'Do V', prazo_dias: 10, chegou_em: '2027-03-01' } });
-    ok(deV.prazo_original === '2027-03-11' && (await cu('listar_demandas', {})).every((y) => y.id !== deV.id), 'RLS: a demanda por duração de V não aparece para U');
+    ok(deV.prazo_original === '2027-03-11' && (await cu('listar_demandas', {})).some((y) => y.id === deV.id), 'painel: a demanda por duração criada por V aparece para U e o prazo é o mesmo para todos');
   }
 }
 
@@ -779,7 +787,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   // cor automática (migração 11: cinco cores, 0 a 4): distribui antes de repetir e nunca sorteia a cor 5, retirada; com escolha, vale a escolha
   const n6 = [];
   for (let i = 0; i < 5; i++) n6.push(await ec(V, 'criar_entrada', { p: { texto: 'nota ' + i } }));
-  ok(new Set(n6.map((x) => x.cor)).size === 5 && n6.every((x) => x.cor >= 0 && x.cor <= 4), 'entradas: sem escolha de cor, as cinco primeiras notas recebem cinco cores diferentes (0 a 4)');
+  ok(new Set([e1, e2, ...n6.slice(0, 3)].map((x) => x.cor)).size === 5 && n6.every((x) => x.cor >= 0 && x.cor <= 4), 'entradas: sem escolha de cor, as cinco primeiras notas do PAINEL recebem cinco cores diferentes (0 a 4; a distribuição é do painel, não de cada usuário)');
   for (let i = 5; i < 40; i++) n6.push(await ec(V, 'criar_entrada', { p: { texto: 'nota ' + i } }));
   ok(n6.every((x) => x.cor >= 0 && x.cor <= 4), 'entradas: em 40 sorteios automáticos a cor 5 (retirada) nunca sai');
   const antiga = await ec(V, 'criar_entrada', { p: { texto: 'cor antiga cinco', cor: 5 } });
@@ -798,8 +806,10 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
 
   // isolamento por usuário e visitante sem acesso
   const eV = n6[0];
-  ok(await nEnt(U, false) === 3 && await nEnt(V, false) === n6.length + 2, 'entradas: cada usuário lista só as próprias anotações');
-  ok(/não encontrada/.test(await msg(U, 'buscar_entrada', { p_id: eV.id })) && /não encontrada/.test(await msg(U, 'fixar_entrada', { p_id: eV.id, p_fixada: true })) && /não encontrada/.test(await msg(U, 'arquivar_entrada', { p_id: eV.id })) && /não encontrada/.test(await msg(U, 'salvar_entrada', { p_id: eV.id, p: { texto: 'invasão' }, p_versao: 1 })), 'entradas: RLS, uma conta não lê nem altera a anotação de outra');
+  ok(await nEnt(U, false) === await nEnt(V, false) && await nEnt(V, false) === n6.length + 5, 'entradas: as duas contas autorizadas listam as mesmas anotações do painel');
+  const eVU = await ec(U, 'buscar_entrada', { p_id: eV.id });
+  const eVS = await ec(U, 'salvar_entrada', { p_id: eV.id, p: { texto: 'editada por U' }, p_versao: eVU.versao });
+  ok(eVU.id === eV.id && eVS.texto === 'editada por U' && (await db.query('select user_id::text u from public.entradas where id = $1', [eV.id])).rows[0].u === V, 'entradas: painel compartilhado, U lê e edita a anotação de V e a autoria continua sendo de V');
   const anonE = await db.transaction(async (tx) => { try { await tx.exec('set local role anon'); await tx.query('select public.listar_entradas()'); return null; } catch (e) { return e.message; } });
   const tabE = await db.query("select has_table_privilege('authenticated', 'public.entradas', 'select, insert, update, delete') as crud, has_table_privilege('authenticated', 'public.entradas', 'truncate') as trunc, has_table_privilege('anon', 'public.entradas', 'select') as anon_sel, has_table_privilege('service_role', 'public.entradas', 'select') as svc_sel");
   ok(/permission denied/i.test(anonE || '') && tabE.rows[0].crud && !tabE.rows[0].trunc && !tabE.rows[0].anon_sel && !tabE.rows[0].svc_sel, 'entradas: visitante e papel de serviço não tocam na tabela; o usuário logado tem só select, insert, update e delete');
@@ -820,10 +830,11 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   // fixar, desafixar, arquivar e recuperar
   const f1 = await ec(U, 'fixar_entrada', { p_id: e2.id, p_fixada: true }), f2 = await ec(U, 'fixar_entrada', { p_id: e2.id, p_fixada: true }), f3 = await ec(U, 'fixar_entrada', { p_id: e2.id, p_fixada: false });
   ok(f1.fixada === true && f2.versao === f1.versao && f3.fixada === false, 'entradas: fixar e desafixar funcionam e repetir não faz mal');
+  const ativasAntes = await nEnt(U, false), arqAntes = await nEnt(U, true);
   const ar = await ec(U, 'arquivar_entrada', { p_id: e2.id }), ar2 = await ec(U, 'arquivar_entrada', { p_id: e2.id });
-  ok(ar.arquivada_em !== null && ar2.arquivada_em === ar.arquivada_em && await nEnt(U, false) === 2 && await nEnt(U, true) === 1, 'entradas: arquivar tira da lista de Entradas e põe no Arquivo (repetir mantém a data)');
+  ok(ar.arquivada_em !== null && ar2.arquivada_em === ar.arquivada_em && await nEnt(U, false) === ativasAntes - 1 && await nEnt(U, true) === arqAntes + 1, 'entradas: arquivar tira da lista de Entradas e põe no Arquivo (repetir mantém a data)');
   const de = await ec(U, 'desarquivar_entrada', { p_id: e2.id });
-  ok(de.arquivada_em === null && de.titulo === 'Só título' && await nEnt(U, false) === 3 && await nEnt(U, true) === 0, 'entradas: recuperar devolve a anotação a Entradas com o mesmo conteúdo');
+  ok(de.arquivada_em === null && de.titulo === 'Só título' && await nEnt(U, false) === ativasAntes && await nEnt(U, true) === arqAntes, 'entradas: recuperar devolve a anotação a Entradas com o mesmo conteúdo');
   ok(/Arquive a anotação antes/.test(await msg(U, 'excluir_entrada', { p_id: e2.id, p_confirmado: true })) && /precisa de confirmação/.test(await msg(U, 'excluir_entrada', { p_id: e2.id })), 'entradas: excluir exige arquivar antes e confirmação');
   await ec(U, 'arquivar_entrada', { p_id: e2.id });
   ok((await ec(U, 'excluir_entrada', { p_id: e2.id, p_confirmado: true })).excluida === true && /não encontrada/.test(await msg(U, 'buscar_entrada', { p_id: e2.id })), 'entradas: exclusão definitiva de anotação arquivada, com confirmação');
@@ -855,8 +866,8 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const semNota = await ec(U, 'criar_demanda_de_entrada', { p_entrada: 'ffffffff-6666-4666-8666-ffffffffffff', p: { id: '99999999-7777-4777-8777-999999999999', assunto: 'Sem anotação' } });
   ok(semNota.etapa === 'Cadastro' && semNota.entrada_id === null, 'virar demanda: se a anotação já não existe, a demanda é criada sem vínculo (o que foi digitado não se perde)');
   // outra conta não converte anotação alheia: a RLS a esconde, então vira demanda comum de quem chamou, sem tocar na anotação de A
-  const alheia = await ec(V, 'criar_demanda_de_entrada', { p_entrada: orig2.id, p: { id: '8c8c8c8c-9999-4999-8999-8c8c8c8c8c8c', assunto: 'Tentativa alheia' } });
-  ok(alheia.entrada_id === null && (await ec(U, 'buscar_entrada', { p_id: orig2.id })).demanda_id === dem2.id, 'virar demanda: uma conta não liga a demanda dela à anotação de outra');
+  const alheia = await msg(V, 'criar_demanda_de_entrada', { p_entrada: orig2.id, p: { id: '8c8c8c8c-9999-4999-8999-8c8c8c8c8c8c', assunto: 'Tentativa alheia' } });
+  ok(/já virou outra demanda/.test(alheia) && (await db.query("select count(*)::int as n from public.demandas where assunto = 'Tentativa alheia'")).rows[0].n === 0 && (await ec(U, 'buscar_entrada', { p_id: orig2.id })).demanda_id === dem2.id, 'virar demanda: no painel compartilhado a outra conta enxerga a anotação, mas ela já tem demanda: a segunda conversão é recusada e nada é criado');
 
   // excluir a demanda de vez devolve a anotação a Entradas, com o conteúdo original
   await ec(U, 'excluir_demanda', { p_id: dem2.id, p_confirmado: true });
@@ -942,9 +953,8 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
 
   const lista = await gc(G, 'listar_eventos', {});
   ok(lista.map((x) => x.id).join() === [E1, noite.id, E2].join(), 'eventos: a lista traz os eventos do usuário em ordem de data e horário');
-  ok((await gc(H, 'listar_eventos', {})).length === 0 && /não encontrado/.test(await gm(H, 'buscar_evento', { p_id: E1 })) && /não encontrado/.test(await gm(H, 'salvar_evento', { p_id: E1, p: { titulo: 'invasão' }, p_versao: 4 })), 'eventos: RLS isola os eventos entre usuários');
-  await gc(H, 'excluir_evento', { p_id: E1, p_confirmado: true });
-  ok((await gc(G, 'buscar_evento', { p_id: E1 })).id === E1, 'eventos: um usuário não exclui evento de outro (a exclusão não encontra a linha)');
+  ok((await gc(H, 'listar_eventos', {})).map((x) => x.id).join() === lista.map((x) => x.id).join() && (await gc(H, 'buscar_evento', { p_id: E1 })).id === E1, 'eventos: a agenda é do painel, a outra conta autorizada vê os mesmos eventos');
+  ok((await db.query('select user_id::text u from public.eventos where id = $1', [E1])).rows[0].u === G, 'eventos: a autoria continua sendo de quem criou');
   const naoAut = await db.transaction(async (tx) => { await entrarComo(tx, X); try { return (await tx.query('select count(*)::int as n from public.eventos')).rows[0].n; } catch (e) { return e.message; } });
   ok(naoAut === 0, 'eventos: conta não autorizada (fora da lista) não lê nenhum evento');
   const naoAut2 = await db.transaction(async (tx) => { await entrarComo(tx, X); try { await tx.query("insert into public.eventos (user_id, titulo, tipo, data, inicio) values ($1, 'x', 'Reunião', '2027-01-01', '10:00')", [X]); return null; } catch (e) { return e.message; } });
@@ -965,6 +975,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const T = '9d9d9d9d-9999-4999-8999-9d9d9d9d9d9d';
   await db.exec(`insert into auth.users (id, email) values ('${T}', 'at@teste')`);
   await db.exec("insert into dmanda_privado.acesso_autorizado (email) values ('at@teste')");
+  await db.exec('delete from public.demandas');   // o resumo é do painel inteiro (decisão 92): estes números partem de um painel limpo
   const tc = (f, a) => chamarComoUsuario(db, T, f, a);
   const resumo = async (data) => (await db.query('select public.calcular_resumo($1, $2::date) as r', [T, data])).rows[0].r;
   const retorno = async (enc, rei, desde) => (await db.query('select public.retorno_setor_data($1, $2::date, $3::date, $4::timestamptz)::text as d', [T, enc, rei, desde])).rows[0].d;
@@ -994,10 +1005,10 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   await tc('salvar_dia_indisponivel', { p: { data: '2026-11-12', descricao: 'Ponto facultativo de teste', categoria: 'Feriado' } });
   ok(await retorno('2026-11-02', null, agora) === '2026-11-11', 'rotina 15: o retorno do setor antecipa também sobre dia indisponível do usuário');
   // o gatilho recalcula o resumo de hoje quando as datas de retorno mudam
-  const antes = (await db.query('select calculado_em::text as c from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [T])).rows[0].c;
+  const antes = (await db.query('select calculado_em::text as c from public.resumos_operacionais where data_ref = public.hoje()')).rows[0].c;
   await db.query('select pg_sleep(0.01)');
   await tc('atualizar_demanda', { p_id: ret.id, p: { reiterada_em: '2026-11-04' } });
-  const depois = (await db.query('select calculado_em::text as c from public.resumos_operacionais where user_id = $1 and data_ref = public.hoje()', [T])).rows[0].c;
+  const depois = (await db.query('select calculado_em::text as c from public.resumos_operacionais where data_ref = public.hoje()')).rows[0].c;
   ok(depois > antes, 'rotina 15: reiterar o retorno recalcula o resumo de hoje (o gatilho ouve as duas datas novas)');
   // fuso horário (decisão 51): o fuso da sessão do banco não muda "hoje", o retorno do setor nem a espera pela Prefeita; a virada do dia é a de São Paulo
   const fusos = {};
@@ -1106,7 +1117,8 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const novaP = todas.find((f) => f.includes('periodos_indisponiveis'));
   const novaR = todas.find((f) => f.includes('retorno_do_servidor'));   // depende da demanda_json atual (entradas) e de ajustar_prazo: também não entra no banco antigo   // depende da 8 (tabela dias_indisponiveis): não entra no banco antigo
   const novaC = todas.find((f) => f.includes('prazo_pela_chegada'));   // depende da 8 (ajustar_prazo): entra depois dela, não no banco antigo
-  for (const f of todas.filter((f) => f !== nova20 && f !== novaQ && f !== novaC && f !== novaP && f !== novaR && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
+  const novaS = todas.find((f) => f.includes('painel_compartilhado_e_acessos'));   // depende de todas as tabelas: entra por último, não no banco antigo
+  for (const f of todas.filter((f) => f !== novaS && f !== nova20 && f !== novaQ && f !== novaC && f !== novaP && f !== novaR && f !== nova8 && f !== nova9 && f !== nova10 && f !== nova11 && f !== nova12 && f !== nova14 && f !== nova15)) copyFileSync(join('supabase/migrations', f), join(pasta, f));
   const antigo = await abrirBancoTeste({ raizMigracoes: pasta });
   const W = 'a9999999-9999-4999-8999-999999999999';
   await antigo.exec(`insert into auth.users (id, email) values ('${W}', 'w@teste')`);
@@ -1799,7 +1811,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const todas = readdirSync('supabase/migrations').filter((f) => f.endsWith('.sql')).sort();
   const mE = todas.find((f) => f.includes('entrada_direta')), mR = todas.find((f) => f.includes('retirar_aparelhos')), mH = todas.find((f) => f.includes('aparelhos_where_explicito')), m6 = todas.find((f) => f.includes('aparelhos_autorizados'));
   ok(!!mE && !!mR && todas.indexOf(mE) === todas.indexOf(mH) + 1 && todas.indexOf(mH) === todas.indexOf(m6) + 1 && todas.indexOf(mR) === todas.indexOf(mE) + 1, 'retirada: a entrada direta e, logo depois, a retirada vêm em seguida ao hotfix (as migrações posteriores, como a dos períodos, só entram depois delas), e as duas migrações dos aparelhos continuam como foram aplicadas (histórico preservado)');
-  ok(!existsSync('supabase/pendentes') || readdirSync('supabase/pendentes').filter((f) => f.endsWith('.sql')).length === 0, 'duas fases (concluídas): não resta nenhuma migração pendente fora de supabase/migrations');
+  ok(!existsSync('supabase/pendentes') || readdirSync('supabase/pendentes').filter((f) => f.endsWith('.sql')).join() === '20261122000200_fechar_acesso_aberto.sql', 'duas fases (a dos aparelhos, concluída): a única migração fora de supabase/migrations é o fechamento do acesso aberto da decisão 92, pendente de propósito até a ativação');
   const textoE = readFileSync(join('supabase/migrations', mE), 'utf8'), textoR = readFileSync(join('supabase/migrations', mR), 'utf8');
   const semComentarios = (t) => t.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n');
   const codigo = semComentarios(textoE) + '\n' + semComentarios(textoR);
@@ -1876,7 +1888,8 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const regra = await erroCod(svc('criar_demanda', { p: { assunto: '  ' } }));
   ok(regra?.cod === 'P0001' && /Informe o assunto/.test(regra.msg), 'entrada direta: erro de regra do banco chega com P0001 e a mensagem em português');
   await svc('criar_entrada', { p: { titulo: 'Nota', texto: 'abc' } }); await svc('criar_evento', { p: { titulo: 'Reunião', tipo: 'Reunião', data: '2026-12-16', inicio: '09:00', fim: '10:00', aviso_min: null } });
-  await svc('registrar_dias', { p: [{ dia: '2026-11-16', humor: 3 }] }); await svc('atualizar_para_hoje', { p_candidatas: [dir.id] });
+  const hojeB = (await b.query('select public.hoje()::text as d')).rows[0].d;   // o humor só aceita hoje e os 5 dias anteriores: a data tem de ser relativa a hoje, não fixa
+  await svc('registrar_dias', { p: [{ dia: hojeB, humor: 3 }] }); await svc('atualizar_para_hoje', { p_candidatas: [dir.id] });
   ok((await svc('listar_entradas', { p_arquivadas: false })).length === 1 && (await svc('listar_eventos')).length === 1 && (await svc('listar_registros_dia', { p_dias: 62 })).length === 1 && (await svc('listar_para_hoje')).length >= 1, 'entrada direta: Entradas, Agenda, Perfil (humor) e Para hoje gravam e leem pela mesma função');
   const foraDaLista = [];
   for (const f of ['rotina_diaria', 'registrar_falha_rotina', 'atualizar_demanda', 'calcular_resumo', 'hook_antes_criar_usuario', 'assumir_titular', 'executar_como_titular', 'erro_dmanda', 'inexistente', '', 'LISTAR_DEMANDAS', 'public.listar_demandas']) {
@@ -1953,7 +1966,7 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   ok(/security-definer/i.test(defErr?.msg ?? ''), `papéis: SET ROLE dentro de SECURITY DEFINER é recusado pelo PostgreSQL (${defErr?.cod}), o motivo de o despachante ser SECURITY INVOKER`);
   await b.exec('drop trigger sonda on public.opcoes; drop schema sonda cascade');
   // sem titular na lista protegida, a entrada direta não inventa um
-  await b.exec('delete from dmanda_privado.acesso_autorizado');
+  await b.exec('delete from dmanda_privado.acesso_autorizado where email <> dmanda_privado.email_admin()');   // a conta administradora não sai da lista (gatilho): sem ela ter usuário no Auth, não há titular
   const sem = await erroCod(svc('listar_demandas', { p_arquivadas: false }));
   ok(sem?.cod === 'P0001' && /lista protegida/.test(sem.msg), 'entrada direta: sem usuário na lista protegida a função recusa (o titular nunca vem do pedido)');
   await b.close();
@@ -2445,15 +2458,15 @@ ok(privSvc.map((x) => x.proname).join() === 'assumir_titular,executar_como_titul
   const SQLV = readFileSync('supabase/propostas/verificar_migracoes_1_4_hospedado.sql', 'utf8');
   const lido = async (d) => Object.fromEntries((await d.query(SQLV)).rows.map((x) => [x.verificacao, x.resultado]));
   const raizAntes = mkdtempSync(join(tmpdir(), 'dmanda-ver-'));
-  for (const f of readdirSync('supabase/migrations').filter((x) => x.endsWith('.sql') && !x.startsWith('20261120'))) copyFileSync(join('supabase/migrations', f), join(raizAntes, f));
+  for (const f of readdirSync('supabase/migrations').filter((x) => x.endsWith('.sql') && !x.startsWith('20261120') && !x.startsWith('20261122'))) copyFileSync(join('supabase/migrations', f), join(raizAntes, f));
   const antes = await abrirBancoTeste({ raizMigracoes: raizAntes }), depois = await abrirBancoTeste();
   const A = await lido(antes), D = await lido(depois);
   ok(A['dias_indisponiveis.periodo_id'] === 'ausente' && A['tabela periodos_operacoes'] === 'ausente' && A['demanda_json lê retorno_setor_info'] === 'não' && A['executar_como_titular lista salvar_periodo_indisponivel'] === 'ausente' && A['executar_como_titular lista excluir_periodo_indisponivel'] === 'ausente' && A['executar_como_titular lista conferir_periodo_por_operacao'] === 'ausente' && A['executar_como_titular lista listar_demandas'] === 'presente' && !('função retorno_setor_info' in A) && A['linhas com periodo_id'] === 'n/a', 'verificação hospedada: ANTES das duas migrações mostra coluna, tabela, funções e nomes do período ausentes, e o que já existia presente');
   ok(D['dias_indisponiveis.periodo_id'] === 'presente' && /^presente rls=t select=t insert=t update=f delete=f$/.test(D['tabela periodos_operacoes']) && D['demanda_json lê retorno_setor_info'] === 'sim' && ['salvar_periodo_indisponivel', 'excluir_periodo_indisponivel', 'conferir_periodo_por_operacao'].every((n) => D[`executar_como_titular lista ${n}`] === 'presente') && D['linhas com periodo_id'] === '0' && D['contagem public.periodos_operacoes'] === '0', 'verificação hospedada: DEPOIS mostra a coluna, a tabela com RLS e só select e insert, os três nomes na lista do titular, o retorno no JSON da demanda e nenhum período gravado');
   const acl = (x) => /definer=f dono=postgres config=\{"search_path=\\"\\""\} acl=\{postgres=X\/postgres,(authenticated|service_role)=X\/postgres\}/.test(x ?? '');
   ok(['salvar_periodo_indisponivel', 'excluir_periodo_indisponivel', 'dias_do_periodo', 'conferir_periodo_por_operacao', 'retorno_setor_info', 'executar_como_titular'].every((n) => acl(D[`função ${n}`])) && /service_role=X/.test(D['função executar_como_titular']) && /authenticated=X/.test(D['função salvar_periodo_indisponivel']), 'verificação hospedada: as funções novas são INVOKER, com search_path vazio e EXECUTE só do dono e de authenticated (a do titular, só de service_role)');
-  const tabelasAntes = Object.keys(A).filter((k) => k.startsWith('contagem ')).sort(), tabelasDepois = Object.keys(D).filter((k) => k.startsWith('contagem ') && k !== 'contagem public.periodos_operacoes').sort();
-  ok(tabelasAntes.join() === tabelasDepois.join() && tabelasAntes.length >= 9, `verificação hospedada: a lista de contagens por tabela é a mesma antes e depois (só entra periodos_operacoes): ${tabelasAntes.length} tabelas`);
+  const tabelasAntes = Object.keys(A).filter((k) => k.startsWith('contagem ')).sort(), tabelasDepois = Object.keys(D).filter((k) => k.startsWith('contagem ') && k !== 'contagem public.periodos_operacoes' && k !== 'contagem public.rascunhos').sort();
+  ok(tabelasAntes.join() === tabelasDepois.join() && tabelasAntes.length >= 9, `verificação hospedada: a lista de contagens por tabela é a mesma antes e depois (só entram periodos_operacoes e rascunhos): ${tabelasAntes.length} tabelas`);
   // a cópia funcional por leitura (supabase/propostas/copia_funcional_leitura.sql): todas as tabelas, com as linhas inteiras e o texto sem escape de XML
   const UC = 'c0c0c0c0-0000-4000-8000-0000000000c1';
   await depois.exec(`insert into auth.users (id, email) values ('${UC}', 'copia@teste')`); await depois.exec("insert into dmanda_privado.acesso_autorizado (email) values ('copia@teste')");

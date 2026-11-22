@@ -29,6 +29,17 @@ alter default privileges in schema public grant references, trigger, truncate on
 `;
 
 // Papel de serviço (a chave de serviço do Supabase). Separado e idempotente para também valer em bancos de teste criados antes dele existir.
+// Colunas de auth.users que o Auth real tem e que as regras de acesso leem (conta_autorizada, e_admin, listar_acessos). Idempotente.
+const PALCO_AUTH = `
+alter table auth.users add column if not exists email_confirmed_at timestamptz default now();
+alter table auth.users add column if not exists banned_until timestamptz;
+alter table auth.users add column if not exists deleted_at timestamptz;
+alter table auth.users add column if not exists last_sign_in_at timestamptz;
+alter table auth.users add column if not exists invited_at timestamptz;
+alter table auth.users add column if not exists raw_app_meta_data jsonb default '{}'::jsonb;
+alter table auth.users add column if not exists created_at timestamptz default now();
+`;
+
 const PALCO_SERVICO = `
 do $$ begin if not exists (select from pg_roles where rolname = 'service_role') then create role service_role nologin bypassrls; end if; end $$;
 grant usage on schema public to service_role; grant usage on schema auth to service_role;
@@ -48,11 +59,28 @@ export async function prepararTitularDeTeste(db, usuario = USUARIO_TESTE) {
   await db.query("insert into dmanda_privado.acesso_autorizado (email) values ('teste@dmanda.local') on conflict do nothing");
 }
 
-export async function abrirBancoTeste({ pasta, raizMigracoes = RAIZ_MIGRACOES } = {}) {
+/** A conta administradora dos testes: o e-mail vem do próprio banco (dmanda_privado.email_admin()), nunca de uma constante deste arquivo. Já nasce autorizada pela migração. */
+export const ADMIN_TESTE = '00000000-0000-4000-8000-0000000000ad';
+export async function prepararAdminDeTeste(db, usuario = ADMIN_TESTE) {
+  await db.query("insert into auth.users (id, email, last_sign_in_at) values ($1, dmanda_privado.email_admin(), now()) on conflict do nothing", [usuario]);
+}
+
+/** Uma conta autorizada de teste (já ativa, como quem definiu a senha e entrou). `autorizar: false` cria só a identidade no Auth (um estranho). */
+export async function criarContaDeTeste(db, id, email, { autorizar = true, ativa = true } = {}) {
+  await db.query('insert into auth.users (id, email, last_sign_in_at) values ($1, $2, $3) on conflict do nothing', [id, email, ativa ? new Date().toISOString() : null]);
+  if (autorizar) await db.query('insert into dmanda_privado.acesso_autorizado (email) values ($1) on conflict do nothing', [email]);
+}
+
+const RAIZ_PENDENTES = join(/*turbopackIgnore: true*/ process.cwd(), 'supabase', 'pendentes');
+
+// `pendentes: true` aplica também as migrações de supabase/pendentes/ (o passo 2 da ativação: o fechamento do acesso aberto). O aplicativo e as suítes de navegador usam o estado FINAL;
+// as suítes do banco que provam a compatibilidade da transição abrem sem pendentes.
+export async function abrirBancoTeste({ pasta, raizMigracoes = RAIZ_MIGRACOES, pendentes = false } = {}) {
   const db = pasta ? new PGlite(pasta) : new PGlite();
   await db.waitReady;
   const ja = await db.query("select to_regnamespace('auth') as a, to_regclass('public.demandas') as d, to_regclass('teste_infra.migracoes') as m");
   if (!ja.rows[0].a) await db.exec(PALCO);
+  await db.exec(PALCO_AUTH);
   await db.exec(PALCO_SERVICO);
   await db.exec(PALCO_PRIVILEGIOS);
   await db.exec('create schema if not exists teste_infra; create table if not exists teste_infra.migracoes (nome text primary key)');
@@ -64,14 +92,21 @@ export async function abrirBancoTeste({ pasta, raizMigracoes = RAIZ_MIGRACOES } 
     await db.exec(readFileSync(join(/*turbopackIgnore: true*/ raizMigracoes, f), 'utf8'));
     await db.query('insert into teste_infra.migracoes (nome) values ($1)', [f]);
   }
+  if (pendentes) {
+    for (const f of readdirSync(/*turbopackIgnore: true*/ RAIZ_PENDENTES).filter((x) => x.endsWith('.sql')).sort()) {
+      if (feitas.has(f)) continue;
+      await db.exec(readFileSync(join(/*turbopackIgnore: true*/ RAIZ_PENDENTES, f), 'utf8'));
+      await db.query('insert into teste_infra.migracoes (nome) values ($1) on conflict do nothing', [f]);
+    }
+  }
   return db;
 }
 
 // Entra, dentro de uma transação, como um usuário autenticado: define as claims do JWT (sub, e-mail e provedor, como o Supabase Auth assina)
 // e troca para o papel authenticated. O e-mail vem de auth.users, a menos que seja informado. sessaoId acrescenta a claim session_id que os tokens do Supabase trazem (os testes do esquema anterior à retirada dos aparelhos a usam).
-export async function entrarComo(tx, usuarioId, { email, provedor = 'google', sessaoId } = {}) {
+export async function entrarComo(tx, usuarioId, { email, provedor = 'email', sessaoId, extras } = {}) {
   const e = email !== undefined ? email : ((await tx.query('select email from auth.users where id = $1', [usuarioId])).rows[0]?.email ?? null);
-  const claims = JSON.stringify({ sub: usuarioId, role: 'authenticated', email: e, app_metadata: { provider: provedor, providers: [provedor] }, ...(sessaoId ? { session_id: sessaoId } : {}) });
+  const claims = JSON.stringify({ sub: usuarioId, role: 'authenticated', email: e, app_metadata: { provider: provedor, providers: [provedor] }, ...(sessaoId ? { session_id: sessaoId } : {}), ...(extras ?? {}) });
   await tx.query("select set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claims', $2, true)", [usuarioId, claims]);
   await tx.exec('set local role authenticated');
 }
