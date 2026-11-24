@@ -1216,3 +1216,77 @@ Legenda de implementação: **P** publicada em `origin/main` e na Vercel; **T** 
 **Conferência de 22/11/2026 (candidato `29881b7`), dois pontos.**
 - **Primeira leitura dos rascunhos:** defeito concreto encontrado e corrigido. Uma janela aberta depois do limite de 4 s (ou de uma falha) não tinha o rascunho online; quando a leitura chegava depois, **Cancelar ou Fechar o descartava** (lápide) e **digitar o sobrescrevia**. Agora o que chega do banco depois de a janela abrir fica "não visto": um descarte não o atinge, uma digitação vira outra instância (o banco guarda as duas, como conflito), a tela avisa que a leitura não foi confirmada (com Tentar de novo, que refaz a leitura) e que o rascunho foi preservado; reabrir a janela o recupera. Evidência: `testar:fila-rascunhos` 38 (6 novas: leitura atrasada, que falha e resposta depois do erro) e `testar:auth-fluxo` 80 (3 novas no navegador, leitura atrasada em 9 s).
 - **URLs:** o plano distingue Site URL `https://dmanda-adm.vercel.app`, Redirect URL `https://dmanda-adm.vercel.app/auth/confirmar` e `DMANDA_URL_PUBLICA` `https://dmanda-adm.vercel.app`, com os links completos de convite (`type=invite`) e recuperação (`type=recovery`) e o aviso de trocar o `{{ .ConfirmationURL }}` padrão; o código não precisou mudar. Evidência: `testar:regras` 264 (4 novas que compõem os links a partir do plano e conferem o código).
+
+
+## Seção BE: etapas A, B e C da ativação, primeiro acesso aprovado e recuperação manual da conta (23/11/2026, complemento da decisão 92)
+
+**Candidato:** `28ce43f98097fa8576b6798ec9142512da217d30` (`main` local, 14 commits à frente de `origin/main` = `085c03c8f85d19ac8fa1ef726a0e893e3d9f8234`, 0 atrás, avanço direto; 87 arquivos, 4412 inclusões e 534 remoções). Código inalterado nesta rodada; stash e 14 tags `arquivo/*` preservados.
+
+**Executado no Supabase real (autorizado pelo Éder, projeto Dmanda `gmxoosvgfcydccyeudej`):**
+- **Etapa A:** cópia em `C:\Users\Éder\Desktop\Dmanda-backups\ativacao-auth-2026-11-23-0105-antes-das-migracoes\` (funcional por leitura, exportação v4, registro da conta, contagens e vínculos antes e depois, com `SHA256SUMS.txt`). O Supabase Free não tem backup gerenciado nem PITR; a cópia funcional não tem restaurador pronto, e só a v4 é aceita pelo `restaurar-copia.sql` (demonstrada apenas em banco local). O dry-run listou exatamente `20261122000000`, `…0100`, `…0150` e `…0300`, e foram aplicadas. Contagens iguais, salvo `rascunhos` (tabela nova, 0 linhas) e `resumos_operacionais` (29 para 30, o recálculo do dia que a própria migração faz). Todos os vínculos continuam na única conta; o painel publicado seguiu respondendo.
+- **Etapa B:** o ensaio do `bootstrap-admin.mjs` reaproveitou a conta existente (mesmo ID, iniciado por `e38872d3`, provedor Google, e-mail confirmado), sem criar outra. Um único e-mail real de recuperação foi enviado, mas o modelo "Reset password" do Supabase continuou no padrão (o Éder não conseguiu editá-lo), então o link do e-mail levou a um 404 e foi considerado consumido.
+- **Etapa C (conferência local, `npm run dev` na 7100 contra o Supabase real):** um novo link de recuperação foi gerado por `supabase.auth.admin.generateLink` (tipo `recovery`, sem envio de e-mail) e aberto direto em `http://localhost:7100/auth/confirmar`, sem imprimir o token. **O Éder aprovou:** a definição da senha, o login por e-mail e senha, a sessão persistente (fechar e reabrir o navegador) e a recuperação de um rascunho em janela anônima com a mesma conta.
+
+**Adiado pelo Éder:** SMTP próprio, e-mails automáticos (convite, "Esqueci a senha" por e-mail, avisos) e novas autorizações de usuários. Efeito enquanto durar: **só a administradora existe e entra; convite e recuperação por e-mail não funcionam** (o modelo continua no padrão do Supabase). A recuperação passa a ser a manual descrita abaixo.
+
+**Melhoria futura (não implementar agora):** indicação visível de salvamento (um aviso discreto de "Salvo online" ao gravar o rascunho, sem toast nesta etapa).
+
+**Pré-requisitos da publicação (conferidos em leitura em 23/11/2026):** `main` local = candidato, árvore limpa, base remota `085c03c` (avanço direto); as 32 migrações estão aplicadas no Supabase real; variáveis de Production na Vercel presentes (só nomes): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `DMANDA_URL_PUBLICA`, `DMANDA_SEGREDO_FLUXO` (e a antiga `DMANDA_EMAIL_AUTORIZADO`, que o código novo não usa); `.env.local` de `Dmanda-release` completo. **Falta, para a etapa D:** autorização expressa do push; `git ls-remote origin refs/heads/main` imediatamente antes; conferir o deploy (SHA, domínio, cron) e a tela de login sem sessão. **Etapa F** (`supabase/pendentes/20261122000200_fechar_acesso_aberto.sql`) só depois do código novo no ar e conferido; depois dela o código antigo deixa de funcionar e não se volta atrás. Sem SMTP, a etapa E não demonstra o convite real.
+
+### Recuperação manual da conta da administradora (sem e-mail, sem trocar a conta)
+
+Use quando a senha for perdida e o e-mail de recuperação não puder ser usado (hoje, por causa do modelo padrão e do SMTP adiado). **Preserva a conta e o ID originais**: nada é criado, apagado nem convidado; só se gera um link de recuperação de uso único para a conta que já existe. Exige a chave de serviço, que fica só no `.env.local` (cópia privada em `C:\Users\Éder\Desktop\Dmanda-backups\env-privado-2026-11-23\`).
+
+1. **Neste computador (NOTE-EDER), pasta `C:\Users\Éder\Desktop\Dmanda-release`:** `npm run dev` (porta 7100; encerre antes qualquer outro `next dev`). Confirme que `http://localhost:7100/auth/confirmar` responde.
+2. No PowerShell, na mesma pasta, rode o bloco abaixo. Ele confere o projeto e que existe exatamente uma conta com o e-mail e o ID iniciado por `e38872d3` (se não for assim, **para** sem gerar nada), gera o link e o abre no navegador padrão **sem imprimi-lo**:
+
+```powershell
+$js = @'
+const { createClient } = require('@supabase/supabase-js');
+const { spawn } = require('node:child_process');
+(async () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY, email = 'ederoliveiramachado@gmail.com';
+  if (!new URL(url).host.startsWith('gmxoosvgfcydccyeudej.')) { console.log('PARADA: projeto errado'); process.exit(1); }
+  const sb = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: l, error: e1 } = await sb.auth.admin.listUsers({ page: 1, perPage: 200 });
+  if (e1) { console.log('falha ao listar'); process.exit(1); }
+  const u = l.users.filter((x) => (x.email || '').toLowerCase() === email);
+  if (u.length !== 1 || !u[0].id.startsWith('e38872d3')) { console.log('PARADA: conta divergente'); process.exit(2); }
+  const { data, error } = await sb.auth.admin.generateLink({ type: 'recovery', email });
+  if (error || !data?.properties?.hashed_token || data.user.id !== u[0].id) { console.log('falha ao gerar'); process.exit(3); }
+  const alvo = 'http://localhost:7100/auth/confirmar?token_hash=' + encodeURIComponent(data.properties.hashed_token) + '&type=recovery';
+  spawn('cmd', ['/c', 'start', '""', alvo.replace(/&/g, '^&')], { stdio: 'ignore', detached: true, windowsVerbatimArguments: true }).unref();
+  console.log('Confirmação aberta no navegador. Nenhum e-mail enviado.');
+})();
+'@
+node --env-file=.env.local -e $js
+```
+
+3. Na aba aberta, toque em **Continuar** e defina a nova senha (10 caracteres ou mais). O link é de uso único e vale 24 horas; se mostrar inválido, gere outro com o mesmo bloco. Não cole o link em chat nem em arquivo.
+4. Entre em `/login` com e-mail e senha. Os dados e o ID continuam os mesmos.
+5. **Depois do deploy (etapa D)**, o mesmo procedimento vale; o link também pode abrir em `https://dmanda-adm.vercel.app/auth/confirmar` (troque a origem em `alvo`), já que a Vercel terá `DMANDA_SEGREDO_FLUXO`. O caminho local continua sendo o mais simples.
+
+- **Nunca:** apagar a conta no painel do Supabase, convidar o mesmo e-mail de novo, criar outra conta para os dados, nem recriar `executar_como_titular`. Se a chave de serviço também se perder, é preciso rotacioná-la no Supabase (decisão do Éder, fora deste procedimento).
+- **Quando o SMTP e os modelos estiverem prontos** (planos em `docs/plano-ativacao-autenticacao.md`, seção 1), "Esqueci a senha" na tela de login passa a bastar e este procedimento vira reserva.
+
+
+### Aceite após a etapa F (23/11/2026)
+
+**O Éder reabriu o painel depois do fechamento do acesso aberto (migração `20261122000200`, commit `596fbf82a850a179bc6b00896da948c620609c77`, deploy `dpl_3ymSpGnhQzg4tn8S9zZvabx2doEC` em Production): o painel continuou funcionando e a sessão permaneceu ativa ao reabrir.** Estado vigente: `origin/main` = `596fbf82`; `executar_como_titular` e `assumir_titular` removidas; as rotas sem sessão seguem bloqueadas; a rotina diária respondeu 200 em uma execução controlada. Convites, e-mails, SMTP e novas contas seguem adiados. Esta seção BE continua como edição local, ainda não commitada.
+
+## Seção BF: organização em duas pastas, Rascunho e Oficial (23/11/2026, decisão 93)
+
+**Referência:** `main` = `origin/main` = `596fbf82a850a179bc6b00896da948c620609c77` (publicada e ativa em Production, deploy `dpl_3ymSpGnhQzg4tn8S9zZvabx2doEC`).
+
+**Pastas locais do NOTE-EDER, todas ligadas ao mesmo repositório `edermoliveira/Dmanda`:**
+| Pasta | Branch | Acompanha | Papel |
+|---|---|---|---|
+| `C:\Users\Éder\Desktop\Dmanda-Rascunho` | `trabalho` | `origin/trabalho` | desenvolvimento e testes |
+| `C:\Users\Éder\Desktop\Dmanda-Oficial` | `main` | `origin/main` | versão oficial; a Vercel publica somente a `main` |
+| `C:\Users\Éder\Desktop\Dmanda` | HEAD solto em `f72ff5d` | nenhum | guarda o `.git` compartilhado; **não mover nem apagar** |
+
+A pasta `Dmanda-Rascunho` nasce da renomeação da antiga `Dmanda-release` (`git -C C:\Users\Éder\Desktop\Dmanda worktree move ..\Dmanda-release ..\Dmanda-Rascunho`, com nenhum programa, terminal ou editor aberto dentro dela; só a `.git` da pasta é atualizada, `.env.local`, `node_modules` e `.next` vão junto). A `Dmanda-Oficial` não tem `.env.local` nem `node_modules` (copiar o `.env.local` do Rascunho e rodar `npm ci` só se for preciso rodar algo ali). Segue valendo: só um `next dev` por vez, porta 7100.
+
+**Inventário de branches, tags e pastas (somente leitura, 23/11/2026):** nenhuma branch local além da `main` e da `trabalho`; as remotas já contidas na `main` (`bloco/configuracoes-catalyst`, `bloco/para-hoje-origem`, `entrega/aprovados-2026-11-07`, `checkpoint/continuidade-2026-11-05`, `checkpoint/resistencia-desempenho`, `release/etapas-2-5`) e as que não estão (`bloco/agenda-retomada`, `bloco/inicio-perfil-clima` e três `checkpoint/*`) seguem como estão; a aposentadoria dessas referências será decidida em outra etapa. As 14 tags `arquivo/*` e o stash do Clima foram preservados. **Frentes que nunca chegaram à `main` e têm valor:** Pagamentos (`arquivo/main-local-f72ff5d`, migração `20261115000000_pagamentos.sql` nunca aplicada), Clima (`arquivo/inicio-perfil-clima-914c435` e `arquivo/inicio-clima-2fc246c`), mini calendário e histórico de conclusões (`arquivo/mini-calendario-domingo-f6cd534`, migrações `20261111000100_evento_externo_e_pagamentos` e `20261111000200_transicoes_demanda` nunca aplicadas). O `scripts/capturar-calendarios.mjs` não rastreado da `Dmanda-ref-395e45a` difere do da `main` e está em `Dmanda-backups\preservacao-git-2026-11-21\capturar-calendarios-ref-395e45a-nao-rastreado.mjs`.
+
+**Cópia nova:** a tag `arquivo/continuacao-ea42d91` (a única sem bundle) agora tem `Dmanda-backups\preservacao-git-2026-11-21\tag-continuacao-ea42d91-2026-11-23.bundle`, autocontido, listado no `SHA256SUMS.txt`; o SHA `ea42d91df27a6874efb16f4c4dc7cfb7914a289d` foi recuperado e conferido (`git fsck`) em um repositório temporário vazio. Para recuperar: `git fetch <bundle> refs/tags/arquivo/continuacao-ea42d91:refs/tags/restaurado/continuacao-ea42d91`.
